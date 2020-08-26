@@ -428,9 +428,13 @@ def _add_realm_args(parser):
     group.add_argument('--query-in-block-prob', type=float, default=0.1,
                        help='Probability of keeping query in block for ICT dataset')
     group.add_argument('--use-one-sent-docs', action='store_true',
-                       help='Whether to use one sentence documents in ICT')
+                       help='whether to use one sentence documents in block datasets')
+    group.add_argument('--cased-data-path', type=str, default=None,
+                       help='path to cased data to use for NER salient span masking')
+    group.add_argument('--cased-vocab', type=str, default=None,
+                       help='path to cased vocab file to use for NER salient span masking')
 
-    # training
+    # ICT training
     group.add_argument('--report-topk-accuracies', nargs='+', default=[],
                        help="Which top-k accuracies to report (e.g. '1 5 20')")
 
@@ -439,11 +443,32 @@ def _add_realm_args(parser):
                        help='Whether create the FaissMIPSIndex on GPU')
     group.add_argument('--block-data-path', type=str, default=None,
                        help='Where to save/load BlockData to/from')
+    group.add_argument('--block-top-k', type=int, default=5,
+                       help='Number of blocks to use as top-k during retrieval')
 
     # indexer
     group.add_argument('--indexer-batch-size', type=int, default=128,
                        help='How large of batches to use when doing indexing jobs')
     group.add_argument('--indexer-log-interval', type=int, default=1000,
                        help='After how many batches should the indexer report progress')
+    group.add_argument('--index-reload-interval', type=int, default=500,
+                       help='how often (iterations) to refresh MIPS index during realm pretraining')
+    group.add_argument('--async-indexer', action='store_true',
+                       help='Whether the indexer job is running asynchronously with a trainer job')
+    group.add_argument('--max-training-rank', type=int, default=None,
+                       help='equal to number of processes doing training. The rest will do indexing')
+
+    # REALM training
+    group.add_argument('--use-regular-masking', action='store_true',
+                       help='use the regular BERT mlm masking during realm pretraining')
+    group.add_argument('--use-random-spans', action='store_true',
+                       help='use random spans during realm pretraining')
+    group.add_argument('--allow-trivial-doc', action='store_true',
+                       help='allow realm retriever to fetch the document from which a query came')
+    group.add_argument('--no-block-grad', action='store_true',
+                       help='whether to not train the block model in REALM')
+    group.add_argument('--max-num-entities', type=int, default=3,
+                       help='maxinmum number of entities used in salient span masking')
+
     return parser
 
