@@ -47,6 +47,8 @@ class BlockData(object):
 
     def load_from_file(self):
         """Populate members from instance saved to file"""
+        del self.embed_data
+        del self.meta_data
 
         if mpu.is_unitialized() or mpu.get_data_parallel_rank() == 0:
             print("\n> Unpickling BlockData", flush=True)
@@ -178,12 +180,15 @@ class FaissMIPSIndex(object):
 
         # faiss GpuIndex doesn't work with IDMap wrapper so store ids to map back with
         if self.use_gpu:
+            # GPU index doesn't support ID maps so use one locally.
             for i, idx in enumerate(block_indices):
                 self.id_map[i] = idx
 
         # we no longer need the embedding data since it's in the index now
         all_block_data.clear()
 
+        # Even if the index is using fp16 representations and math for MIPS, the index expects
+        # the inputs to be fp32 numpy arrays.
         if self.use_gpu:
             self.block_mips_index.add(block_embeds_arr)
         else:
@@ -199,7 +204,6 @@ class FaissMIPSIndex(object):
                             if False: return [num_queries x k] array of distances, and another for indices
         """
         query_embeds = np.float32(detach(query_embeds))
-
         if reconstruct:
             # get the vectors themselves
             top_k_block_embeds = self.block_mips_index.search_and_reconstruct(query_embeds, top_k)
@@ -210,7 +214,7 @@ class FaissMIPSIndex(object):
             distances, block_indices = self.block_mips_index.search(query_embeds, top_k)
             if self.use_gpu:
                 fresh_indices = np.zeros(block_indices.shape)
-                for i, j in itertools.product(block_indices.shape):
+                for i, j in itertools.product(*[range(d) for d in block_indices.shape]):
                     fresh_indices[i, j] = self.id_map[block_indices[i, j]]
                 block_indices = fresh_indices
             return distances, block_indices
