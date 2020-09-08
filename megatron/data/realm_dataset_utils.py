@@ -3,52 +3,54 @@ import os
 import time
 
 import numpy as np
-import spacy
+try:
+    import spacy
+    SPACY_NER = spacy.load('en_core_web_lg')  # python -m spacy download en_core_web_lg
+    SPACY_AVAILABLE = True
+except (ImportError, OSError):
+    SPACY_AVAILABLE = False
+
 import torch
 
 from megatron.data.dataset_utils import create_masked_lm_predictions, pad_and_convert_to_numpy
 from megatron.data.samplers import DistributedBatchSampler
 from megatron import get_args, get_tokenizer, print_rank_0, mpu
 
-SPACY_NER = spacy.load('en_core_web_lg')
 
 
 def build_realm_training_sample(sample, max_seq_length,
                                 vocab_id_list, vocab_id_to_token_dict,
                                 cls_id, sep_id, mask_id, pad_id,
-                                masked_lm_prob, block_ner_mask, cased_tokens,
+                                masked_lm_prob, cased_tokens,
                                 cased_tokenizer, np_rng):
     tokens = list(itertools.chain(*sample))[:max_seq_length - 2]
     tokens, tokentypes = create_single_tokens_and_tokentypes(tokens, cls_id, sep_id)
 
     args = get_args()
+
     if args.use_regular_masking:
+        # create examples with the same strategy as used in regular BERT
         max_predictions_per_seq = masked_lm_prob * max_seq_length
         masked_tokens, masked_positions, masked_labels, _ = create_masked_lm_predictions(
             tokens, vocab_id_list, vocab_id_to_token_dict, masked_lm_prob,
             cls_id, sep_id, mask_id, max_predictions_per_seq, np_rng)
-    elif block_ner_mask is not None:
-        block_ner_mask = list(itertools.chain(*block_ner_mask))[:max_seq_length - 2]
-        if args.use_random_spans:
-            rand_idx = np.random.randint(len(block_ner_mask))
-            block_ner_mask = block_ner_mask[rand_idx:] + block_ner_mask[:rand_idx]
-        block_ner_mask = [0] + block_ner_mask + [0]
-        masked_tokens, masked_positions, masked_labels = get_arrays_using_ner_mask(tokens, block_ner_mask, mask_id)
     else:
-        try:
-            total_len = sum(len(l) for l in sample)
-            # truncate the last sentence to make it so that the whole thing has length max_seq_length - 2
-            if total_len > max_seq_length - 2:
-                offset = -(total_len - (max_seq_length - 2))
-                sample[-1] = sample[-1][:offset]
-            masked_tokens, masked_positions, masked_labels = get_spacy_ner_mask(sample, cased_tokens, cased_tokenizer,
-                                                                                cls_id, sep_id, mask_id)
-        except:
+        total_len = sum(len(l) for l in sample)
+        # truncate the last sentence to make it so that the whole thing has length max_seq_length - 2
+        if total_len > max_seq_length - 2:
+            offset = -(total_len - (max_seq_length - 2))
+            sample[-1] = sample[-1][:offset]
+
+        masked_data = get_spacy_ner_mask(sample, cased_tokens, cased_tokenizer, cls_id, sep_id, mask_id)
+
+        if masked_data is None:
             # get_spacy_ner_mask failed because there were no masked entities
             max_predictions_per_seq = masked_lm_prob * max_seq_length
             masked_tokens, masked_positions, masked_labels, _ = create_masked_lm_predictions(
                 tokens, vocab_id_list, vocab_id_to_token_dict, masked_lm_prob,
                 cls_id, sep_id, mask_id, max_predictions_per_seq, np_rng)
+        else:
+            masked_tokens, masked_positions, masked_labels = masked_data
 
     tokens_np, tokentypes_np, labels_np, padding_mask_np, loss_mask_np \
         = pad_and_convert_to_numpy(masked_tokens, tokentypes, masked_positions,
@@ -65,10 +67,14 @@ def build_realm_training_sample(sample, max_seq_length,
 
 def get_spacy_ner_mask(tokens, cased_tokens, cased_tokenizer, cls_id, sep_id, mask_id):
     """Use spacy to generate NER salient span masks in the loop"""
-    # assuming that the default tokenizer is uncased.
+    if not SPACY_AVAILABLE:
+        raise ImportError("spacy not available and required for building salient span masked examples")
+
+    # usually the main tokenizer has been uncased, but this works in both cases.
     uncased_tokenizer = get_tokenizer()
     block_ner_mask = []
 
+    zero_mask = True
     for cased_sent_ids, uncased_sent_ids in zip(cased_tokens, tokens):
         token_pos_map = id_to_str_pos_map(uncased_sent_ids, uncased_tokenizer)
 
@@ -76,14 +82,19 @@ def get_spacy_ner_mask(tokens, cased_tokens, cased_tokenizer, cls_id, sep_id, ma
         cased_sent_str = join_str_list(cased_tokenizer.tokenizer.convert_ids_to_tokens(cased_sent_ids))
         entities = SPACY_NER(cased_sent_str).ents
 
-        # get only some of the categories
+        # use the categories which minimally cover CoNLL and also dates, as prescribed in the REALM paper
         spacy_ner_categories = {'PERSON', 'NORP', 'FAC', 'ORG', 'LOC', 'GPE', 'DATE'}
         entities = [e for e in entities if (e.text != 'CLS' and e.label_ in spacy_ner_categories)]
 
-        # randomize which entities to look at, and set a target of 12% of tokens being masked
+        # randomize which entities to look at, and set a target of 15% of tokens being masked
         entity_indices = np.arange(len(entities))
         np.random.shuffle(entity_indices)
         target_num_masks = int(len(cased_sent_ids) * 0.15)
+
+        if len(entity_indices) > 0:
+            zero_mask = False
+        else:
+            continue
 
         args = get_args()
         masked_positions = []
@@ -112,6 +123,10 @@ def get_spacy_ner_mask(tokens, cased_tokens, cased_tokenizer, cls_id, sep_id, ma
         for pos in masked_positions:
             ner_mask[pos] = 1
         block_ner_mask.extend(ner_mask)
+
+    if zero_mask:
+        # no salient spans were created. This happens only very rarely.
+        return None
 
     tokens = list(itertools.chain(*tokens))
     tokens = [cls_id] + tokens + [sep_id]

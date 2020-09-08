@@ -14,7 +14,7 @@ class REALMDataset(Dataset):
     """Dataset for producing samples for REALM training"""
     def __init__(self, name, block_dataset, title_dataset,
                  data_prefix, num_epochs, max_num_samples, masked_lm_prob,
-                 max_seq_length, seed, ner_dataset=None, cased_block_dataset=None, cased_vocab=None, use_one_sent_docs=False):
+                 max_seq_length, seed, cased_block_dataset=None, cased_vocab=None, use_one_sent_docs=False):
         self.name = name
         self.seed = seed
         self.max_seq_length = max_seq_length
@@ -24,7 +24,6 @@ class REALMDataset(Dataset):
         self.rng = random.Random(self.seed)
         self.use_one_sent_docs = use_one_sent_docs
 
-        self.ner_dataset = ner_dataset
         self.cased_block_dataset = cased_block_dataset
         self.cased_tokenizer = None
         if self.cased_block_dataset is not None:
@@ -51,10 +50,6 @@ class REALMDataset(Dataset):
         block = [list(self.block_dataset[i]) for i in range(start_idx, end_idx)]
         assert len(block) > 1 or self.use_one_sent_docs
 
-        block_ner_mask = None
-        if self.ner_dataset is not None:
-            block_ner_mask = [list(self.ner_dataset[i]) for i in range(start_idx, end_idx)]
-
         cased_tokens = None
         if self.cased_block_dataset is not None:
             cased_tokens = [list(self.cased_block_dataset[i]) for i in range(start_idx, end_idx)]
@@ -70,7 +65,6 @@ class REALMDataset(Dataset):
                                              self.mask_id,
                                              self.pad_id,
                                              self.masked_lm_prob,
-                                             block_ner_mask,
                                              cased_tokens,
                                              self.cased_tokenizer,
                                              np_rng)
