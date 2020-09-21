@@ -358,7 +358,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
                                     max_seq_length, masked_lm_prob,
                                     short_seq_prob, seed, skip_warmup,
-                                    dataset_type='standard_bert'):
+                                    dataset_type=DSET_TYPE_STD):
 
     if dataset_type not in DSET_TYPES:
         raise ValueError("Invalid dataset_type: ", dataset_type)
@@ -398,9 +398,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     print_split_stats('test', 2)
 
     def build_dataset(index, name):
-        from megatron.data.bert_dataset import BertDataset
-        from megatron.data.realm_dataset import ICTDataset
-        from megatron.data.realm_dataset import REALMDataset
         dataset = None
         if splits[index + 1] > splits[index]:
             # Get the pointer to the original doc-idx so we can set it later.
@@ -423,6 +420,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 
             args = get_args()
             if dataset_type == DSET_TYPE_ICT:
+                from megatron.data.realm_dataset import ICTDataset
                 dataset = ICTDataset(
                     block_dataset=indexed_dataset,
                     title_dataset=title_dataset,
@@ -431,6 +429,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                     **kwargs
                 )
             elif dataset_type == DSET_TYPE_REALM:
+                from megatron.data.realm_dataset import REALMDataset
                 if args.cased_data_path is not None:
                     cased_dataset = get_indexed_dataset_(args.cased_data_path,
                                                          data_impl,
@@ -445,6 +444,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                     **kwargs
                 )
             else:
+                from megatron.data.bert_dataset import BertDataset
                 dataset = BertDataset(
                     indexed_dataset=indexed_dataset,
                     masked_lm_prob=masked_lm_prob,
