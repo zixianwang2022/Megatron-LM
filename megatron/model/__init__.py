@@ -15,7 +15,8 @@
 
 from .distributed import *
 from .bert_model import BertModel
-from .realm_model import ICTBertModel, REALMRetriever, REALMBertModel
+from .realm_model import ICTBertModel, REALMBertModel
+from megatron.data.realm_index import REALMRetriever
 from .gpt2_model import GPT2Model
 from .utils import get_params_for_weight_decay_optimization
 from .language_model import get_language_model
