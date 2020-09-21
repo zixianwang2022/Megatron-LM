@@ -27,7 +27,6 @@ class REALMBertModel(MegatronModule):
             double_pos_embeds=True
         )
         self.lm_model = BertModel(**bert_args)
-        load_checkpoint(self.lm_model, optimizer=None, lr_scheduler=None, load_arg='bert_load')
         self._lm_key = 'realm_lm'
 
         self.retriever = retriever
@@ -36,11 +35,9 @@ class REALMBertModel(MegatronModule):
 
     def forward(self, tokens, attention_mask, query_block_indices, return_topk_block_tokens=False):
         dset = self.retriever.ict_dataset
+        args = get_args()
 
         # [batch_size x k x seq_length]
-
-        args = get_args()
-        tokenizer = get_tokenizer()
         if args.allow_trivial_doc:
             topk_block_tokens, topk_block_attention_mask = self.retriever.retrieve_evidence_blocks(
                 tokens, attention_mask, query_block_indices=None, include_null_doc=True)
