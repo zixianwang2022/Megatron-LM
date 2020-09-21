@@ -27,8 +27,9 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
 DSET_TYPE_STD = 'standard_bert'
 DSET_TYPE_ICT = 'ict'
+DSET_TYPE_REALM = 'realm'
 
-DSET_TYPES = [DSET_TYPE_ICT, DSET_TYPE_STD]
+DSET_TYPES = [DSET_TYPE_ICT, DSET_TYPE_STD, DSET_TYPE_REALM]
 
 
 def compile_helper():
@@ -78,7 +79,6 @@ def get_a_and_b_segments(sample, np_rng):
 
 def truncate_segments(tokens_a, tokens_b, len_a, len_b, max_num_tokens, np_rng):
     """Truncates a pair of sequences to a maximum sequence length."""
-    #print(len_a, len_b, max_num_tokens)
     assert len_a > 0
     assert len_b > 0
     if len_a + len_b <= max_num_tokens:
@@ -358,7 +358,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
                                     max_seq_length, masked_lm_prob,
                                     short_seq_prob, seed, skip_warmup,
-                                    dataset_type='standard_bert'):
+                                    dataset_type=DSET_TYPE_STD):
 
     if dataset_type not in DSET_TYPES:
         raise ValueError("Invalid dataset_type: ", dataset_type)
@@ -368,7 +368,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                            data_impl,
                                            skip_warmup)
 
-    if dataset_type == DSET_TYPE_ICT:
+    if dataset_type in [DSET_TYPE_ICT, DSET_TYPE_REALM]:
         args = get_args()
         title_dataset = get_indexed_dataset_(args.titles_data_path,
                                              data_impl,
@@ -398,8 +398,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     print_split_stats('test', 2)
 
     def build_dataset(index, name):
-        from megatron.data.bert_dataset import BertDataset
-        from megatron.data.ict_dataset import ICTDataset
         dataset = None
         if splits[index + 1] > splits[index]:
             # Get the pointer to the original doc-idx so we can set it later.
@@ -420,8 +418,9 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                 seed=seed
             )
 
+            args = get_args()
             if dataset_type == DSET_TYPE_ICT:
-                args = get_args()
+                from megatron.data.realm_dataset import ICTDataset
                 dataset = ICTDataset(
                     block_dataset=indexed_dataset,
                     title_dataset=title_dataset,
@@ -429,7 +428,23 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                     use_one_sent_docs=args.use_one_sent_docs,
                     **kwargs
                 )
+            elif dataset_type == DSET_TYPE_REALM:
+                from megatron.data.realm_dataset import REALMDataset
+                if args.cased_data_path is not None:
+                    cased_dataset = get_indexed_dataset_(args.cased_data_path,
+                                                         data_impl,
+                                                         skip_warmup)
+                    kwargs.update({'cased_block_dataset': cased_dataset,
+                                   'cased_vocab': args.cased_vocab})
+                dataset = REALMDataset(
+                    block_dataset=indexed_dataset,
+                    title_dataset=title_dataset,
+                    masked_lm_prob=masked_lm_prob,
+                    use_one_sent_docs=args.use_one_sent_docs,
+                    **kwargs
+                )
             else:
+                from megatron.data.bert_dataset import BertDataset
                 dataset = BertDataset(
                     indexed_dataset=indexed_dataset,
                     masked_lm_prob=masked_lm_prob,

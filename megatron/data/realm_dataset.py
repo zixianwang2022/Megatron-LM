@@ -1,13 +1,75 @@
+import collections
 import itertools
 import random
 
 import numpy as np
 from torch.utils.data import Dataset
 
-from megatron import get_tokenizer
-from megatron import get_args
+from megatron import get_args, get_tokenizer
 from megatron.data.dataset_utils import get_indexed_dataset_
-from megatron.data.realm_dataset_utils import get_block_samples_mapping
+from megatron.data.realm_dataset_utils import build_realm_training_sample, get_block_samples_mapping
+
+
+class REALMDataset(Dataset):
+    """Dataset for producing samples for REALM training"""
+    def __init__(self, name, block_dataset, title_dataset,
+                 data_prefix, num_epochs, max_num_samples, masked_lm_prob,
+                 max_seq_length, seed, cased_block_dataset=None, cased_vocab=None, use_one_sent_docs=False):
+        self.name = name
+        self.seed = seed
+        self.max_seq_length = max_seq_length
+        self.masked_lm_prob = masked_lm_prob
+        self.block_dataset = block_dataset
+        self.title_dataset = title_dataset
+        self.rng = random.Random(self.seed)
+        self.use_one_sent_docs = use_one_sent_docs
+
+        self.cased_block_dataset = cased_block_dataset
+        self.cased_tokenizer = None
+        if self.cased_block_dataset is not None:
+            from megatron.tokenizer.tokenizer import BertWordPieceTokenizer
+            self.cased_tokenizer = BertWordPieceTokenizer(vocab_file=cased_vocab, lower_case=False)
+
+        self.samples_mapping = get_block_samples_mapping(
+            block_dataset, title_dataset, data_prefix, num_epochs,
+            max_num_samples, max_seq_length, seed, name, use_one_sent_docs)
+
+        self.tokenizer = get_tokenizer()
+        self.vocab_id_list = list(self.tokenizer.inv_vocab.keys())
+        self.vocab_id_to_token_list = self.tokenizer.inv_vocab
+        self.cls_id = self.tokenizer.cls
+        self.sep_id = self.tokenizer.sep
+        self.mask_id = self.tokenizer.mask
+        self.pad_id = self.tokenizer.pad
+
+    def __len__(self):
+        return len(self.samples_mapping)
+
+    def __getitem__(self, idx):
+        start_idx, end_idx, doc_idx, block_idx = self.samples_mapping[idx].as_tuple()
+        block = [list(self.block_dataset[i]) for i in range(start_idx, end_idx)]
+        assert len(block) > 1 or self.use_one_sent_docs
+
+        cased_tokens = None
+        if self.cased_block_dataset is not None:
+            cased_tokens = [list(self.cased_block_dataset[i]) for i in range(start_idx, end_idx)]
+
+        np_rng = np.random.RandomState(seed=(self.seed + idx))
+
+        sample = build_realm_training_sample(block,
+                                             self.max_seq_length,
+                                             self.vocab_id_list,
+                                             self.vocab_id_to_token_list,
+                                             self.cls_id,
+                                             self.sep_id,
+                                             self.mask_id,
+                                             self.pad_id,
+                                             self.masked_lm_prob,
+                                             cased_tokens,
+                                             self.cased_tokenizer,
+                                             np_rng)
+        sample.update({'query_block_indices': np.array([block_idx]).astype(np.int64)})
+        return sample
 
 
 def get_ict_dataset(use_titles=True, query_in_block_prob=1):
@@ -138,3 +200,4 @@ class ICTDataset(Dataset):
         tokens += [self.pad_id] * num_pad
 
         return np.array(tokens), np.array(pad_mask)
+
