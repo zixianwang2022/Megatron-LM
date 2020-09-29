@@ -164,8 +164,12 @@ def _add_network_size_args(parser):
                        '    grouped: [1, 2, 1, 2] and spaced: [1, 1, 2, 2].')
     group.add_argument('--hidden-size', type=int, default=None,
                        help='Tansformer hidden size.')
+    group.add_argument('--ffn-hidden-size', type=int, default=None,
+                       help='Transformer Feed-Forward Network hidden size.') 
     group.add_argument('--num-attention-heads', type=int, default=None,
                        help='Number of transformer attention heads.')
+    group.add_argument('--kv-channels', type=int, default=None,
+                       help='Projection weights dimension in multi-head attention.')
     group.add_argument('--max-position-embeddings', type=int, default=None,
                        help='Maximum number of position embeddings to use. '
                        'This is the size of position embedding.')
@@ -401,6 +405,8 @@ def _add_data_args(parser):
                        help='Path to the BPE merge file.')
     group.add_argument('--seq-length', type=int, default=None,
                        help="Maximum sequence length to process.")
+    group.add_argument('--seq-length-dec', type=int, default=None,
+                       help="Maximum decoder sequence length to process.")
     group.add_argument('--mask-prob', type=float, default=0.15,
                        help='Probability of replacing a token with mask.')
     group.add_argument('--short-seq-prob', type=float, default=0.1,

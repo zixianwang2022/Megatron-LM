@@ -43,7 +43,8 @@ def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
 
 
 def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
-                       init_method=None, scaled_init_method=None):
+                       add_decoder=False, init_method=None, 
+                       scaled_init_method=None):
     """Build language model and return along with the key to save."""
     args = get_args()
 
@@ -59,6 +60,7 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         init_method=init_method,
         output_layer_init_method=scaled_init_method,
         num_tokentypes=num_tokentypes,
+        add_decoder=add_decoder,
         add_pooler=add_pooler)
     # key used for checkpoints.
     language_model_key = 'language_model'
@@ -265,6 +267,7 @@ class TransformerLanguageModel(MegatronModule):
                  init_method,
                  output_layer_init_method,
                  num_tokentypes=0,
+                 add_decoder=False,
                  add_pooler=False):
         super(TransformerLanguageModel, self).__init__()
         args = get_args()
@@ -272,6 +275,7 @@ class TransformerLanguageModel(MegatronModule):
         self.hidden_size = args.hidden_size
         self.num_tokentypes = num_tokentypes
         self.init_method = init_method
+        self.add_decoder = add_decoder
         self.add_pooler = add_pooler
 
         # Embeddings
@@ -284,36 +288,67 @@ class TransformerLanguageModel(MegatronModule):
         self._embedding_key = 'embedding'
 
         # Transformer
-        self.transformer = ParallelTransformer(
-            attention_mask_func, self.init_method, 
-            output_layer_init_method)
-        self._transformer_key = 'transformer'
+        self.encoder = ParallelTransformer(attention_mask_func,
+                                           self.init_method,
+                                           output_layer_init_method)
+        self._encoder_key = 'encoder'
 
+        if self.add_decoder:
+            self.decoder = ParallelTransformer(attention_mask_func,
+                                               self.init_method,
+                                               output_layer_init_method,
+                                               layer_type="decoder")
+            self._decoder_key = 'decoder'
+ 
         # Pooler
         if self.add_pooler:
             self.pooler = Pooler(self.hidden_size, self.init_method)
             self._pooler_key = 'pooler'
 
-    def forward(self, input_ids, position_ids, attention_mask,
-                tokentype_ids=None, layer_past=None, get_key_value=False,
-                pooling_sequence_index=0):
+    def forward(self, enc_input_ids, enc_position_ids, enc_attention_mask,
+                dec_input_ids=None, dec_position_ids=None, dec_attn_mask=None,
+                enc_dec_attn_mask=None, tokentype_ids=None, layer_past=None, 
+                get_key_value=False, pooling_sequence_index=0, z_block=None,
+                output_enc_hidden=False):
 
-        # Embeddings.
-        embedding_output = self.embedding(input_ids, position_ids,
-                                          tokentype_ids=tokentype_ids)
+        # Encoder Embeddings.
+        enc_embedding_output = self.embedding(enc_input_ids, enc_position_ids,
+                                            tokentype_ids=tokentype_ids)
 
-        # Transformer.
-        transformer_output = self.transformer(embedding_output,
-                                              attention_mask,
-                                              layer_past=layer_past,
-                                              get_key_value=get_key_value)
+        # encoder.
+        if z_block is None:
+            encoder_output = self.encoder(enc_embedding_output,
+                                          enc_attention_mask,
+                                          layer_past=layer_past,
+                                          get_key_value=get_key_value)
+        else:
+            encoder_output = z_block.half()
+ 
+        if self.add_pooler:
+            pooled_output = self.pooler(encoder_output,
+                                        pooling_sequence_index)
+           
+        if not self.add_decoder or output_enc_hidden:
+            if self.add_pooler: 
+                return encoder_output, pooled_output
+            else:
+                return encoder_output
+
+        # Decoder Embedding
+        dec_embedding_output = self.embedding(dec_input_ids, dec_position_ids)
+        # decoder
+        decoder_output = self.decoder(dec_embedding_output,
+                                      dec_attn_mask,
+                                      layer_past=layer_past,
+                                      get_key_value=get_key_value,
+                                      z_states=encoder_output,
+                                      enc_dec_mask=enc_dec_attn_mask)
 
         if self.add_pooler:
-            pooled_output = self.pooler(transformer_output,
-                                        pooling_sequence_index)
-            return transformer_output, pooled_output
-
-        return transformer_output
+            return decoder_output, encoder_output, pooled_output     
+        else:
+            return decoder_output, encoder_output
+           
 
     def state_dict_for_save_checkpoint(self, destination=None, prefix='',
                                        keep_vars=False):
@@ -323,9 +358,13 @@ class TransformerLanguageModel(MegatronModule):
         state_dict_[self._embedding_key] \
             = self.embedding.state_dict_for_save_checkpoint(
                 destination, prefix, keep_vars)
-        state_dict_[self._transformer_key] \
-            = self.transformer.state_dict_for_save_checkpoint(
+        state_dict_[self._encoder_key] \
+            = self.encoder.state_dict_for_save_checkpoint(
                 destination, prefix, keep_vars)
+        if self.add_decoder:
+            state_dict_[self._decoder_key] \
+                = self.decoder.state_dict_for_save_checkpoint(
+                    destination, prefix, keep_vars)
         if self.add_pooler:
             state_dict_[self._pooler_key] \
                 = self.pooler.state_dict_for_save_checkpoint(
@@ -347,17 +386,23 @@ class TransformerLanguageModel(MegatronModule):
                     state_dict_[key] = state_dict[key]
         self.embedding.load_state_dict(state_dict_, strict=strict)
 
-        # Transformer.
-        if self._transformer_key in state_dict:
-            state_dict_ = state_dict[self._transformer_key]
+        # Encoder.
+        if self._encoder_key in state_dict:
+            state_dict_ = state_dict[self._encoder_key]
         else:
             # for backward compatibility.
             state_dict_ = {}
             for key in state_dict.keys():
-                if 'transformer.' in key:
-                    state_dict_[key.split('transformer.')[1]] = state_dict[key]
-        self.transformer.load_state_dict(state_dict_, strict=strict)
+                if 'encoder.' in key:
+                    state_dict_[key.split('encoder.')[1]] = state_dict[key]
+        self.encoder.load_state_dict(state_dict_, strict=strict)
 
+        #decoder
+        if self.add_decoder:
+            assert 'decoder' in state_dict, \
+                'could not find data for pooler in the checkpoint'  
+            self.decoder.load_state_dict(state_dict[self._decoder_key],
+                                         strict=strict)
         # Pooler.
         if self.add_pooler:
             assert 'pooler' in state_dict, \
