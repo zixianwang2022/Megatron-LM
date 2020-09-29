@@ -138,14 +138,18 @@ class _BertWordPieceTokenizer(AbstractTokenizer):
         self.sep_id = self.tokenizer.vocab['[SEP]']
         self.pad_id = self.tokenizer.vocab['[PAD]']
         self.mask_id = self.tokenizer.vocab['[MASK]']
-        self._bos_token = None
-        self._eos_token = None
         self._additional_special_tokens = []
 
         # (dsachan) Add BOS and EOS tokens
         SPECIAL_TOKENS = {'eos_token': '[EOS]',
                           'bos_token': '[BOS]'}
-        self.add_special_tokens(SPECIAL_TOKENS)
+        self._bos_token = '[BOS]'
+        self.add_token(self._bos_token)
+        self._bos_token_id = self.vocab.get(self._bos_token)
+
+        self._eos_token = '[EOS]'
+        self.add_token(self._eos_token)
+        self._eos_token_id = self.vocab.get(self._eos_token)
 
         # (dsachan) Add additional special tokens
         # These can be used as sentinel tokens in T5 model inputs
@@ -157,12 +161,9 @@ class _BertWordPieceTokenizer(AbstractTokenizer):
     def add_token(self, token):
         if token not in self.vocab:
             self.inv_vocab[self.vocab_size] = token
+            # self.vocab_size comes from len(vocab)
+            # and it will increase as we add elements
             self.vocab[token] = self.vocab_size
-
-    def add_special_tokens(self, special_tokens):
-        for key, value in special_tokens.items():
-            self.add_token(value)
-            setattr(self, key, value)
 
     def add_additional_special_tokens(self, tokens_list):
         setattr(self, "additional_special_tokens", tokens_list)
@@ -237,25 +238,17 @@ class _BertWordPieceTokenizer(AbstractTokenizer):
     @property
     def bos_token_id(self):
         """ Id of the beginning of sentence token in the vocabulary."""
-        return self.vocab.get(self._bos_token)
+        return self._bos_token_id
 
     @property
     def eos_token_id(self):
         """ Id of the end of sentence token in the vocabulary."""
-        return self.vocab.get(self._eos_token)
+        return self._eos_token_id
 
     @property
     def additional_special_tokens_ids(self):
         """ Ids of all the additional special tokens in the vocabulary (list of integers)."""
         return [self.vocab.get(token) for token in self._additional_special_tokens]
-
-    @bos_token.setter
-    def bos_token(self, value):
-        self._bos_token = value
-
-    @eos_token.setter
-    def eos_token(self, value):
-        self._eos_token = value
 
     @additional_special_tokens.setter
     def additional_special_tokens(self, value):
