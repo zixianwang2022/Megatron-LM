@@ -399,6 +399,9 @@ def _add_data_args(parser):
                        help='Path to the vocab file.')
     group.add_argument('--merge-file', type=str, default=None,
                        help='Path to the BPE merge file.')
+    group.add_argument('--extra-ids', type=int, default=0,
+                       help='Number of additional vocabulary tokens. '
+                            'They are used for span masking in the T5 model')
     group.add_argument('--seq-length', type=int, default=None,
                        help="Maximum sequence length to process.")
     group.add_argument('--mask-prob', type=float, default=0.15,
