@@ -139,7 +139,7 @@ class BertDataset(Dataset):
         self.bos_id = tokenizer.bos_token_id
         self.eos_id = tokenizer.eos_token_id
         self.sentinel_tokens = tokenizer.additional_special_tokens_ids
-        assert len(self.sentinel_tokens) > 0, "Provide the argument --extra-ids 100 to the script"
+        assert len(self.sentinel_tokens) > 0, "Provide the argument --vocab-extra-ids 100 to the script"
 
     def __len__(self):
         return self.samples_mapping.shape[0]
