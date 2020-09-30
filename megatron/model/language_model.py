@@ -322,7 +322,7 @@ class TransformerLanguageModel(MegatronModule):
                                           layer_past=layer_past,
                                           get_key_value=get_key_value)
         else:
-            encoder_output = enc_hidden_states.half()
+            encoder_output = enc_hidden_states.to(enc_embedding_output.dtype)
  
         if self.add_pooler:
             pooled_output = self.pooler(encoder_output,
