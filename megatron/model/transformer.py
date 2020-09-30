@@ -67,9 +67,6 @@ class ParallelMLP(MegatronModule):
         super(ParallelMLP, self).__init__()
         args = get_args()
 
-        if args.ffn_hidden_size is None:
-            args.ffn_hidden_size = 4 * args.hidden_size
-
         # Project to 4h.
         self.dense_h_to_4h = mpu.ColumnParallelLinear(
             args.hidden_size,
@@ -92,7 +89,6 @@ class ParallelMLP(MegatronModule):
             input_is_parallel=True,
             init_method=output_layer_init_method,
             skip_bias_add=True)
-         
 
     def forward(self, hidden_states):
 
@@ -133,9 +129,6 @@ class ParallelAttention(MegatronModule):
         self.layer_number = max(1, layer_number)
         self.attention_type = attention_type
 
-        if args.kv_channels is None:
-            assert args.hidden_size % args.num_attention_heads == 0
-            args.kv_channels = args.hidden_size // args.num_attention_heads
         projection_size = args.kv_channels * args.num_attention_heads
 
         # Per attention head and per partition values.
@@ -197,7 +190,7 @@ class ParallelAttention(MegatronModule):
 
 
     def forward(self, hidden_states, attention_mask, layer_past=None,
-                get_key_value=False, z_states=None):
+                get_key_value=False, encoder_output=None):
         # hidden_states: [s, b, h]
 
         # =====================
@@ -220,7 +213,7 @@ class ParallelAttention(MegatronModule):
              value_layer) = mpu.split_tensor_along_last_dim(mixed_x_layer, 3)
         else:
             # Attention heads [s, b, h] --> [s, b, 2 * hp]
-            mixed_kv_layer, _ = self.key_value(z_states)
+            mixed_kv_layer, _ = self.key_value(encoder_output)
 
             # [s, b, 2 * hp] --> [s, b, np, 2 * hn]  
             new_tensor_shape = mixed_x_layer.size()[:-1] + \
@@ -446,7 +439,7 @@ class ParallelTransformerLayer(MegatronModule):
                                output_layer_init_method)
 
     def forward(self, hidden_states, attention_mask,
-                z_state=None, xy_mask=None,
+                encoder_output=None, enc_dec_attn_mask=None,
                 layer_past=None, get_key_value=False):
         # hidden_states: [b, s, h]
 
@@ -494,8 +487,8 @@ class ParallelTransformerLayer(MegatronModule):
         if self.layer_type == "decoder":
             attention_output, attention_bias = \
                 self.inter_attention(layernorm_output,
-                                     xy_mask,
-                                     z_states=z_states)
+                                     enc_dec_attn_mask,
+                                     encoder_output=encoder_output)
             # residual connection
             if self.apply_residual_connection_post_layernorm: 
                 residual = layernorm_ouput
@@ -592,14 +585,17 @@ class ParallelTransformer(MegatronModule):
         return self.layers[self._get_layer_index(layer_number)]
 
     def _checkpointed_forward(self, hidden_states, attention_mask,
-                              z_states, xy_mask):
+                              encoder_output, enc_dec_attn_mask):
         """Forward method with activation checkpointing."""
         def custom(start, end):
             def custom_forward(*inputs):
                 x_ = inputs[0]
+                attention_mask = inputs[1]
+                encoder_output = inputs[2]
+                enc_dec_attn_mask = inputs[3]
                 for index in range(start, end):
                     layer = self._get_layer(index)
-                    x_ = layer(x_, inputs[1], inputs[2], inputs[3])
+                    x_ = layer(x_, attention_mask, encoder_output, enc_dec_attn_mask)
                 return x_
             return custom_forward
 
@@ -609,13 +605,13 @@ class ParallelTransformer(MegatronModule):
         while l < self.num_layers:
             hidden_states = mpu.checkpoint(
                 custom(l, l + self.checkpoint_num_layers),
-                hidden_states, attention_mask, z_states, xy_mask)
+                hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
             l += self.checkpoint_num_layers
 
         return hidden_states
 
     def forward(self, hidden_states, attention_mask, layer_past=None,
-                get_key_value=False, z_states=None, xy_mask=None):
+                get_key_value=False, encoder_output=None, enc_dec_attn_mask=None):
 
         # Checks
         if layer_past is not None:
@@ -629,14 +625,14 @@ class ParallelTransformer(MegatronModule):
 
         # data format change to avoid explicit tranposes : [b s h] --> [s b h]
         hidden_states = hidden_states.transpose(0, 1).contiguous()
-        if z_states is not None:
-            z_states = z_states.tranpose(0,1).contiguous()
+        if encoder_output is not None:
+            encoder_output = encoder_output.tranpose(0, 1).contiguous()
 
         if self.checkpoint_activations:
             hidden_states = self._checkpointed_forward(hidden_states,
                                                        attention_mask,
-                                                       z_states,
-                                                       xy_mask)
+                                                       encoder_output,
+                                                       enc_dec_attn_mask)
         else:
             if get_key_value:
                 presents = []
@@ -647,8 +643,8 @@ class ParallelTransformer(MegatronModule):
                     past = layer_past[index]
                 hidden_states = layer(hidden_states,
                                       attention_mask,
-                                      z_states=z_states,
-                                      xy_mask=xy_mask,
+                                      encoder_output=encoder_output,
+                                      enc_dec_attn_mask=enc_dec_attn_mask,
                                       layer_past=past,
                                       get_key_value=get_key_value)
                 if get_key_value:

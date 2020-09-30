@@ -307,8 +307,8 @@ class TransformerLanguageModel(MegatronModule):
 
     def forward(self, enc_input_ids, enc_position_ids, enc_attention_mask,
                 dec_input_ids=None, dec_position_ids=None, dec_attn_mask=None,
-                enc_dec_attn_mask=None, tokentype_ids=None, layer_past=None, 
-                get_key_value=False, pooling_sequence_index=0, z_block=None,
+                enc_dec_attn_mask=None, tokentype_ids=None, layer_past=None,
+                get_key_value=False, pooling_sequence_index=0, enc_hidden_states=None,
                 output_enc_hidden=False):
 
         # Encoder Embeddings.
@@ -316,18 +316,20 @@ class TransformerLanguageModel(MegatronModule):
                                             tokentype_ids=tokentype_ids)
 
         # encoder.
-        if z_block is None:
+        if enc_hidden_states is None:
             encoder_output = self.encoder(enc_embedding_output,
                                           enc_attention_mask,
                                           layer_past=layer_past,
                                           get_key_value=get_key_value)
         else:
-            encoder_output = z_block.half()
+            encoder_output = enc_hidden_states.half()
  
         if self.add_pooler:
             pooled_output = self.pooler(encoder_output,
                                         pooling_sequence_index)
-           
+
+        # output_enc_hidden refers to when we just need the encoder's output. For example, it is helpful to compute
+        # similarity between two sequences by average pooling
         if not self.add_decoder or output_enc_hidden:
             if self.add_pooler: 
                 return encoder_output, pooled_output
@@ -341,7 +343,7 @@ class TransformerLanguageModel(MegatronModule):
                                       dec_attn_mask,
                                       layer_past=layer_past,
                                       get_key_value=get_key_value,
-                                      z_states=encoder_output,
+                                      encoder_output=encoder_output,
                                       enc_dec_mask=enc_dec_attn_mask)
 
         if self.add_pooler:
@@ -389,6 +391,9 @@ class TransformerLanguageModel(MegatronModule):
         # Encoder.
         if self._encoder_key in state_dict:
             state_dict_ = state_dict[self._encoder_key]
+        # for backward compatibility.
+        elif 'transformer' in state_dict:
+            state_dict_ = state_dict['transformer']
         else:
             # for backward compatibility.
             state_dict_ = {}
