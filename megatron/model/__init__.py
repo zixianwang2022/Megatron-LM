@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from .distributed import *
+from .t5_model import T5Model
 from .bert_model import BertModel
 from .realm_model import ICTBertModel
 from .gpt2_model import GPT2Model
