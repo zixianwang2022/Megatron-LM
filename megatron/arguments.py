@@ -72,7 +72,6 @@ def parse_args(extra_args_provider=None, defaults={},
         print('using {} for parameters ...'.format(args.params_dtype),
               flush=True)
 
-
     # Set input defaults.
     for key in defaults:
         # For default to be valid, it should not be provided in the
@@ -94,6 +93,20 @@ def parse_args(extra_args_provider=None, defaults={},
         _check_arg_is_not_none(args, req_arg)
 
     # Checks.
+    if args.ffn_hidden_size is None:
+        args.ffn_hidden_size = 4 * args.hidden_size
+
+    if args.kv_channels is None:
+        assert args.hidden_size % args.num_attention_heads == 0
+        args.kv_channels = args.hidden_size // args.num_attention_heads
+
+    if args.seq_length is not None:
+        assert args.encoder_seq_length is None
+        args.encoder_seq_length = args.seq_length
+    else:
+        assert args.encoder_seq_length is not None
+        args.seq_length = args.encoder_seq_length
+
     assert args.hidden_size % args.num_attention_heads == 0
     if args.seq_length is not None:
         assert args.max_position_embeddings >= args.seq_length
@@ -164,8 +177,14 @@ def _add_network_size_args(parser):
                        '    grouped: [1, 2, 1, 2] and spaced: [1, 1, 2, 2].')
     group.add_argument('--hidden-size', type=int, default=None,
                        help='Tansformer hidden size.')
+    group.add_argument('--ffn-hidden-size', type=int, default=None,
+                       help='Transformer Feed-Forward Network hidden size. This is set to 4*hidden-size if not '
+                            'provided')
     group.add_argument('--num-attention-heads', type=int, default=None,
                        help='Number of transformer attention heads.')
+    group.add_argument('--kv-channels', type=int, default=None,
+                       help='Projection weights dimension in multi-head attention. '
+                            'This is set to args.hidden_size // args.num_attention_heads if not provided.')
     group.add_argument('--max-position-embeddings', type=int, default=None,
                        help='Maximum number of position embeddings to use. '
                        'This is the size of position embedding.')
@@ -404,6 +423,10 @@ def _add_data_args(parser):
                             'They are used for span masking in the T5 model')
     group.add_argument('--seq-length', type=int, default=None,
                        help="Maximum sequence length to process.")
+    group.add_argument('--encoder-seq-length', type=int, default=None,
+                       help="Maximum encoder sequence length to process.")
+    group.add_argument('--decoder-seq-length', type=int, default=None,
+                       help="Maximum decoder sequence length to process.")
     group.add_argument('--mask-prob', type=float, default=0.15,
                        help='Probability of replacing a token with mask.')
     group.add_argument('--short-seq-prob', type=float, default=0.1,
