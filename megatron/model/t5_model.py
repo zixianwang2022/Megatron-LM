@@ -119,38 +119,38 @@ class T5Model(MegatronModule):
                                                 init_method)
             self._binary_head_key = 'binary_head'
 
-    def forward(self, x_input_ids, y_input_ids, x_attn_mask,
-                y_attn_mask, xy_attn_mask,
-                tokentype_ids=None, lm_labels=None, z_block=None):
+    def forward(self, encoder_input_ids, decoder_input_ids, encoder_attn_mask,
+                decoder_attn_mask, encoder_decoder_attn_mask,
+                tokentype_ids=None, lm_labels=None, enc_hidden_states=None):
 
         # Converting the attention masks to proper parameter settings
-        x_attn_mask, y_attn_mask, xy_attn_mask = t5_extended_attention_mask(
-            [x_attn_mask, y_attn_mask, xy_attn_mask])
+        encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask = t5_extended_attention_mask(
+            [encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask])
 
-        x_position_ids = t5_position_ids(x_input_ids)
-        y_position_ids = t5_position_ids(y_input_ids)
+        x_position_ids = t5_position_ids(encoder_input_ids)
+        y_position_ids = t5_position_ids(decoder_input_ids)
 
         if self.add_binary_head:
             lm_output, pooled_output = self.language_model(
-                x_input_ids,
-                y_input_ids,
+                encoder_input_ids,
+                decoder_input_ids,
                 x_position_ids,
                 y_position_ids,
-                x_attn_mask,
-                y_attn_mask,
-                xy_attn_mask,
+                encoder_attn_mask,
+                decoder_attn_mask,
+                encoder_decoder_attn_mask,
                 tokentype_ids=tokentype_ids)
         else:
             lm_output = self.language_model(
-                x_input_ids,
-                y_input_ids,
+                encoder_input_ids,
+                decoder_input_ids,
                 x_position_ids,
                 y_position_ids,
-                x_attn_mask,
-                y_attn_mask,
-                xy_attn_mask,
+                encoder_attn_mask,
+                decoder_attn_mask,
+                encoder_decoder_attn_mask,
                 tokentype_ids=tokentype_ids,
-                z_block=z_block)
+                enc_hidden_states=enc_hidden_states)
 
         decoder_output, encoder_output = lm_output
 
