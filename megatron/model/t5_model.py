@@ -30,23 +30,18 @@ from megatron.module import MegatronModule
 
 
 def t5_attention_mask_func(attention_scores, attention_mask):
-    attention_scores = attention_scores + attention_mask
+    attention_scores.masked_fill_(attention_mask, -10000)
     return attention_scores
 
 
-def t5_extended_attention_mask(attention_mask_list, dtype):
+def t5_extended_attention_mask(attention_mask_list):
 
     def attn_mask_postprocess(attn_mask):
         # [b, 1, s, s]
         extended_attention_mask = attn_mask.unsqueeze(1)
-        # Since attention_mask is 1.0 for positions we want to attend and 0.0
-        # for masked positions, this operation will create a tensor which is
-        # 0.0 for positions we want to attend and -10000.0 for masked positions.
-        # Since we are adding it to the raw scores before the softmax, this is
-        # effectively the same as removing these entirely.
-        # fp16 compatibility
-        extended_attention_mask = extended_attention_mask.to(dtype=dtype)
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+
+        # Convert attention mask to binary
+        extended_attention_mask = (extended_attention_mask < 0.5 )
         return extended_attention_mask
 
     return [attn_mask_postprocess(attn_mask) for attn_mask in attention_mask_list]
@@ -73,8 +68,7 @@ class T5LMHead(MegatronModule):
         parallel_output: wether output logits being distributed or not.
     """
 
-    def __init__(self, mpu_vocab_size, hidden_size, init_method,
-                 layernorm_epsilon, parallel_output):
+    def __init__(self, mpu_vocab_size, parallel_output):
         super(T5LMHead, self).__init__()
 
         args = get_args()
@@ -85,16 +79,7 @@ class T5LMHead(MegatronModule):
         self.bias.stride = 1
         self.parallel_output = parallel_output
 
-        self.dense = get_linear_layer(hidden_size, hidden_size, init_method)
-        self.layernorm = LayerNorm(hidden_size, eps=layernorm_epsilon)
-        self.gelu = torch.nn.functional.gelu
-        if args.openai_gelu:
-            self.gelu = openai_gelu
-
     def forward(self, hidden_states, word_embeddings_weight):
-        hidden_states = self.dense(hidden_states)
-        hidden_states = self.gelu(hidden_states)
-        hidden_states = self.layernorm(hidden_states)
         output = parallel_lm_logits(hidden_states,
                                     word_embeddings_weight,
                                     self.parallel_output,
@@ -126,7 +111,6 @@ class T5Model(MegatronModule):
 
         self.lm_head = T5LMHead(
             self.language_model.embedding.word_embeddings.weight.size(0),
-            args.hidden_size, init_method, args.layernorm_epsilon,
             parallel_output)
         self._lm_head_key = 'lm_head'
 
@@ -141,8 +125,7 @@ class T5Model(MegatronModule):
 
         # Converting the attention masks to proper parameter settings
         x_attn_mask, y_attn_mask, xy_attn_mask = t5_extended_attention_mask(
-            [x_attn_mask, y_attn_mask, xy_attn_mask],
-            next(self.language_model.parameters()).dtype)
+            [x_attn_mask, y_attn_mask, xy_attn_mask])
 
         x_position_ids = t5_position_ids(x_input_ids)
         y_position_ids = t5_position_ids(y_input_ids)

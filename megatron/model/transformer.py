@@ -89,7 +89,6 @@ class ParallelMLP(MegatronModule):
             input_is_parallel=True,
             init_method=output_layer_init_method,
             skip_bias_add=True)
-         
 
     def forward(self, hidden_states):
 
@@ -170,7 +169,6 @@ class ParallelSelfAttention(MegatronModule):
             input_is_parallel=True,
             init_method=output_layer_init_method,
             skip_bias_add=True)
-
 
     def forward(self, hidden_states, attention_mask, layer_past=None,
                 get_key_value=False):
