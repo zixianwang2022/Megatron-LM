@@ -85,9 +85,9 @@ def forward_step(data_iterator, model):
                         tokentype_ids=types,
                         lm_labels=lm_labels)
 
+    lm_loss_ = lm_loss_.float()
     lm_loss = torch.sum(
         lm_loss_.view(-1) * loss_mask.reshape(-1)) / loss_mask.sum()
-    lm_loss = lm_loss.float()
 
     loss = lm_loss
     reduced_losses = reduce_losses([lm_loss])
