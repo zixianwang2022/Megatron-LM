@@ -52,7 +52,8 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         init_method = init_method_normal(args.init_method_std)
 
     if scaled_init_method is None:
-        scaled_init_method = scaled_init_method_normal(args.init_method_std, args.num_layers)
+        scaled_init_method = scaled_init_method_normal(args.init_method_std,
+                                                       args.num_layers)
 
     # Language model.
     language_model = TransformerLanguageModel(
@@ -172,8 +173,6 @@ class Embedding(MegatronModule):
         if tokentype_ids is not None:
             assert self.tokentype_embeddings is not None
             embeddings = embeddings + self.tokentype_embeddings(tokentype_ids)
-        else:
-            assert self.tokentype_embeddings is None
 
         # Dropout.
         embeddings = self.embedding_dropout(embeddings)
@@ -312,8 +311,9 @@ class TransformerLanguageModel(MegatronModule):
                 output_enc_hidden=False):
 
         # Encoder Embeddings.
-        enc_embedding_output = self.embedding(enc_input_ids, enc_position_ids,
-                                            tokentype_ids=tokentype_ids)
+        enc_embedding_output = self.embedding(enc_input_ids,
+                                              enc_position_ids,
+                                              tokentype_ids=tokentype_ids)
 
         # encoder.
         if enc_hidden_states is None:
@@ -344,7 +344,7 @@ class TransformerLanguageModel(MegatronModule):
                                       layer_past=layer_past,
                                       get_key_value=get_key_value,
                                       encoder_output=encoder_output,
-                                      enc_dec_mask=enc_dec_attn_mask)
+                                      enc_dec_attn_mask=enc_dec_attn_mask)
 
         if self.add_pooler:
             return decoder_output, encoder_output, pooled_output     
