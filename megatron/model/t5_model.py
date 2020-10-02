@@ -90,13 +90,11 @@ class T5LMHead(MegatronModule):
 class T5Model(MegatronModule):
     """T5 Language model."""
 
-    def __init__(self, num_tokentypes=2, add_binary_head=True,
-                 parallel_output=True):
+    def __init__(self, num_tokentypes=2, parallel_output=True):
         super(T5Model, self).__init__()
         args = get_args()
 
         self.fp16_lm_cross_entropy = args.fp16_lm_cross_entropy
-        self.add_binary_head = add_binary_head
         self.parallel_output = parallel_output
         init_method = init_method_normal(args.init_method_std)
         scaled_init_method = scaled_init_method_normal(args.init_method_std,
@@ -105,7 +103,8 @@ class T5Model(MegatronModule):
         self.language_model, self._language_model_key = get_language_model(
             attention_mask_func=t5_attention_mask_func,
             num_tokentypes=num_tokentypes,
-            add_pooler=self.add_binary_head,
+            add_pooler=False,
+            add_decoder=True,
             init_method=init_method,
             scaled_init_method=scaled_init_method)
 
@@ -113,11 +112,6 @@ class T5Model(MegatronModule):
             self.language_model.embedding.word_embeddings.weight.size(0),
             parallel_output)
         self._lm_head_key = 'lm_head'
-
-        if self.add_binary_head:
-            self.binary_head = get_linear_layer(args.hidden_size, 2,
-                                                init_method)
-            self._binary_head_key = 'binary_head'
 
     def forward(self, encoder_input_ids, decoder_input_ids, encoder_attn_mask,
                 decoder_attn_mask, encoder_decoder_attn_mask,
@@ -127,30 +121,18 @@ class T5Model(MegatronModule):
         encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask = t5_extended_attention_mask(
             [encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask])
 
-        x_position_ids = t5_position_ids(encoder_input_ids)
-        y_position_ids = t5_position_ids(decoder_input_ids)
+        encoder_position_ids = t5_position_ids(encoder_input_ids)
+        decoder_position_ids = t5_position_ids(decoder_input_ids)
 
-        if self.add_binary_head:
-            lm_output, pooled_output = self.language_model(
-                encoder_input_ids,
-                decoder_input_ids,
-                x_position_ids,
-                y_position_ids,
-                encoder_attn_mask,
-                decoder_attn_mask,
-                encoder_decoder_attn_mask,
-                tokentype_ids=tokentype_ids)
-        else:
-            lm_output = self.language_model(
-                encoder_input_ids,
-                decoder_input_ids,
-                x_position_ids,
-                y_position_ids,
-                encoder_attn_mask,
-                decoder_attn_mask,
-                encoder_decoder_attn_mask,
-                tokentype_ids=tokentype_ids,
-                enc_hidden_states=enc_hidden_states)
+        lm_output = self.language_model(encoder_input_ids,
+                                        decoder_input_ids,
+                                        encoder_position_ids,
+                                        decoder_position_ids,
+                                        encoder_attn_mask,
+                                        decoder_attn_mask,
+                                        encoder_decoder_attn_mask,
+                                        tokentype_ids=tokentype_ids,
+                                        enc_hidden_states=enc_hidden_states)
 
         decoder_output, encoder_output = lm_output
 
@@ -158,12 +140,8 @@ class T5Model(MegatronModule):
         lm_logits = self.lm_head(decoder_output,
                                  self.language_model.embedding.word_embeddings.weight)
 
-        binary_logits = None
-        if self.add_binary_head:
-            binary_logits = self.binary_head(pooled_output)
-
         if lm_labels is None:
-            return lm_logits, (binary_logits, encoder_output)
+            return lm_logits, encoder_output
         else:
             if self.fp16_lm_cross_entropy:
                 assert lm_logits.dtype == torch.half
@@ -171,7 +149,7 @@ class T5Model(MegatronModule):
             else:
                 lm_loss = mpu.vocab_parallel_cross_entropy(lm_logits.float(),
                                                            lm_labels)
-            return lm_loss, (binary_logits, encoder_output)
+            return lm_loss, encoder_output
 
     def state_dict_for_save_checkpoint(self, destination=None, prefix='',
                                        keep_vars=False):

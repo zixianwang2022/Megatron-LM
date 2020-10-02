@@ -30,13 +30,9 @@ from megatron.utils import reduce_losses
 def model_provider():
     """Build the model."""
 
-    print_rank_0('building BERT model ...')
-
-    model = T5Model(
-        num_tokentypes=2,
-        add_binary_head=False,
-        parallel_output=True)
-
+    print_rank_0('building T5 model ...')
+    model = T5Model(num_tokentypes=2,
+                    parallel_output=True)
     return model
 
 
@@ -92,7 +88,6 @@ def forward_step(data_iterator, model):
         lm_loss_.view(-1) * loss_mask.reshape(-1)) / loss_mask.sum()
 
     loss = lm_loss
-
     reduced_losses = reduce_losses([lm_loss])
 
     return loss, {'lm loss': reduced_losses[0]}

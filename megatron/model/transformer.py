@@ -215,19 +215,19 @@ class ParallelAttention(MegatronModule):
             mixed_kv_layer, _ = self.key_value(encoder_output)
 
             # [s, b, 2 * hp] --> [s, b, np, 2 * hn]  
-            new_tensor_shape = mixed_x_layer.size()[:-1] + \
+            new_tensor_shape = mixed_kv_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
                  2 * self.hidden_size_per_attention_head)
-            mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
+            mixed_kv_layer = mixed_kv_layer.view(*new_tensor_shape)
 
             # [s, b, np, 2 * hn] --> 2 [s, b, np, hn]
             (key_layer,
-             value_layer) = mpu.split_tensor_along_last_dim(mixed_x_layer, 2)
+             value_layer) = mpu.split_tensor_along_last_dim(mixed_kv_layer, 2)
 
             # Attention head [s, b, h] --> [s, b, hp]
             query_layer, _ = self.query_value(hidden_states)
              # [s, b, hp] --> [s, b, np, hn]  
-            new_tensor_shape = query.size()[:-1] + \
+            new_tensor_shape = query_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
                  self.hidden_size_per_attention_head)
             query_layer = query_layer.view(*new_tensor_shape)
@@ -490,14 +490,14 @@ class ParallelTransformerLayer(MegatronModule):
                                      encoder_output=encoder_output)
             # residual connection
             if self.apply_residual_connection_post_layernorm: 
-                residual = layernorm_ouput
+                residual = layernorm_output
             else: 
                 residual = layernorm_input
             
             #re-enable torch grad to enable fused optimization.
             with torch.enable_grad():
                 layernorm_input = bias_dropout_add_func(
-                    attention_ouput,
+                    attention_output,
                     attention_bias.expand_as(residual),
                     residual,
                     self.hidden_dropout)   
