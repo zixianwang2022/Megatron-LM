@@ -39,26 +39,27 @@ def model_provider():
 def get_batch(data_iterator):
     """Build the batch."""
 
-    keys = ['text_enc', 'text_dec', 'types', 'labels', 'loss_mask',
-            'enc_mask', 'dec_mask', 'enc_dec_mask']
-    datatype = torch.int64
+    keys_dtype_long = ['text_enc', 'text_dec', 'types', 'labels', 'loss_mask']
+    keys_dtype_bool = ['enc_mask', 'dec_mask', 'enc_dec_mask']
 
     # Broadcast data.
     if data_iterator is not None:
         data = next(data_iterator)
     else:
         data = None
-    data_b = mpu.broadcast_data(keys, data, datatype)
+    data_dtype_long = mpu.broadcast_data(keys_dtype_long, data, torch.int64)
+    data_dtype_bool = mpu.broadcast_data(keys_dtype_bool, data, torch.bool)
 
     # Unpack.
-    tokens_enc = data_b['text_enc'].long()
-    tokens_dec = data_b['text_dec'].long()
-    types = data_b['types'].long()
-    labels = data_b['labels'].long()
-    loss_mask = data_b['loss_mask'].float()
-    enc_mask = data_b['enc_mask'].long()
-    dec_mask = data_b['dec_mask'].long()
-    enc_dec_mask = data_b['enc_dec_mask'].long()
+    tokens_enc = data_dtype_long['text_enc'].long()
+    tokens_dec = data_dtype_long['text_dec'].long()
+    types = data_dtype_long['types'].long()
+    labels = data_dtype_long['labels'].long()
+    loss_mask = data_dtype_long['loss_mask'].float()
+
+    enc_mask = data_dtype_bool['enc_mask'].bool()
+    dec_mask = data_dtype_bool['dec_mask'].bool()
+    enc_dec_mask = data_dtype_bool['enc_dec_mask'].bool()
 
     return tokens_enc, tokens_dec, types, loss_mask, labels, \
            enc_mask, dec_mask, enc_dec_mask
