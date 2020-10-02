@@ -495,8 +495,7 @@ def make_attention_mask(source_block, target_block):
     :param source_block: 1-D array
     :param target_block: 1-D array
     """
-    mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
-    mask = mask.astype(np.int64)
+    mask = (target_block[None, :] == 0) * (source_block[:, None] == 0)
     # (source_length, target_length)
     return mask
 
@@ -516,8 +515,7 @@ def make_attention_mask_3d(source_block, target_block):
 def make_history_mask(block):
     length = block.shape[0]
     arange = np.arange(length)
-    history_mask = (arange[None, ] <= arange[:, None])
-    history_mask = history_mask.astype(np.int64)
+    history_mask = (arange[None, ] > arange[:, None])
     return history_mask
 
 

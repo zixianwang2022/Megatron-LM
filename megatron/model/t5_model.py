@@ -39,9 +39,6 @@ def t5_extended_attention_mask(attention_mask_list):
     def attn_mask_postprocess(attn_mask):
         # [b, 1, s, s]
         extended_attention_mask = attn_mask.unsqueeze(1)
-
-        # Convert attention mask to binary
-        extended_attention_mask = (extended_attention_mask < 0.5 )
         return extended_attention_mask
 
     return [attn_mask_postprocess(attn_mask) for attn_mask in attention_mask_list]
