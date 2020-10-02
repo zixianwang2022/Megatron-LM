@@ -52,7 +52,8 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         init_method = init_method_normal(args.init_method_std)
 
     if scaled_init_method is None:
-        scaled_init_method = scaled_init_method_normal(args.init_method_std, args.num_layers)
+        scaled_init_method = scaled_init_method_normal(args.init_method_std,
+                                                       args.num_layers)
 
     # Language model.
     language_model = TransformerLanguageModel(
