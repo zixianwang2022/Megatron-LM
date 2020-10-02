@@ -344,7 +344,7 @@ class TransformerLanguageModel(MegatronModule):
                                       layer_past=layer_past,
                                       get_key_value=get_key_value,
                                       encoder_output=encoder_output,
-                                      enc_dec_mask=enc_dec_attn_mask)
+                                      enc_dec_attn_mask=enc_dec_attn_mask)
 
         if self.add_pooler:
             return decoder_output, encoder_output, pooled_output     
