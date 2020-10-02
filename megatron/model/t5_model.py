@@ -125,10 +125,10 @@ class T5Model(MegatronModule):
         decoder_position_ids = t5_position_ids(decoder_input_ids)
 
         lm_output = self.language_model(encoder_input_ids,
-                                        decoder_input_ids,
                                         encoder_position_ids,
-                                        decoder_position_ids,
                                         encoder_attn_mask,
+                                        decoder_input_ids,
+                                        decoder_position_ids,
                                         decoder_attn_mask,
                                         encoder_decoder_attn_mask,
                                         tokentype_ids=tokentype_ids,
@@ -163,9 +163,6 @@ class T5Model(MegatronModule):
         state_dict_[self._lm_head_key] \
             = self.lm_head.state_dict_for_save_checkpoint(
             destination, prefix, keep_vars)
-        if self.add_binary_head:
-            state_dict_[self._binary_head_key] \
-                = self.binary_head.state_dict(destination, prefix, keep_vars)
         return state_dict_
 
     def load_state_dict(self, state_dict, strict=True):
@@ -175,6 +172,3 @@ class T5Model(MegatronModule):
             state_dict[self._language_model_key], strict=strict)
         self.lm_head.load_state_dict(state_dict[self._lm_head_key],
                                      strict=strict)
-        if self.add_binary_head:
-            self.binary_head.load_state_dict(state_dict[self._binary_head_key],
-                                             strict=strict)
