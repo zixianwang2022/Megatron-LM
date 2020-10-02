@@ -225,7 +225,7 @@ class ParallelAttention(MegatronModule):
              value_layer) = mpu.split_tensor_along_last_dim(mixed_kv_layer, 2)
 
             # Attention head [s, b, h] --> [s, b, hp]
-            query_layer, _ = self.query_value(hidden_states)
+            query_layer, _ = self.query(hidden_states)
              # [s, b, hp] --> [s, b, np, hn]  
             new_tensor_shape = query_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
@@ -625,7 +625,7 @@ class ParallelTransformer(MegatronModule):
         # data format change to avoid explicit tranposes : [b s h] --> [s b h]
         hidden_states = hidden_states.transpose(0, 1).contiguous()
         if encoder_output is not None:
-            encoder_output = encoder_output.tranpose(0, 1).contiguous()
+            encoder_output = encoder_output.transpose(0, 1).contiguous()
 
         if self.checkpoint_activations:
             hidden_states = self._checkpointed_forward(hidden_states,
