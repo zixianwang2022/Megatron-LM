@@ -22,13 +22,13 @@ import torch.nn.functional as F
 
 from megatron.checkpointing import load_ict_checkpoint
 from megatron.data.realm_dataset import get_ict_dataset
-from megatron.data.realm_index import BlockData, FaissMIPSIndex
+from megatron.data.realm_index import BlockData, FaissMIPSIndex, REALMRetriever
 from megatron import get_args
 from megatron import get_timers
 from megatron import mpu
 from megatron import print_rank_0
 from megatron.data.dataset_utils import build_train_valid_test_datasets
-from megatron.model import REALMBertModel, REALMRetriever, ICTBertModel
+from megatron.model import REALMBertModel, ICTBertModel
 from megatron.model.realm_model import general_ict_model_provider
 from megatron.training import get_model, pretrain
 from megatron.utils import reduce_losses, report_memory
@@ -45,12 +45,7 @@ def model_provider():
     print_rank_0('building REALM models ...')
 
     # query and block encoder models whose state dicts will be loaded from checkpoint
-    model = get_model(lambda: general_ict_model_provider())
-
-    try:
-        ict_model = load_ict_checkpoint(model, from_realm_chkpt=True)
-    except:
-        ict_model = load_ict_checkpoint(model, from_realm_chkpt=False)
+    ict_model = get_model(lambda: general_ict_model_provider())
 
     # dataset and index over embeddings of blocks from that dataset
     ict_dataset = get_ict_dataset(use_titles=False)
@@ -108,26 +103,19 @@ def forward_step(data_iterator, model):
     # P(y|x) = sum_z(P(y|z, x) * P(z|x))
     null_block_probs = torch.mean(block_probs[:, block_probs.shape[1] - 1])
 
-    # logits: [batch x top_k x 2 * seq_length x vocab_size]
-    # labels: [batch x seq_length]
     relevant_logits = lm_logits[:, :, :labels.shape[1]].float()
     block_probs = block_probs.unsqueeze(2).unsqueeze(3).expand_as(relevant_logits)
 
-    def get_log_probs(logits, b_probs):
-        max_logits = torch.max(logits, dim=-1, keepdim=True)[0].expand_as(logits)
-        logits = logits - max_logits
+    max_logits = torch.max(relevant_logits, dim=-1, keepdim=True)[0].expand_as(relevant_logits)
+    adjusted_logits = relevant_logits - max_logits
 
-        softmaxed_logits = F.softmax(logits, dim=-1)
-        marginalized_probs = torch.sum(softmaxed_logits * b_probs, dim=1)
-        l_probs = torch.log(marginalized_probs)
-        return l_probs
+    softmaxed_logits = F.softmax(adjusted_logits, dim=-1)
+    marginalized_probs = torch.sum(softmaxed_logits * b_probs, dim=1)
+    log_probs = torch.log(marginalized_probs)
 
-    def get_loss(l_probs, labs):
-        vocab_size = l_probs.shape[2]
-        loss = torch.nn.NLLLoss(ignore_index=-1)(l_probs.reshape(-1, vocab_size), labs.reshape(-1))
-        return loss.float()
+    vocab_size = log_probs.shape[2]
+    lm_loss = torch.nn.NLLLoss(ignore_index=-1)(log_probs.reshape(-1, vocab_size), labels.reshape(-1)).float()
 
-    lm_loss = get_loss(get_log_probs(relevant_logits, block_probs), labels)
     reduced_loss = reduce_losses([lm_loss, max_retrieval_utility, top_retrieval_utility, avg_retrieval_utility, null_block_probs, tokens_over_batch])
     return lm_loss, {'lm_loss': reduced_loss[0],
                      'max_ru': reduced_loss[1],
@@ -144,10 +132,7 @@ def get_retrieval_utility(lm_logits_, block_probs, labels, loss_mask):
     lm_logits = lm_logits_[:, :, :labels.shape[1], :]
     batch_size, top_k = lm_logits.shape[0], lm_logits.shape[1]
 
-    # non_null_block_probs = block_probs[:, :-1]
-    # non_null_block_probs /= torch.sum(non_null_block_probs, axis=1, keepdim=True)
-    # non_null_block_probs = non_null_block_probs.expand_as(lm_logits[:, :-1, :, :])
-
+    # get statistics specific to the null (empty) block
     null_block_lm_logits = lm_logits[:, -1, :, :]
     null_block_loss_ = mpu.vocab_parallel_cross_entropy(null_block_lm_logits.contiguous().float(),
                                                        labels.contiguous())
@@ -156,15 +141,17 @@ def get_retrieval_utility(lm_logits_, block_probs, labels, loss_mask):
     retrieved_block_losses = []
 
     for block_num in range(top_k - 1):
+        # get statistics for each of the retrieved blocks except the null block
         retrieved_block_lm_logits = lm_logits[:, block_num, :, :]
         retrieved_block_loss_ = mpu.vocab_parallel_cross_entropy(retrieved_block_lm_logits.contiguous().float(),
                                                                  labels.contiguous())
 
-        # retrieved_block_loss_ *= non_null_block_probs[:, block_num].reshape(-1, 1)
+        retrieved_block_loss_ *= non_null_block_probs[:, block_num].reshape(-1, 1)
         retrieved_block_loss = torch.sum(retrieved_block_loss_.view(-1) * loss_mask.reshape(-1)) / batch_size
         retrieved_block_losses.append(retrieved_block_loss)
     avg_retrieved_block_loss = torch.sum(torch.cuda.FloatTensor(retrieved_block_losses)) / (top_k - 1)
 
+    # aggregate statistics
     max_retrieval_utility = null_block_loss - min(retrieved_block_losses)
     top_retrieval_utility = null_block_loss - retrieved_block_losses[0]
     avg_retrieval_utility = null_block_loss - avg_retrieved_block_loss

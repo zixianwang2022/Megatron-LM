@@ -44,7 +44,7 @@ def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
 
 
 def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
-                       init_method=None, scaled_init_method=None, max_pos_embeds=None):
+                       init_method=None, scaled_init_method=None):
     """Build language model and return along with the key to save."""
     args = get_args()
 
@@ -54,15 +54,12 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         gelu = openai_gelu
     elif args.onnx_safe:
         gelu = erf_gelu
-    
+
     if init_method is None:
         init_method = init_method_normal(args.init_method_std)
 
     if scaled_init_method is None:
         scaled_init_method = scaled_init_method_normal(args.init_method_std, args.num_layers)
-
-    if max_pos_embeds is None:
-        max_pos_embeds = args.max_position_embeddings
 
     # Language model.
     language_model = TransformerLanguageModel(
@@ -71,8 +68,7 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         init_method=init_method,
         output_layer_init_method=scaled_init_method,
         num_tokentypes=num_tokentypes,
-        add_pooler=add_pooler,
-        max_pos_embeds=max_pos_embeds)
+        add_pooler=add_pooler)
 
     # key used for checkpoints.
     language_model_key = 'language_model'
@@ -279,7 +275,6 @@ class TransformerLanguageModel(MegatronModule):
                  mlp_activation_func,
                  init_method,
                  output_layer_init_method,
-                 max_pos_embeds,
                  num_tokentypes=0,
                  add_pooler=False):
         super(TransformerLanguageModel, self).__init__()
@@ -293,7 +288,7 @@ class TransformerLanguageModel(MegatronModule):
         # Embeddings
         self.embedding = Embedding(self.hidden_size,
                                    args.padded_vocab_size,
-                                   max_pos_embeds,
+                                   args.max_position_embeddings,
                                    args.hidden_dropout,
                                    self.init_method,
                                    self.num_tokentypes)

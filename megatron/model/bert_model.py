@@ -79,7 +79,7 @@ class BertModel(MegatronModule):
     """Bert Language model."""
 
     def __init__(self, num_tokentypes=2, add_binary_head=True,
-                 parallel_output=True, double_pos_embeds=False):
+                 parallel_output=True):
         super(BertModel, self).__init__()
         args = get_args()
 
@@ -89,18 +89,12 @@ class BertModel(MegatronModule):
         init_method = init_method_normal(args.init_method_std)
         scaled_init_method = scaled_init_method_normal(args.init_method_std, args.num_layers)
 
-        max_pos_embeds = args.seq_length
-        # in REALM the model should have twice as many position embeddings.
-        if double_pos_embeds:
-            max_pos_embeds = 2 * args.seq_length
-
         self.language_model, self._language_model_key = get_language_model(
             attention_mask_func=bert_attention_mask_func,
             num_tokentypes=num_tokentypes,
             add_pooler=self.add_binary_head,
             init_method=init_method,
-            scaled_init_method=scaled_init_method,
-            max_pos_embeds=max_pos_embeds)
+            scaled_init_method=scaled_init_method)
 
         self.lm_head = BertLMHead(
             self.language_model.embedding.word_embeddings.weight.size(0),
