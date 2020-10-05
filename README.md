@@ -344,6 +344,12 @@ python tools/create_doc_index.py \
     --fp16
 </pre>
 
+### Current checkpoints / data for reproducibility
+- REALM checkpoint: `/gpfs/fs1/mshoeybi/checkpoints/realm_spacy_3ent/`
+- ICT checkpoint: `/gpfs/fs1/mshoeybi/data/neels/ict`
+- (pretrained) BERT checkpoint: `/gpfs/fs1/mshoeybi/data/neels/bert`
+- REALM block data: `/gpfs/fs1/mshoeybi/data/neels/block_data/realm_stanza.pkl
+
 <a id="evaluation-and-tasks"></a>
 # Evaluation and Tasks
 
