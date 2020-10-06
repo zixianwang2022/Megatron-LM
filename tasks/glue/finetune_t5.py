@@ -20,7 +20,7 @@ from megatron import get_tokenizer
 from megatron import print_rank_0
 from megatron.model.t5_model import T5Model
 from tasks.eval_utils_t5 import accuracy_func_provider
-from tasks.finetune_utils import finetune
+from tasks.finetune_utils_t5 import finetune
 
 
 def glue_classification(num_classes, Dataset,
@@ -32,9 +32,11 @@ def glue_classification(num_classes, Dataset,
         tokenizer = get_tokenizer()
 
         train_dataset = Dataset('training', args.train_data,
-                                tokenizer, args.seq_length)
+                                tokenizer, args.seq_length,
+                                args.decoder_seq_length)
         valid_dataset = Dataset('validation', args.valid_data,
-                                tokenizer, args.seq_length)
+                                tokenizer, args.seq_length,
+                                args.decoder_seq_length)
 
         return train_dataset, valid_dataset
 
@@ -69,7 +71,7 @@ def main():
     if args.task == 'MNLI':
 
         num_classes = 3
-        from tasks.glue.mnli import MNLIDataset as Dataset
+        from tasks.glue.mnli_t5 import MNLIDataset as Dataset
 
         def name_from_datapath(datapath):
             return datapath[0].split('/')[-1].split('.')[0]

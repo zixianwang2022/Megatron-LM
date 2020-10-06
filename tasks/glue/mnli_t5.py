@@ -26,10 +26,10 @@ LABELS = {'contradiction': 0, 'entailment': 1, 'neutral': 2}
 class MNLIDataset(GLUEAbstractDataset):
 
     def __init__(self, name, datapaths, tokenizer, max_seq_length,
-                 test_label='contradiction'):
+                 decoder_seq_length, test_label='contradiction'):
         self.test_label = test_label
         super().__init__('MNLI', name, datapaths,
-                         tokenizer, max_seq_length)
+                         tokenizer, max_seq_length, decoder_seq_length)
 
     def process_samples_from_single_path(self, filename):
         """"Implement abstract method."""
@@ -72,8 +72,7 @@ class MNLIDataset(GLUEAbstractDataset):
 
                 sample = {'text_a': text_a,
                           'text_b': text_b,
-                          'label': LABELS[label],
-                          'label_text': label,
+                          'label': label,
                           'uid': unique_id}
                 total += 1
                 samples.append(sample)

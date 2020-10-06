@@ -55,6 +55,10 @@ def get_tasks_args(parser):
                        help='Sliding window for overlapping evaluation.')
     group.add_argument('--strict-lambada', action='store_true',
                        help='Use more difficult formulation of lambada.')
+    group.add_argument('--eval-batch-size', type=int, default=None,
+                       help='Eval Batch size per model instance (local batch size). '
+                            'Global batch size is local batch size times data '
+                            'parallel size.')
 
     return parser
 

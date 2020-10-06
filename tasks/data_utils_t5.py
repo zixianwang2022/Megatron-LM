@@ -78,7 +78,8 @@ def build_tokens_types_paddings_from_text(src_text, trg_text,
 
 
 def mnli_build_tokens_types_paddings_from_text(sentence1, sentence2, label,
-                                               tokenizer, max_seq_length):
+                                               tokenizer, max_seq_length,
+                                               decoder_seq_length):
     """Build token types and paddings, trim if needed, and pad if needed."""
 
     src_text = "sentence1: " + sentence1 + " " + "sentence2: " + sentence2
@@ -88,13 +89,15 @@ def mnli_build_tokens_types_paddings_from_text(sentence1, sentence2, label,
         trg_text_ids = tokenizer.tokenize(label)
 
     return build_tokens_types_paddings_from_ids(src_text_ids, trg_text_ids,
-                                                max_seq_length, tokenizer.cls,
-                                                tokenizer.sep, tokenizer.pad,
+                                                max_seq_length, decoder_seq_length,
+                                                tokenizer.cls, tokenizer.sep,
+                                                tokenizer.pad,
                                                 tokenizer.bos_token_id,
                                                 tokenizer.eos_token_id)
 
 
 def build_tokens_types_paddings_from_ids(src_ids, trg_ids, max_seq_length,
+                                         decoder_seq_length,
                                          cls_id, sep_id, pad_id,
                                          bos_id=None, eos_id=None):
     """Build token types and paddings, trim if needed, and pad if needed."""
@@ -133,15 +136,15 @@ def build_tokens_types_paddings_from_ids(src_ids, trg_ids, max_seq_length,
     dec_in_ids.extend(trg_ids)
     dec_out_ids.extend(trg_ids)
 
-    if len(dec_in_ids) > max_seq_length:
-        dec_in_ids = dec_in_ids[0: max_seq_length]
-        dec_out_ids = dec_out_ids[0: max_seq_length - 1]
+    if len(dec_in_ids) > decoder_seq_length:
+        dec_in_ids = dec_in_ids[0: decoder_seq_length]
+        dec_out_ids = dec_out_ids[0: decoder_seq_length - 1]
 
     dec_out_ids.append(eos_id)
 
     # Decoder-side padding mask.
     num_tokens_dec = len(dec_in_ids)
-    padding_length_dec = max_seq_length - num_tokens_dec
+    padding_length_dec = decoder_seq_length - num_tokens_dec
     assert padding_length_dec >= 0
 
     filler_dec = [pad_id] * padding_length_dec

@@ -21,20 +21,21 @@ from abc import abstractmethod
 from torch.utils.data import Dataset
 
 from megatron import print_rank_0
-from tasks.t5_data_utils import build_sample
-from tasks.t5_data_utils import mnli_build_tokens_types_paddings_from_text
+from tasks.data_utils_t5 import build_sample
+from tasks.data_utils_t5 import mnli_build_tokens_types_paddings_from_text
 
 
 class GLUEAbstractDataset(ABC, Dataset):
     """GLUE base dataset class."""
 
     def __init__(self, task_name, dataset_name, datapaths,
-                 tokenizer, max_seq_length):
+                 tokenizer, max_seq_length, decoder_seq_length):
         # Store inputs.
         self.task_name = task_name
         self.dataset_name = dataset_name
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
+        self.decoder_seq_length = decoder_seq_length
         print_rank_0(' > building {} dataset for {}:'.format(self.task_name,
                                                              self.dataset_name))
         # Process the files.
@@ -60,7 +61,8 @@ class GLUEAbstractDataset(ABC, Dataset):
             raw_sample['text_b'],
             raw_sample['label'],
             self.tokenizer,
-            self.max_seq_length)
+            self.max_seq_length,
+            self.decoder_seq_length)
 
         sample = build_sample(enc_ids,
                               tokentypes_enc,

@@ -30,8 +30,8 @@ from megatron import print_rank_0
 from megatron import get_tokenizer
 from megatron.model.search_strategy import SampleOrGreedySearch
 from megatron.model.search_strategy import BeamSearch
-from tasks.finetune_utils import build_data_loader
-from tasks.finetune_utils import process_batch
+from tasks.finetune_utils_t5 import build_data_loader
+from tasks.finetune_utils_t5 import process_batch
 from tasks.glue.metrics import clf_accuracy
 
 
@@ -95,13 +95,13 @@ def accuracy_func_provider(single_dataset_provider):
             output = calculate_correct_answers(name,
                                                model,
                                                dataloader,
-                                               epoch,
+                                               epoch + 1,
                                                output_predictions)
         else:
             output = calculate_score(name,
                                      model,
                                      dataloader,
-                                     epoch,
+                                     epoch + 1,
                                      output_predictions)
         if not output_predictions:
             correct, total = output
@@ -111,7 +111,7 @@ def accuracy_func_provider(single_dataset_provider):
 
         percent = float(correct) * 100.0 / float(total)
         print_rank_0(' >> |epoch: {}| overall: correct / total = {} / {} = '
-                     '{:.4f} %'.format(epoch, correct, total, percent))
+                     '{:.4f} %'.format(epoch + 1, correct, total, percent))
 
         if output_predictions and torch.distributed.get_rank() == 0:
             prediction_file = os.path.join(args.pretrained_checkpoint, names + '.txt')
