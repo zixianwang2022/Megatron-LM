@@ -71,19 +71,23 @@ def save_text(path, buffer):
             fp.write(line + '\n')
 
 
-def accuracy_func_provider(single_dataset_provider):
+def accuracy_func_provider(single_dataset_provider, rank0sampler=False):
     """Provide function that calculates accuracies."""
     args = get_args()
 
     # Build dataloaders.
     dataset = single_dataset_provider(args.valid_data)
+
+    drop_last = False
+    if mpu.get_data_parallel_world_size() > 1 and not rank0sampler:
+        drop_last = True
+
     dataloader = build_data_loader(dataset,
                                    args.eval_batch_size,
                                    num_workers=args.num_workers,
-                                   # drop_last=(mpu.get_data_parallel_world_size() > 1),
-                                   drop_last=False,
+                                   drop_last=drop_last,
                                    shuffle=False,
-                                   rank0sampler=True)
+                                   rank0sampler=rank0sampler)
     dataloaders = (dataset.dataset_name, dataloader)
 
     def metrics_func(model, epoch, output_predictions=False):
@@ -97,14 +101,16 @@ def accuracy_func_provider(single_dataset_provider):
             output = calculate_correct_answers(name,
                                                model,
                                                dataloader,
-                                               epoch + 1,
-                                               output_predictions)
+                                               epoch,
+                                               output_predictions,
+                                               rank0sampler)
         else:
             output = calculate_score(name,
                                      model,
                                      dataloader,
-                                     epoch + 1,
-                                     output_predictions)
+                                     epoch,
+                                     output_predictions,
+                                     rank0sampler)
         if not output_predictions:
             correct, total = output
         else:
@@ -113,7 +119,7 @@ def accuracy_func_provider(single_dataset_provider):
 
         percent = float(correct) * 100.0 / float(total)
         print_rank_0(' >> |epoch: {}| overall: correct / total = {} / {} = '
-                     '{:.4f} %'.format(epoch + 1, correct, total, percent))
+                     '{:.4f} %'.format(epoch, correct, total, percent))
 
         if output_predictions and torch.distributed.get_rank() == 0:
             prediction_file = os.path.join(args.pretrained_checkpoint, names + '.txt')
@@ -137,12 +143,12 @@ def accuracy_func_provider(single_dataset_provider):
                                        stderr=subprocess.PIPE)
             process.communicate()
 
-
     return metrics_func
 
 
 def calculate_correct_answers(name, model, dataloader,
-                              epoch, output_predictions):
+                              epoch, output_predictions,
+                              rank0sampler):
     """Calculate correct over total answers and return prediction if the
     `output_predictions` is true."""
 
@@ -188,20 +194,21 @@ def calculate_correct_answers(name, model, dataloader,
             total += n_total
     model.train()
 
-    unreduced = torch.cuda.LongTensor([correct, total])
-    agg_score, total_count = reduce_scores_and_print(unreduced,
-                                                     epoch,
-                                                     name,
-                                                     start_time)
+    if not rank0sampler:
+        unreduced = torch.cuda.LongTensor([correct, total])
+        correct, total = reduce_scores_and_print(unreduced,
+                                                 epoch,
+                                                 name,
+                                                 start_time)
 
     if output_predictions:
-        return agg_score, total_count, (softmaxes, labels)
+        return correct, total, (softmaxes, labels)
 
-    return agg_score, total_count
+    return correct, total
 
 
 def calculate_score(name, model, dataloader, epoch,
-                    output_predictions=False):
+                    output_predictions, rank0sampler):
     """Calculates the ROUGE/GLEU score."""
 
     args = get_args()
@@ -258,16 +265,17 @@ def calculate_score(name, model, dataloader, epoch,
                     references.append(ref_text)
     model.train()
 
-    unreduced = torch.cuda.LongTensor([score_all, total])
-    agg_score, total_count = reduce_scores_and_print(unreduced,
-                                                     epoch,
-                                                     name,
-                                                     start_time)
+    if not rank0sampler:
+        unreduced = torch.cuda.LongTensor([score_all, total])
+        score_all, total = reduce_scores_and_print(unreduced,
+                                                   epoch,
+                                                   name,
+                                                   start_time)
 
     if output_predictions:
-        return agg_score, total_count, hypothesis, references
+        return score_all, total, hypothesis, references
 
-    return agg_score, total_count
+    return score_all, total
 
 
 def reduce_scores_and_print(unreduced_buffer, epoch, name, start_time):
