@@ -204,6 +204,9 @@ class SampleOrGreedySearch(object):
             dec_mask = make_attention_mask_3d(y_block, y_block)
             dec_mask = dec_mask * make_history_mask_3d(y_block)
 
+            enc_dec_mask = (enc_dec_mask < 0.5)
+            dec_mask = (dec_mask < 0.5)
+
             logits, enc_hidden_states = model(tokens_enc,
                                               y_block,
                                               enc_mask,
