@@ -73,6 +73,7 @@ class MNLIDataset(GLUEAbstractDataset):
                 sample = {'text_a': text_a,
                           'text_b': text_b,
                           'label': LABELS[label],
+                          'label_text': label,
                           'uid': unique_id}
                 total += 1
                 samples.append(sample)
