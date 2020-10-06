@@ -44,7 +44,7 @@ def glue_classification(num_classes, Dataset,
         """Build the model."""
         args = get_args()
 
-        print_rank_0('building classification model for {} ...'.format(
+        print_rank_0('building T5 model for {} ...'.format(
             args.task))
 
         return T5Model(num_tokentypes=2,
@@ -57,7 +57,7 @@ def glue_classification(num_classes, Dataset,
             tokenizer = get_tokenizer()
 
             name = name_from_datapath_func(datapath)
-            return Dataset(name, datapath, tokenizer, args.seq_length)
+            return Dataset(name, datapath, tokenizer, args.seq_length, args.decoder_seq_length)
         return accuracy_func_provider(single_dataset_provider)
 
     """Finetune/evaluate."""
