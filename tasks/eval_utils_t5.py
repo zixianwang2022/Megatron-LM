@@ -80,8 +80,10 @@ def accuracy_func_provider(single_dataset_provider):
     dataloader = build_data_loader(dataset,
                                    args.eval_batch_size,
                                    num_workers=args.num_workers,
-                                   drop_last=(mpu.get_data_parallel_world_size() > 1),
-                                   shuffle=False)
+                                   # drop_last=(mpu.get_data_parallel_world_size() > 1),
+                                   drop_last=False,
+                                   shuffle=False,
+                                   rank0sampler=True)
     dataloaders = (dataset.dataset_name, dataloader)
 
     def metrics_func(model, epoch, output_predictions=False):
@@ -134,6 +136,7 @@ def accuracy_func_provider(single_dataset_provider):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             process.communicate()
+
 
     return metrics_func
 

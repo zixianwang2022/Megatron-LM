@@ -85,14 +85,22 @@ def _cross_entropy_forward_step(batch, model):
     return loss, {'lm loss': reduced_loss[0]}
 
 
-def build_data_loader(dataset, batch_size, num_workers, drop_last, shuffle=True):
+def build_data_loader(dataset, batch_size, num_workers, drop_last, shuffle=True, rank0sampler=False):
     """Data loader. Note that batch-size is the local (per GPU) batch-size."""
 
-    # Sampler.
-    world_size = mpu.get_data_parallel_world_size()
-    rank = mpu.get_data_parallel_rank()
-    sampler = torch.utils.data.distributed.DistributedSampler(
-        dataset, num_replicas=world_size, rank=rank, shuffle=shuffle)
+    if not rank0sampler:
+        # Sampler.
+        world_size = mpu.get_data_parallel_world_size()
+        rank = mpu.get_data_parallel_rank()
+        sampler = torch.utils.data.distributed.DistributedSampler(dataset,
+                                                                  num_replicas=world_size,
+                                                                  rank=rank,
+                                                                  shuffle=shuffle)
+    else:
+        if shuffle:
+            sampler = torch.utils.data.RandomSampler(dataset)
+        else:
+            sampler = torch.utils.data.SequentialSampler(dataset)
 
     # Data loader. Note that batch size is the per GPU batch size.
     data_loader = torch.utils.data.DataLoader(dataset,
@@ -209,7 +217,10 @@ def _train(model, optimizer, lr_scheduler, forward_step,
 
         # Callback at the end of each epoch.
         if end_of_epoch_callback is not None:
-            end_of_epoch_callback(model, epoch)
+            torch.distributed.barrier()
+            if torch.distributed.get_rank() == 0:
+                end_of_epoch_callback(model, epoch)
+            torch.distributed.barrier()
 
 
 def finetune(train_valid_datasets_provider, model_provider,
@@ -268,6 +279,9 @@ def finetune(train_valid_datasets_provider, model_provider,
     else:
         if end_of_epoch_callback is not None:
             print_rank_0('evaluation only mode, setting epoch to -1')
-            end_of_epoch_callback(model, epoch=-1, output_predictions=True)
+            torch.distributed.barrier()
+            if torch.distributed.get_rank() == 0:
+                end_of_epoch_callback(model, epoch=-1, output_predictions=True)
+            torch.distributed.barrier()
 
     print_rank_0('done :-)')
