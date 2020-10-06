@@ -137,7 +137,7 @@ class BeamSearch(object):
         y_block = torch.LongTensor(bos_array).cuda()
 
         outs = torch.LongTensor([[self.bos_id]] * batchsize * self.k).cuda()
-        total_score, z_block = None, None
+        total_score, enc_hidden_states = None, None
 
         for i in range(self.max_decode_length):
             enc_dec_mask = make_attention_mask_3d(y_block,
@@ -145,27 +145,27 @@ class BeamSearch(object):
             dec_mask = make_attention_mask_3d(y_block, y_block)
             dec_mask = dec_mask * make_history_mask_3d(y_block)
 
-            logits, (_, z_block) = model(tokens_enc,
-                                         y_block,
-                                         enc_mask,
-                                         dec_mask,
-                                         enc_dec_mask,
-                                         tokentype_ids=types,
-                                         z_block=z_block)
+            logits, enc_hidden_states = model(tokens_enc,
+                                              y_block,
+                                              enc_mask,
+                                              dec_mask,
+                                              enc_dec_mask,
+                                              tokentype_ids=types,
+                                              enc_hidden_states=enc_hidden_states)
             topk_score, topk = torch.topk(F.log_softmax(logits[:, -1, :],
                                                         dim=1),
                                           self.k)
             assert (torch.max(topk_score) <= 0.)
 
-            outs, total_score, tokens_enc, z_block, types = update_beam_state(outs,
-                                                                              total_score,
-                                                                              topk,
-                                                                              topk_score,
-                                                                              self.eos_id,
-                                                                              self.alpha,
-                                                                              tokens_enc,
-                                                                              z_block,
-                                                                              types)
+            outs, total_score, tokens_enc, enc_hidden_states, types = update_beam_state(outs,
+                                                                                        total_score,
+                                                                                        topk,
+                                                                                        topk_score,
+                                                                                        self.eos_id,
+                                                                                        self.alpha,
+                                                                                        tokens_enc,
+                                                                                        enc_hidden_states,
+                                                                                        types)
 
             assert (torch.max(total_score < 0.)), i
             y_block = outs
@@ -196,7 +196,7 @@ class SampleOrGreedySearch(object):
 
         y_block = torch.LongTensor(y_block).cuda()
         result = []
-        z_block = None
+        enc_hidden_states = None
 
         for i in range(self.max_decode_length):
             enc_dec_mask = make_attention_mask_3d(y_block,
@@ -204,13 +204,13 @@ class SampleOrGreedySearch(object):
             dec_mask = make_attention_mask_3d(y_block, y_block)
             dec_mask = dec_mask * make_history_mask_3d(y_block)
 
-            logits, (_, z_block) = model(tokens_enc,
-                                         y_block,
-                                         enc_mask,
-                                         dec_mask,
-                                         enc_dec_mask,
-                                         tokentype_ids=types,
-                                         z_block=z_block)
+            logits, enc_hidden_states = model(tokens_enc,
+                                              y_block,
+                                              enc_mask,
+                                              dec_mask,
+                                              enc_dec_mask,
+                                              tokentype_ids=types,
+                                              enc_hidden_states=enc_hidden_states)
             if self.sample:
                 ys = torch.multinomial(F.softmax(logits[:, -1, :],
                                                  dim=1),
