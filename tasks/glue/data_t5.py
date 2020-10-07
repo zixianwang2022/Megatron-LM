@@ -17,10 +17,11 @@
 
 from abc import ABC
 from abc import abstractmethod
+import random
 
 from torch.utils.data import Dataset
 
-from megatron import print_rank_0
+from megatron import print_rank_0, get_args
 from tasks.data_utils_t5 import build_sample
 from tasks.data_utils_t5 import mnli_build_tokens_types_paddings_from_text
 
@@ -46,8 +47,13 @@ class GLUEAbstractDataset(ABC, Dataset):
         self.samples = []
         for datapath in datapaths:
             self.samples.extend(self.process_samples_from_single_path(datapath))
+
+        args = get_args()
+        if args.sample_rate < 1:  # subsample
+            k = int(len(self.samples) * args.sample_rate)
+            self.samples = random.sample(self.samples, k)
         print_rank_0('  >> total number of samples: {}'.format(
-            len(self.samples)))
+                    len(self.samples)))
 
     def __len__(self):
         return len(self.samples)

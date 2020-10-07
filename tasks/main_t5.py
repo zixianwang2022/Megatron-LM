@@ -48,9 +48,6 @@ def get_tasks_args(parser):
                             'A beam size of 1 corresponds to greedy search')
     group.add_argument('--max-decode-len', default=512, type=int,
                        help='maximum sequence length to generate at the decoder.')
-    group.add_argument('--score-metric', type=str, default="rougeL",
-                       choices=["rougeL", "gleu", "accuracy"],
-                       help='evaluate validation data using this scoring metric.')
     group.add_argument('--overlapping-eval', type=int, default=32,
                        help='Sliding window for overlapping evaluation.')
     group.add_argument('--strict-lambada', action='store_true',
@@ -59,6 +56,8 @@ def get_tasks_args(parser):
                        help='Eval Batch size per model instance (local batch size). '
                             'Global batch size is local batch size times data '
                             'parallel size.')
+    group.add_argument('--sample-rate', type=float, default=1.0,
+                       help='sample rate for training data. Supposed to be 0 < sample_rate < 1')
 
     return parser
 

@@ -118,13 +118,15 @@ def accuracy_func_provider(single_dataset_provider, rank0sampler=False):
                 correct, total, hypothesis, references = output
             else:
                 correct, total = output
+        else:
+            raise AssertionError("{} Task not supported".format(args.task))
 
-        names += '_' + name
         percent = float(correct) * 100.0 / float(total)
         print_rank_0(' >> |epoch: {}| overall: correct / total = {} / {} = '
                      '{:.4f} %'.format(epoch, correct, total, percent))
 
         if output_predictions and rank0sampler and torch.distributed.get_rank() == 0:
+            names += '_' + name
             prediction_file = os.path.join(args.save, names + '.txt')
             save_text(prediction_file, hypothesis)
 
