@@ -213,6 +213,7 @@ def load_checkpoint(model, optimizer, lr_scheduler, load_arg='load'):
                              'iteration from checkpoint {}, exiting'.format(
                                  checkpoint_name))
                 sys.exit()
+ 
 
     # Check arguments.
     if 'args' in state_dict:
