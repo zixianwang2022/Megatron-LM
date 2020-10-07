@@ -81,7 +81,8 @@ fi
 export OPTIONS=" \
        	 --bias-gelu-fusion \
 	 --bias-dropout-fusion \
-         --encoder-seq-length 512 \
+	 --apply-query-key-layer-scaling \
+	 --encoder-seq-length 512 \
          --decoder-seq-length 128 \
          --max-position-embeddings 512 \
          --batch-size ${BATCH_SIZE_LOCAL} \
