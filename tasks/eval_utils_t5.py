@@ -138,8 +138,7 @@ def accuracy_func_provider(single_dataset_provider, rank0sampler=False):
                 result_file = os.path.join(args.save, "accuracy_{}".format(name) + '.txt')
                 with open(result_file, 'w') as fp:
                     fp.write("Accuracy Score: {} / {} = {:.2f}".format(c, t, a))
-
-            if args.task == "CNNDM":
+            elif args.task == "CNNDM":
                 result_file = os.path.join(args.save, "rouge-scores" + '.csv')
                 command = 'python -m rouge_score.rouge --use_stemmer=true \
                 --target_filepattern={} \
@@ -214,6 +213,7 @@ def calculate_task_specific_score(name, model, dataloader, epoch,
     args = get_args()
     tokenizer = get_tokenizer()
     score, total = 0., 0.
+    reference_list, hypothesis_list = [], []
 
     start_time = time.time()
 
@@ -243,7 +243,6 @@ def calculate_task_specific_score(name, model, dataloader, epoch,
                 return lm_labels, hypothesis
 
             lm_labels, hypothesis = generate_text()
-            reference_list, hypothesis_list = [], []
 
             for ref, hyp in zip(lm_labels, hypothesis):
                 ref = ref.tolist()
