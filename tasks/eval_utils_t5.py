@@ -97,72 +97,68 @@ def accuracy_func_provider(single_dataset_provider, rank0sampler=False):
             assert rank0sampler
             names = 'predictions'
         name, dataloader = dataloaders
-        if args.score_metric == "accuracy":
-            output = calculate_correct_answers(name,
-                                               model,
-                                               dataloader,
-                                               epoch,
-                                               output_predictions,
-                                               rank0sampler)
-        else:
-            output = calculate_score(name,
-                                     model,
-                                     dataloader,
-                                     epoch,
-                                     output_predictions,
-                                     rank0sampler)
-        if not output_predictions:
-            correct, total = output
-        else:
-            correct, total, predictions, references = output
-            names += '_' + name
+        if args.task == "CNNDM":
+            if output_predictions:
+                output = calculate_task_specific_score(name, model,
+                                                       dataloader, epoch,
+                                                       output_predictions,
+                                                       rank0sampler)
+                correct, total, hypothesis, references = output
+            else:
+                output = teacher_forcing_accuracy(name, model,
+                                                  dataloader, epoch,
+                                                  rank0sampler)
+                correct, total = output
+        elif args.task == "MNLI":
+            output = calculate_task_specific_score(name, model,
+                                                   dataloader, epoch,
+                                                   output_predictions,
+                                                   rank0sampler)
+            if output_predictions:
+                correct, total, hypothesis, references = output
+            else:
+                correct, total = output
 
+        names += '_' + name
         percent = float(correct) * 100.0 / float(total)
         print_rank_0(' >> |epoch: {}| overall: correct / total = {} / {} = '
                      '{:.4f} %'.format(epoch, correct, total, percent))
 
-        if output_predictions and torch.distributed.get_rank() == 0:
-            prediction_file = os.path.join(args.pretrained_checkpoint, names + '.txt')
-            save_text(prediction_file, predictions)
+        if output_predictions and rank0sampler and torch.distributed.get_rank() == 0:
+            prediction_file = os.path.join(args.save, names + '.txt')
+            save_text(prediction_file, hypothesis)
 
-            target_file = os.path.join(args.pretrained_checkpoint, "gold_test" + '.txt')
+            target_file = os.path.join(args.save, "gold_test" + '.txt')
             save_text(target_file, references)
 
-            c, t, a = clf_accuracy(target_file, prediction_file)
-            result_file = os.path.join(args.pretrained_checkpoint, "accuracy" + '.txt')
-            with open(result_file, 'w') as fp:
-                fp.write("Accuracy Score: {} / {} = {:.2f}".format(c, t, a))
+            if args.task == "MNLI":
+                c, t, a = clf_accuracy(target_file, prediction_file)
+                result_file = os.path.join(args.save, "accuracy_{}".format(name) + '.txt')
+                with open(result_file, 'w') as fp:
+                    fp.write("Accuracy Score: {} / {} = {:.2f}".format(c, t, a))
 
-            result_file = os.path.join(args.pretrained_checkpoint, "rouge-scores" + '.csv')
-            command = 'python -m rouge_score.rouge --use_stemmer=true \
-            --target_filepattern={} \
-            --prediction_filepattern={} \
-            --output_filename={}'.format(target_file, prediction_file, result_file)
-            process = subprocess.Popen(command.split(),
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            process.communicate()
+            if args.task == "CNNDM":
+                result_file = os.path.join(args.save, "rouge-scores" + '.csv')
+                command = 'python -m rouge_score.rouge --use_stemmer=true \
+                --target_filepattern={} \
+                --prediction_filepattern={} \
+                --output_filename={}'.format(target_file, prediction_file, result_file)
+                process = subprocess.Popen(command.split(),
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                process.communicate()
 
     return metrics_func
 
 
-def calculate_correct_answers(name, model, dataloader,
-                              epoch, output_predictions,
-                              rank0sampler):
-    """Calculate correct over total answers and return prediction if the
-    `output_predictions` is true."""
-
+def teacher_forcing_accuracy(name, model, dataloader,
+                             epoch, rank0sampler):
     start_time = time.time()
+    score, total = 0, 0
+
     model.eval()
     with torch.no_grad():
-        # For all the batches in the dataset.
-        total, correct = 0, 0
-        if output_predictions:
-            assert rank0sampler
-            softmaxes = []
-            labels = []
-        for _, batch in enumerate(dataloader):
-            # Run the model forward.
+        for batch in dataloader:
             tokens_enc, tokens_dec, types, loss_mask, \
             lm_labels, enc_mask, dec_mask, enc_dec_mask \
                 = process_batch(batch)
@@ -172,14 +168,6 @@ def calculate_correct_answers(name, model, dataloader,
                               dec_mask,
                               enc_dec_mask,
                               tokentype_ids=types)
-            # Add output predictions.
-            # TODO: Fix this error
-            if output_predictions:
-                # softmaxes.extend(torch.nn.Softmax(dim=-1)(
-                #     logits.float()).data.cpu().numpy().tolist())
-                # labels.extend(lm_labels.data.cpu().numpy().tolist())
-                pass
-            # Compute the correct answers.
 
             batch, length, units = logits.shape
             logits = logits.view(batch * length, units)
@@ -189,97 +177,103 @@ def calculate_correct_answers(name, model, dataloader,
                                           lm_labels,
                                           ignore_index=0)
             # Add to the counters.
-            correct += n_correct
+            score += n_correct
             total += n_total
     model.train()
 
-    if not rank0sampler:
-        unreduced = torch.cuda.LongTensor([correct, total])
-        correct, total = reduce_scores_and_print(unreduced,
-                                                 epoch,
-                                                 name,
-                                                 start_time)
-
-    if output_predictions:
-        return correct, total, (softmaxes, labels)
-
-    return correct, total
+    if rank0sampler:
+        return score, total
+    else:
+        unreduced = torch.cuda.LongTensor([score, total])
+        score, total = reduce_scores_and_print(unreduced,
+                                               epoch,
+                                               name,
+                                               start_time)
+        return score, total
 
 
-def calculate_score(name, model, dataloader, epoch,
-                    output_predictions, rank0sampler):
-    """Calculates the ROUGE/GLEU score."""
+def score_sequences(ref_text, hyp_text):
+    args = get_args()
+    if args.task == "CNNDM":
+        scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
+        score = scorer.score(ref_text, hyp_text).get("rougeL").fmeasure
+    elif args.task == "QG":
+        scorer = sentence_gleu
+        score = scorer([ref_text.split()], hyp_text.split())
+    elif args.task == "MNLI":
+        score = 1. if ref_text == hyp_text else 0.
+    else:
+        raise AssertionError("Invalid task name")
+    return score
 
+
+def calculate_task_specific_score(name, model, dataloader, epoch,
+                                  output_predictions, rank0sampler):
     args = get_args()
     tokenizer = get_tokenizer()
+    score, total = 0., 0.
 
     start_time = time.time()
-    if args.score_metric == "rougeL":
-        scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
-    elif args.score_metric == "gleu":
-        scorer = sentence_gleu
-    score_all, total = 0., 0.
-    hypothesis, references = [], []
+
     model.eval()
     with torch.no_grad():
-        # For all the batches in the dataset.
-        for _, batch in enumerate(dataloader):
-            # Run the model forward.
-            tokens_enc, _, types, _, \
-            lm_labels, enc_mask, _, _ = process_batch(batch)
-            if args.beam_size > 1:
-                obj = BeamSearch(max_decode_len=args.max_decode_len,
-                                 bos_id=tokenizer.bos_token_id,
-                                 eos_id=tokenizer.eos_token_id,
-                                 beam_size=args.beam_size)
-            else:
-                obj = SampleOrGreedySearch(max_decode_len=args.max_decode_len,
-                                           bos_id=tokenizer.bos_token_id,
-                                           eos_id=tokenizer.eos_token_id,
-                                           sample=False)
-            output = obj.generate_output(model,
-                                         tokens_enc,
-                                         types,
-                                         enc_mask)
+        for batch in dataloader:
+            def generate_text():
+                tokens_enc, _, types, _, lm_labels, \
+                enc_mask, _, _ = process_batch(batch)
+                if args.beam_size == 1:
+                    obj = SampleOrGreedySearch(max_decode_len=args.max_decode_len,
+                                               bos_id=tokenizer.bos_token_id,
+                                               eos_id=tokenizer.eos_token_id,
+                                               sample=False)
+                elif args.beam_size > 1:
+                    obj = BeamSearch(max_decode_len=args.max_decode_len,
+                                     bos_id=tokenizer.bos_token_id,
+                                     eos_id=tokenizer.eos_token_id,
+                                     beam_size=args.beam_size)
+                else:
+                    raise AssertionError("--beam-size < 1 is not supported.")
 
-            for ref, hyp in zip(lm_labels, output):
+                hypothesis = obj.generate_output(model,
+                                                 tokens_enc,
+                                                 types,
+                                                 enc_mask)
+                return lm_labels, hypothesis
+
+            lm_labels, hypothesis = generate_text()
+            reference_list, hypothesis_list = [], []
+
+            for ref, hyp in zip(lm_labels, hypothesis):
                 ref = ref.tolist()
                 end_index = ref.index(tokenizer.eos_token_id)
                 ref = ref[:end_index]
 
                 ref_text = tokenizer.decode(ref)
                 hyp_text = tokenizer.decode(hyp)
-                score = 0.
-                if args.score_metric == "rougeL":
-                    score = scorer.score(ref_text, hyp_text).get("rougeL").fmeasure
-                elif args.score_metric == "gleu":
-                    score = scorer([ref_text.split()], hyp_text.split())
-                score_all += score
+                score += score_sequences(ref_text,
+                                         hyp_text)
 
-                hypothesis.append(hyp_text)
-                references.append(ref_text)
+                hypothesis_list.append(hyp_text)
+                reference_list.append(ref_text)
                 total += 1
     model.train()
 
-    if not rank0sampler:
-        unreduced = torch.cuda.LongTensor([score_all, total])
-        score_all, total = reduce_scores_and_print(unreduced,
-                                                   epoch,
-                                                   name,
-                                                   start_time)
+    if output_predictions and rank0sampler:
+        return score, total, hypothesis_list, reference_list
 
-    if output_predictions:
-        return score_all, total, hypothesis, references
-
-    return score_all, total
+    else:
+        unreduced = torch.cuda.LongTensor([score, total])
+        score, total = reduce_scores_and_print(unreduced,
+                                               epoch,
+                                               name,
+                                               start_time)
+        return score, total
 
 
 def reduce_scores_and_print(unreduced_buffer, epoch, name, start_time):
     # Reduce.
     torch.distributed.all_reduce(unreduced_buffer,
                                  group=mpu.get_data_parallel_group())
-
-    # Print on screen.
     agg_score = unreduced_buffer[0].item()
     total_count = unreduced_buffer[1].item()
     percent = float(agg_score) * 100.0 / float(total_count)

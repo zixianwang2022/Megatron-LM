@@ -88,19 +88,18 @@ def _cross_entropy_forward_step(batch, model):
 def build_data_loader(dataset, batch_size, num_workers, drop_last, shuffle=True, rank0sampler=False):
     """Data loader. Note that batch-size is the local (per GPU) batch-size."""
 
-    if not rank0sampler:
-        # Sampler.
+    if rank0sampler:
+        if shuffle:
+            sampler = torch.utils.data.RandomSampler(dataset)
+        else:
+            sampler = torch.utils.data.SequentialSampler(dataset)
+    else:
         world_size = mpu.get_data_parallel_world_size()
         rank = mpu.get_data_parallel_rank()
         sampler = torch.utils.data.distributed.DistributedSampler(dataset,
                                                                   num_replicas=world_size,
                                                                   rank=rank,
                                                                   shuffle=shuffle)
-    else:
-        if shuffle:
-            sampler = torch.utils.data.RandomSampler(dataset)
-        else:
-            sampler = torch.utils.data.SequentialSampler(dataset)
 
     # Data loader. Note that batch size is the per GPU batch size.
     data_loader = torch.utils.data.DataLoader(dataset,
@@ -277,8 +276,10 @@ def finetune(train_valid_datasets_provider, model_provider,
 
     # Evaluate after the training step
     end_of_training_callback = None
+
     if end_of_training_callback_provider is not None:
         end_of_training_callback = end_of_training_callback_provider()
+
     if end_of_training_callback is not None:
         print_rank_0('evaluation mode, setting epoch to -1')
         torch.distributed.barrier()
