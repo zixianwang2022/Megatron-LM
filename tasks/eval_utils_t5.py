@@ -94,7 +94,7 @@ def accuracy_func_provider(single_dataset_provider, rank0sampler=False):
         print_rank_0('calculating metrics ...')
 
         if output_predictions:
-            assert mpu.get_data_parallel_world_size() == 1
+            assert rank0sampler
             names = 'predictions'
         name, dataloader = dataloaders
         if args.score_metric == "accuracy":
@@ -158,8 +158,7 @@ def calculate_correct_answers(name, model, dataloader,
         # For all the batches in the dataset.
         total, correct = 0, 0
         if output_predictions:
-            # This option is only possible when data parallel size is 1.
-            assert mpu.get_data_parallel_world_size() == 1
+            assert rank0sampler
             softmaxes = []
             labels = []
         for _, batch in enumerate(dataloader):
@@ -220,8 +219,7 @@ def calculate_score(name, model, dataloader, epoch,
     elif args.score_metric == "gleu":
         scorer = sentence_gleu
     score_all, total = 0., 0.
-    if output_predictions:
-        hypothesis, references = [], []
+    hypothesis, references = [], []
     model.eval()
     with torch.no_grad():
         # For all the batches in the dataset.
@@ -238,8 +236,7 @@ def calculate_score(name, model, dataloader, epoch,
                 obj = SampleOrGreedySearch(max_decode_len=args.max_decode_len,
                                            bos_id=tokenizer.bos_token_id,
                                            eos_id=tokenizer.eos_token_id,
-                                           sample=False,
-                                           stepwise_decoding=False)
+                                           sample=False)
             output = obj.generate_output(model,
                                          tokens_enc,
                                          types,
@@ -257,12 +254,11 @@ def calculate_score(name, model, dataloader, epoch,
                     score = scorer.score(ref_text, hyp_text).get("rougeL").fmeasure
                 elif args.score_metric == "gleu":
                     score = scorer([ref_text.split()], hyp_text.split())
-
                 score_all += score
+
+                hypothesis.append(hyp_text)
+                references.append(ref_text)
                 total += 1
-                if output_predictions:
-                    hypothesis.append(hyp_text)
-                    references.append(ref_text)
     model.train()
 
     if not rank0sampler:

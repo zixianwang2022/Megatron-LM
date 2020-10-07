@@ -272,17 +272,18 @@ def finetune(train_valid_datasets_provider, model_provider,
     # Finetune the model.
     if args.epochs > 0:
         _train(model, optimizer, lr_scheduler, forward_step,
-               train_dataloader, valid_dataloader, end_of_epoch_callback)
-    # Or just evaluate.
-    else:
-        end_of_training_callback = None
-        if end_of_training_callback_provider is not None:
-            end_of_training_callback = end_of_training_callback_provider()
-        if end_of_training_callback is not None:
-            print_rank_0('evaluation mode, setting epoch to -1')
-            torch.distributed.barrier()
-            if torch.distributed.get_rank() == 0:
-                end_of_training_callback(model, epoch=-1, output_predictions=True)
-            torch.distributed.barrier()
+               train_dataloader, valid_dataloader,
+               end_of_epoch_callback)
+
+    # Evaluate after the training step
+    end_of_training_callback = None
+    if end_of_training_callback_provider is not None:
+        end_of_training_callback = end_of_training_callback_provider()
+    if end_of_training_callback is not None:
+        print_rank_0('evaluation mode, setting epoch to -1')
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            end_of_training_callback(model, epoch=-1, output_predictions=True)
+        torch.distributed.barrier()
 
     print_rank_0('done :-)')

@@ -178,13 +178,11 @@ class BeamSearch(object):
 
 
 class SampleOrGreedySearch(object):
-    def __init__(self, max_decode_len, bos_id, eos_id, sample=False,
-                 stepwise_decoding=False):
+    def __init__(self, max_decode_len, bos_id, eos_id, sample=False):
         self.max_decode_length = max_decode_len
         self.bos_id = bos_id
         self.eos_id = eos_id
         self.sample = sample
-        self.stepwise_decoding = stepwise_decoding
 
     def generate_output(self, model, tokens_enc, types, enc_mask):
         batch, x_length = tokens_enc.shape
