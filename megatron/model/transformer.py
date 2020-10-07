@@ -202,6 +202,7 @@ class ParallelAttention(MegatronModule):
         
         intermediate_shape = input_shape[:-1] +\
             (num_splits, last_dim_split)
+
         mixed_layer = mixed_layer.view(*intermediate_shape)
         mixed_layer = mixed_layer.transpose(-1, -2).contiguous()
         mixed_layer = mixed_layer.view(*input_shape)
@@ -215,6 +216,7 @@ class ParallelAttention(MegatronModule):
         # =====================
         # Query, Key, and Value
         # =====================
+
 
         if self.attention_type == "self":
             # Attention heads [sq, b, h] --> [sq, b, hp * 3]
