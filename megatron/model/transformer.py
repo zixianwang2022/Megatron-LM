@@ -189,17 +189,19 @@ class ParallelAttention(MegatronModule):
             init_method=output_layer_init_method,
             skip_bias_add=True)
 
-    def _transpose_last_dim(self, mixed_layer):
-        """[s, b, 3 * hp] -->(view) [s, b, 3, hp] -->(tranpose)
-        [s, b, hp, 3] -->(view) [s, b, 3 * hp] """
+    def _transpose_last_dim(self, mixed_layer, num_splits):
+        """[s, b, num_splits * hp] 
+        -->(view) [s, b, num_splits, hp] 
+        -->(tranpose) [s, b, hp, num_splits] 
+        -->(view) [s, b, num_splits * hp] """
 
         input_shape = mixed_layer.size();
         last_dim = input_shape[-1]
-        assert last_dim % 3 == 0, "expected QKV dimension"
-        last_dim_split = last_dim // 3
+        assert last_dim % num_splits == 0, "expected QKV dimension"
+        last_dim_split = last_dim // num_splits
         
         intermediate_shape = input_shape[:-1] +\
-            (3, last_dim_split)
+            (num_splits, last_dim_split)
         mixed_layer = mixed_layer.view(*intermediate_shape)
         mixed_layer = mixed_layer.transpose(-1, -2).contiguous()
         mixed_layer = mixed_layer.view(*input_shape)
@@ -222,7 +224,7 @@ class ParallelAttention(MegatronModule):
             if checkpoint_version is not None and \
                checkpoint_version == 0:
                 # [s, b, 3 * hp] --> [s, b, hp * 3]
-                mixed_x_layer = self._transpose_last_dim(mixed_x_layer)
+                mixed_x_layer = self._transpose_last_dim(mixed_x_layer, 3)
 
             # [sq, b, hp * 3] --> [sq, b, np, hn, 3]
             new_tensor_shape = mixed_x_layer.size()[:-1] + \
@@ -239,10 +241,11 @@ class ParallelAttention(MegatronModule):
             mixed_kv_layer, _ = self.key_value(encoder_output)
 
             checkpoint_version = get_checkpoint_version()
-            assert checkpoint_version is None or \
-                checkpoint_version == 1, \
-                "decoder is not present in old checkpoints"
-
+            if checkpoint_version is not None and \
+               checkpoint_version == 0:
+                # [s, b, 2 * hp] --> [s, b, hp * 2]
+                mixed_kv_layer = self._transpose_last_dim(mixed_kv_layer, 2)
+                
             # [sk, b, hp * 2] --> [sk, b, np, hn, 2]  
             new_tensor_shape = mixed_kv_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
