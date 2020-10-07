@@ -23,6 +23,7 @@ from megatron import get_args
 from megatron import mpu
 from megatron.mpu import LayerNorm
 from megatron.module import MegatronModule
+from megatron.checkpointing import get_checkpoint_version
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import openai_gelu, erf_gelu
@@ -188,6 +189,23 @@ class ParallelAttention(MegatronModule):
             init_method=output_layer_init_method,
             skip_bias_add=True)
 
+    def _transpose_last_dim(self, mixed_layer):
+        """[s, b, 3 * hp] -->(view) [s, b, 3, hp] -->(tranpose)
+        [s, b, hp, 3] -->(view) [s, b, 3 * hp] """
+
+        input_shape = mixed_layer.size();
+        last_dim = input_shape[-1]
+        assert last_dim % 3 == 0, "expected QKV dimension"
+        last_dim_split = last_dim // 3
+        
+        intermediate_shape = input_shape[:-1] +\
+            (3, last_dim_split)
+        mixed_layer = mixed_layer.view(*intermediate_shape)
+        mixed_layer = mixed_layer.transpose(-1, -2).contiguous()
+        mixed_layer = mixed_layer.view(*input_shape)
+        
+        return mixed_layer
+
     def forward(self, hidden_states, attention_mask, layer_past=None,
                 get_key_value=False, encoder_output=None):
         # hidden_states: [sq, b, h]
@@ -197,32 +215,43 @@ class ParallelAttention(MegatronModule):
         # =====================
 
         if self.attention_type == "self":
-            # Attention heads [sq, b, h] --> [sq, b, 3 * hp]
+            # Attention heads [sq, b, h] --> [sq, b, hp * 3]
             mixed_x_layer, _ = self.query_key_value(hidden_states)
 
-            # [sq, b, 3 * hp] --> [sq, b, np, 3 * hn]  
+            checkpoint_version = get_checkpoint_version()
+            if checkpoint_version is not None and \
+               checkpoint_version == 0:
+                # [s, b, 3 * hp] --> [s, b, hp * 3]
+                mixed_x_layer = self._transpose_last_dim(mixed_x_layer)
+
+            # [sq, b, hp * 3] --> [sq, b, np, hn, 3]
             new_tensor_shape = mixed_x_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
-                 3 * self.hidden_size_per_attention_head)
+                 self.hidden_size_per_attention_head, 3)
             mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
 
-            # [sq, b, np, 3 * hn] --> 3 [sq, b, np, hn]
-            (query_layer,
-             key_layer,
-             value_layer) = mpu.split_tensor_along_last_dim(mixed_x_layer, 3)
+            # [sq, b, np, hn, 3] --> 3 [sq, b, np, hn]
+            query_layer = mixed_x_layer[:,:,:,:,0]
+            key_layer = mixed_x_layer[:,:,:,:,1]
+            value_layer = mixed_x_layer[:,:,:,:,2]
         else:
-            # Attention heads [sk, b, h] --> [sk, b, 2 * hp]
+            # Attention heads [sk, b, h] --> [sk, b, hp * 2]
             mixed_kv_layer, _ = self.key_value(encoder_output)
 
-            # [sk, b, 2 * hp] --> [sk, b, np, 2 * hn]  
+            checkpoint_version = get_checkpoint_version()
+            assert checkpoint_version is None or \
+                checkpoint_version == 1, \
+                "decoder is not present in old checkpoints"
+
+            # [sk, b, hp * 2] --> [sk, b, np, hn, 2]  
             new_tensor_shape = mixed_kv_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
-                 2 * self.hidden_size_per_attention_head)
+                 self.hidden_size_per_attention_head, 2)
             mixed_kv_layer = mixed_kv_layer.view(*new_tensor_shape)
 
-            # [sk, b, np, 2 * hn] --> 2 [sk, b, np, hn]
-            (key_layer,
-             value_layer) = mpu.split_tensor_along_last_dim(mixed_kv_layer, 2)
+            # [sk, b, np, hn, 2] --> 2 [sk, b, np, hn]
+            key_layer = mixed_kv_layer[:,:,:,:,0]
+            value_layer = mixed_kv_layer[:,:,:,:,1]
 
             # Attention head [sq, b, h] --> [sq, b, hp]
             query_layer, _ = self.query(hidden_states)
