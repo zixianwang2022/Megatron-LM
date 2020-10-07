@@ -9,7 +9,7 @@ T5_CONFIG="base"
 BATCH_SIZE_LOCAL=16
 
 # Number of nodes to use
-N_NODES=1
+N_NODES=16
 
 # Total batch size is calculated using:
 # total-batch-size = n-nodes * 8 * batch-size-local / model-parallel-size
