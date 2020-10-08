@@ -57,7 +57,7 @@ DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 mkdir -p $DIR/logs
 
-run_cmd="${DIR}/bind.sh --cpu=${DIR}/dgxa100_ccx.sh --mem=${DIR}/dgxa100_ccx.sh python -u ${DIR}/tasks/main_t5.py ${OPTIONS} ${CONFIG_ARGS} ${EXTRA_OPTIONS}"
+run_cmd="${DIR}/bind.sh --cpu=${DIR}/dgxa100_ccx.sh --mem=${DIR}/dgxa100_ccx.sh python -u ${DIR}/main_t5.py ${OPTIONS} ${CONFIG_ARGS} ${EXTRA_OPTIONS}"
 
 srun -l \
      --container-image "gitlab-master.nvidia.com/adlr/megatron-lm/pytorch-faiss-gpu:20.07-py3-devel" \
