@@ -70,7 +70,7 @@ if __name__ == '__main__':
     if args.task == 'RACE':
         raise NotImplementedError('Task {} is not implemented.'.format(
             args.task))
-    elif args.task in ['MNLI', 'QQP']:
+    elif args.task in ['MNLI']:
         from glue.finetune_t5 import main
     elif args.task in ['LAMBADA', 'WIKITEXT103']:
         raise NotImplementedError('Task {} is not implemented.'.format(

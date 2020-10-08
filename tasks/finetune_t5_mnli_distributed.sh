@@ -18,7 +18,7 @@ CONFIG_ARGS="--num-layers 12 \
              --ffn-hidden-size 3072 \
              --seq-length 512 \
              --decoder-seq-length 128 \
-	           --vocab-extra-ids 100 \
+	     --vocab-extra-ids 100 \
              --max-position-embeddings 512 \
              --fp16 \
              --vocab-file $VOCAB_FILE \
