@@ -19,6 +19,7 @@ import torch
 
 from megatron import get_args
 from megatron import mpu
+from megatron.checkpointing import get_checkpoint_version
 from megatron.model.language_model import parallel_lm_logits
 from megatron.model.language_model import get_language_model
 from megatron.model.transformer import LayerNorm
@@ -69,6 +70,19 @@ class T5LMHead(MegatronModule):
         super(T5LMHead, self).__init__()
 
         args = get_args()
+        self.pre_dense_layer = False
+        checkpoint_version = get_checkpoint_version()
+        if checkpoint_version is not None and \
+                checkpoint_version == 0:
+            self.pre_dense_layer = True
+            self.dense = get_linear_layer(args.hidden_size,
+                                          args.hidden_size,
+                                          init_method_normal(args.init_method_std))
+            self.layernorm = LayerNorm(args.hidden_size,
+                                       eps=args.layernorm_epsilon)
+            self.gelu = torch.nn.functional.gelu
+            if args.openai_gelu:
+                self.gelu = openai_gelu
 
         self.bias = torch.nn.Parameter(torch.zeros(mpu_vocab_size))
         self.bias.model_parallel = True
@@ -77,6 +91,11 @@ class T5LMHead(MegatronModule):
         self.parallel_output = parallel_output
 
     def forward(self, hidden_states, word_embeddings_weight):
+        if self.pre_dense_layer:
+            hidden_states = self.dense(hidden_states)
+            hidden_states = self.gelu(hidden_states)
+            hidden_states = self.layernorm(hidden_states)
+
         output = parallel_lm_logits(hidden_states,
                                     word_embeddings_weight,
                                     self.parallel_output,
