@@ -188,6 +188,9 @@ def _add_network_size_args(parser):
     group.add_argument('--max-position-embeddings', type=int, default=None,
                        help='Maximum number of position embeddings to use. '
                        'This is the size of position embedding.')
+    group.add_argument('--add-presoftmax-dense', action='store_true',
+                       help='Adds a dense layer with layernorm and gelu activation in T5 '
+                            'before the last softmax layer')
     group.add_argument('--make-vocab-size-divisible-by', type=int, default=128,
                        help='Pad the vocab size to be divisible by this value.'
                        'This is added for computational efficieny reasons.')
