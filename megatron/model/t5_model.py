@@ -70,10 +70,9 @@ class T5LMHead(MegatronModule):
         super(T5LMHead, self).__init__()
 
         args = get_args()
+
         self.pre_dense_layer = False
-        checkpoint_version = get_checkpoint_version()
-        if checkpoint_version is not None and \
-                checkpoint_version == 0:
+        if args.add_presoftmax_dense:
             self.pre_dense_layer = True
             self.dense = get_linear_layer(args.hidden_size,
                                           args.hidden_size,
