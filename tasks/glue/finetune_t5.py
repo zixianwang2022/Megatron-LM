@@ -58,13 +58,13 @@ def glue_classification(num_classes, Dataset,
         return Dataset(name, datapath, tokenizer,
                        args.seq_length, args.decoder_seq_length)
 
-    def distributed_metrics_func_provider():
+    def distributed_metrics_func_provider(datapath):
         """Provide metrics callback function."""
-        return accuracy_func_provider(single_dataset_provider)
+        return accuracy_func_provider(single_dataset_provider, datapath)
 
-    def rank0_metrics_func_provider():
+    def rank0_metrics_func_provider(datapath):
         """Provide metrics callback function."""
-        return accuracy_func_provider(single_dataset_provider,
+        return accuracy_func_provider(single_dataset_provider, datapath,
                                       rank0sampler=True)
 
     """Finetune/evaluate."""

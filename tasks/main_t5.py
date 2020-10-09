@@ -43,6 +43,8 @@ def get_tasks_args(parser):
                        'for training.')
     group.add_argument('--valid-data', nargs='*', default=None,
                        help='path(s) to the validation data.')
+    group.add_argument('--test-data', nargs='*', default=None,
+                       help='path(s) to the test data.')
     group.add_argument('--beam-size', default=1, type=int,
                        help='Beam size to use for decoding. '
                             'A beam size of 1 corresponds to greedy search')

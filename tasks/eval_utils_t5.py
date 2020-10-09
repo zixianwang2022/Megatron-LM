@@ -71,12 +71,12 @@ def save_text(path, buffer):
             fp.write(line + '\n')
 
 
-def accuracy_func_provider(single_dataset_provider, rank0sampler=False):
+def accuracy_func_provider(single_dataset_provider, datapath, rank0sampler=False):
     """Provide function that calculates accuracies."""
     args = get_args()
 
     # Build dataloaders.
-    dataset = single_dataset_provider(args.valid_data)
+    dataset = single_dataset_provider(datapath)
 
     drop_last = False
     if mpu.get_data_parallel_world_size() > 1 and not rank0sampler:
@@ -279,9 +279,9 @@ def reduce_scores_and_print(unreduced_buffer, epoch, name, start_time):
     total_count = unreduced_buffer[1].item()
     percent = float(agg_score) * 100.0 / float(total_count)
     elapsed_time = time.time() - start_time
-    print_rank_0(' > |epoch: {}| metrics for {}: correct / total '
-                 '= {} / {} = {:.4f} %, elapsed time (sec): {:.3f}'.format(
-        epoch, name, agg_score, total_count,
-        percent, elapsed_time))
+    # print_rank_0(' > |epoch: {}| metrics for {}: correct / total '
+    #              '= {} / {} = {:.4f} %, elapsed time (sec): {:.3f}'.format(
+    #     epoch, name, agg_score, total_count,
+    #     percent, elapsed_time))
 
     return agg_score, total_count
