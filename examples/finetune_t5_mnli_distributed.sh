@@ -5,7 +5,8 @@
 BASE_DIR="/lustre/fsw/adlr-nlp/dsachan/"
 DATA_DIR="${BASE_DIR}/data/mnli"
 TRAIN_DATA="${DATA_DIR}/train.tsv"
-VALID_DATA="${DATA_DIR}/dev_matched.tsv"  # ${DATA_DIR}/dev_mismatched.tsv"
+VALID_DATA="${DATA_DIR}/dev_matched.tsv"
+TEST_DATA="${DATA_DIR}/dev_mismatched.tsv"
 
 PRETRAINED_CHECKPOINT="${BASE_DIR}/checkpoints/t5_main_full-wikipedia_base_mp1"
 VOCAB_FILE="${BASE_DIR}/bert_vocab/bert-large-uncased-vocab.txt"
@@ -27,6 +28,7 @@ CONFIG_ARGS="--num-layers 12 \
 
 EXTRA_OPTIONS="--train-data $TRAIN_DATA \
                --valid-data $VALID_DATA \
+               --test-data $TEST_DATA \
                --pretrained-checkpoint $PRETRAINED_CHECKPOINT \
                --save-interval 5000 \
                --save $CHECKPOINT_PATH \
