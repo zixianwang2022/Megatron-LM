@@ -72,11 +72,12 @@ if __name__ == '__main__':
             args.task))
     elif args.task in ['MNLI', 'QQP']:
         from glue.finetune_t5 import main
+    elif args.task == 'CNNDM':
+        from summarization.finetune_t5 import main
     elif args.task in ['LAMBADA', 'WIKITEXT103']:
         raise NotImplementedError('Task {} is not implemented.'.format(
             args.task))
     else:
         raise NotImplementedError('Task {} is not implemented.'.format(
             args.task))
-
     main()
