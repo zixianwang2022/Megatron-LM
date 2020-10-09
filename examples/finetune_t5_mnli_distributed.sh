@@ -42,7 +42,7 @@ OPTIONS=" \
        --task MNLI \
        --finetune \
        --tokenizer-type BertWordPieceLowerCase \
-       --epochs 20 \
+       --epochs 5 \
        --sample-rate 1.0 \
        --batch-size 4 \
        --eval-batch-size 12 \

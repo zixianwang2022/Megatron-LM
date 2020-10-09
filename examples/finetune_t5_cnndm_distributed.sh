@@ -11,6 +11,9 @@ TRAIN_DATA="${DATA_DIR}/train.source \
 VALID_DATA="${DATA_DIR}/val.source \
             ${DATA_DIR}/val.target"
 
+TEST_DATA="${DATA_DIR}/test.source \
+            ${DATA_DIR}/test.target"
+
 PRETRAINED_CHECKPOINT="${BASE_DIR}/checkpoints/t5_main_full-wikipedia_base_mp1"
 VOCAB_FILE="${BASE_DIR}/bert_vocab/bert-large-uncased-vocab.txt"
 CHECKPOINT_PATH="${BASE_DIR}/checkpoints/t5_main_cnndm"
@@ -31,6 +34,7 @@ CONFIG_ARGS="--num-layers 12 \
 
 EXTRA_OPTIONS="--train-data $TRAIN_DATA \
                --valid-data $VALID_DATA \
+               --test-data $TEST_DATA \
                --pretrained-checkpoint $PRETRAINED_CHECKPOINT \
                --save-interval 5000 \
                --save $CHECKPOINT_PATH \
