@@ -22,7 +22,7 @@ import time
 import torch
 from torch.autograd import Variable
 from nltk.translate.gleu_score import sentence_gleu
-from rouge_score import rouge_scorer, rouge
+from rouge_score import rouge_scorer
 
 from megatron import get_args
 from megatron import mpu
@@ -30,9 +30,9 @@ from megatron import print_rank_0
 from megatron import get_tokenizer
 from megatron.model.search_strategy import SampleOrGreedySearch
 from megatron.model.search_strategy import BeamSearch
-from tasks.finetune_utils_t5 import build_data_loader
-from tasks.finetune_utils_t5 import process_batch
-from tasks.glue.metrics import clf_accuracy
+from tasks.t5_model_utils.finetune_utils import build_data_loader
+from tasks.t5_model_utils.finetune_utils import process_batch
+from tasks.glue.t5.metrics import clf_accuracy
 
 
 class Accuracy(object):

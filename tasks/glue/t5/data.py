@@ -22,8 +22,8 @@ import random
 from torch.utils.data import Dataset
 
 from megatron import print_rank_0, get_args
-from tasks.data_utils_t5 import build_sample
-from tasks.data_utils_t5 import mnli_build_tokens_types_paddings_from_text
+from tasks.t5_model_utils.data_utils import build_sample
+from tasks.t5_model_utils.data_utils import mnli_build_tokens_types_paddings_from_text
 
 
 class GLUEAbstractDataset(ABC, Dataset):

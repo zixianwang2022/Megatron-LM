@@ -33,7 +33,6 @@ from megatron.utils import reduce_losses
 
 def process_batch(batch):
     """Process batch and produce inputs for the model."""
-    # Unpack.
     tokens_enc = batch['text_enc'].long().cuda()
     tokens_dec = batch['text_dec'].long().cuda()
     types = batch['types'].long().cuda()

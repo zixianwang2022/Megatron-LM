@@ -19,8 +19,8 @@ from megatron import get_args
 from megatron import get_tokenizer
 from megatron import print_rank_0
 from megatron.model.t5_model import T5Model
-from tasks.eval_utils_t5 import accuracy_func_provider
-from tasks.finetune_utils_t5 import finetune
+from tasks.t5_model_utils.eval_utils import accuracy_func_provider
+from tasks.t5_model_utils.finetune_utils import finetune
 
 
 def summarization(Dataset, name_from_datapath_func):
@@ -75,7 +75,7 @@ def main():
     args = get_args()
 
     if args.task == 'CNNDM':
-        from tasks.summarization.cnndm import CNNDMDataset as Dataset
+        from tasks.summarization.t5.cnndm import CNNDMDataset as Dataset
 
         def name_from_datapath(datapath):
             return datapath[0].split('/')[-1].split('.')[0]

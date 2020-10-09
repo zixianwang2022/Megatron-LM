@@ -60,7 +60,6 @@ def get_tasks_args(parser):
                             'parallel size.')
     group.add_argument('--sample-rate', type=float, default=1.0,
                        help='sample rate for training data. Supposed to be 0 < sample_rate < 1')
-
     return parser
 
 
@@ -72,10 +71,10 @@ if __name__ == '__main__':
     if args.task == 'RACE':
         raise NotImplementedError('Task {} is not implemented.'.format(
             args.task))
-    elif args.task in ['MNLI', 'QQP']:
-        from glue.finetune_t5 import main
+    elif args.task in ['MNLI']:
+        from glue.t5.finetune import main
     elif args.task == 'CNNDM':
-        from summarization.finetune_t5 import main
+        from summarization.t5.finetune import main
     elif args.task in ['LAMBADA', 'WIKITEXT103']:
         raise NotImplementedError('Task {} is not implemented.'.format(
             args.task))

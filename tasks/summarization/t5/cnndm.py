@@ -16,7 +16,7 @@
 """CNNDM dataset."""
 
 from megatron import print_rank_0
-from .data_t5 import SummarizationAbstractDataset
+from tasks.summarization.t5.data import SummarizationAbstractDataset
 
 
 class CNNDMDataset(SummarizationAbstractDataset):

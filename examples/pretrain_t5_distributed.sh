@@ -22,7 +22,8 @@ function config_base() {
 --hidden-size 768 \
 --num-attention-heads 12 \
 --kv-channels 64 \
---ffn-hidden-size 3072"
+--ffn-hidden-size 3072 \
+--model-parallel-size 1"
 }
 
 function config_large() {
@@ -30,7 +31,8 @@ function config_large() {
 --hidden-size 1024 \
 --num-attention-heads 16 \
 --kv-channels 64 \
---ffn-hidden-size 4096"
+--ffn-hidden-size 4096 \
+--model-parallel-size 1"
 }
 
 function config_3B() {
@@ -38,7 +40,8 @@ function config_3B() {
 --hidden-size 1024 \
 --num-attention-heads 32 \
 --kv-channels 128 \
---ffn-hidden-size 16384"
+--ffn-hidden-size 16384 \
+--model-parallel-size 2"
 }
 
 function config_11B() {
@@ -46,7 +49,8 @@ function config_11B() {
 --hidden-size 1024 \
 --num-attention-heads 128 \
 --kv-channels 128 \
---ffn-hidden-size 65536"
+--ffn-hidden-size 65536 \
+--model-parallel-size 8"
 }
 
 if [ ${T5_CONFIG} == "base" ]; then
@@ -63,11 +67,7 @@ else
 fi
 
 export OPTIONS=" \
-         --model-parallel-size ${MODEL_PARALLEL} \
          --distributed-backend nccl \
-         --num-layers 12 \
-         --hidden-size 768 \
-         --num-attention-heads 12 \
          --seq-length 512 \
          --decoder-seq-length 128 \
          --max-position-embeddings 512 \

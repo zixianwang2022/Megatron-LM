@@ -17,7 +17,7 @@
 
 from megatron import print_rank_0
 from tasks.data_utils import clean_text
-from .data_t5 import GLUEAbstractDataset
+from tasks.glue.t5.data import GLUEAbstractDataset
 
 
 LABELS = {'contradiction': 0, 'entailment': 1, 'neutral': 2}
