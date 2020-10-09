@@ -62,7 +62,8 @@ def build_sample(enc_ids, tokentypes_enc,
 
 
 def build_tokens_types_paddings_from_text(src_text, trg_text,
-                                          tokenizer, max_seq_length):
+                                          tokenizer, max_seq_length,
+                                          decoder_seq_length):
     """Build token types and paddings, trim if needed, and pad if needed."""
 
     src_text_ids = tokenizer.tokenize(src_text)
@@ -71,8 +72,9 @@ def build_tokens_types_paddings_from_text(src_text, trg_text,
         trg_text_ids = tokenizer.tokenize(trg_text)
 
     return build_tokens_types_paddings_from_ids(src_text_ids, trg_text_ids,
-                                                max_seq_length, tokenizer.cls,
-                                                tokenizer.sep, tokenizer.pad,
+                                                max_seq_length, decoder_seq_length,
+                                                tokenizer.cls, tokenizer.sep,
+                                                tokenizer.pad,
                                                 tokenizer.bos_token_id,
                                                 tokenizer.eos_token_id)
 

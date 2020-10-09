@@ -65,7 +65,8 @@ class SummarizationAbstractDataset(ABC, Dataset):
                 raw_sample['source'],
                 raw_sample['target'],
                 self.tokenizer,
-                self.max_seq_length)
+                self.max_seq_length,
+                self.decoder_seq_length)
         sample = build_sample(enc_ids,
                               tokentypes_enc,
                               dec_in_ids,
