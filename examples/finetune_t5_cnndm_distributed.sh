@@ -48,11 +48,11 @@ OPTIONS=" \
        --task CNNDM \
        --finetune \
        --tokenizer-type BertWordPieceLowerCase \
-       --epochs 20 \
+       --epochs 10 \
        --sample-rate 1.0 \
        --batch-size 4 \
        --eval-batch-size 12 \
-       --beam-size 5 \
+       --beam-size 1 \
        --max-decode-len 512 \
        --lr 2e-5 \
        --warmup 0.0 \
