@@ -287,16 +287,17 @@ def finetune(train_valid_datasets_provider, model_provider,
         torch.distributed.barrier()
 
     # Evaluate after the training step on test data
-    end_of_training_test_callback = None
-    if end_of_training_callback_provider is not None:
-        end_of_training_test_callback = end_of_training_callback_provider(args.test_data)
+    if args.test_data is not None:
+        end_of_training_test_callback = None
+        if end_of_training_callback_provider is not None:
+            end_of_training_test_callback = end_of_training_callback_provider(args.test_data)
 
-    if end_of_training_test_callback is not None:
-        print_rank_0('evaluating on test data, setting epoch to -1')
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            end_of_training_test_callback(model, epoch=-1,
-                                          output_predictions=True)
-        torch.distributed.barrier()
+        if end_of_training_test_callback is not None:
+            print_rank_0('evaluating on test data, setting epoch to -1')
+            torch.distributed.barrier()
+            if torch.distributed.get_rank() == 0:
+                end_of_training_test_callback(model, epoch=-1,
+                                              output_predictions=True)
+            torch.distributed.barrier()
 
     print_rank_0('done :-)')
