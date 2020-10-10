@@ -139,7 +139,7 @@ def accuracy_func_provider(single_dataset_provider, datapath, rank0sampler=False
                 with open(result_file, 'w') as fp:
                     fp.write("Accuracy Score: {} / {} = {:.2f}".format(c, t, a))
             elif args.task == "CNNDM":
-                result_file = os.path.join(args.save, "rouge-scores" + '.csv')
+                result_file = os.path.join(args.save, f"{name}-rouge-scores" + '.csv')
                 command = 'python -m rouge_score.rouge --use_stemmer=true \
                 --target_filepattern={} \
                 --prediction_filepattern={} \
