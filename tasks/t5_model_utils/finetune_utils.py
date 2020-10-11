@@ -18,9 +18,9 @@
 import torch
 
 from megatron import get_args
-from megatron import print_rank_0
 from megatron import get_timers
 from megatron import mpu
+from megatron import print_rank_0
 from megatron.checkpointing import load_checkpoint
 from megatron.checkpointing import save_checkpoint
 from megatron.training import evaluate_and_print_results
@@ -33,16 +33,18 @@ from megatron.utils import reduce_losses
 
 def process_batch(batch):
     """Process batch and produce inputs for the model."""
-    args = get_args()
+    tokens_enc = batch['text_enc'].long().cuda()
+    tokens_dec = batch['text_dec'].long().cuda()
+    types = batch['types'].long().cuda()
+    labels = batch['labels'].long().cuda()
+    loss_mask = batch['loss_mask'].float().cuda()
 
-    tokens = batch['text'].long().cuda().contiguous()
-    types = batch['types'].long().cuda().contiguous()
-    labels = batch['label'].long().cuda().contiguous()
-    attention_mask = batch['padding_mask'].float().cuda().contiguous()
-    if args.fp16:
-        attention_mask = attention_mask.half()
+    enc_mask = (batch['enc_mask'] < 0.5).cuda()
+    dec_mask = (batch['dec_mask'] < 0.5).cuda()
+    enc_dec_mask = (batch['enc_dec_mask'] < 0.5).cuda()
 
-    return tokens, types, labels, attention_mask
+    return tokens_enc, tokens_dec, types, loss_mask, labels, \
+           enc_mask, dec_mask, enc_dec_mask
 
 
 def _cross_entropy_forward_step(batch, model):
@@ -55,15 +57,26 @@ def _cross_entropy_forward_step(batch, model):
         batch_ = next(batch)
     except BaseException:
         batch_ = batch
-    tokens, types, labels, attention_mask = process_batch(batch_)
+    tokens_enc, tokens_dec, types, loss_mask, lm_labels, enc_mask, dec_mask, enc_dec_mask \
+        = process_batch(batch_)
     timers('batch generator').stop()
 
     # Forward model.
-    logits = model(tokens, attention_mask, types)
+    logits, _ = model(tokens_enc,
+                      tokens_dec,
+                      enc_mask,
+                      dec_mask,
+                      enc_dec_mask,
+                      tokentype_ids=types)
+
+    batch, length, units = logits.shape
+    logits = logits.view(batch * length, units)
 
     # Cross-entropy loss.
     loss_func = torch.nn.CrossEntropyLoss()
-    loss = loss_func(logits.contiguous().float(), labels)
+    loss_ = loss_func(logits.contiguous().float(), lm_labels.view(-1))
+
+    loss = torch.sum(loss_.view(-1) * loss_mask.reshape(-1)) / loss_mask.sum()
 
     # Reduce loss for logging.
     reduced_loss = reduce_losses([loss])
@@ -71,14 +84,21 @@ def _cross_entropy_forward_step(batch, model):
     return loss, {'lm loss': reduced_loss[0]}
 
 
-def build_data_loader(dataset, batch_size, num_workers, drop_last):
+def build_data_loader(dataset, batch_size, num_workers, drop_last, shuffle=True, rank0sampler=False):
     """Data loader. Note that batch-size is the local (per GPU) batch-size."""
 
-    # Sampler.
-    world_size = mpu.get_data_parallel_world_size()
-    rank = mpu.get_data_parallel_rank()
-    sampler = torch.utils.data.distributed.DistributedSampler(
-        dataset, num_replicas=world_size, rank=rank)
+    if rank0sampler:
+        if shuffle:
+            sampler = torch.utils.data.RandomSampler(dataset)
+        else:
+            sampler = torch.utils.data.SequentialSampler(dataset)
+    else:
+        world_size = mpu.get_data_parallel_world_size()
+        rank = mpu.get_data_parallel_rank()
+        sampler = torch.utils.data.distributed.DistributedSampler(dataset,
+                                                                  num_replicas=world_size,
+                                                                  rank=rank,
+                                                                  shuffle=shuffle)
 
     # Data loader. Note that batch size is the per GPU batch size.
     data_loader = torch.utils.data.DataLoader(dataset,
@@ -162,7 +182,7 @@ def _train(model, optimizer, lr_scheduler, forward_step,
 
             # Train for one step.
             losses_dict, skipped_iter = train_step(forward_step, batch, model,
-                                        optimizer, lr_scheduler)
+                                                   optimizer, lr_scheduler)
             iteration += 1
 
             # Logging.
@@ -195,12 +215,13 @@ def _train(model, optimizer, lr_scheduler, forward_step,
 
         # Callback at the end of each epoch.
         if end_of_epoch_callback is not None:
-            end_of_epoch_callback(model, epoch)
+            end_of_epoch_callback(model, epoch + 1)
 
 
 def finetune(train_valid_datasets_provider, model_provider,
              forward_step=_cross_entropy_forward_step,
-             end_of_epoch_callback_provider=None):
+             end_of_epoch_callback_provider=None,
+             end_of_training_callback_provider=None):
     """Main finetune function used across all tasks."""
     args = get_args()
     timers = get_timers()
@@ -217,7 +238,7 @@ def finetune(train_valid_datasets_provider, model_provider,
     timers('callback function').start()
     end_of_epoch_callback = None
     if end_of_epoch_callback_provider is not None:
-        end_of_epoch_callback = end_of_epoch_callback_provider()
+        end_of_epoch_callback = end_of_epoch_callback_provider(args.valid_data)
     timers('callback function').stop()
 
     # Build model, optimizer and learning rate scheduler.
@@ -249,11 +270,34 @@ def finetune(train_valid_datasets_provider, model_provider,
     # Finetune the model.
     if args.epochs > 0:
         _train(model, optimizer, lr_scheduler, forward_step,
-               train_dataloader, valid_dataloader, end_of_epoch_callback)
-    # Or just evaluate.
-    else:
-        if end_of_epoch_callback is not None:
-            print_rank_0('evaluation only mode, setting epoch to -1')
-            end_of_epoch_callback(model, epoch=-1, output_predictions=True)
+               train_dataloader, valid_dataloader,
+               end_of_epoch_callback)
+
+    # Evaluate after the training step on validation data
+    end_of_training_validation_callback = None
+    if end_of_training_callback_provider is not None:
+        end_of_training_validation_callback = end_of_training_callback_provider(args.valid_data)
+
+    if end_of_training_validation_callback is not None:
+        print_rank_0('evaluating on validation data, setting epoch to -1')
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            end_of_training_validation_callback(model, epoch=-1,
+                                                output_predictions=True)
+        torch.distributed.barrier()
+
+    # Evaluate after the training step on test data
+    if args.test_data is not None:
+        end_of_training_test_callback = None
+        if end_of_training_callback_provider is not None:
+            end_of_training_test_callback = end_of_training_callback_provider(args.test_data)
+
+        if end_of_training_test_callback is not None:
+            print_rank_0('evaluating on test data, setting epoch to -1')
+            torch.distributed.barrier()
+            if torch.distributed.get_rank() == 0:
+                end_of_training_test_callback(model, epoch=-1,
+                                              output_predictions=True)
+            torch.distributed.barrier()
 
     print_rank_0('done :-)')
