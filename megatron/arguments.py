@@ -131,12 +131,9 @@ def parse_args(extra_args_provider=None, defaults={},
             'for distribute-checkpointed-activations to work you '\
             'need to enable checkpoint-activations'
 
-    # load scaled_upper_triang_masked_softmax_fusion kernel
-    if args.scaled_upper_triang_masked_softmax_fusion:
-        fused_kernels.load_scaled_upper_triang_masked_softmax_fusion_kernel()
-
-    # load scaled_masked_softmax_fusion kernel
+    # load scaled_masked_softmax_fusion kernels
     if args.scaled_masked_softmax_fusion:
+        fused_kernels.load_scaled_upper_triang_masked_softmax_fusion_kernel()
         fused_kernels.load_scaled_masked_softmax_fusion_kernel()
 
     _print_args(args)
@@ -248,10 +245,6 @@ def _add_training_args(parser):
                        'by this value.')
     group.add_argument('--tensorboard-dir', type=str, default=None,
                        help='Write TensorBoard logs to this directory.')
-    group.add_argument('--scaled-upper-triang-masked-softmax-fusion',
-                       action='store_true',
-                       help='Enable fusion of query_key_value_scaling '
-                       'time (upper diagonal) masking and softmax.')
     group.add_argument('--scaled-masked-softmax-fusion',
                        action='store_true',
                        help='Enable fusion of query_key_value_scaling '
