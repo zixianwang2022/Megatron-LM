@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import torch
+from megatron.model.enums import SelfAttnType
 
 class ScaledUpperTriangMaskedSoftmax(torch.autograd.Function) :
     """
@@ -108,14 +109,14 @@ class FusedScaleMaskSoftmax(torch.nn.Module):
            query_seq_len % 4 == 0 and self.scaled_masked_softmax_fusion:
             scale = self.scale if self.scale is not None  else 1.0
 
-            if self.attn_mask_type == 'causal':
+            if self.attn_mask_type == SelfAttnType.causal:
                 assert query_seq_len == key_seq_len, \
                     "causal mask is only for self attention"
                 input = input.view(-1, query_seq_len, key_seq_len)
                 probs = ScaledUpperTriangMaskedSoftmax.apply(input, scale)
                 probs = probs.view(*data_size)
             else:
-                assert self.attn_mask_type == 'pad'
+                assert self.attn_mask_type == SelfAttnType.pad
                 probs = ScaledMaskedSoftmax.apply(input, mask, scale)
         else:
             if self.input_in_fp16 and self.softmax_in_fp32:

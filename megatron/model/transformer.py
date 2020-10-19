@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """Transformer."""
-
+import enum
 import math
 import torch
 import torch.nn.functional as F
@@ -24,6 +24,7 @@ from megatron import mpu
 from megatron.mpu import LayerNorm
 from megatron.module import MegatronModule
 from megatron.checkpointing import get_checkpoint_version
+from megatron.model.enums import SelfAttnType, LayerType, AttnType
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import openai_gelu, erf_gelu
@@ -117,7 +118,8 @@ class ParallelAttention(MegatronModule):
 
     def __init__(self, attention_mask_func, init_method,
                  output_layer_init_method, layer_number,
-                 attention_type='self', attn_mask_type='pad'):
+                 attention_type=AttnType.self, 
+                 attn_mask_type=SelfAttnType.pad):
         super(ParallelAttention, self).__init__()
         args = get_args()
         self.fp16 = args.fp16
@@ -143,14 +145,14 @@ class ParallelAttention(MegatronModule):
             args.num_attention_heads, world_size)
 
         # Strided linear layer.
-        if attention_type == 'self':
+        if attention_type == AttnType.self:
             self.query_key_value = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 3 * projection_size,
                 gather_output=False,
                 init_method=init_method)
         else:
-            assert attention_type == 'cross'
+            assert attention_type == AttnType.cross
             self.query = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 projection_size,
@@ -172,7 +174,7 @@ class ParallelAttention(MegatronModule):
         self.scale_mask_softmax = FusedScaleMaskSoftmax(
             self.fp16,
             self.attn_mask_type,
-            args.scaled_masked_softmax_fusion,
+            args.masked_softmax_fusion,
             self.attention_mask_func,
             self.attention_softmax_in_fp32,
             coeff)
@@ -228,7 +230,7 @@ class ParallelAttention(MegatronModule):
         # Query, Key, and Value
         # =====================
 
-        if self.attention_type == "self":
+        if self.attention_type == AttnType.self:
             # Attention heads [sq, b, h] --> [sq, b, (np * 3 * hn)]
             mixed_x_layer, _ = self.query_key_value(hidden_states)
 
@@ -445,7 +447,8 @@ class ParallelTransformerLayer(MegatronModule):
 
     def __init__(self, attention_mask_func, init_method, 
                  output_layer_init_method, layer_number,
-                 layer_type='encoder', self_attn_mask_type='pad'):
+                 layer_type=LayerType.encoder, 
+                 self_attn_mask_type=SelfAttnType.pad):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
@@ -465,7 +468,7 @@ class ParallelTransformerLayer(MegatronModule):
                                                 init_method,
                                                 output_layer_init_method,
                                                 layer_number,
-                                                attention_type='self',
+                                                attention_type=AttnType.self,
                                                 attn_mask_type=self_attn_mask_type)
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
@@ -475,12 +478,12 @@ class ParallelTransformerLayer(MegatronModule):
             args.hidden_size,
             eps=args.layernorm_epsilon)
 
-        if self.layer_type == 'decoder':
+        if self.layer_type == LayerType.decoder:
             self.inter_attention = ParallelAttention(attention_mask_func,
                                                      init_method,
                                                      output_layer_init_method,
                                                      layer_number,
-                                                     attention_type='cross')
+                                                     attention_type=AttnType.cross)
             # Layernorm on the attention output.
             self.post_inter_attention_layernorm = LayerNorm(
                 args.hidden_size,
@@ -536,7 +539,7 @@ class ParallelTransformerLayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
-        if self.layer_type == "decoder":
+        if self.layer_type == LayerType.decoder:
             attention_output, attention_bias = \
                 self.inter_attention(layernorm_output,
                                      enc_dec_attn_mask,
@@ -586,7 +589,8 @@ class ParallelTransformer(MegatronModule):
 
     def __init__(self, attention_mask_func,
                  init_method, output_layer_init_method,
-                 layer_type='encoder', self_attn_mask_type='pad'):
+                 layer_type=LayerType.encoder, 
+                 self_attn_mask_type=SelfAttnType.pad):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 

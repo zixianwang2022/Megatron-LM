@@ -21,6 +21,7 @@ import torch.nn.functional as F
 from megatron import get_args
 from megatron import mpu
 from megatron.module import MegatronModule
+from megatron.model.enums import LayerType, SelfAttnType
 from megatron.model.transformer import ParallelTransformer
 from megatron.model.utils import get_linear_layer
 from megatron.model.utils import init_method_normal, scaled_init_method_normal
@@ -44,7 +45,7 @@ def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
 
 def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
                        add_decoder=False, init_method=None, 
-                       scaled_init_method=None, self_attn_mask_type="pad"):
+                       scaled_init_method=None, self_attn_mask_type=SelfAttnType.pad):
     """Build language model and return along with the key to save."""
     args = get_args()
 
@@ -267,7 +268,7 @@ class TransformerLanguageModel(MegatronModule):
                  init_method,
                  output_layer_init_method,
                  num_tokentypes=0,
-                 self_attn_mask_type='pad',
+                 self_attn_mask_type=SelfAttnType.pad,
                  add_decoder=False,
                  add_pooler=False):
         super(TransformerLanguageModel, self).__init__()
@@ -300,8 +301,8 @@ class TransformerLanguageModel(MegatronModule):
             self.decoder = ParallelTransformer(attention_mask_func,
                                                self.init_method,
                                                output_layer_init_method,
-                                               layer_type='decoder',
-                                               self_attn_mask_type='causal')
+                                               layer_type=LayerType.decoder,
+                                               self_attn_mask_type=SelfAttnType.causal)
             self._decoder_key = 'decoder'
  
         # Pooler
