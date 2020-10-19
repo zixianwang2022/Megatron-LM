@@ -21,7 +21,7 @@ from megatron import get_args
 from megatron import mpu
 from megatron.module import MegatronModule
 
-from .enums import SelfAttnType
+from .enums import AttnMaskType
 from .language_model import parallel_lm_logits
 from .language_model import get_language_model
 from .utils import init_method_normal
@@ -46,7 +46,7 @@ class GPT2Model(MegatronModule):
             attention_mask_func=gpt2_attention_mask_func,
             num_tokentypes=num_tokentypes,
             add_pooler=False,
-            self_attn_mask_type=SelfAttnType.causal,
+            self_attn_mask_type=AttnMaskType.causal,
             init_method=init_method_normal(args.init_method_std),
             scaled_init_method=scaled_init_method_normal(args.init_method_std,
                                                          args.num_layers))

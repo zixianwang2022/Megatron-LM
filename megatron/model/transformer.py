@@ -24,7 +24,7 @@ from megatron import mpu
 from megatron.mpu import LayerNorm
 from megatron.module import MegatronModule
 from megatron.checkpointing import get_checkpoint_version
-from megatron.model.enums import SelfAttnType, LayerType, AttnType
+from megatron.model.enums import AttnMaskType, LayerType, AttnType
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import openai_gelu, erf_gelu
@@ -118,8 +118,8 @@ class ParallelAttention(MegatronModule):
 
     def __init__(self, attention_mask_func, init_method,
                  output_layer_init_method, layer_number,
-                 attention_type=AttnType.self, 
-                 attn_mask_type=SelfAttnType.pad):
+                 attention_type=AttnType.self_attn, 
+                 attn_mask_type=AttnMaskType.padding):
         super(ParallelAttention, self).__init__()
         args = get_args()
         self.fp16 = args.fp16
@@ -145,14 +145,14 @@ class ParallelAttention(MegatronModule):
             args.num_attention_heads, world_size)
 
         # Strided linear layer.
-        if attention_type == AttnType.self:
+        if attention_type == AttnType.self_attn:
             self.query_key_value = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 3 * projection_size,
                 gather_output=False,
                 init_method=init_method)
         else:
-            assert attention_type == AttnType.cross
+            assert attention_type == AttnType.cross_attn
             self.query = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 projection_size,
@@ -230,7 +230,7 @@ class ParallelAttention(MegatronModule):
         # Query, Key, and Value
         # =====================
 
-        if self.attention_type == AttnType.self:
+        if self.attention_type == AttnType.self_attn:
             # Attention heads [sq, b, h] --> [sq, b, (np * 3 * hn)]
             mixed_x_layer, _ = self.query_key_value(hidden_states)
 
@@ -448,7 +448,7 @@ class ParallelTransformerLayer(MegatronModule):
     def __init__(self, attention_mask_func, init_method, 
                  output_layer_init_method, layer_number,
                  layer_type=LayerType.encoder, 
-                 self_attn_mask_type=SelfAttnType.pad):
+                 self_attn_mask_type=AttnMaskType.padding):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
@@ -468,7 +468,7 @@ class ParallelTransformerLayer(MegatronModule):
                                                 init_method,
                                                 output_layer_init_method,
                                                 layer_number,
-                                                attention_type=AttnType.self,
+                                                attention_type=AttnType.self_attn,
                                                 attn_mask_type=self_attn_mask_type)
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
@@ -483,7 +483,7 @@ class ParallelTransformerLayer(MegatronModule):
                                                      init_method,
                                                      output_layer_init_method,
                                                      layer_number,
-                                                     attention_type=AttnType.cross)
+                                                     attention_type=AttnType.cross_attn)
             # Layernorm on the attention output.
             self.post_inter_attention_layernorm = LayerNorm(
                 args.hidden_size,
@@ -590,7 +590,7 @@ class ParallelTransformer(MegatronModule):
     def __init__(self, attention_mask_func,
                  init_method, output_layer_init_method,
                  layer_type=LayerType.encoder, 
-                 self_attn_mask_type=SelfAttnType.pad):
+                 self_attn_mask_type=AttnMaskType.padding):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 

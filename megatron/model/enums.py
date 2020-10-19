@@ -20,9 +20,9 @@ class LayerType(enum.Enum):
     decoder = 2
  
 class AttnType(enum.Enum):
-    self = 1
-    cross = 2
+    self_attn = 1
+    cross_attn = 2
 
-class SelfAttnType(enum.Enum):
-    pad = 1
+class AttnMaskType(enum.Enum):
+    padding = 1
     causal = 2
