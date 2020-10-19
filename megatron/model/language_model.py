@@ -21,6 +21,7 @@ import torch.nn.functional as F
 from megatron import get_args
 from megatron import mpu
 from megatron.module import MegatronModule
+from megatron.model.enums import LayerType, AttnMaskType
 from megatron.model.transformer import ParallelTransformer
 from megatron.model.utils import get_linear_layer
 from megatron.model.utils import init_method_normal, scaled_init_method_normal
@@ -44,7 +45,7 @@ def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
 
 def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
                        add_decoder=False, init_method=None, 
-                       scaled_init_method=None):
+                       scaled_init_method=None, self_attn_mask_type=AttnMaskType.padding):
     """Build language model and return along with the key to save."""
     args = get_args()
 
@@ -61,6 +62,7 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         init_method=init_method,
         output_layer_init_method=scaled_init_method,
         num_tokentypes=num_tokentypes,
+        self_attn_mask_type=self_attn_mask_type,
         add_decoder=add_decoder,
         add_pooler=add_pooler)
     # key used for checkpoints.
@@ -266,6 +268,7 @@ class TransformerLanguageModel(MegatronModule):
                  init_method,
                  output_layer_init_method,
                  num_tokentypes=0,
+                 self_attn_mask_type=AttnMaskType.padding,
                  add_decoder=False,
                  add_pooler=False):
         super(TransformerLanguageModel, self).__init__()
@@ -276,6 +279,7 @@ class TransformerLanguageModel(MegatronModule):
         self.init_method = init_method
         self.add_decoder = add_decoder
         self.add_pooler = add_pooler
+        self.self_attn_mask_type = self_attn_mask_type
 
         # Embeddings
         self.embedding = Embedding(self.hidden_size,
@@ -289,14 +293,16 @@ class TransformerLanguageModel(MegatronModule):
         # Transformer
         self.encoder = ParallelTransformer(attention_mask_func,
                                            self.init_method,
-                                           output_layer_init_method)
+                                           output_layer_init_method,
+                                           self_attn_mask_type=self_attn_mask_type)
         self._encoder_key = 'encoder'
 
         if self.add_decoder:
             self.decoder = ParallelTransformer(attention_mask_func,
                                                self.init_method,
                                                output_layer_init_method,
-                                               layer_type="decoder")
+                                               layer_type=LayerType.decoder,
+                                               self_attn_mask_type=AttnMaskType.causal)
             self._decoder_key = 'decoder'
  
         # Pooler

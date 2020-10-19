@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """Transformer."""
-
+import enum
 import math
 import torch
 import torch.nn.functional as F
@@ -24,6 +24,7 @@ from megatron import mpu
 from megatron.mpu import LayerNorm
 from megatron.module import MegatronModule
 from megatron.checkpointing import get_checkpoint_version
+from megatron.model.enums import AttnMaskType, LayerType, AttnType
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import openai_gelu, erf_gelu
@@ -117,7 +118,8 @@ class ParallelAttention(MegatronModule):
 
     def __init__(self, attention_mask_func, init_method,
                  output_layer_init_method, layer_number,
-                 attention_type="self"):
+                 attention_type=AttnType.self_attn, 
+                 attn_mask_type=AttnMaskType.padding):
         super(ParallelAttention, self).__init__()
         args = get_args()
         self.fp16 = args.fp16
@@ -129,6 +131,7 @@ class ParallelAttention(MegatronModule):
             self.attention_softmax_in_fp32 = True
         self.layer_number = max(1, layer_number)
         self.attention_type = attention_type
+        self.attn_mask_type = attn_mask_type
 
         projection_size = args.kv_channels * args.num_attention_heads
 
@@ -142,14 +145,14 @@ class ParallelAttention(MegatronModule):
             args.num_attention_heads, world_size)
 
         # Strided linear layer.
-        if attention_type == "self":
+        if attention_type == AttnType.self_attn:
             self.query_key_value = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 3 * projection_size,
                 gather_output=False,
                 init_method=init_method)
         else:
-            assert attention_type == "cross"
+            assert attention_type == AttnType.cross_attn
             self.query = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 projection_size,
@@ -170,8 +173,8 @@ class ParallelAttention(MegatronModule):
 
         self.scale_mask_softmax = FusedScaleMaskSoftmax(
             self.fp16,
-            args.scaled_upper_triang_masked_softmax_fusion,
-            args.scaled_masked_softmax_fusion,
+            self.attn_mask_type,
+            args.masked_softmax_fusion,
             self.attention_mask_func,
             self.attention_softmax_in_fp32,
             coeff)
@@ -189,22 +192,32 @@ class ParallelAttention(MegatronModule):
             init_method=output_layer_init_method,
             skip_bias_add=True)
 
-    def _transpose_last_dim(self, mixed_layer, num_splits):
-        """[s, b, num_splits * hp] 
-        -->(view) [s, b, num_splits, hp] 
-        -->(tranpose) [s, b, hp, num_splits] 
-        -->(view) [s, b, num_splits * hp] """
-
+    def _transpose_last_dim(self, mixed_layer, num_splits, num_splits_first):
         input_shape = mixed_layer.size();
-        last_dim = input_shape[-1]
-        assert last_dim % num_splits == 0, "expected QKV dimension"
-        last_dim_split = last_dim // num_splits
-        
-        intermediate_shape = input_shape[:-1] +\
-            (num_splits, last_dim_split)
+        if num_splits_first:
+            """[s, b, num_splits * np * hn] 
+            -->(view) [s, b, num_splits, np, hn] 
+            -->(tranpose) [s, b, np, num_splits, hn] 
+            -->(view) [s, b, np * num_splits * hn] """
 
-        mixed_layer = mixed_layer.view(*intermediate_shape)
-        mixed_layer = mixed_layer.transpose(-1, -2).contiguous()
+            intermediate_shape = input_shape[:-1] +\
+                (num_splits, self.num_attention_heads_per_partition,
+                 self.hidden_size_per_attention_head)
+
+            mixed_layer = mixed_layer.view(*intermediate_shape)
+            mixed_layer = mixed_layer.transpose(-2, -3).contiguous()
+        else:
+            """[s, b, np * hn * num_splits] 
+            -->(view) [s, b, np, hn, num_splits] 
+            -->(tranpose) [s, b, np, num_splits, hn] 
+            -->(view) [s, b, np * num_splits * hn] """
+
+            intermediate_shape = input_shape[:-1] +\
+                (self.num_attention_heads_per_partition,
+                 self.hidden_size_per_attention_head, num_splits)
+
+            mixed_layer = mixed_layer.view(*intermediate_shape)
+            mixed_layer = mixed_layer.transpose(-1, -2).contiguous()
         mixed_layer = mixed_layer.view(*input_shape)
         
         return mixed_layer
@@ -217,46 +230,51 @@ class ParallelAttention(MegatronModule):
         # Query, Key, and Value
         # =====================
 
-
-        if self.attention_type == "self":
-            # Attention heads [sq, b, h] --> [sq, b, hp * 3]
+        if self.attention_type == AttnType.self_attn:
+            # Attention heads [sq, b, h] --> [sq, b, (np * 3 * hn)]
             mixed_x_layer, _ = self.query_key_value(hidden_states)
 
             checkpoint_version = get_checkpoint_version()
-            if checkpoint_version is not None and \
-               checkpoint_version == 0:
-                # [s, b, 3 * hp] --> [s, b, hp * 3]
-                mixed_x_layer = self._transpose_last_dim(mixed_x_layer, 3)
+            if checkpoint_version is not None:
+               if checkpoint_version == 0:
+                   # [s, b, (3 * np * hn)] --> [s, b, (np * 3 * hn)]
+                   mixed_x_layer = self._transpose_last_dim(mixed_x_layer, 3, True)
+               elif checkpoint_version == 1.0:
+                   # [s, b, (np * hn * 3)] --> [s, b, (np * 3 * hn)]
+                   mixed_x_layer = self._transpose_last_dim(mixed_x_layer, 3, False)
 
-            # [sq, b, hp * 3] --> [sq, b, np, hn, 3]
+            # [sq, b, (np * 3 * hn)] --> [sq, b, np, 3 * hn]
             new_tensor_shape = mixed_x_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
-                 self.hidden_size_per_attention_head, 3)
+                 3 * self.hidden_size_per_attention_head)
             mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
 
-            # [sq, b, np, hn, 3] --> 3 [sq, b, np, hn]
-            query_layer = mixed_x_layer[:,:,:,:,0]
-            key_layer = mixed_x_layer[:,:,:,:,1]
-            value_layer = mixed_x_layer[:,:,:,:,2]
+            # [sq, b, np, 3 * hn] --> 3 [sq, b, np, hn]
+            (query_layer,
+             key_layer,
+             value_layer) = mpu.split_tensor_along_last_dim(mixed_x_layer, 3)
         else:
-            # Attention heads [sk, b, h] --> [sk, b, hp * 2]
+            # Attention heads [sk, b, h] --> [sk, b, (np * 2 * hn)]
             mixed_kv_layer, _ = self.key_value(encoder_output)
 
             checkpoint_version = get_checkpoint_version()
-            if checkpoint_version is not None and \
-               checkpoint_version == 0:
-                # [s, b, 2 * hp] --> [s, b, hp * 2]
-                mixed_kv_layer = self._transpose_last_dim(mixed_kv_layer, 2)
-                
-            # [sk, b, hp * 2] --> [sk, b, np, hn, 2]  
+            if checkpoint_version is not None:
+               if checkpoint_version == 0:
+                   # [s, b, (2 * np * hn)] --> [s, b, (np * 2 * hn)]
+                   mixed_kv_layer = self._transpose_last_dim(mixed_kv_layer, 2, True)
+               elif checkpoint_version == 1.0:
+                   # [s, b, (np * hn * 2)] --> [s, b, (np * 2 * hn)]
+                   mixed_kv_layer = self._transpose_last_dim(mixed_kv_layer, 2, False)
+ 
+            # [sk, b, (np * 2 * hn)] --> [sk, b, np, 2 * hn]  
             new_tensor_shape = mixed_kv_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
-                 self.hidden_size_per_attention_head, 2)
+                 2 * self.hidden_size_per_attention_head)
             mixed_kv_layer = mixed_kv_layer.view(*new_tensor_shape)
 
-            # [sk, b, np, hn, 2] --> 2 [sk, b, np, hn]
-            key_layer = mixed_kv_layer[:,:,:,:,0]
-            value_layer = mixed_kv_layer[:,:,:,:,1]
+            # [sk, b, np, 2 * hn] --> 2 [sk, b, np, hn]
+            (key_layer,
+             value_layer) = mpu.split_tensor_along_last_dim(mixed_kv_layer, 2)
 
             # Attention head [sq, b, h] --> [sq, b, hp]
             query_layer, _ = self.query(hidden_states)
@@ -429,7 +447,8 @@ class ParallelTransformerLayer(MegatronModule):
 
     def __init__(self, attention_mask_func, init_method, 
                  output_layer_init_method, layer_number,
-                 layer_type='encoder'):
+                 layer_type=LayerType.encoder, 
+                 self_attn_mask_type=AttnMaskType.padding):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
@@ -448,7 +467,9 @@ class ParallelTransformerLayer(MegatronModule):
         self.self_attention = ParallelAttention(attention_mask_func, 
                                                 init_method,
                                                 output_layer_init_method,
-                                                layer_number)
+                                                layer_number,
+                                                attention_type=AttnType.self_attn,
+                                                attn_mask_type=self_attn_mask_type)
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
 
@@ -457,12 +478,12 @@ class ParallelTransformerLayer(MegatronModule):
             args.hidden_size,
             eps=args.layernorm_epsilon)
 
-        if self.layer_type == "decoder":
+        if self.layer_type == LayerType.decoder:
             self.inter_attention = ParallelAttention(attention_mask_func,
                                                      init_method,
                                                      output_layer_init_method,
                                                      layer_number,
-                                                     attention_type="cross")
+                                                     attention_type=AttnType.cross_attn)
             # Layernorm on the attention output.
             self.post_inter_attention_layernorm = LayerNorm(
                 args.hidden_size,
@@ -518,7 +539,7 @@ class ParallelTransformerLayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
-        if self.layer_type == "decoder":
+        if self.layer_type == LayerType.decoder:
             attention_output, attention_bias = \
                 self.inter_attention(layernorm_output,
                                      enc_dec_attn_mask,
@@ -568,7 +589,8 @@ class ParallelTransformer(MegatronModule):
 
     def __init__(self, attention_mask_func,
                  init_method, output_layer_init_method,
-                 layer_type='encoder'):
+                 layer_type=LayerType.encoder, 
+                 self_attn_mask_type=AttnMaskType.padding):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 
@@ -590,7 +612,8 @@ class ParallelTransformer(MegatronModule):
             return ParallelTransformerLayer(
                 attention_mask_func, init_method,
                 output_layer_init_method, layer_number,
-                layer_type=layer_type)
+                layer_type=layer_type,
+                self_attn_mask_type=self_attn_mask_type)
         self.layers = torch.nn.ModuleList(
             [build_layer(i + 1) for i in range(self.num_unique_layers)])
 
