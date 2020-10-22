@@ -101,7 +101,7 @@ def get_samples_mapping_(indexed_dataset,
         max_num_samples = np.iinfo(np.int64).max - 1
 
     # Filename of the index mapping
-    indexmap_filename = data_prefix '_bert'
+    indexmap_filename = data_prefix + '_bert'
     indexmap_filename += '_{}_indexmap'.format(name)
     if num_epochs != (np.iinfo(np.int32).max - 1):
         indexmap_filename += '_{}ep'.format(num_epochs)
