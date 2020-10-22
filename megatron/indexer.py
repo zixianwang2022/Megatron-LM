@@ -4,10 +4,9 @@ import torch.distributed as dist
 from megatron import get_args
 from megatron import mpu
 from megatron.checkpointing import load_ict_checkpoint
-from megatron.data.ict_dataset import get_ict_dataset
-from megatron.data.realm_dataset_utils import get_one_epoch_dataloader
+from megatron.data.realm_dataset import get_ict_dataset
+from megatron.data.realm_dataset_utils import get_ict_batch, get_one_epoch_dataloader
 from megatron.data.realm_index import detach, BlockData
-from megatron.data.realm_dataset_utils import get_ict_batch
 from megatron.model.realm_model import general_ict_model_provider
 from megatron.training import get_model
 

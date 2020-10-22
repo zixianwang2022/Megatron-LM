@@ -1,6 +1,6 @@
 [Megatron](https://arxiv.org/pdf/1909.08053.pdf) is a large, powerful transformer developed by the Applied Deep Learning Research team at NVIDIA. This repository is for ongoing research on training large transformer language models at scale. We developed efficient, model-parallel, and multinode training of [GPT-2](https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf) and [BERT](https://arxiv.org/pdf/1810.04805.pdf) using mixed precision.
 
-Our codebase is capable of efficiently training a 72-layer, 8.3 billion parameter GPT-2 language model with 8-way model and 64-way data parallelism across 512 GPUs. We sustain 15.1 PetaFLOPs across the entire application with 76% scaling efficiency when compared to a strong single GPU baseline that sustains 39 TeraFLOPs, which is 30% of peak theoritical FLOPs. Using our GPT-2 model we achieve SOTA results on the WikiText-103 (10.8 compared to SOTA perplexity of 15.8) and LAMBADA (66.5% compared to SOTA accuracy of 63.2%) datasets. 
+Our codebase is capable of efficiently training a 72-layer, 8.3 billion parameter GPT-2 language model with 8-way model and 64-way data parallelism across 512 GPUs. We sustain 15.1 PetaFLOPs across the entire application with 76% scaling efficiency when compared to a strong single GPU baseline that sustains 39 TeraFLOPs, which is 30% of peak theoritical FLOPs. Using our GPT-2 model we achieve SOTA results on the WikiText-103 (10.8 compared to SOTA perplexity of 15.8) and LAMBADA (66.5% compared to SOTA accuracy of 63.2%) datasets.
 
 For BERT training, we swapped the position of the layer normalization and the residual connection in the model architecture (similar to GPT-2 architucture), which allowed the models to continue to improve as they were scaled up. Our BERT models with 3.9 billion parameters reaches a loss of 1.16, SQuAD 2.0 F1-score of 91.7, and RACE accuracy of 90.9%.
 
@@ -53,7 +53,7 @@ ngc registry model download-version --dest &#60;output_base_directory&#62; nvidi
 
 The available models along with `<model_name>:<version>` are below:
 * [BERT-345M](https://ngc.nvidia.com/catalog/models/nvidia:megatron_bert_345m): megatron\_bert\_345m:v0.0
-* [GPT-2-345M](https://ngc.nvidia.com/catalog/models/nvidia:megatron_lm_345m): megatron\_lm\_345m:v0.0 
+* [GPT-2-345M](https://ngc.nvidia.com/catalog/models/nvidia:megatron_lm_345m): megatron\_lm\_345m:v0.0
 
 The models require vocabulary files to run. The BERT uncased WordPiece vocab file can be extracted from Google's [pretrained BERT models](https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt). The GPT-2 [vocab file](https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-vocab.json) and [merge table](https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-merges.txt) can be downloaded directly.
 
@@ -161,7 +161,7 @@ Further command line arguments are described in the source file [`arguments.py`]
 ## GPT-2 Pretraining
 `bash examples/pretrain_gpt2.sh`
 
-This script runs single GPU 345M parameter GPT-2 pretraining. As mentioned above, single GPU training is primarily intended for debugging purposes, as the code is optimized for distributed training. 
+This script runs single GPU 345M parameter GPT-2 pretraining. As mentioned above, single GPU training is primarily intended for debugging purposes, as the code is optimized for distributed training.
 
 It follows largely the same format as the previous BERT script with a few notable differences: the tokenization scheme used is BPE (which requires a merge table and a `json` vocabulary file) instead of WordPiece, the model architecture allows for longer sequences (note that the max position embedding must be greater than or equal to the maximum sequence length), and the `--lr-decay-style` has been set to cosine decay.  Note that the `--data-path` now includes the additional `_text_document` suffix added in preprocessing, but does not include the file extensions.
 
@@ -266,13 +266,13 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./pretrain_gpt2.py \
 
 <a id="realm"></a>
 ## REALM Pipeline
-The following sections (will) reflect the three stages of training a REALM system. For now it's just the ICT code.
+The following sections (will) reflect the three stages of training a REALM system.
 Loosely, they are pretraining the retriever modules, then jointly training the language model and the retriever, and then finetuning a question answering head on the language model with fixed retriever.
 
 ### Inverse Cloze Task (ICT) Pretraining
-1. Have a corpus in loose JSON format with the intention of creating a collection of fixed-size blocks of text as the fundamental units of data. For a corpus like Wikipedia, this will mean multiple sentences per block but also multiple blocks per document. 
-Run `tools/preprocess_data.py` to construct one or more indexed datasets with the `--split-sentences` argument to make sentences the basic unit. For the original REALM system, we construct two datasets, one with the title of every document, and another with the body. 
-Refer to the following script 
+1. Have a corpus in loose JSON format with the intention of creating a collection of fixed-size blocks of text as the fundamental units of data. For a corpus like Wikipedia, this will mean multiple sentences per block but also multiple blocks per document.
+Run `tools/preprocess_data.py` to construct one or more indexed datasets with the `--split-sentences` argument to make sentences the basic unit. For the original REALM system, we construct two datasets, one with the title of every document, and another with the body.
+Refer to the following script
 <pre>
 python preprocess_data.py \
     --input /path/to/corpus.json \
@@ -285,11 +285,11 @@ python preprocess_data.py \
 </pre>
 
 2. Use a custom samples mapping function in place of `megatron/data/realm_dataset_utils.get_block_samples_mapping` if required. To do this, you will need to implement a new function in C++ inside of `megatron/data/helpers.cpp`. The samples mapping data structure is used to select the data that will constitute every training sample in advance of the training loop.
- The samples mapping is responsible for holding all of the required metadata needed to construct the sample from one or more indexed datasets. In REALM, the samples mapping contains the start and end sentence indices, as well as the document index (to find the correct title for a body) and a unique ID for every block. 
-3. Pretrain a BERT language model using `pretrain_bert.py`, with the sequence length equal to the block size in token ids. This model should be trained on the same indexed dataset that is used to supply the blocks for the information retrieval task.
+ The samples mapping is responsible for holding all of the required metadata needed to construct the sample from one or more indexed datasets. In REALM, the samples mapping contains the start and end sentence indices, as well as the document index (to find the correct title for a body) and a unique ID for every block.
+3. Pretrain a BERT language model using `pretrain_bert.py` on the same indexed dataset that is used to supply the blocks for the information retrieval task. Importantly, train this model with the sequence length and max position embeddings equal to *twice* the block size in token ids. So if you wish to divide wikipedia into blocks of 256 wordpiece tokens, this BERT should be pretrained with `--seq-length 512` and `--max-position-embeddings 512`. The reason for this is that we will reuse this BERT for both ICT and the retrieval-augmented training. In the former, we will use it with half of the sequence length to parse the correctly sized blocks from the dataset. In the latter situation, the model will consume sequence length used in this step since the language model will need to parse both, query tokens on which language modeling is done as well as the retrieved evidence blocks. In both cases, use `--max-position-embeddings 512` to load the parameters with no issue.
 In REALM, this is an uncased bert base model trained with the standard hyperparameters.
-4. Use `pretrain_ict.py` to train an `ICTBertModel` which uses two BERT-based encoders to encode queries and blocks to perform retrieval with. 
-The script below trains the ICT model from REALM. It refrences a pretrained BERT model (step 3) in the `--bert-load` argument. The batch size used in the paper is 4096, so this would need to be run with data parallel world size 32. 
+4. Use `pretrain_ict.py` to train an `ICTBertModel` which uses two BERT-based encoders to encode queries and blocks to perform retrieval with.
+The script below trains the ICT model from REALM. It refrences a pretrained BERT model (step 3) in the `--bert-load` argument. The batch size used in the paper is 4096, so this would need to be run with data parallel world size 32.
 <pre>
 python pretrain_ict.py \
     --num-layers 12 \
@@ -316,12 +316,12 @@ python pretrain_ict.py \
     --save-interval 3000 \
     --query-in-block-prob 0.1 \
     --fp16
-    
+
 </pre>
 
 ### Building an Index of Block Embeddings
-After having trained an ICT model, you can now embed an entire dataset of blocks by creating a `BlockData` structure. After that has been saved, you can load it 
-and wrap it with a `FaissMIPSIndex` to do fast similarity search which is key in the learned information retrieval pipeline. The initial index can be built with the following script, meant to be run in an interactive session. It can leverage multiple GPUs on multiple nodes to index large datasets much more quickly. 
+After having trained an ICT model, you can now embed an entire dataset of blocks by creating a `BlockData` structure. After that has been saved, you can load it
+and wrap it with a `FaissMIPSIndex` to do fast similarity search which is key in the learned information retrieval pipeline. The initial index can be built with the following script, meant to be run in an interactive session. It can leverage multiple GPUs on multiple nodes to index large datasets much more quickly.
 
 <pre>
 python tools/create_doc_index.py \
@@ -343,6 +343,12 @@ python tools/create_doc_index.py \
     --num-workers 2 \
     --fp16
 </pre>
+
+### Current checkpoints / data for reproducibility
+- REALM checkpoint: `/gpfs/fs1/mshoeybi/checkpoints/realm_spacy_3ent/`
+- ICT checkpoint: `/gpfs/fs1/mshoeybi/data/neels/ict`
+- (pretrained) BERT checkpoint: `/gpfs/fs1/mshoeybi/data/neels/bert`
+- REALM block data: `/gpfs/fs1/mshoeybi/data/neels/block_data/realm_stanza.pkl
 
 <a id="evaluation-and-tasks"></a>
 # Evaluation and Tasks
@@ -549,7 +555,7 @@ We do not host any datasets for GPT-2 or BERT training, however, we detail their
 
 <a id="collecting-wikipedia-training-data"></a>
 ## Collecting Wikipedia Training Data
-We recommend following the Wikipedia data extraction process specified by Google research: "the recommended pre-processing is to download [the latest dump](https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2), extract the text with [WikiExtractor.py](https://github.com/attardi/wikiextractor), and then apply any necessary cleanup to convert it into plain text." 
+We recommend following the Wikipedia data extraction process specified by Google research: "the recommended pre-processing is to download [the latest dump](https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2), extract the text with [WikiExtractor.py](https://github.com/attardi/wikiextractor), and then apply any necessary cleanup to convert it into plain text."
 
 We recommend using the `--json` argument when using WikiExtractor, which will dump the Wikipedia data into loose json format (one json per line), making it more manageable on the file system and also readily consumable by our codebase. We recommend further preprocessing this json dataset by nltk punctuation standardization. For BERT training, add newlines between sentences during data preprocessing. This is done with the `--split-sentences` flag in `preprocess_data.py` as described [above](#data-preprocessing). (Note that if you'd like to use Wikipedia data for GPT-2 training you should still clean it with nltk/spacy/ftfy, but do not split it into newline separated sentences.)
 

@@ -8,6 +8,8 @@ import torch
 
 from megatron import get_args
 from megatron import mpu
+from megatron.model.utils import unwrapped
+from megatron.module import MegatronModule
 
 
 def detach(tensor):
@@ -47,6 +49,8 @@ class BlockData(object):
 
     def load_from_file(self):
         """Populate members from instance saved to file"""
+        del self.embed_data
+        del self.meta_data
 
         if mpu.is_unitialized() or mpu.get_data_parallel_rank() == 0:
             print("\n> Unpickling BlockData", flush=True)
@@ -178,12 +182,15 @@ class FaissMIPSIndex(object):
 
         # faiss GpuIndex doesn't work with IDMap wrapper so store ids to map back with
         if self.use_gpu:
+            # GPU index doesn't support ID maps so use one locally.
             for i, idx in enumerate(block_indices):
                 self.id_map[i] = idx
 
         # we no longer need the embedding data since it's in the index now
         all_block_data.clear()
 
+        # Even if the index is using fp16 representations and math for MIPS, the index expects
+        # the inputs to be fp32 numpy arrays.
         if self.use_gpu:
             self.block_mips_index.add(block_embeds_arr)
         else:
@@ -199,7 +206,6 @@ class FaissMIPSIndex(object):
                             if False: return [num_queries x k] array of distances, and another for indices
         """
         query_embeds = np.float32(detach(query_embeds))
-
         if reconstruct:
             # get the vectors themselves
             top_k_block_embeds = self.block_mips_index.search_and_reconstruct(query_embeds, top_k)
@@ -210,7 +216,110 @@ class FaissMIPSIndex(object):
             distances, block_indices = self.block_mips_index.search(query_embeds, top_k)
             if self.use_gpu:
                 fresh_indices = np.zeros(block_indices.shape)
-                for i, j in itertools.product(block_indices.shape):
+                for i, j in itertools.product(*[range(d) for d in block_indices.shape]):
                     fresh_indices[i, j] = self.id_map[block_indices[i, j]]
                 block_indices = fresh_indices
             return distances, block_indices
+
+
+class REALMRetriever(MegatronModule):
+    """Retriever which uses a pretrained ICTBertModel and a FaissMIPSIndex
+
+    :param ict_model (ICTBertModel): model needed for its query and block encoders
+    :param ict_dataset (ICTDataset): dataset needed since it has the actual block tokens
+    :param faiss_mips_index (FaissMIPSIndex): the index with which to do similarity search
+    :param top_k: number of blocks to return in nearest neighbors search
+    """
+    def __init__(self, ict_model, ict_dataset, faiss_mips_index, top_k=5):
+        super(REALMRetriever, self).__init__()
+        self.ict_model = ict_model
+        self.ict_dataset = ict_dataset
+        self.faiss_mips_index = faiss_mips_index
+        self.top_k = top_k
+        self._ict_key = 'ict_model'
+
+    def reload_index(self):
+        """Reload index with new BlockData loaded from disk. Should be performed after each indexer job completes."""
+        self.faiss_mips_index.reset_index()
+
+    def prep_query_text_for_retrieval(self, query_text):
+        """Get query_tokens and query_pad_mask from a string query_text"""
+        padless_max_len = self.ict_dataset.max_seq_length - 2
+        query_tokens = self.ict_dataset.encode_text(query_text)[:padless_max_len]
+
+        query_tokens, query_pad_mask = self.ict_dataset.concat_and_pad_tokens(query_tokens)
+        query_tokens = torch.cuda.LongTensor(np.array(query_tokens).reshape(1, -1))
+        query_pad_mask = torch.cuda.LongTensor(np.array(query_pad_mask).reshape(1, -1))
+
+        return query_tokens, query_pad_mask
+
+    def retrieve_evidence_blocks_text(self, query_text):
+        """Get the top k evidence blocks for query_text in text form"""
+        print("-" * 100)
+        print("Query: ", query_text)
+        query_tokens, query_pad_mask = self.prep_query_text_for_retrieval(query_text)
+        topk_block_tokens, _ = self.retrieve_evidence_blocks(query_tokens, query_pad_mask)
+        for i, block in enumerate(topk_block_tokens[0]):
+            block_text = self.ict_dataset.decode_tokens(block)
+            print('\n    > Block {}: {}'.format(i, block_text))
+
+    def retrieve_evidence_blocks(self, query_tokens, query_pad_mask, query_block_indices=None, include_null_doc=False):
+        """Embed blocks to be used in a forward pass
+
+        :param query_tokens: torch tensor of token ids (same as for ICTBertModel)
+        :param query_pad_mask: torch LongTensor boolean mask (same as for ICTBertModel)
+        :param query_block_indices: iterable of block indices from which the queries originate,
+                which not allowed to be retrieved in REALM training since it makes the task too easy.
+        :param include_null_doc: whether to include an empty block of evidence, replacing the otherwise last in top_k,
+                which is used in REALM to give a consistent thing to credit when no extra information is needed.
+        """
+
+        eval_train_switch = self.ict_model.training
+        if eval_train_switch:
+            self.ict_model.eval()
+
+        with torch.no_grad():
+            unwrapped_model = unwrapped(self.ict_model)
+
+            query_embeds = unwrapped_model.embed_query(query_tokens, query_pad_mask)
+            _, block_indices = self.faiss_mips_index.search_mips_index(query_embeds, top_k=self.top_k, reconstruct=False)
+            all_topk_tokens, all_topk_pad_masks = [], []
+
+            # this will result in no candidate exclusion
+            if query_block_indices is None:
+                query_block_indices = [-1] * len(block_indices)
+
+            top_k_offset = int(include_null_doc)
+            num_metas = self.top_k - top_k_offset
+            block_data = self.faiss_mips_index.block_data
+            for query_idx, indices in enumerate(block_indices):
+                # [k x meta_dim]
+                # exclude trivial candidate if it appears, else just trim the weakest in the top-k
+                # recall meta_data is [start_idx, end_idx, doc_idx] for some block
+                topk_metas = [block_data.meta_data[idx] for idx in indices if idx != query_block_indices[query_idx]]
+                topk_block_data = [self.ict_dataset.get_block(*block_meta) for block_meta in topk_metas[:num_metas]]
+
+                if include_null_doc:
+                    topk_block_data.append(self.ict_dataset.get_null_block())
+                topk_tokens, topk_pad_masks = zip(*topk_block_data)
+
+                all_topk_tokens.append(np.array(topk_tokens))
+                all_topk_pad_masks.append(np.array(topk_pad_masks))
+
+            if eval_train_switch:
+                self.ict_model.train()
+
+            # [batch_size x k x seq_length]
+            return np.array(all_topk_tokens), np.array(all_topk_pad_masks)
+
+    def state_dict_for_save_checkpoint(self, destination=None, prefix='', keep_vars=False):
+        """For easy load when model is combined with other heads,
+        add an extra key."""
+
+        state_dict_ = {}
+        state_dict_[self._ict_key] = self.ict_model.state_dict_for_save_checkpoint(destination, prefix, keep_vars)
+        return state_dict_
+
+    def load_state_dict(self, state_dict, strict=True):
+        """Load the state dicts of each of the models"""
+        self.ict_model.load_state_dict(state_dict[self._ict_key], strict)

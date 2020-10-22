@@ -54,7 +54,7 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         gelu = openai_gelu
     elif args.onnx_safe:
         gelu = erf_gelu
-    
+
     if init_method is None:
         init_method = init_method_normal(args.init_method_std)
 
@@ -69,6 +69,7 @@ def get_language_model(attention_mask_func, num_tokentypes, add_pooler,
         output_layer_init_method=scaled_init_method,
         num_tokentypes=num_tokentypes,
         add_pooler=add_pooler)
+
     # key used for checkpoints.
     language_model_key = 'language_model'
 
