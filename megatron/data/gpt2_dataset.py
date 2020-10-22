@@ -151,7 +151,7 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
     np_rng = np.random.RandomState(seed=seed)
 
     # Filename of the index mappings.
-    _filename = 'gpt2_' + data_prefix
+    _filename = data_prefix + '_gpt2'
     _filename += '_{}_indexmap'.format(name)
     _filename += '_{}ns'.format(num_samples)
     _filename += '_{}sl'.format(seq_length)
