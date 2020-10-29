@@ -281,7 +281,7 @@ def finetune(train_valid_datasets_provider, model_provider,
     if end_of_training_validation_callback is not None:
         print_rank_0('evaluating on validation data, setting epoch to -1')
         torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
+        if mpu.get_data_parallel_rank() == 0:
             end_of_training_validation_callback(model, epoch=-1,
                                                 output_predictions=True)
         torch.distributed.barrier()
@@ -295,7 +295,7 @@ def finetune(train_valid_datasets_provider, model_provider,
         if end_of_training_test_callback is not None:
             print_rank_0('evaluating on test data, setting epoch to -1')
             torch.distributed.barrier()
-            if torch.distributed.get_rank() == 0:
+            if mpu.get_data_parallel_rank() == 0:
                 end_of_training_test_callback(model, epoch=-1,
                                               output_predictions=True)
             torch.distributed.barrier()
