@@ -1,0 +1,115 @@
+# coding=utf-8
+# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""SQuAD dataset."""
+
+import json
+import os
+import sys
+import time
+import torch
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                             "../../")))
+
+from megatron import print_rank_0
+from tasks.t5_data_utils.data_utils import build_sample
+from tasks.t5_data_utils.data_utils import build_tokens_types_paddings_from_ids, build_tokens_types_paddings_from_text
+from torch.utils.data import Dataset
+
+class SQuADDataset(Dataset):
+    """SQuAD base dataset class."""
+
+    def __init__(self, dataset_name, datapaths,
+                 tokenizer, max_seq_length, decoder_seq_length):
+
+        # Store inputs.
+        self.dataset_name = dataset_name
+        self.tokenizer = tokenizer
+        self.max_seq_length = max_seq_length
+        self.decoder_seq_length = decoder_seq_length
+        print_rank_0(' > building SQuAD dataset for {}:'.format(self.dataset_name))
+
+        # Process the files.
+        string = '  > paths:'
+        for path in datapaths:
+            string += ' ' + path
+        print_rank_0(string)
+
+        self.samples = []        
+        for datapath in datapaths:
+            self.samples.extend(process_single_datapath(datapath, tokenizer,
+                                                        max_seq_length))
+        print_rank_0('  >> total number of samples: {}'.format(
+            len(self.samples)))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        raw_sample = self.samples[idx]
+        raw_sample_in_format = "[QUESTION] " + raw_sample['question'] + " [CONTEXT] " + raw_sample['context']
+        raw_labels = raw_sample['answer']
+        enc_ids, tokentypes_enc, dec_in_ids, \
+        dec_out_ids, loss_mask = \
+            build_tokens_types_paddings_from_text(
+            raw_sample_in_format, raw_labels,
+            self.tokenizer, self.max_seq_length,
+            self.decoder_seq_length)
+        sample = build_sample(enc_ids, tokentypes_enc,
+                              dec_in_ids, dec_out_ids,
+                              loss_mask)
+        return sample
+
+def process_single_datapath(filename, tokenizer, max_seq_length):
+    """Read in SQuAD file, clean-up, tokenize, and convert to
+    samples."""
+
+    print_rank_0('   > working on {}'.format(filename))
+    start_time = time.time()
+
+    samples = []
+    num_contexts = 0
+    num_samples = 0
+    
+    #Load te file
+    with open(filename, "r", encoding='utf-8') as reader:
+        data = json.load(reader)["data"]
+
+        #Iterate over the dataset
+        for entry in data:
+            for paragraph in entry["paragraphs"]:
+                # Context text and convert to ids with prefix [CONTEXT]
+                context = paragraph["context"]
+                num_contexts += 1
+
+                #Loop over the question-answers
+                for qas in paragraph["qas"]:
+                    # Question and answer
+                    qas_id = qas["id"]
+
+                    # Question and answer 
+                    question = qas["question"]
+                    answer = qas["answers"][0]["text"]
+
+                    # Make a sample and append
+                    sample = {'context': context, 'question': question, 'answer': answer}
+                    samples.append(sample) 
+                    num_samples += 1
+
+    elapsed_time = time.time() - start_time
+    print_rank_0('    > processed contexts {} samples {}'
+                 ' in {:.2f} seconds'.format(num_contexts, num_samples, elapsed_time))
+    return samples
+
