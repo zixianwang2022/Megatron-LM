@@ -31,7 +31,7 @@ def model_provider():
     """Build the model."""
 
     print_rank_0('building T5 model ...')
-    model = T5Model(num_tokentypes=2,
+    model = T5Model(num_tokentypes=0,
                     parallel_output=True)
     return model
 
@@ -82,7 +82,7 @@ def forward_step(data_iterator, model):
                         enc_mask,
                         dec_mask,
                         enc_dec_mask,
-                        tokentype_ids=types,
+                        tokentype_ids=None,
                         lm_labels=lm_labels)
 
     lm_loss_ = lm_loss_.float()

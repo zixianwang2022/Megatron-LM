@@ -65,7 +65,7 @@ def build_training_sample(sample, target_seq_length,
     """
 
     # We assume that we have at least two sentences in the sample
-    assert len(sample) > 1
+    #assert len(sample) > 1
     assert target_seq_length <= max_seq_length
 
     # Divide sample into two segments (A and B).
@@ -84,7 +84,7 @@ def build_training_sample(sample, target_seq_length,
     (tokens, masked_positions, masked_labels, _, masked_spans) = create_masked_lm_predictions(
         tokens, vocab_id_list, vocab_id_to_token_dict, masked_lm_prob,
         cls_id, sep_id, mask_id, max_predictions_per_seq, np_rng,
-        max_ngrams=10, geometric_dist=True, masking_style="t5")
+        max_ngrams=6, geometric_dist=True, masking_style="t5")
 
     # Padding.
     tokens_enc, tokentypes_enc, tokens_dec_in, labels, enc_mask, \
@@ -114,7 +114,7 @@ def get_a_and_b_segments(sample, np_rng):
     # Number of sentences in the sample.
     n_sentences = len(sample)
     # Make sure we always have two sentences.
-    assert n_sentences > 1, 'make sure each sample has at least two sentences.'
+    #assert n_sentences > 1, 'make sure each sample has at least two sentences.'
 
     # First part:
     # `a_end` is how many sentences go into the `A`.
@@ -149,7 +149,7 @@ def get_document(sample):
     # Number of sentences in the sample.
     n_sentences = len(sample)
     # Make sure we always have two sentences.
-    assert n_sentences > 1, 'make sure each sample has at least two sentences.'
+    #assert n_sentences > 1, 'make sure each sample has at least two sentences.'
 
     doc = []
     for sent in sample:
@@ -167,11 +167,12 @@ def truncate_segments(tokens_a, len_a, max_num_tokens, np_rng):
     while len_a > max_num_tokens:
         len_a -= 1
         tokens = tokens_a
+        tokens.pop()
 
-        if np_rng.random() < 0.5:
-            del tokens[0]
-        else:
-            tokens.pop()
+        #if np_rng.random() < 0.5:
+        #    del tokens[0]
+        #else:
+        #    tokens.pop()
     return True
 
 
@@ -298,7 +299,7 @@ def create_masked_lm_predictions(tokens,
             # Sampling "n" from the geometric distribution and clipping it to
             # the max_ngrams. Using p=0.2 default from the SpanBERT paper
             # https://arxiv.org/pdf/1907.10529.pdf (Sec 3.1)
-            n = min(np_rng.geometric(0.2), max_ngrams)
+            n = min(np_rng.geometric(0.3), max_ngrams)
 
         index_set = sum(cand_index_set[n - 1], [])
         n -= 1
@@ -364,9 +365,12 @@ def create_masked_lm_predictions(tokens,
                     if index in covered_indexes or index in select_indexes:
                         continue
 
-            n = np.random.choice(ngrams[:len(cand_index_set)],
-                                 p=pvals[:len(cand_index_set)] /
-                                 pvals[:len(cand_index_set)].sum(keepdims=True))
+            n = np_rng.choice(ngrams[:len(cand_index_set)],
+                              p=pvals[:len(cand_index_set)] /
+                              pvals[:len(cand_index_set)].sum(keepdims=True))
+            #n = np.random.choice(ngrams[:len(cand_index_set)],
+            #                     p=pvals[:len(cand_index_set)] /
+            #                     pvals[:len(cand_index_set)].sum(keepdims=True))
             index_set = sum(cand_index_set[n - 1], [])
             n -= 1
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p luna -A adlr-nlp -t 4:00:00 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton
+#SBATCH -p luna -A adlr-nlp -t 4:00:00 --time-min=1:00:00 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`

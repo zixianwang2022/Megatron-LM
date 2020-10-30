@@ -126,10 +126,10 @@ inline int32_t get_target_sample_len(const int32_t short_seq_ratio,
 				     const int32_t max_length,
 				     std::mt19937& rand32_gen) {
     /* Training sample length. */
-    const auto random_number = rand32_gen();
-    if ((random_number % short_seq_ratio) == 0) {
-      return 2 + random_number % (max_length - 1);
-    }
+    //const auto random_number = rand32_gen();
+    //if ((random_number % short_seq_ratio) == 0) {
+    //  return 2 + random_number % (max_length - 1);
+    //}
     return max_length;
 }
 
@@ -151,7 +151,7 @@ py::array build_mapping_impl(const py::array_t<int64_t>& docs_,
     // Consistency checks.
     assert(num_epochs > 0);
     assert(max_seq_length > 1);
-    assert(short_seq_prob > 0.0);
+    //assert(short_seq_prob > 0.0);
     assert(short_seq_prob <= 1.0);
     assert(seed > 0);
 
@@ -160,7 +160,7 @@ py::array build_mapping_impl(const py::array_t<int64_t>& docs_,
     auto sizes = sizes_.unchecked<1>();
 
     // For efficiency, convert probability to ratio. Note: rand() generates int.
-    const auto short_seq_ratio = static_cast<int32_t>(round(1.0 / short_seq_prob));
+    const auto short_seq_ratio = max_seq_length; //static_cast<int32_t>(round(1.0 / short_seq_prob));
 
     if (verbose) {
         const auto sent_start_index = docs[0];
@@ -181,8 +181,6 @@ py::array build_mapping_impl(const py::array_t<int64_t>& docs_,
 	  endl << std::flush;
 	cout << "     short sequence probability:     " << short_seq_prob <<
 	endl << std::flush;
-	cout << "     short sequence ration (1/prob): " << short_seq_ratio <<
-	  endl << std::flush;
 	cout << "     seed:                           " << seed << endl <<
 	  std::flush;
     }
@@ -259,7 +257,7 @@ py::array build_mapping_impl(const py::array_t<int64_t>& docs_,
 		}
 
                 // If we have more than two sentences.
-                if ((num_remain_sent > 1) && (!contains_long_sentence)) {
+                if ((num_remain_sent > 0) && (!contains_long_sentence)) {
 
                     // Set values.
                     auto seq_len = int32_t{0};
@@ -283,7 +281,7 @@ py::array build_mapping_impl(const py::array_t<int64_t>& docs_,
 			// and if we have reached end of the document.
 			if (((seq_len >= target_seq_len) &&
 			     (num_remain_sent > 1) &&
-			     (num_sent > 1) ) || (num_remain_sent == 0)) {
+			     (num_sent > 0) ) || (num_remain_sent == 0)) {
 
 			    // Check for overflow.
 			    if ((3 * map_index + 2) >

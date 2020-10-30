@@ -429,7 +429,7 @@ def _add_data_args(parser):
                        help="Maximum decoder sequence length to process.")
     group.add_argument('--mask-prob', type=float, default=0.15,
                        help='Probability of replacing a token with mask.')
-    group.add_argument('--short-seq-prob', type=float, default=0.1,
+    group.add_argument('--short-seq-prob', type=float, default=0.0,
                        help='Probability of producing a short sequence.')
     group.add_argument('--mmap-warmup', action='store_true',
                        help='Warm up mmap files.')
