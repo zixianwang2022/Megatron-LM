@@ -24,6 +24,7 @@ from apex.optimizers import FusedAdam as Adam
 
 from megatron import get_args
 from megatron import get_timers
+from megatron import get_global_batch_tokens
 from megatron import get_tensorboard_writer
 from megatron import mpu
 from megatron import print_rank_0
@@ -359,8 +360,13 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
         if writer and torch.distributed.get_rank() == 0:
             writer.add_scalar('iteration_time',
                               elapsed_time / args.log_interval, iteration)
-        log_string = ' iteration {:8d}/{:8d} |'.format(iteration,
+        if not args.batch_size_increase:
+            log_string = ' iteration {:8d}/{:8d} |'.format(iteration,
                                                        args.train_iters)
+        else:
+            log_string = ' tokens {:15d}/{:15d} |'.format(iteration * \
+                    get_global_batch_tokens(), args.train_iters * \
+                    get_global_batch_tokens())
         log_string += ' elapsed time per iteration (ms): {:.1f} |'.format(
             elapsed_time * 1000.0 / args.log_interval)
         log_string += ' learning rate: {:.3E} |'.format(learning_rate)
@@ -405,6 +411,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
 
     timers('interval time').start()
     report_memory_flag = True
+    iteration_in_cur_run = 0
     while iteration < args.train_iters:
         loss_dict, skipped_iter = train_step(forward_step_func,
                                              train_data_iterator,
@@ -412,6 +419,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
                                              optimizer,
                                              lr_scheduler)
         iteration += 1
+        iteration_in_cur_run += 1
 
         # Logging.
         loss_scale = None
@@ -429,19 +437,28 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
                                               lr_scheduler)
 
         # Checkpointing
-        if args.save and args.save_interval and \
-           iteration % args.save_interval == 0:
-            save_checkpoint(iteration, model, optimizer, lr_scheduler)
+        if (args.batch_size_increase and \
+            args.batch_size_increase_iter == iteration_in_cur_run) or \
+            (args.save and args.save_interval and \
+           iteration % args.save_interval == 0):
+            save_checkpoint(iteration, model, optimizer, lr_scheduler,
+                            iteration_in_run=iteration_in_cur_run)
 
         # Evaluation
         if args.eval_interval and iteration % args.eval_interval == 0 and \
            args.do_valid:
-            prefix = 'iteration {}'.format(iteration)
+            if not args.batch_size_increase:
+                prefix = 'iteration {}'.format(iteration)
+            else:
+                prefix = 'tokens {}'.format(iteration * get_global_batch_tokens())
+
             evaluate_and_print_results(prefix, forward_step_func,
                                        valid_data_iterator, model,
                                        iteration, False)
 
-        if args.exit_interval and iteration % args.exit_interval == 0:
+        if (args.batch_size_increase and \
+            args.batch_size_increase_iter == iteration_in_cur_run) or \
+            (args.exit_interval and iteration % args.exit_interval == 0):
             torch.distributed.barrier()
             time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             rank = torch.distributed.get_rank()
@@ -525,6 +542,22 @@ def build_train_valid_test_data_iterators(
         train_iters = args.train_iters
         eval_iters = (train_iters // args.eval_interval + 1) * args.eval_iters
         test_iters = args.eval_iters
+
+        if args.batch_size_increase:
+            # Resetting train_iters, eval_iters, and test_iters for
+            # incremental batch size training. These values should be the same
+            # across runs
+            assert args.target_global_batch_size is not None
+            div_factor = float(args.target_global_batch_size) / float(args.batch_size * \
+                data_parallel_size)
+            global_batch_size = args.target_global_batch_size
+            train_iters = int(float(args.train_iters) / div_factor)
+            eval_iters = int(train_iters / (float(args.eval_interval)/div_factor) + 1) * \
+                args.eval_iters
+            test_iters = args.eval_iters
+            print_rank_0(' > total iterations: train {} validation {} test {}'.format( \
+                train_iters, eval_iters, test_iters))
+
         train_val_test_num_samples = [train_iters * global_batch_size,
                                       eval_iters * global_batch_size,
                                       test_iters * global_batch_size]

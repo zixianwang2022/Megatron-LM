@@ -17,6 +17,7 @@
 
 import math
 
+from megatron import get_global_batch_tokens
 from megatron import print_rank_0
 
 
@@ -104,7 +105,15 @@ class AnnealingLR(object):
                                                                   name))
         return sd_value
 
-    def load_state_dict(self, sd):
+    def load_state_dict(self, sd, previous_run_tokens_per_iter):
+
+        args = get_args()
+
+        # Whhen we use incremental batch training, we need to reset warmup_iter and end_iter
+        # based on the current run
+        if args.batch_size_increase:
+            sd['warmup_iter'] = self.warmup_iter
+            sd['end_iter'] = self.end_iter
 
         self.start_lr = self._check_and_set(self.start_lr, sd['start_lr'],
                                             'learning rate')
@@ -119,5 +128,11 @@ class AnnealingLR(object):
                                                sd['decay_style'],
                                                'decay style')
 
-        self.num_iters = sd['num_iters']
+        if args.batch_size_increase:
+            # Set number of iterations based on already consumed tokens gotten 
+            # from the checkpoint
+            self.num_iters = int(sd['num_iters'] * previous_run_tokens_per_iter \
+                / get_global_batch_tokens())
+        else:
+            self.num_iters = sd['num_iters']
         self.step(self.num_iters)

@@ -214,7 +214,12 @@ def _add_regularization_args(parser):
 
 def _add_training_args(parser):
     group = parser.add_argument_group(title='training')
-
+    group.add_argument('--batch-size-increase', action='store_true',
+                       help='Use incremental batch size')
+    group.add_argument('--target-global-batch-size', type=int, default=None,
+                       help='Target global batch size')
+    group.add_argument('--batch-size-increase-iter', type=int, default=None,
+                       help='The number of iterations to perform.')
     group.add_argument('--batch-size', type=int, default=None,
                        help='Batch size per model instance (local batch size). '
                        'Global batch size is local batch size times data '

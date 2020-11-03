@@ -25,6 +25,7 @@ from torch.nn.parallel import DistributedDataParallel as torchDDP
 
 from megatron import mpu, get_args
 from megatron import get_args
+from megatron import get_global_batch_tokens
 from megatron import print_rank_0
 
 _CHECKPOINT_VERSION = None
@@ -69,11 +70,13 @@ def ensure_directory_exists(filename):
         os.makedirs(dirname)
 
 
-def get_checkpoint_name(checkpoints_path, iteration,
+def get_checkpoint_name(checkpoints_path, iteration, consumed_tokens=0,
                         release=False, mp_rank=None):
     """A unified checkpoint name."""
     if release:
         directory = 'release'
+    elif args.batch_size_increase:
+        directory = 'token_{:015d}'.format(consumed_tokens)
     else:
         directory = 'iter_{:07d}'.format(iteration)
     return os.path.join(checkpoints_path, directory,
@@ -92,10 +95,14 @@ def get_checkpoint_tracker_filename(checkpoints_path):
 def save_checkpoint(iteration, model, optimizer, lr_scheduler):
     """Save a model checkpoint."""
     args = get_args()
+    
+    # get total consumed tokens count
+    consumed_tokens = iteration * get_global_batch_tokens()
 
     # Only rank zero of the data parallel writes to the disk.
     if isinstance(model, torchDDP):
         model = model.module
+
     if mpu.get_data_parallel_rank() == 0:
 
         # Arguments, iteration, and model.
@@ -103,6 +110,10 @@ def save_checkpoint(iteration, model, optimizer, lr_scheduler):
         state_dict['args'] = args
         state_dict['checkpoint_version'] = 2.0
         state_dict['iteration'] = iteration
+        # Saving consumed_tokens and tokens_per_iter of the current run
+        # for loading the checkpoint and computing iterations of next run
+        state_dict['consumed_tokens'] = consumed_tokens
+        state_dict['tokens_per_iter'] = get_global_batch_tokens()
         state_dict['model'] = model.state_dict_for_save_checkpoint()
 
         # Optimizer stuff.
@@ -122,9 +133,16 @@ def save_checkpoint(iteration, model, optimizer, lr_scheduler):
                 = mpu.get_cuda_rng_tracker().get_states()
 
         # Save.
-        checkpoint_name = get_checkpoint_name(args.save, iteration)
-        print('global rank {} is saving checkpoint at iteration {:7d} to {}'.
-              format(torch.distributed.get_rank(), iteration, checkpoint_name))
+        if args.batch_size_increase:
+            # Checkpoint name would be prefixed by tokens
+             checkpoint_name = get_checkpoint_name(args.save, iteration, 
+                    consumed_tokens)
+            print('global rank {} is saving checkpoint at tokens {:15d} to {}'.
+                format(torch.distributed.get_rank(), consumed_tokens, checkpoint_name))
+        else:
+            checkpoint_name = get_checkpoint_name(args.save, iteration)
+            print('global rank {} is saving checkpoint at iteration {:7d} to {}'.
+                format(torch.distributed.get_rank(), iteration, checkpoint_name))
         ensure_directory_exists(checkpoint_name)
         torch.save(state_dict, checkpoint_name)
         print('  successfully saved {}'.format(checkpoint_name))
@@ -135,7 +153,10 @@ def save_checkpoint(iteration, model, optimizer, lr_scheduler):
     if torch.distributed.get_rank() == 0:
         tracker_filename = get_checkpoint_tracker_filename(args.save)
         with open(tracker_filename, 'w') as f:
-            f.write(str(iteration))
+            if args.batch_size_increase:
+                f.write(str(consumed_tokens))
+            else:
+                f.write(str(iteration))
     # Wait so everyone is done (not necessary)
     torch.distributed.barrier()
 
@@ -162,10 +183,15 @@ def load_checkpoint(model, optimizer, lr_scheduler, load_arg='load'):
     # mark it as a release checkpoint.
     iteration = 0
     release = False
+    consumed_tokens = 0
     with open(tracker_filename, 'r') as f:
         metastring = f.read().strip()
         try:
-            iteration = int(metastring)
+            if args.batch_size_increase: # Get consumed_tokens for incremental batch training
+                consumed_tokens = int(metastring)
+                iteration = int(consumed_tokens / get_global_batch_tokens())
+            else:
+                iteration = int(metastring)
         except ValueError:
             release = metastring == 'release'
             if not release:
@@ -177,7 +203,8 @@ def load_checkpoint(model, optimizer, lr_scheduler, load_arg='load'):
         tracker_filename)
 
     # Checkpoint.
-    checkpoint_name = get_checkpoint_name(load_dir, iteration, release)
+    checkpoint_name = get_checkpoint_name(load_dir, iteration, 
+                                            consumed_tokens, release)
     if mpu.get_data_parallel_rank() == 0:
         print('global rank {} is loading checkpoint {}'.format(
             torch.distributed.get_rank(), checkpoint_name))
@@ -200,11 +227,21 @@ def load_checkpoint(model, optimizer, lr_scheduler, load_arg='load'):
     set_checkpoint_version(state_dict.get('checkpoint_version', 0))
 
     # Set iteration.
+    previous_run_tokens_per_iter = 0 # Need to compute the iterations of the current run
     if args.finetune or release:
         iteration = 0
     else:
         try:
-            iteration = state_dict['iteration']
+             # If we haven't changed the global batch size then we use the saved iteration otherwise,
+            # we adjust it based on the current global batch size
+            if not args.batch_size_increase:
+                iteration = state_dict['iteration']
+            else:
+                # Computing iterations based on consumed_tokens
+                consumed_tokens = state_dict['consumed_tokens']
+                previous_run_tokens_per_iter = state_dict['tokens_per_iter']
+                # This is the updated iteration
+                iteration = int(consumed_tokens / get_global_batch_tokens())
         except KeyError:
             try:  # Backward compatible with older checkpoints
                 iteration = state_dict['total_iters']
@@ -231,7 +268,8 @@ def load_checkpoint(model, optimizer, lr_scheduler, load_arg='load'):
             if optimizer is not None:
                 optimizer.load_state_dict(state_dict['optimizer'])
             if lr_scheduler is not None:
-                lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
+                lr_scheduler.load_state_dict(state_dict['lr_scheduler'], 
+                                previous_run_tokens_per_iter)
         except KeyError:
             print_rank_0('Unable to load optimizer from checkpoint {}. '
                          'Specify --no-load-optim or --finetune to prevent '

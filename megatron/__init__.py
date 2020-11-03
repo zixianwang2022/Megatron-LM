@@ -39,3 +39,8 @@ def print_rank_0(message):
             print(message, flush=True)
     else:
         print(message, flush=True)
+
+def get_global_batch_tokens():
+    """Return total number of tokens percoessed per iteration."""
+    args = get_args()
+    return args.seq_length * args.batch_size * mpu.get_data_parallel_world_size()
