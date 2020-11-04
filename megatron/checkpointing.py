@@ -135,10 +135,11 @@ def save_checkpoint(iteration, model, optimizer, lr_scheduler):
         # Save.
         if args.batch_size_increase:
             # Checkpoint name would be prefixed by tokens
-             checkpoint_name = get_checkpoint_name(args.save, iteration, 
+            checkpoint_name = get_checkpoint_name(args.save, iteration, 
                     consumed_tokens)
-            print('global rank {} is saving checkpoint at tokens {:15d} to {}'.
-                format(torch.distributed.get_rank(), consumed_tokens, checkpoint_name))
+            print('global rank {} is saving checkpoint at tokens {:15d}'
+                'to {}'.format(torch.distributed.get_rank(), consumed_tokens, 
+                checkpoint_name))
         else:
             checkpoint_name = get_checkpoint_name(args.save, iteration)
             print('global rank {} is saving checkpoint at iteration {:7d} to {}'.
