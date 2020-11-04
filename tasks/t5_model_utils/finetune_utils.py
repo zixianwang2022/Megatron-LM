@@ -30,7 +30,6 @@ from megatron.training import training_log
 from megatron.utils import check_adlr_autoresume_termination
 from megatron.utils import reduce_losses
 
-
 def process_batch(batch):
     """Process batch and produce inputs for the model."""
     tokens_enc = batch['text_enc'].long().cuda()
@@ -42,9 +41,10 @@ def process_batch(batch):
     enc_mask = (batch['enc_mask'] < 0.5).cuda()
     dec_mask = (batch['dec_mask'] < 0.5).cuda()
     enc_dec_mask = (batch['enc_dec_mask'] < 0.5).cuda()
+    references = batch['references']
 
     return tokens_enc, tokens_dec, types, loss_mask, labels, \
-           enc_mask, dec_mask, enc_dec_mask
+           enc_mask, dec_mask, enc_dec_mask, references
 
 
 def _cross_entropy_forward_step(batch, model):
@@ -57,7 +57,7 @@ def _cross_entropy_forward_step(batch, model):
         batch_ = next(batch)
     except BaseException:
         batch_ = batch
-    tokens_enc, tokens_dec, types, loss_mask, lm_labels, enc_mask, dec_mask, enc_dec_mask \
+    tokens_enc, tokens_dec, types, loss_mask, lm_labels, enc_mask, dec_mask, enc_dec_mask, _ \
         = process_batch(batch_)
     timers('batch generator').stop()
 
@@ -108,7 +108,6 @@ def build_data_loader(dataset, batch_size, num_workers, drop_last, shuffle=True,
                                               num_workers=num_workers,
                                               drop_last=drop_last,
                                               pin_memory=True)
-
     return data_loader
 
 

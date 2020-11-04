@@ -15,6 +15,7 @@
 
 """SQuAD dataset."""
 
+import csv
 import json
 import os
 import sys
@@ -24,8 +25,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),
                                              "../../")))
 
 from megatron import print_rank_0
-from tasks.t5_data_utils.data_utils import build_sample
-from tasks.t5_data_utils.data_utils import build_tokens_types_paddings_from_ids, build_tokens_types_paddings_from_text
+from tasks.t5_model_utils.data_utils import build_sample
+from tasks.t5_model_utils.data_utils import build_tokens_types_paddings_from_ids, build_tokens_types_paddings_from_text
 from torch.utils.data import Dataset
 
 class SQuADDataset(Dataset):
@@ -61,15 +62,16 @@ class SQuADDataset(Dataset):
         raw_sample = self.samples[idx]
         raw_sample_in_format = "[QUESTION] " + raw_sample['question'] + " [CONTEXT] " + raw_sample['context']
         raw_labels = raw_sample['answer']
+        raw_references = raw_sample['references']
         enc_ids, tokentypes_enc, dec_in_ids, \
         dec_out_ids, loss_mask = \
             build_tokens_types_paddings_from_text(
-            raw_sample_in_format, raw_labels,
+            raw_sample_in_format, raw_labels, 
             self.tokenizer, self.max_seq_length,
             self.decoder_seq_length)
         sample = build_sample(enc_ids, tokentypes_enc,
                               dec_in_ids, dec_out_ids,
-                              loss_mask)
+                              loss_mask, raw_references)
         return sample
 
 def process_single_datapath(filename, tokenizer, max_seq_length):
@@ -99,12 +101,18 @@ def process_single_datapath(filename, tokenizer, max_seq_length):
                     # Question and answer
                     qas_id = qas["id"]
 
-                    # Question and answer 
+                    # Question
                     question = qas["question"]
+                    # Answer - Taking the first for training
                     answer = qas["answers"][0]["text"]
 
+                    # Taking multiples answers for evaluation
+                    references = []
+                    for index in range(len(qas["answers"])):
+                        references.append(qas["answers"][index]["text"])
+
                     # Make a sample and append
-                    sample = {'context': context, 'question': question, 'answer': answer}
+                    sample = {'context': context, 'question': question, 'answer': answer, 'references': references}
                     samples.append(sample) 
                     num_samples += 1
 
@@ -112,4 +120,3 @@ def process_single_datapath(filename, tokenizer, max_seq_length):
     print_rank_0('    > processed contexts {} samples {}'
                  ' in {:.2f} seconds'.format(num_contexts, num_samples, elapsed_time))
     return samples
-
