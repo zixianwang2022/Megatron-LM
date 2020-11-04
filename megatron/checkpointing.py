@@ -73,6 +73,7 @@ def ensure_directory_exists(filename):
 def get_checkpoint_name(checkpoints_path, iteration, consumed_tokens=0,
                         release=False, mp_rank=None):
     """A unified checkpoint name."""
+    args = get_args()
     if release:
         directory = 'release'
     elif args.batch_size_increase:

@@ -443,8 +443,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
             args.batch_size_increase_iter == iteration_in_cur_run) or \
             (args.save and args.save_interval and \
            iteration % args.save_interval == 0):
-            save_checkpoint(iteration, model, optimizer, lr_scheduler,
-                            iteration_in_run=iteration_in_cur_run)
+            save_checkpoint(iteration, model, optimizer, lr_scheduler)
 
         # Evaluation
         if args.eval_interval and iteration % args.eval_interval == 0 and \
