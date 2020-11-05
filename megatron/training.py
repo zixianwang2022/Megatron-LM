@@ -258,13 +258,11 @@ def communicate(tensor_send_next, tensor_send_prev, recv_forward, recv_backward)
         torch.nn.init.normal_(tensor_recv_next, mean=0.0, std=0.02)
 
     # Send tensors in both the forward and backward directions as appropriate.
-    '''
     torch.distributed.ring_exchange(tensor_send_prev=tensor_send_prev,
                                     tensor_recv_prev=tensor_recv_prev,
                                     tensor_send_next=tensor_send_next,
                                     tensor_recv_next=tensor_recv_next,
                                     group=mpu.get_pipeline_model_parallel_group())
-    '''
     return tensor_recv_prev, tensor_recv_next
 
 

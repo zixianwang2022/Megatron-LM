@@ -227,8 +227,8 @@ class Timers:
                 reset=reset) * 1000.0 / normalizer
             string += ' | {}: {:.2f}'.format(name, elapsed_time)
         if torch.distributed.is_initialized():
-            print("[Rank %d] %s" % (torch.distributed.get_rank(), string), flush=True)
-            # if torch.distributed.get_rank() == 0:
-            #     print(string, flush=True)
+            from megatron import mpu
+            if mpu.get_data_parallel_rank() == 0 and mpu.get_tensor_model_parallel_rank() == 0:
+                print("[Rank %d] %s" % (torch.distributed.get_rank(), string), flush=True)
         else:
             print(string, flush=True)
