@@ -250,18 +250,21 @@ def communicate(tensor_send_next, tensor_send_prev, recv_forward, recv_backward)
         tensor_recv_prev = torch.empty(tensor_shape,
                                        requires_grad=True,
                                        dtype=args.params_dtype).cuda()
+        torch.nn.init.normal_(tensor_recv_prev, mean=0.0, std=0.02)
     if recv_backward:
         tensor_recv_next = torch.empty(tensor_shape,
                                        requires_grad=True,
                                        dtype=args.params_dtype).cuda()
+        torch.nn.init.normal_(tensor_recv_next, mean=0.0, std=0.02)
 
     # Send tensors in both the forward and backward directions as appropriate.
+    '''
     torch.distributed.ring_exchange(tensor_send_prev=tensor_send_prev,
                                     tensor_recv_prev=tensor_recv_prev,
                                     tensor_send_next=tensor_send_next,
                                     tensor_recv_next=tensor_recv_next,
                                     group=mpu.get_pipeline_model_parallel_group())
-
+    '''
     return tensor_recv_prev, tensor_recv_next
 
 

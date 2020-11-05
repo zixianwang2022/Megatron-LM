@@ -227,7 +227,8 @@ class Timers:
                 reset=reset) * 1000.0 / normalizer
             string += ' | {}: {:.2f}'.format(name, elapsed_time)
         if torch.distributed.is_initialized():
-            if torch.distributed.get_rank() == 0:
-                print(string, flush=True)
+            print("[Rank %d] %s" % (torch.distributed.get_rank(), string), flush=True)
+            # if torch.distributed.get_rank() == 0:
+            #     print(string, flush=True)
         else:
             print(string, flush=True)
