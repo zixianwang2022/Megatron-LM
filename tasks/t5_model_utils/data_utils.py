@@ -46,7 +46,7 @@ def build_sample(enc_ids, tokentypes_enc,
     dec_mask = make_attention_mask(dec_in_ids, dec_in_ids)
     dec_mask = dec_mask * make_history_mask(dec_in_ids)
 
-    sample = ({
+    sample = {
         'text_enc': enc_ids,
         'text_dec': dec_in_ids,
         'types': tokentypes_enc,
@@ -56,7 +56,7 @@ def build_sample(enc_ids, tokentypes_enc,
         'dec_mask': dec_mask,
         'enc_dec_mask': enc_dec_mask,
         'references': references
-    })
+    }
 
     return sample
 

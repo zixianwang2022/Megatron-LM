@@ -42,7 +42,8 @@ def process_batch(batch):
     dec_mask = (batch['dec_mask'] < 0.5).cuda()
     enc_dec_mask = (batch['enc_dec_mask'] < 0.5).cuda()
     references = batch['references']
-
+    #print("In process batch", references)
+    #exit()
     return tokens_enc, tokens_dec, types, loss_mask, labels, \
            enc_mask, dec_mask, enc_dec_mask, references
 
@@ -267,10 +268,10 @@ def finetune(train_valid_datasets_provider, model_provider,
     print_rank_0('training ...')
 
     # Finetune the model.
-    if args.epochs > 0:
-        _train(model, optimizer, lr_scheduler, forward_step,
-               train_dataloader, valid_dataloader,
-               end_of_epoch_callback)
+    #if args.epochs > 0:
+    #    _train(model, optimizer, lr_scheduler, forward_step,
+    #           train_dataloader, valid_dataloader,
+    #           end_of_epoch_callback)
 
     # Evaluate after the training step on validation data
     end_of_training_validation_callback = None

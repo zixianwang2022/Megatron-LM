@@ -309,7 +309,9 @@ def calculate_squad_score(name, model, dataloader, epoch,
 
             hypothesis, references = generate_text()
 
-            for hyp, refs in zip(hypothesis, references):
+            # Re-transposing the references as dataloader transposes the
+            # references with batch
+            for hyp, refs in zip(hypothesis, list(zip(*references))):
                 hyp_text = tokenizer.decode(hyp)
 
                 max_exact_score, max_f1_score = - float("inf"), - float("inf")
@@ -327,10 +329,12 @@ def calculate_squad_score(name, model, dataloader, epoch,
 
                 exact_score += max_exact_score
                 f1_score += max_f1_score
-                # We are storing the max exact text
-                reference_list.append(normalize_answer(refs[max_exact_position]))
-                hypothesis_list.append(hyp_text)
+
+                # We are storing the max EM, F1 text
+                reference_list.append(normalize_answer(refs[max_f1_position]))
+                hypothesis_list.append(normalize_answer(hyp_text))
                 total += 1
+
     model.train()
 
     if output_predictions and rank0sampler:
@@ -345,11 +349,20 @@ def calculate_squad_score(name, model, dataloader, epoch,
                                                epoch, name, start_time)
         return exact_score, f1_score, total
 
+
+"""
+get_tokens, compute_f1, normalize_answer, and compute_exact
+functions below have been taken from the Huggingface codebase
+https://github.com/huggingface/transformers/blob/master/examples/\
+utils_squad_evaluate.py
+"""
+
 def get_tokens(s):
   if not s: return []
   return normalize_answer(s).split()
 
 def compute_f1(a_gold, a_pred):
+    """Compute F1 score given reference and predicted texts"""
     gold_toks = get_tokens(a_gold)
     pred_toks = get_tokens(a_pred)
     common = collections.Counter(gold_toks) & collections.Counter(pred_toks)
@@ -357,11 +370,14 @@ def compute_f1(a_gold, a_pred):
     if len(gold_toks) == 0 or len(pred_toks) == 0:
         # If either is no-answer, then F1 is 1 if they agree, 0 otherwise
         return int(gold_toks == pred_toks)
+
     if num_same == 0:
         return 0
+
     precision = 1.0 * num_same / len(pred_toks)
     recall = 1.0 * num_same / len(gold_toks)
     f1 = (2 * precision * recall) / (precision + recall)
+
     return f1
 
 def normalize_answer(s):
@@ -379,7 +395,10 @@ def normalize_answer(s):
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
 def compute_exact(a_gold, a_pred):
-    return int(normalize_answer(a_gold) == normalize_answer(a_pred))
+    """Compute the SQuAD EM score"""
+    norm_ans_gold = normalize_answer(a_gold)
+    norm_ans_pred = normalize_answer(a_pred)
+    return int(norm_ans_gold == norm_ans_pred)
 
 def score_sequences(ref_text, hyp_text):
     args = get_args()
