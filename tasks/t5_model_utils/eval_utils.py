@@ -79,7 +79,10 @@ def accuracy_func_provider(single_dataset_provider, datapath, rank0sampler=False
     args = get_args()
 
     # Build dataloaders.
-    dataset = single_dataset_provider(datapath)
+    if args.task == "SQUAD":
+        dataset = single_dataset_provider(datapath, "validation")
+    else:
+        dataset = single_dataset_provider(datapath)
 
     drop_last = False
     if mpu.get_data_parallel_world_size() > 1 and not rank0sampler:
@@ -334,7 +337,6 @@ def calculate_squad_score(name, model, dataloader, epoch,
                 reference_list.append(normalize_answer(refs[max_f1_position]))
                 hypothesis_list.append(normalize_answer(hyp_text))
                 total += 1
-
     model.train()
 
     if output_predictions and rank0sampler:

@@ -48,11 +48,12 @@ def question_answering(Dataset, name_from_datapath_func):
         return T5Model(num_tokentypes=2,
                        parallel_output=False)
 
-    def single_dataset_provider(datapath):
+    def single_dataset_provider(datapath, name=None):
         args = get_args()
         tokenizer = get_tokenizer()
 
-        name = name_from_datapath_func(datapath)
+        if name is None:
+            name = name_from_datapath_func(datapath)
         return Dataset(name, datapath, tokenizer, 
                         args.seq_length, args.decoder_seq_length)
 
