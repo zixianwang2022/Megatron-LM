@@ -130,7 +130,8 @@ def accuracy_func_provider(single_dataset_provider, datapath, rank0sampler=False
                                                    output_predictions,
                                                    rank0sampler)
             if output_predictions:
-                correct_exact, correct_f1, total, hypothesis, references = output
+                correct_exact, correct_f1, total, hypothesis, \
+                    references_f1, references_exact = output
             else:
                 correct_exact, correct_f1, total = output
             percent_exact = float(correct_exact) * 100.0 / float(total)
@@ -153,8 +154,14 @@ def accuracy_func_provider(single_dataset_provider, datapath, rank0sampler=False
             prediction_file = os.path.join(args.save, names + '.txt')
             save_text(prediction_file, hypothesis)
 
-            target_file = os.path.join(args.save, "gold_test" + '.txt')
-            save_text(target_file, references)
+            if args.task == "SQUAD":
+                target_file = os.path.join(args.save, "gold_test_f1" + '.txt')
+                save_text(target_file, references_f1)
+                target_file_exact = os.path.join(args.save, "gold_test_exact" + '.txt')
+                save_text(target_file_exact, references_exact)
+            else:
+                target_file = os.path.join(args.save, "gold_test" + '.txt')
+                save_text(target_file, references)
 
             if args.task == "MNLI":
                 c, t, a = clf_accuracy(target_file, prediction_file)
@@ -281,7 +288,7 @@ def calculate_squad_score(name, model, dataloader, epoch,
     args = get_args()
     tokenizer = get_tokenizer()
     f1_score, exact_score, total = 0., 0., 0.
-    reference_list, hypothesis_list = [], []
+    reference_list_exact, reference_list_f1, hypothesis_list = [], [], []
 
     start_time = time.time()
 
@@ -334,13 +341,15 @@ def calculate_squad_score(name, model, dataloader, epoch,
                 f1_score += max_f1_score
 
                 # We are storing the max EM, F1 text
-                reference_list.append(normalize_answer(refs[max_f1_position]))
+                reference_list_f1.append(normalize_answer(refs[max_f1_position]))
+                reference_list_exact.append(normalize_answer(refs[max_exact_position]))
                 hypothesis_list.append(normalize_answer(hyp_text))
                 total += 1
     model.train()
 
     if output_predictions and rank0sampler:
-        return exact_score, f1_score, total, hypothesis_list, reference_list
+        return exact_score, f1_score, total, hypothesis_list, \
+            reference_list_f1, reference_list_exact
 
     else:
         exact_unreduced = torch.cuda.LongTensor([exact_score, total])
