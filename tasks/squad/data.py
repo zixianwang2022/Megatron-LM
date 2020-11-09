@@ -87,6 +87,9 @@ def process_single_datapath(dataset_name, filename, tokenizer, max_seq_length,
     samples."""
 
     print_rank_0('   > working on {}'.format(filename))
+    if "validation" in dataset_name:
+        print_rank_0('   > using maximum number of answers as ''{}'.format(
+                    max_refs_count))
     start_time = time.time()
 
     samples = []
