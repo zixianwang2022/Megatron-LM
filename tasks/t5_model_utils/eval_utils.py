@@ -126,9 +126,9 @@ def accuracy_func_provider(single_dataset_provider, datapath, rank0sampler=False
                 correct, total = output
         elif args.task == "SQUAD":
             output = calculate_squad_score(name, model,
-                                                   dataloader, epoch,
-                                                   output_predictions,
-                                                   rank0sampler)
+                                            dataloader, epoch,
+                                            output_predictions,
+                                            rank0sampler)
             if output_predictions:
                 correct_exact, correct_f1, total, hypothesis, \
                     references_f1, references_exact = output
