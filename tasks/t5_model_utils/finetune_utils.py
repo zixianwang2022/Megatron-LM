@@ -42,8 +42,6 @@ def process_batch(batch):
     dec_mask = (batch['dec_mask'] < 0.5).cuda()
     enc_dec_mask = (batch['enc_dec_mask'] < 0.5).cuda()
     references = batch['references']
-    #print("In process batch", references)
-    #exit()
     return tokens_enc, tokens_dec, types, loss_mask, labels, \
            enc_mask, dec_mask, enc_dec_mask, references
 
