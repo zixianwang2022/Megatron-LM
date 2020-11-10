@@ -76,7 +76,7 @@ if __name__ == '__main__':
     elif args.task == 'CNNDM':
         from summarization.t5.finetune import main
     elif args.task in ['SQUAD']:
-        from squad.finetune import main
+        from squad.t5.finetune import main
     elif args.task in ['LAMBADA', 'WIKITEXT103']:
         raise NotImplementedError('Task {} is not implemented.'.format(
             args.task))
