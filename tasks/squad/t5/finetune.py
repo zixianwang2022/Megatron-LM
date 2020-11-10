@@ -77,7 +77,7 @@ def main():
     args = get_args()
 
     if args.task == 'SQUAD':
-        from tasks.squad.data import SQuADDataset as Dataset
+        from tasks.squad.t5.data import SQuADDataset as Dataset
 
         def name_from_datapath(datapath):
             return datapath[0].split('/')[-1].split('.')[0]
