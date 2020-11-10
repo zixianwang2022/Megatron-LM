@@ -38,7 +38,9 @@ from .initialize import get_pipeline_model_parallel_src_rank
 from .initialize import get_tensor_model_parallel_world_size, set_tensor_model_parallel_world_size
 from .initialize import get_pipeline_model_parallel_world_size, set_pipeline_model_parallel_world_size
 from .initialize import get_pipeline_model_parallel_ring_exchange_prev_group
+from .initialize import get_pipeline_model_parallel_ring_exchange_prev_ranks
 from .initialize import get_pipeline_model_parallel_ring_exchange_next_group
+from .initialize import get_pipeline_model_parallel_ring_exchange_next_ranks
 from .initialize import initialize_model_parallel
 from .initialize import model_parallel_is_initialized
 

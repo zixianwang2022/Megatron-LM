@@ -26,6 +26,8 @@ _TENSOR_MODEL_PARALLEL_GROUP = None
 # Inter-layer model parallel group that the current rank belongs to,
 # and groups needed for ring exchanges in the prev and next direction.
 _PIPELINE_MODEL_PARALLEL_GROUP = None
+_PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_RANKS = None
+_PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_RANKS = None
 _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_GROUP = None
 _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_GROUP = None
 # Model parallel group (both intra- and pipeline) that the current rank belongs to.
@@ -137,9 +139,11 @@ def initialize_model_parallel(tensor_model_parallel_size_=1,
     assert _PIPELINE_MODEL_PARALLEL_GROUP is None, \
         'pipeline model parallel group is already initialized'
     global _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_GROUP
+    global _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_RANKS
     assert _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_GROUP is None, \
         'pipeline model parallel ring-exchange prev group is already initialized'
     global _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_GROUP
+    global _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_RANKS
     assert _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_GROUP is None, \
         'pipeline model parallel ring-exchange next group is already initialized'
     global _EMBEDDING_GROUP
@@ -158,8 +162,10 @@ def initialize_model_parallel(tensor_model_parallel_size_=1,
             group = torch.distributed.new_group(consecutive_ranks)
             if rank == consecutive_ranks[0]:
                 _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_GROUP = group
+                _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_RANKS = consecutive_ranks
             if rank == consecutive_ranks[1]:
                 _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_GROUP = group
+                _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_RANKS = consecutive_ranks
         # Setup embedding group (to exchange gradients between
         # first and last stages).
         if len(ranks) > 1:
@@ -200,6 +206,7 @@ def get_pipeline_model_parallel_group():
         'pipeline_model parallel group is not initialized'
     return _PIPELINE_MODEL_PARALLEL_GROUP
 
+
 def get_pipeline_model_parallel_ring_exchange_prev_group():
     """Get the pipeline model parallel ring-exchange prev group the caller rank belongs to."""
     assert _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_GROUP is not None, \
@@ -207,11 +214,25 @@ def get_pipeline_model_parallel_ring_exchange_prev_group():
     return _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_GROUP
 
 
+def get_pipeline_model_parallel_ring_exchange_prev_ranks():
+    """Get the pipeline model parallel ring-exchange prev ranks the caller rank belongs to."""
+    assert _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_RANKS is not None, \
+        'pipeline_model parallel ranks not initialized'
+    return _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_PREV_RANKS
+
+
 def get_pipeline_model_parallel_ring_exchange_next_group():
     """Get the pipeline model parallel ring-exchange next group the caller rank belongs to."""
     assert _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_GROUP is not None, \
         'pipeline_model parallel group is not initialized'
     return _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_GROUP
+
+
+def get_pipeline_model_parallel_ring_exchange_next_ranks():
+    """Get the pipeline model parallel ring-exchange next ranks the caller rank belongs to."""
+    assert _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_RANKS is not None, \
+        'pipeline_model parallel ranks not initialized'
+    return _PIPELINE_MODEL_PARALLEL_RING_EXCHANGE_NEXT_RANKS
 
 
 def get_data_parallel_group():

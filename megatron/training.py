@@ -252,26 +252,34 @@ def communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
                                        requires_grad=True,
                                        dtype=args.params_dtype).cuda()
         group = mpu.get_pipeline_model_parallel_ring_exchange_prev_group()
-        assert not recv_next and tensor_send_next is None
+        src = mpu.get_pipeline_model_parallel_ring_exchange_prev_ranks()[0]
+        torch.distributed.broadcast(tensor_recv_prev,
+                                    src=src, group=group)
+    if tensor_send_next is not None:
+        group = mpu.get_pipeline_model_parallel_ring_exchange_next_group()
+        src = mpu.get_pipeline_model_parallel_ring_exchange_next_ranks()[0]
+        torch.distributed.broadcast(tensor_send_next,
+                                    src=src, group=group)
     if recv_next:
         tensor_recv_next = torch.empty(tensor_shape,
                                        requires_grad=True,
                                        dtype=args.params_dtype).cuda()
         group = mpu.get_pipeline_model_parallel_ring_exchange_next_group()
-        assert not recv_prev and tensor_send_prev is None
+        src = mpu.get_pipeline_model_parallel_ring_exchange_next_ranks()[1]
+        torch.distributed.broadcast(tensor_recv_next,
+                                    src=src, group=group)
     if tensor_send_prev is not None:
-        if group is None:
-            group = mpu.get_pipeline_model_parallel_ring_exchange_prev_group()
-    if tensor_send_next is not None:
-        if group is None:
-            group = mpu.get_pipeline_model_parallel_ring_exchange_next_group()
+        group = mpu.get_pipeline_model_parallel_ring_exchange_prev_group()
+        src = mpu.get_pipeline_model_parallel_ring_exchange_prev_ranks()[1]
+        torch.distributed.broadcast(tensor_send_prev,
+                                    src=src, group=group)
 
     # Send tensors in both the forward and backward directions as appropriate.
-    torch.distributed.ring_exchange(tensor_send_prev=tensor_send_prev,
-                                    tensor_recv_prev=tensor_recv_prev,
-                                    tensor_send_next=tensor_send_next,
-                                    tensor_recv_next=tensor_recv_next,
-                                    group=group)
+    # torch.distributed.ring_exchange(tensor_send_prev=tensor_send_prev,
+    #                                 tensor_recv_prev=tensor_recv_prev,
+    #                                 tensor_send_next=tensor_send_next,
+    #                                 tensor_recv_next=tensor_recv_next,
+    #                                 group=group)
     return tensor_recv_prev, tensor_recv_next
 
 
