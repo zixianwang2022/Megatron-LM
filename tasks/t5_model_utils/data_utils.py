@@ -20,7 +20,6 @@ import numpy as np
 
 from megatron.data.t5_dataset_utils import make_attention_mask, make_history_mask
 
-
 def clean_text(text):
     """Remove new lines and multiple spaces and adjust end of sentence dot."""
 
@@ -33,7 +32,7 @@ def clean_text(text):
 
 
 def build_sample(enc_ids, tokentypes_enc,
-                 dec_in_ids, labels, loss_mask):
+                 dec_in_ids, labels, loss_mask, references=None):
     """Convert to numpy and return a sample consumed by the batch producer."""
 
     enc_ids = np.array(enc_ids, dtype=np.int64)
@@ -47,7 +46,7 @@ def build_sample(enc_ids, tokentypes_enc,
     dec_mask = make_attention_mask(dec_in_ids, dec_in_ids)
     dec_mask = dec_mask * make_history_mask(dec_in_ids)
 
-    sample = ({
+    sample = {
         'text_enc': enc_ids,
         'text_dec': dec_in_ids,
         'types': tokentypes_enc,
@@ -56,7 +55,8 @@ def build_sample(enc_ids, tokentypes_enc,
         'enc_mask': enc_mask,
         'dec_mask': dec_mask,
         'enc_dec_mask': enc_dec_mask,
-    })
+        'references': references
+    }
 
     return sample
 
