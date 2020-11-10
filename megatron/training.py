@@ -237,7 +237,7 @@ def setup_model_and_optimizer(model_provider_func):
     return model, optimizer, lr_scheduler
 
 
-def communicate(tensor_send_next, tensor_send_prev, recv_forward, recv_backward):
+def communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
     """Communicate tensors between stages using torch.distributed.ring_exchange(.) API."""
     args = get_args()
 
@@ -245,24 +245,33 @@ def communicate(tensor_send_next, tensor_send_prev, recv_forward, recv_backward)
     # if needed.
     tensor_recv_prev = None
     tensor_recv_next = None
+    group = None
     tensor_shape = (args.seq_length, args.batch_size, args.hidden_size)
-    if recv_forward:
+    if recv_prev:
         tensor_recv_prev = torch.empty(tensor_shape,
                                        requires_grad=True,
                                        dtype=args.params_dtype).cuda()
-        torch.nn.init.normal_(tensor_recv_prev, mean=0.0, std=0.02)
-    if recv_backward:
+        group = mpu.get_pipeline_model_parallel_ring_exchange_prev_group()
+        assert not recv_next and tensor_send_next is None
+    if recv_next:
         tensor_recv_next = torch.empty(tensor_shape,
                                        requires_grad=True,
                                        dtype=args.params_dtype).cuda()
-        torch.nn.init.normal_(tensor_recv_next, mean=0.0, std=0.02)
+        group = mpu.get_pipeline_model_parallel_ring_exchange_next_group()
+        assert not recv_prev and tensor_send_prev is None
+    if tensor_send_prev is not None:
+        if group is None:
+            group = mpu.get_pipeline_model_parallel_ring_exchange_prev_group()
+    if tensor_send_next is not None:
+        if group is None:
+            group = mpu.get_pipeline_model_parallel_ring_exchange_next_group()
 
     # Send tensors in both the forward and backward directions as appropriate.
     torch.distributed.ring_exchange(tensor_send_prev=tensor_send_prev,
                                     tensor_recv_prev=tensor_recv_prev,
                                     tensor_send_next=tensor_send_next,
                                     tensor_recv_next=tensor_recv_next,
-                                    group=mpu.get_pipeline_model_parallel_group())
+                                    group=group)
     return tensor_recv_prev, tensor_recv_next
 
 
@@ -298,8 +307,8 @@ def forward_step_with_communication(forward_step_func, data_iterator, model,
         input_tensor, _ = communicate(
             tensor_send_next=None,
             tensor_send_prev=None,
-            recv_forward=True,
-            recv_backward=False)
+            recv_prev=True,
+            recv_next=False)
         timers('forward-recv').stop()
     else:
         input_tensor = None
@@ -318,8 +327,8 @@ def forward_step_with_communication(forward_step_func, data_iterator, model,
         communicate(
             tensor_send_next=output_tensor,
             tensor_send_prev=None,
-            recv_forward=False,
-            recv_backward=False)
+            recv_prev=False,
+            recv_next=False)
         timers('forward-send').stop()
 
     input_tensors.append(input_tensor)
@@ -338,8 +347,8 @@ def backward_step_with_communication(optimizer, model, input_tensors, output_ten
         _, output_tensor_grad = communicate(
             tensor_send_next=None,
             tensor_send_prev=None,
-            recv_forward=False,
-            recv_backward=True)
+            recv_prev=False,
+            recv_next=True)
         timers('backward-recv').stop()
 
     # Backward pass for one step.
@@ -353,8 +362,8 @@ def backward_step_with_communication(optimizer, model, input_tensors, output_ten
         communicate(
             tensor_send_next=None,
             tensor_send_prev=input_grad_tensor,
-            recv_forward=False,
-            recv_backward=False)
+            recv_prev=False,
+            recv_next=False)
         timers('backward-send').stop()
 
 
@@ -379,8 +388,8 @@ def forward_and_backward_steps_with_communication(forward_step_func, data_iterat
         _, output_tensor_grad = communicate(
             tensor_send_next=output_tensor,
             tensor_send_prev=None,
-            recv_forward=False,
-            recv_backward=True)
+            recv_prev=False,
+            recv_next=True)
         timers('forward-send').stop()
     timers('forward').stop()
 
@@ -402,8 +411,8 @@ def forward_and_backward_steps_with_communication(forward_step_func, data_iterat
         input_tensor, _ = communicate(
             tensor_send_next=None,
             tensor_send_prev=input_grad_tensor,
-            recv_forward=(not last_microbatch),
-            recv_backward=False)
+            recv_prev=(not last_microbatch),
+            recv_next=False)
         timers('backward-send').stop()
     else:
         input_tensor = None
@@ -464,8 +473,8 @@ def train_step(forward_step_func, data_iterator,
             timers('forward-recv').start()
             input_tensor, _ = communicate(tensor_send_next=None,
                                           tensor_send_prev=None,
-                                          recv_forward=True,
-                                          recv_backward=False)
+                                          recv_prev=True,
+                                          recv_next=False)
             timers('forward-recv').stop()
 
     # Run 1F1B.
@@ -740,8 +749,8 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
                 input_tensor, _ = communicate(
                     tensor_send_next=None,
                     tensor_send_prev=None,
-                    recv_forward=True,
-                    recv_backward=False)
+                    recv_prev=True,
+                    recv_next=False)
             else:
                 input_tensor = None
 
@@ -758,8 +767,8 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
                 communicate(
                     tensor_send_next=output_tensor,
                     tensor_send_prev=None,
-                    recv_forward=False,
-                    recv_backward=False)
+                    recv_prev=False,
+                    recv_next=False)
 
     # Move model back to the train mode.
     model.train()
