@@ -64,7 +64,6 @@ def build_training_sample(sample, target_seq_length,
         sentinel_tokens: unique value to be substituted for every replaced span
     """
 
-    # We assume that we have at least two sentences in the sample
     assert target_seq_length <= max_seq_length
 
     # Divide sample into two segments (A and B).
