@@ -64,8 +64,6 @@ def build_training_sample(sample, target_seq_length,
         sentinel_tokens: unique value to be substituted for every replaced span
     """
 
-    # We assume that we have at least two sentences in the sample
-    assert len(sample) > 1
     assert target_seq_length <= max_seq_length
 
     # Divide sample into two segments (A and B).
@@ -113,9 +111,7 @@ def get_a_and_b_segments(sample, np_rng):
 
     # Number of sentences in the sample.
     n_sentences = len(sample)
-    # Make sure we always have two sentences.
-    assert n_sentences > 1, 'make sure each sample has at least two sentences.'
-
+    
     # First part:
     # `a_end` is how many sentences go into the `A`.
     a_end = 1
@@ -148,9 +144,7 @@ def get_document(sample):
     """
     # Number of sentences in the sample.
     n_sentences = len(sample)
-    # Make sure we always have two sentences.
-    assert n_sentences > 1, 'make sure each sample has at least two sentences.'
-
+    
     doc = []
     for sent in sample:
         doc.extend(sent)
@@ -167,11 +161,7 @@ def truncate_segments(tokens_a, len_a, max_num_tokens, np_rng):
     while len_a > max_num_tokens:
         len_a -= 1
         tokens = tokens_a
-
-        if np_rng.random() < 0.5:
-            del tokens[0]
-        else:
-            tokens.pop()
+        tokens.pop()
     return True
 
 

@@ -266,10 +266,11 @@ def get_samples_mapping_(indexed_dataset,
             indexed_dataset.sizes,
             num_epochs,
             max_num_samples,
-            max_seq_length - 3,  # account for added tokens
+            max_seq_length - 2,  # account for added tokens
             short_seq_prob,
             seed,
-            verbose)
+            verbose,
+            1)
         print_rank_0(' > done building samples index mapping')
         np.save(indexmap_filename, samples_mapping, allow_pickle=True)
         print_rank_0(' > saved the index mapping in {}'.format(

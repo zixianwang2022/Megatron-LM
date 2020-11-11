@@ -230,6 +230,7 @@ class ParallelAttention(MegatronModule):
         # Query, Key, and Value
         # =====================
 
+
         if self.attention_type == AttnType.self_attn:
             # Attention heads [sq, b, h] --> [sq, b, (np * 3 * hn)]
             mixed_x_layer, _ = self.query_key_value(hidden_states)
