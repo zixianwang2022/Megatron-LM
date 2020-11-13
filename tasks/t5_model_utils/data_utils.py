@@ -32,8 +32,9 @@ def clean_text(text):
 
 
 def build_sample(enc_ids, tokentypes_enc,
-                 dec_in_ids, labels, loss_mask, references=None):
+                 dec_in_ids, labels, loss_mask, references=[]):
     """Convert to numpy and return a sample consumed by the batch producer."""
+    """References are always empty except SQuAD 1.1"""
 
     enc_ids = np.array(enc_ids, dtype=np.int64)
     dec_in_ids = np.array(dec_in_ids, dtype=np.int64)
