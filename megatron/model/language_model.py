@@ -406,6 +406,17 @@ class TransformerLanguageModel(MegatronModule):
             for key in state_dict.keys():
                 if 'encoder.' in key:
                     state_dict_[key.split('encoder.')[1]] = state_dict[key]
+
+        # for backward compatibility.
+        state_dict_self_attention = {}
+        for key in state_dict_.keys():
+            if '.attention.' in key:
+                state_dict_self_attention[key.replace(".attention.",
+                    ".self_attention.")] = state_dict_[key]
+            else:
+                state_dict_self_attention[key] = state_dict_[key]
+        state_dict_ = state_dict_self_attention
+
         self.encoder.load_state_dict(state_dict_, strict=strict)
 
         #decoder

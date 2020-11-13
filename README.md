@@ -121,6 +121,8 @@ python tools/preprocess_data.py \
 
 Here the output files are named `my-gpt2_text_document.bin` and `my-gpt2_text_document.idx`. As before, in GPT-2 training, use the longer name without the extension as `--data-path`.
 
+Data preprocessing for T5 training is identical to BERT.
+
 Further command line arguments are described in the source file [`preprocess_data.py`](./tools/preprocess_data.py).
 
 <a id="bert-pretraining"></a>
@@ -200,6 +202,49 @@ OUTPUT_ARGS=&#60;same as those in <a href="#bert-pretraining">BERT pretraining</
 
 python pretrain_gpt2.py \
        $GPT2_ARGS \
+       $OUTPUT_ARGS \
+       --save $CHECKPOINT_PATH \
+       --load $CHECKPOINT_PATH \
+       --data-path $DATA_PATH \
+</pre>
+
+Further command line arguments are described in the source file [`arguments.py`](./megatron/arguments.py).
+
+<a id="t5-pretraining"></a>
+## T5 Pretraining
+`bash examples/pretrain_t5.sh`
+
+This script runs single GPU 223M parameter T5 pretraining. As mentioned above, single GPU training is primarily intended for debugging purposes, as the code is optimized for distributed training.
+
+It follows largely the same format as the previous BERT script with a few notable differences: dimension of key and value matrices (`--kv-channels`), dimension of dense layer in the feed-forward networks (`--ffn-hidden-size`), encoder and decoder sequence lengths (`--encoder-seq-length` and `--decoder-seq-length`), and number of sentinel vocabulary tokens for span masking (`--vocab-extra-ids`).
+
+<pre>
+CHECKPOINT_PATH=checkpoints/t5_345m
+VOCAB_FILE=bert-vocab.txt
+DATA_PATH=my-t5_text_document
+
+T5_ARGS="--num-layers 12 \
+           --hidden-size 768 \
+           --num-attention-heads 12 \
+           --kv-channels 64 \
+           --ffn-hidden-size 3072 \
+           --encoder-seq-length 512 \
+           --decoder-seq-length 128 \
+           --max-position-embeddings 512 \
+           --batch-size 4 \
+           --lr 0.0001 \
+           --train-iters 1000000 \
+           --lr-decay-iters 1000000 \
+           --lr-decay-style linear \
+           --vocab-file $VOCAB_FILE \
+           --vocab-extra-ids 100 \
+           --warmup .01 \
+           --fp16"
+
+OUTPUT_ARGS=&#60;same as those in <a href="#bert-pretraining">BERT pretraining</a> above&#62;
+
+python pretrain_t5.py \
+       $T5_ARGS \
        $OUTPUT_ARGS \
        --save $CHECKPOINT_PATH \
        --load $CHECKPOINT_PATH \
