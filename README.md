@@ -25,6 +25,7 @@ The following table details how Megatron scales using data parallelism in conjuc
   - [Data Preprocessing](#data-preprocessing)
   - [BERT Pretraining](#bert-pretraining)
   - [GPT-2 Pretraining](#gpt-2-pretraining)
+  - [T5 Pretraining](#t5-pretraining)
   - [Distributed BERT or GPT-2 Pretraining](#distributed-bert-or-gpt-2-pretraining)
 - [REALM Pipeline](#realm)
 - [Evaluation and Tasks](#evaluation-and-tasks)
