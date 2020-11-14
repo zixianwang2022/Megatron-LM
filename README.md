@@ -320,6 +320,30 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./pretrain_gpt2.py \
 
 </pre>
 
+Distributed T5 training:
+<pre>
+WORLD_SIZE=8
+MP_SIZE=2
+
+DISTRIBUTED_ARGS=&#60;same as those directly above&#62;
+
+CHECKPOINT_PATH=checkpoints/t5_345m
+VOCAB_FILE=bert-vocab.txt
+DATA_PATH=my-t5_text_sentence
+T5_ARGS=&#60;same as those in <a href="#t5-pretraining">T5 pretraining</a> above&#62;
+OUTPUT_ARGS=&#60;same as those in <a href="#t5-pretraining">T5 pretraining</a> above&#62;
+
+python -m torch.distributed.launch $DISTRIBUTED_ARGS ./pretrain_t5.py \
+                $T5_ARGS \
+                $OUTPUT_ARGS \
+                --save $CHECKPOINT_PATH \
+                --load $CHECKPOINT_PATH \
+                --data-path $DATA_PATH \
+                --model-parallel-size $MP_SIZE \
+                --DDP-impl torch
+</pre>
+
+
 <a id="realm"></a>
 ## REALM Pipeline
 We are working on implementing the [REALM](https://arxiv.org/pdf/2002.08909.pdf) system. The following sections (will) reflect the three stages of training it. For now it's just the ICT code.
