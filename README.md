@@ -659,7 +659,8 @@ COMMON_TASK_ARGS="--num-layers 12 \
                   --max-position-embeddings 512 \
                   --vocab-file $VOCAB_FILE \
                   --vocab-extra-ids 100 \
-                  --fp16"
+                  --fp16 \
+                  --finetune"
 
 COMMON_TASK_ARGS_EXT="--train-data $TRAIN_DATA \
                       --valid-data $VALID_DATA \
@@ -672,19 +673,18 @@ COMMON_TASK_ARGS_EXT="--train-data $TRAIN_DATA \
                       --eval-interval 5000 \
                       --eval-iters 10 \
                       --beam-size 1 \
-                      --max-decode-len 512 \
                       --warmup 0.0 \
                       --tokenizer-type BertWordPieceLowerCase \
                       --lr-decay-style linear"
 
 python tasks/main.py \
        --task CNNDM \
-       --finetune \
        $COMMON_TASK_ARGS \
        $COMMON_TASK_ARGS_EXT \
        --epochs 10 \
        --batch-size 128 \
        --eval-batch-size 32 \
+       --max-decode-len 512 \
        --lr 2.0e-5 \
        --weight-decay 1.0e-1 \
        --sample-rate 1.0
@@ -708,14 +708,41 @@ COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#cnndm-evaluation">CNNDM Eva
 
 python tasks/main.py \
        --task SQUAD \
-       --finetune \
        $COMMON_TASK_ARGS \
        $COMMON_TASK_ARGS_EXT \
        --epochs 3 \
        --batch-size 32 \
        --eval-batch-size 8 \
+       --max-decode-len 512 \
        --weight-decay 1.0e-2 \
        --lr 2.0e-5
+</pre>
+
+<a id="mnli-evaluation-t5"></a>
+### MNLI Evaluation
+The following script finetunes the T5 model for evaluation with the [MultiNLI sentence pair corpus](https://www.nyu.edu/projects/bowman/multinli/).
+
+<pre>
+
+TRAIN_DATA="data/glue_data/MNLI/train.tsv"
+VALID_DATA="data/glue_data/MNLI/dev_matched.tsv \
+            data/glue_data/MNLI/dev_mismatched.tsv"
+PRETRAINED_CHECKPOINT=checkpoints/t5_223m
+VOCAB_FILE=bert-vocab.txt
+CHECKPOINT_PATH=checkpoints/t5_223m_mnli
+COMMON_TASK_ARGS=&#60;same as those in <a href="#squad-evaluation">SQUAD Evaluation</a> above&#62;
+COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#squad-evaluation">SQUAD Evaluation</a> above&#62;
+
+python tasks/main_t5.py \
+       --task MNLI \
+       $COMMON_TASK_ARGS \
+       $COMMON_TASK_ARGS_EXT \
+       --epochs 5 \
+       --batch-size 128 \
+       --eval-batch-size 12 \
+       --max-decode-len 5 \
+       --lr 2.0e-5 \
+       --weight-decay 1e-1"
 </pre>
 
 <a id="datasets"></a>
