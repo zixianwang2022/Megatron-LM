@@ -678,7 +678,7 @@ COMMON_TASK_ARGS_EXT="--train-data $TRAIN_DATA \
                       --tokenizer-type BertWordPieceLowerCase \
                       --lr-decay-style linear"
 
-python tasks/main.py \
+python tasks/main_t5.py \
        --task CNNDM \
        $COMMON_TASK_ARGS \
        $COMMON_TASK_ARGS_EXT \
@@ -707,7 +707,7 @@ CHECKPOINT_PATH=checkpoints/t5_223m_squad
 COMMON_TASK_ARGS=&#60;same as those in <a href="#cnndm-evaluation">CNN/Daily Mail Evaluation</a> above&#62;
 COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#cnndm-evaluation">CNN/Daily Mail Evaluation</a> above&#62;
 
-python tasks/main.py \
+python tasks/main_t5.py \
        --task SQUAD \
        $COMMON_TASK_ARGS \
        $COMMON_TASK_ARGS_EXT \
