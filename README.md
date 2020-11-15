@@ -228,22 +228,22 @@ VOCAB_FILE=bert-vocab.txt
 DATA_PATH=my-t5_text_document
 
 T5_ARGS="--num-layers 12 \
-           --hidden-size 768 \
-           --num-attention-heads 12 \
-           --kv-channels 64 \
-           --ffn-hidden-size 3072 \
-           --encoder-seq-length 512 \
-           --decoder-seq-length 128 \
-           --max-position-embeddings 512 \
-           --batch-size 4 \
-           --lr 0.0001 \
-           --train-iters 1000000 \
-           --lr-decay-iters 1000000 \
-           --lr-decay-style linear \
-           --vocab-file $VOCAB_FILE \
-           --vocab-extra-ids 100 \
-           --warmup .01 \
-           --fp16"
+         --hidden-size 768 \
+         --num-attention-heads 12 \
+         --kv-channels 64 \
+         --ffn-hidden-size 3072 \
+         --encoder-seq-length 512 \
+         --decoder-seq-length 128 \
+         --max-position-embeddings 512 \
+         --batch-size 4 \
+         --lr 0.0001 \
+         --train-iters 1000000 \
+         --lr-decay-iters 1000000 \
+         --lr-decay-style linear \
+         --vocab-file $VOCAB_FILE \
+         --vocab-extra-ids 100 \
+         --warmup .01 \
+         --fp16"
 
 OUTPUT_ARGS=&#60;same as those in <a href="#bert-pretraining">BERT pretraining</a> above&#62;
 
