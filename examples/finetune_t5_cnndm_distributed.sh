@@ -53,6 +53,6 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/main_t5.py \
                 --eval-batch-size 12 \
                 --beam-size 1 \
                 --max-decode-len 512 \
-                --lr 2e-5 \
+                --lr 2.0e-5 \
                 --warmup 0.0 \
                 --lr-decay-style linear
