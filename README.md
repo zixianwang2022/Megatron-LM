@@ -39,6 +39,7 @@ The following table details how Megatron scales using data parallelism in conjuc
   - [T5 Task Evaluation](#t5-task-evaluation)
     - [CNN/Daily Mail Evaluation](#cnndm-evaluation)
     - [SQuAD Evaluation](#squad-evaluation)
+    - [MNLI Evaluation](#mnli-evaluation-t5)
 - [Datasets](#datasets)
   - [Collecting Wikipedia Training Data](#collecting-wikipedia-training-data)
   - [Collecting GPT-2 Webtext Data](#collecting-gpt-2-webtext-data)
