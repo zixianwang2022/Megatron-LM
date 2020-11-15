@@ -36,6 +36,9 @@ The following table details how Megatron scales using data parallelism in conjuc
   - [BERT Task Evaluation](#bert-task-evaluation)
     - [RACE Evaluation](#race-evaluation)
     - [MNLI Evaluation](#mnli-evaluation)
+  - [T5 Task Evaluation](#t5-task-evaluation)
+    - [CNNDM Evaluation](#cnndm-evaluation)
+    - [SQuAD Evaluation](#squad-evaluation)
 - [Datasets](#datasets)
   - [Collecting Wikipedia Training Data](#collecting-wikipedia-training-data)
   - [Collecting GPT-2 Webtext Data](#collecting-gpt-2-webtext-data)
@@ -220,7 +223,7 @@ This script runs single GPU 223M parameter T5 pretraining. As mentioned above, s
 It follows largely the same format as the previous BERT script with a few notable differences: dimension of key and value matrices (`--kv-channels`), dimension of dense layer in the feed-forward networks (`--ffn-hidden-size`), encoder and decoder sequence lengths (`--encoder-seq-length` and `--decoder-seq-length`), and number of sentinel vocabulary tokens for span masking (`--vocab-extra-ids`).
 
 <pre>
-CHECKPOINT_PATH=checkpoints/t5_345m
+CHECKPOINT_PATH=checkpoints/t5_223m
 VOCAB_FILE=bert-vocab.txt
 DATA_PATH=my-t5_text_document
 
@@ -621,6 +624,98 @@ python tasks/main.py \
        --batch-size 8 \
        --lr 5.0e-5 \
        --warmup 0.065
+</pre>
+
+<a id="t5-task-evaluation"></a>
+## T5 Task Evaluation
+<a id="cnndm-evaluation"></a>
+### CNNDM Evaluation
+The following script finetunes the T5 model for evaluation on the [CNN/Daily Mail dataset](https://s3.amazonaws.com/opennmt-models/Summary/cnndm.tar.gz). The `TRAIN_DATA`, `VALID_DATA`, and `TEST_DATA` point to the corresponding source and target files.
+
+<pre>
+
+TRAIN_DATA="data/CNNDM/train.source \
+            /train.target"
+
+VALID_DATA="data/CNNDM/val.source \
+            data/CNNDM/val.target"
+
+TEST_DATA="data/CNNDM/test.source \
+       data/CNNDM/test.target"
+
+
+VOCAB_FILE=bert-vocab.txt
+PRETRAINED_CHECKPOINT=checkpoints/t5_223m
+CHECKPOINT_PATH=checkpoints/t5_223m_cnndm
+
+COMMON_TASK_ARGS="--num-layers 12 \
+                  --hidden-size 768 \
+                  --num-attention-heads 12 \
+                  --kv-channels 64 \
+                  --ffn-hidden-size 3072 \
+                  --encoder-seq-length 512 \
+                  --decoder-seq-length 128 \
+                  --model-parallel-size 1 \
+                  --max-position-embeddings 512 \
+                  --vocab-file $VOCAB_FILE \
+                  --vocab-extra-ids 100 \
+                  --fp16"
+
+COMMON_TASK_ARGS_EXT="--train-data $TRAIN_DATA \
+                      --valid-data $VALID_DATA \
+                      --test-data $TEST_DATA \
+                      --pretrained-checkpoint $PRETRAINED_CHECKPOINT \
+                      --checkpoint-activations \
+                      --save-interval 5000 \
+                      --save $CHECKPOINT_PATH \
+                      --log-interval 100 \
+                      --eval-interval 5000 \
+                      --eval-iters 10 \
+                      --beam-size 1 \
+                      --max-decode-len 512 \
+                      --warmup 0.0 \
+                      --tokenizer-type BertWordPieceLowerCase \
+                      --lr-decay-style linear"
+
+python tasks/main.py \
+       --task CNNDM \
+       --finetune \
+       $COMMON_TASK_ARGS \
+       $COMMON_TASK_ARGS_EXT \
+       --epochs 10 \
+       --batch-size 128 \
+       --eval-batch-size 32 \
+       --lr 2.0e-5 \
+       --weight-decay 1.0e-1 \
+       --sample-rate 1.0
+</pre>
+
+<a id="squad-evaluation"></a>
+### SQuAD Evaluation
+The following script finetunes the T5 model for evaluation on the [SQuAD 1.1 dataset](https://rajpurkar.github.io/SQuAD-explorer). The `TRAIN_DATA` and `VALID_DATA` point to the corresponding `json` files.
+
+<pre>
+
+TRAIN_DATA="data/SQUAD-1.1/train-v1.1.json"
+VALID_DATA="data/SQUAD-1.1/dev-v1.1.json"
+
+VOCAB_FILE=bert-vocab.txt
+PRETRAINED_CHECKPOINT=checkpoints/t5_223m
+CHECKPOINT_PATH=checkpoints/t5_223m_squad
+
+COMMON_TASK_ARGS=&#60;same as those in <a href="#cnndm-evaluation">CNNDM Evaluation</a> above&#62;
+COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#cnndm-evaluation">CNNDM Evaluation</a> above&#62;
+
+python tasks/main.py \
+       --task SQUAD \
+       --finetune \
+       $COMMON_TASK_ARGS \
+       $COMMON_TASK_ARGS_EXT \
+       --epochs 3 \
+       --batch-size 32 \
+       --eval-batch-size 8 \
+       --weight-decay 1.0e-2 \
+       --lr 2.0e-5
 </pre>
 
 <a id="datasets"></a>
