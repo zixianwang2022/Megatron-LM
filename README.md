@@ -37,7 +37,7 @@ The following table details how Megatron scales using data parallelism in conjuc
     - [RACE Evaluation](#race-evaluation)
     - [MNLI Evaluation](#mnli-evaluation)
   - [T5 Task Evaluation](#t5-task-evaluation)
-    - [CNNDM Evaluation](#cnndm-evaluation)
+    - [CNN/Daily Mail Evaluation](#cnndm-evaluation)
     - [SQuAD Evaluation](#squad-evaluation)
 - [Datasets](#datasets)
   - [Collecting Wikipedia Training Data](#collecting-wikipedia-training-data)
@@ -629,7 +629,7 @@ python tasks/main.py \
 <a id="t5-task-evaluation"></a>
 ## T5 Task Evaluation
 <a id="cnndm-evaluation"></a>
-### CNNDM Evaluation
+### CNN/Daily Mail Evaluation
 The following script finetunes the T5 model for evaluation on the [CNN/Daily Mail dataset](https://s3.amazonaws.com/opennmt-models/Summary/cnndm.tar.gz). The `TRAIN_DATA`, `VALID_DATA`, and `TEST_DATA` point to the corresponding source and target files.
 
 <pre>
@@ -703,8 +703,8 @@ VOCAB_FILE=bert-vocab.txt
 PRETRAINED_CHECKPOINT=checkpoints/t5_223m
 CHECKPOINT_PATH=checkpoints/t5_223m_squad
 
-COMMON_TASK_ARGS=&#60;same as those in <a href="#cnndm-evaluation">CNNDM Evaluation</a> above&#62;
-COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#cnndm-evaluation">CNNDM Evaluation</a> above&#62;
+COMMON_TASK_ARGS=&#60;same as those in <a href="#cnndm-evaluation">CNN/Daily Mail Evaluation</a> above&#62;
+COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#cnndm-evaluation">CNN/Daily Mail Evaluation</a> above&#62;
 
 python tasks/main.py \
        --task SQUAD \
@@ -730,8 +730,8 @@ VALID_DATA="data/glue_data/MNLI/dev_matched.tsv \
 PRETRAINED_CHECKPOINT=checkpoints/t5_223m
 VOCAB_FILE=bert-vocab.txt
 CHECKPOINT_PATH=checkpoints/t5_223m_mnli
-COMMON_TASK_ARGS=&#60;same as those in <a href="#squad-evaluation">SQUAD Evaluation</a> above&#62;
-COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#squad-evaluation">SQUAD Evaluation</a> above&#62;
+COMMON_TASK_ARGS=&#60;same as those in <a href="#cnndm-evaluation">CNN/Daily Mail Evaluation</a> above&#62;
+COMMON_TASK_ARGS_EXT=&#60;same as those in <a href="#cnndm-evaluation">CNN/Daily Mail Evaluation</a> above&#62;
 
 python tasks/main_t5.py \
        --task MNLI \
