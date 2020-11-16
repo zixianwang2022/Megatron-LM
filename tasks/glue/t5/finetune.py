@@ -47,7 +47,7 @@ def glue_classification(num_classes, Dataset,
         print_rank_0('building T5 model for {} ...'.format(
             args.task))
 
-        return T5Model(num_tokentypes=0,
+        return T5Model(num_tokentypes=2,
                        parallel_output=False)
 
     def single_dataset_provider(datapath):
