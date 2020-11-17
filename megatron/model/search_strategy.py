@@ -92,6 +92,7 @@ def update_beam_state(outs, total_score, topk, topk_score,
     zss = torch.split(z_block, 1)
     z_block = torch.cat([zss[i] for i in argtopk])
 
+    # Types is set to None for T5 implementation
     if types is not None:
         yss = torch.split(types, 1)
         types = torch.cat([yss[i] for i in argtopk])
