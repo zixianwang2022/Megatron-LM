@@ -221,7 +221,7 @@ Further command line arguments are described in the source file [`arguments.py`]
 
 This script runs single GPU 223M parameter T5 pretraining. As mentioned above, single GPU training is primarily intended for debugging purposes, as the code is optimized for distributed training.
 
-It follows largely the same format as the previous BERT script with a few notable differences: dimension of key and value matrices (`--kv-channels`), dimension of dense layer in the feed-forward networks (`--ffn-hidden-size`), encoder and decoder sequence lengths (`--encoder-seq-length` and `--decoder-seq-length`), and number of sentinel vocabulary tokens for span masking (`--vocab-extra-ids`).
+It follows largely the same format as the previous BERT script with a few additional arguments to align it with the terminology of the [T5 paper](https://arxiv.org/abs/1910.10683): projection dimensions of key and value matrices (`--kv-channels`), dimension of the dense layer in the feed-forward network (`--ffn-hidden-size`), encoder and decoder sequence lengths (`--encoder-seq-length` and `--decoder-seq-length`), and number of sentinel vocabulary tokens for span masking (`--vocab-extra-ids`).
 
 <pre>
 CHECKPOINT_PATH=checkpoints/t5_223m
@@ -331,7 +331,7 @@ MP_SIZE=2
 
 DISTRIBUTED_ARGS=&#60;same as those directly above&#62;
 
-CHECKPOINT_PATH=checkpoints/t5_345m
+CHECKPOINT_PATH=checkpoints/t5_223m
 VOCAB_FILE=bert-vocab.txt
 DATA_PATH=my-t5_text_sentence
 T5_ARGS=&#60;same as those in <a href="#t5-pretraining">T5 pretraining</a> above&#62;
@@ -631,7 +631,7 @@ python tasks/main.py \
 ## T5 Task Evaluation
 <a id="cnndm-evaluation"></a>
 ### CNN/Daily Mail Evaluation
-The following script finetunes the T5 model for evaluation on the [CNN/Daily Mail dataset](https://s3.amazonaws.com/opennmt-models/Summary/cnndm.tar.gz). The `TRAIN_DATA`, `VALID_DATA`, and `TEST_DATA` point to the corresponding source and target files.
+The following script finetunes the T5 model for evaluation on the non-tokenized version of the [CNN/Daily Mail dataset](https://s3.amazonaws.com/opennmt-models/Summary/cnndm.tar.gz). The `TRAIN_DATA`, `VALID_DATA`, and `TEST_DATA` point to the corresponding source and target files.
 
 <pre>
 
