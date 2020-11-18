@@ -631,7 +631,7 @@ python tasks/main.py \
 ## T5 Task Evaluation
 <a id="cnndm-evaluation"></a>
 ### CNN/Daily Mail Evaluation
-The following script finetunes the T5 model for evaluation on the non-tokenized version of the [CNN/Daily Mail dataset](https://s3.amazonaws.com/opennmt-models/Summary/cnndm.tar.gz). The `TRAIN_DATA`, `VALID_DATA`, and `TEST_DATA` point to the corresponding source and target files.
+The following script finetunes the T5 model for evaluation on the non-tokenized version of the [CNN/Daily Mail dataset](https://cs.nyu.edu/~kcho/DMQA). The `TRAIN_DATA`, `VALID_DATA`, and `TEST_DATA` point to the corresponding source and target files.
 
 <pre>
 
