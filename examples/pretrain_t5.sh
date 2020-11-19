@@ -1,20 +1,11 @@
 #!/bin/bash
 
-GPUS_PER_NODE=8
-# Change for multinode config
-MASTER_ADDR=localhost
-MASTER_PORT=6000
-NNODES=1
-NODE_RANK=0
-WORLD_SIZE=$(($GPUS_PER_NODE*$NNODES))
-
+RANK=0
+WORLD_SIZE=1
 DATA_PATH=<Specify path and file prefix>_text_sentence
 CHECKPOINT_PATH=<Specify path>
 
-DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NNODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port $MASTER_PORT"
-
-python -m torch.distributed.launch $DISTRIBUTED_ARGS \
-    pretrain_t5.py \
+python pretrain_t5.py \
     --num-layers 12 \
     --hidden-size 768 \
     --num-attention-heads 12 \
@@ -42,3 +33,4 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS \
     --save-interval 10000 \
     --eval-interval 1000 \
     --eval-iters 10
+ 

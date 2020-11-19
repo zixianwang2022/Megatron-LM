@@ -66,7 +66,7 @@ def _cross_entropy_forward_step(batch, model):
                       enc_mask,
                       dec_mask,
                       enc_dec_mask,
-                      tokentype_ids=types)
+                      tokentype_ids=None)
 
     batch, length, units = logits.shape
     logits = logits.view(batch * length, units)

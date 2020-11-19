@@ -87,7 +87,7 @@ class T5LMHead(MegatronModule):
 class T5Model(MegatronModule):
     """T5 Language model."""
 
-    def __init__(self, num_tokentypes=2, parallel_output=True):
+    def __init__(self, num_tokentypes=0, parallel_output=True):
         super(T5Model, self).__init__()
         args = get_args()
 

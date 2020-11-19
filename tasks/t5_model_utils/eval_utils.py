@@ -198,7 +198,7 @@ def teacher_forcing_accuracy(name, model, dataloader,
                               enc_mask,
                               dec_mask,
                               enc_dec_mask,
-                              tokentype_ids=types)
+                              tokentype_ids=None)
 
             batch, length, units = logits.shape
             logits = logits.view(batch * length, units)
@@ -251,7 +251,7 @@ def calculate_task_specific_score(name, model, dataloader, epoch,
 
                 hypothesis = obj.generate_output(model,
                                                  tokens_enc,
-                                                 types,
+                                                 None,
                                                  enc_mask)
                 return lm_labels, hypothesis
 
@@ -313,7 +313,7 @@ def calculate_squad_score(name, model, dataloader, epoch,
 
                 hypothesis = obj.generate_output(model,
                                                  tokens_enc,
-                                                 types,
+                                                 None,
                                                  enc_mask)
                 return hypothesis, references
 

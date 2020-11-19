@@ -44,7 +44,7 @@ def summarization(Dataset, name_from_datapath_func):
 
         print_rank_0('building T5 model for {} ...'.format(args.task))
 
-        return T5Model(num_tokentypes=2,
+        return T5Model(num_tokentypes=0,
                        parallel_output=False)
 
     def single_dataset_provider(datapath):
