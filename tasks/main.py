@@ -48,8 +48,8 @@ def get_tasks_args(parser):
     group.add_argument('--strict-lambada', action='store_true',
                        help='Use more difficult formulation of lambada.')
     group.add_argument('--strict-lambada-detokenize', action='store_true',
-                       help='Use more difficult and detokenized formulation
-                        of lambada.')
+                       help='Use more difficult and detokenized formulation'
+                        ' of lambada.')
     # Retriever args
     group.add_argument('--qa-data-dev', type=str, default=None,
                        help='Path to the QA dataset dev file.')
