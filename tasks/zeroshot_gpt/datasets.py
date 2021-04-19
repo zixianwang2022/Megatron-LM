@@ -80,23 +80,31 @@ class _LMDataset(torch.utils.data.Dataset):
 
 class _LambadaDataset(torch.utils.data.Dataset):
 
-    def __init__(self, path, pad_idx, tokenizer, seq_len, strict=False):
+    def __init__(self, path, pad_idx, tokenizer, seq_len, strict=False,
+            strict_detokenize=False):
         print_rank_0('> building lambada dataset from {} ...'.format(path))
         self.seq_len = seq_len
         self.pad_idx = pad_idx
         self.tokenizer = tokenizer
         self.strict = strict
+        self.strict_detokenize = strict_detokenize
+        if self.strict_detokenize:
+            strict_detokenizer = get_detokenizer("lambada")
 
         self.tokens = []
         self.labels = []
+
         with open(path, 'r') as f:
             for line in f.readlines():
                 text = json.loads(line)['text']
-                tokens, labels = self.get_tokens(text)
+                tokens, labels = self.get_tokens(text, strict_detokenizer)
                 self.tokens.append(tokens)
                 self.labels.append(labels)
 
-    def get_tokens(self, text):
+    def get_tokens(self, text, strict_detokenizer=None):
+        if self.strict_detokenize:
+            text = strict_detokenizer(text)
+            text = '\n' + text.strip()
         if not self.strict:
             tokens = self.tokenizer.tokenize(text)
             return tokens[:-1], [tokens[-1]]
@@ -133,7 +141,8 @@ def _build_lambada_dataset():
 
     assert len(args.valid_data) == 1
     val_dataset = _LambadaDataset(args.valid_data[0], tokenizer.eod, tokenizer,
-                                  args.seq_length, args.strict_lambada)
+                                  args.seq_length, args.strict_lambada, 
+                                  args.strict_lambada_detokenize)
     print_rank_0(' > found {} samples.'.format(len(val_dataset)))
 
     return val_dataset

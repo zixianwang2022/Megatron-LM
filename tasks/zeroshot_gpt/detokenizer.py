@@ -17,7 +17,6 @@
 
 import re
 
-
 def ptb_detokenizer(string):
     string = string.replace(" '", "'")
     string = string.replace(" \n", "\n")
@@ -63,13 +62,18 @@ def wikitext_detokenizer(string):
     return string
 
 
-def lambada_detokenizer(string):
+def lambada_detokenizer_empty(string):
     return string
 
+def lambada_detokenizer(string):
+    string = string.replace("“", '"')
+    string = string.replace("”", '"')
+    return string
 
 _DETOKENIZERS = {
     'ptb': ptb_detokenizer,
     'wiki': wikitext_detokenizer,
+    'lambada-empty': lambada_detokenizer_empty,
     'lambada': lambada_detokenizer,
 }
 
