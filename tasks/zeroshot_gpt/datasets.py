@@ -88,6 +88,7 @@ class _LambadaDataset(torch.utils.data.Dataset):
         self.tokenizer = tokenizer
         self.strict = strict
         self.strict_detokenize = strict_detokenize
+        strict_detokenizer = None
         if self.strict_detokenize:
             strict_detokenizer = get_detokenizer("lambada")
 
@@ -104,7 +105,7 @@ class _LambadaDataset(torch.utils.data.Dataset):
     def get_tokens(self, text, strict_detokenizer=None):
         if self.strict_detokenize:
             text = strict_detokenizer(text)
-            text = '\n' + text.strip()
+            #text = '\n' + text.strip()
         if not self.strict:
             tokens = self.tokenizer.tokenize(text)
             return tokens[:-1], [tokens[-1]]
