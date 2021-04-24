@@ -23,7 +23,7 @@ import time
 import torch
 import torch.nn.functional as F
 
-from megatron import get_args
+from megatron import get_args, print_rank_0
 from megatron import get_tokenizer
 from megatron import mpu
 from megatron.utils import get_ltor_masks_and_position_ids, unwrap_model
@@ -194,6 +194,7 @@ def generate_samples_eval(model, context, max_gen_length, eos_token_id):
     # Generate samples for lm evaluation
     # NEED TO THINK ABOUT eos token
 
+    start_time = time.time()
     args = get_args()
     tokenizer = get_tokenizer()
 
@@ -206,13 +207,16 @@ def generate_samples_eval(model, context, max_gen_length, eos_token_id):
 
     with torch.no_grad():
         token_stream = get_token_stream(model, [context_tokens])
+
+        counter = 0
         for counter, decode_tokens in enumerate(token_stream):
-            decode_tokens, _ = decode_tokens
-            decode_tokens = decode_tokens[0].cpu().numpy().tolist()
-            trim_decode_tokens = tokenizer.detokenize(
-                decode_tokens)[raw_text_len:]
-            if counter == args.out_seq_length:
-                break
+            pass
+        decode_tokens, _ = decode_tokens
+        decode_tokens = decode_tokens[0].cpu().numpy().tolist()
+        trim_decode_tokens = tokenizer.detokenize(
+            decode_tokens)[raw_text_len:]
+        print_rank_0(str(counter) + " time " + str(time.time() - start_time))
+        #print_rank_0(trim_decode_tokens)
 
     return trim_decode_tokens
 
