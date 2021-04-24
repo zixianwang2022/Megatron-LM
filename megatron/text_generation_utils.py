@@ -190,6 +190,10 @@ def generate_samples_input_from_file(model):
             raw_text = None
             context_count += 1
 
+# We added this function to support the tasks evaluation such as squad
+# and drop in the https://github.com/EleutherAI/lm-evaluation-harness 
+# codebase. The lm-evaluation-harness code can now call this function
+# similar to their current generate function call used for gpt style models.
 def generate_samples_eval(model, context, max_gen_length, eos_token_id):
     # Generate samples for lm evaluation
     # NEED TO THINK ABOUT eos token
@@ -469,6 +473,8 @@ def sample_sequence_batch(model, context_tokens, context_lengths,
     with torch.no_grad():
         context_length = context_lengths.min().item()
 
+        # added eos_id to support the function generate_samples_eval that passes
+        # eos_id as an argument and needs termination when that id id found.
         if hasattr(args, 'eos_id'):
             eos_id = args.eos_id
         else:
