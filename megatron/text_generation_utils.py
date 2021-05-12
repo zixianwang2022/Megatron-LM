@@ -219,8 +219,6 @@ def generate_samples_eval(model, context, max_gen_length, eos_token_id):
         decode_tokens = decode_tokens[0].cpu().numpy().tolist()
         trim_decode_tokens = tokenizer.detokenize(
             decode_tokens)[raw_text_len:]
-        print_rank_0(str(counter) + " time " + str(time.time() - start_time))
-        #print_rank_0(trim_decode_tokens)
 
     return trim_decode_tokens
 
