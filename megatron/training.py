@@ -50,7 +50,9 @@ from megatron.utils import calc_params_l2_norm
 from megatron.schedules import get_forward_backward_func
 from megatron.utils import report_memory
 
-
+# >>>
+from print_memory_all import print_memory_all
+# <<<
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -159,6 +161,10 @@ def pretrain(train_valid_test_dataset_provider,
                                    test_data_iterator, model,
                                    0, True)
 
+    # >>>
+    print_memory_all("final")
+    # <<<
+        
 def update_train_iters(args):
 
     # For iteration-based training, we don't need to do anything
@@ -581,6 +587,10 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
             report_memory('(after {} iterations)'.format(iteration))
             report_memory_flag = False
         timers.log(timers_to_log, normalizer=args.log_interval)
+
+        # >>>
+        print_memory_all("iter %d/%d" % (iteration, args.train_iters))
+        # <<<
 
     return report_memory_flag
 
