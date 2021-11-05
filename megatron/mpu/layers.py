@@ -38,6 +38,8 @@ from .utils import split_tensor_along_last_dim
 from .utils import VocabUtility
 from megatron import get_args
 
+import fp
+
 
 _MODEL_PARALLEL_ATTRIBUTE_DEFAULTS = {'tensor_model_parallel': False,
                                       'partition_dim': -1,
@@ -268,6 +270,7 @@ class ColumnParallelLinear(torch.nn.Module):
         world_size = get_tensor_model_parallel_world_size()
         self.output_size_per_partition = divide(output_size, world_size)
         self.skip_bias_add = skip_bias_add
+        self.fp_linear = fp.Cast(fp.env('LINEAR'))
 
         # Parameters.
         # Note: torch.nn.functional.linear performs XA^T + b and as a result
@@ -326,7 +329,9 @@ class ColumnParallelLinear(torch.nn.Module):
             input_parallel = copy_to_tensor_model_parallel_region(input_)
 
             # Matrix multiply.
-            output_parallel = F.linear(input_parallel, self.weight, bias)
+            output_parallel = fp.linear_func.apply(input_parallel, self.weight, bias, self.fp_linear.meta,
+                                                   self.fp_linear.fi, self.fp_linear.fw, self.fp_linear.fo,
+                                                   self.fp_linear.di, self.fp_linear.dw, self.fp_linear.do)
 
         if self.gather_output:
             # All-gather across the partitions.
@@ -382,6 +387,7 @@ class RowParallelLinear(torch.nn.Module):
         world_size = get_tensor_model_parallel_world_size()
         self.input_size_per_partition = divide(input_size, world_size)
         self.skip_bias_add = skip_bias_add
+        self.fp_linear = fp.Cast(fp.env('LINEAR'))
 
         # Parameters.
         # Note: torch.nn.functional.linear performs XA^T + b and as a result
@@ -425,7 +431,9 @@ class RowParallelLinear(torch.nn.Module):
         else:
             input_parallel = scatter_to_tensor_model_parallel_region(input_)
         # Matrix multiply.
-        output_parallel = F.linear(input_parallel, self.weight)
+        output_parallel = fp.linear_func.apply(input_parallel, self.weight, None, self.fp_linear.meta,
+                                               self.fp_linear.fi, self.fp_linear.fw, self.fp_linear.fo,
+                                               self.fp_linear.di, self.fp_linear.dw, self.fp_linear.do)
         # All-reduce across all the partitions.
         output_ = reduce_from_tensor_model_parallel_region(output_parallel)
         if not self.skip_bias_add:
