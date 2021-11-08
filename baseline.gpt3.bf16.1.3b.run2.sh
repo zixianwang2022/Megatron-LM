@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH -p luna -A adlr -t 04:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=adlr-nlp:develop:baseline.gpt3.bf16.357m.run1
+#SBATCH -p luna -A adlr -t 04:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=adlr-nlp:develop:baseline.gpt3.bf16.1.3b.run1
 
-NAME="baseline.gpt3.bf16/357m.run1"
+NAME="baseline.gpt3.bf16/1.3b.run1"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
@@ -29,16 +29,16 @@ options=" \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 24 \
-    --hidden-size 1024 \
-    --num-attention-heads 16 \
+    --hidden-size 2048 \
+    --num-attention-heads 32 \
     --seq-length 2048 \
     --max-position-embeddings 2048 \
     --micro-batch-size 4 \
-    --global-batch-size 256 \
+    --global-batch-size 512 \
     --train-samples 192000000 \
     --lr-decay-samples 166400000 \
-    --lr 3.0e-4 \
-    --min-lr 3.0e-5 \
+    --lr 2.0e-4 \
+    --min-lr 2.0e-5 \
     --lr-decay-style cosine \
     --log-interval 100 \
     --eval-iters 50 \
@@ -54,15 +54,15 @@ options=" \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
-    --init-method-std 0.02 \
+    --init-method-std 0.014 \
     --log-params-norm \
     --log-num-zeros-in-grad \
     --bf16 \
     --DDP-impl local \
     --tensorboard-dir ${TENSORBOARD_DIR} \
-    --activations-checkpoint-method uniform"
-#   --lr-warmup-samples 162761 \
-#   --rampup-batch-size 32 32 1953125 \
+    --activations-checkpoint-method uniform \
+    --lr-warmup-samples 244141"
+#   --rampup-batch-size 32 32 2929688 \
 
 run_cmd="${MEGATRON_DIR}/bind.sh --cpu=${MEGATRON_DIR}/dgxa100_ccx.sh --mem=${MEGATRON_DIR}/dgxa100_ccx.sh python -u ${MEGATRON_DIR}/pretrain_gpt.py ${options}"
 
