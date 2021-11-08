@@ -1,0 +1,3 @@
+[submodule "megatron/fp"]
+	path = megatron/fp
+	url = https://gitlab-master.nvidia.com/dstosic/fp.git

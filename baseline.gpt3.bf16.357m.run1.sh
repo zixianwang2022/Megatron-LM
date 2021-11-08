@@ -67,7 +67,7 @@ options=" \
 run_cmd="${MEGATRON_DIR}/bind.sh --cpu=${MEGATRON_DIR}/dgxa100_ccx.sh --mem=${MEGATRON_DIR}/dgxa100_ccx.sh python -u ${MEGATRON_DIR}/pretrain_gpt.py ${options}"
 
 srun -l \
-     --container-image "/lustre/fsw/adlr/adlr-nlp/images/pytorch+bf16_nccl_fusion+pyspy+fp.sqsh" \
+     --container-image "/lustre/fsw/adlr/adlr-nlp/images/pytorch+bf16_nccl_fusion+pyspy.sqsh" \
      --container-mounts "/lustre/fsw/adlr:/lustre/fsw/adlr" \
      --output=$LOG_DIR/%x_%j_$DATETIME.log sh -c "${run_cmd}"
 
