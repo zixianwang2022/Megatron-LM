@@ -51,6 +51,7 @@ from megatron.utils import calc_params_l2_norm
 from megatron.schedules import get_forward_backward_func
 from megatron.utils import report_memory
 
+from megatron import fp
 
 
 def print_datetime(string):
@@ -659,6 +660,9 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     print_datetime('before the start of training step')
     report_memory_flag = True
     while iteration < args.train_iters:
+        fp.utils.update = False
+        if (fp.utils.interval > 0) and (iteration % fp.utils.interval == 0):
+            fp.utils.update = True
         update_num_microbatches(args.consumed_train_samples)
         loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
             train_step(forward_step_func,
@@ -742,6 +746,8 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
 
     total_loss_dict = {}
 
+    fp.utils.no_track = True
+
     with torch.no_grad():
         iteration = 0
         while iteration < args.eval_iters:
@@ -772,6 +778,8 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
     # Move model back to the train mode.
     for model_module in model:
         model_module.train()
+
+    fp.utils.no_track = False
 
     for key in total_loss_dict:
         total_loss_dict[key] /= args.eval_iters * get_num_microbatches()
