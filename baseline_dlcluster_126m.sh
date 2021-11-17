@@ -11,8 +11,19 @@ mkdir -p ${TENSORBOARD_DIR}
 
 DATA_DIR="/data/path/BookCorpus2_ftfy_cleaned_id_shuf_text_document"
 CHECKPOINT_DIR="/home/ksivamani/fp8/megatron-lm/checkpoints/${NAME}"
-cd megatron/fp/exmy && python setup.py build && cp build/lib*/*.so . && cd .. && python setup.py build && cp build/lib*/*.so . && cd ../..
-export LINEAR='{fi:{e:4,m:3,s:1,f:1,p:0},fw:{e:4,m:3,s:1,f:1,p:0},do:{e:4,m:3,s:1,f:1,p:0}}'
+
+cd megatron/fp/exmy
+python setup.py build
+cp build/lib*/*.so .
+cd ../cudnn_funcs
+python setup.py build
+cp build/lib*/*.so .
+cd ../histograms
+python setup.py build
+cp build/lib*/*.so .
+cd ../../..
+
+export LINEAR='{fi:{e:4,m:3,s:1,f:1,p:0,v:1},fw:{e:4,m:3,s:1,f:1,p:0,v:1},do:{e:4,m:3,s:1,f:1,p:0,v:1}}'
 
 options=" \
     --exit-duration-in-mins 230 \
@@ -25,7 +36,7 @@ options=" \
     --max-position-embeddings 2048 \
     --micro-batch-size 1 \
     --global-batch-size 16 \
-    --train-iters 2500 \
+    --train-iters 10 \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
@@ -50,4 +61,5 @@ options=" \
     --DDP-impl local \
     --tensorboard-dir ${TENSORBOARD_DIR} "
 
+#nsys profile --trace nvtx,cuda 
 python -m torch.distributed.launch --use_env --nnodes=1 --nproc_per_node=8 ${DIR}/pretrain_gpt.py ${options}

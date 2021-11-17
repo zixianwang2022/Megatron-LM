@@ -19,7 +19,6 @@
 
 
 import math
-
 import torch
 import torch.nn.functional as F
 import torch.nn.init as init
@@ -259,7 +258,7 @@ class ColumnParallelLinear(torch.nn.Module):
     def __init__(self, input_size, output_size, bias=True, gather_output=True,
                  init_method=init.xavier_normal_, stride=1,
                  keep_master_weight_for_test=False,
-                 skip_bias_add=False):
+                 skip_bias_add=False, label=None):
         super(ColumnParallelLinear, self).__init__()
 
         # Keep input parameters
@@ -271,6 +270,7 @@ class ColumnParallelLinear(torch.nn.Module):
         self.output_size_per_partition = divide(output_size, world_size)
         self.skip_bias_add = skip_bias_add
         self.fp_linear = fp.Cast(fp.env('LINEAR'))
+        self.label = label
 
         # Parameters.
         # Note: torch.nn.functional.linear performs XA^T + b and as a result
@@ -312,7 +312,6 @@ class ColumnParallelLinear(torch.nn.Module):
                 world_size > 1)
 
 
-
     def forward(self, input_):
         bias = self.bias if not self.skip_bias_add else None
 
@@ -330,8 +329,9 @@ class ColumnParallelLinear(torch.nn.Module):
 
             # Matrix multiply.
             output_parallel = fp.linear_func.apply(input_parallel, self.weight, bias, self.fp_linear.meta,
-                                                   self.fp_linear.fi, self.fp_linear.fw, self.fp_linear.fo,
-                                                   self.fp_linear.di, self.fp_linear.dw, self.fp_linear.do)
+                                                self.fp_linear.fi, self.fp_linear.fw, self.fp_linear.fo,
+                                                self.fp_linear.di, self.fp_linear.dw, self.fp_linear.do, self.label)
+            
 
         if self.gather_output:
             # All-gather across the partitions.
@@ -376,7 +376,7 @@ class RowParallelLinear(torch.nn.Module):
                  input_is_parallel=False,
                  init_method=init.xavier_normal_, stride=1,
                  keep_master_weight_for_test=False,
-                 skip_bias_add=False):
+                 skip_bias_add=False, label=None):
         super(RowParallelLinear, self).__init__()
 
         # Keep input parameters
@@ -388,6 +388,7 @@ class RowParallelLinear(torch.nn.Module):
         self.input_size_per_partition = divide(input_size, world_size)
         self.skip_bias_add = skip_bias_add
         self.fp_linear = fp.Cast(fp.env('LINEAR'))
+        self.label = label
 
         # Parameters.
         # Note: torch.nn.functional.linear performs XA^T + b and as a result
@@ -433,7 +434,7 @@ class RowParallelLinear(torch.nn.Module):
         # Matrix multiply.
         output_parallel = fp.linear_func.apply(input_parallel, self.weight, None, self.fp_linear.meta,
                                                self.fp_linear.fi, self.fp_linear.fw, self.fp_linear.fo,
-                                               self.fp_linear.di, self.fp_linear.dw, self.fp_linear.do)
+                                               self.fp_linear.di, self.fp_linear.dw, self.fp_linear.do, self.label)
         # All-reduce across all the partitions.
         output_ = reduce_from_tensor_model_parallel_region(output_parallel)
         if not self.skip_bias_add:

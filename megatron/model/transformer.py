@@ -61,7 +61,8 @@ class ParallelMLP(MegatronModule):
             args.ffn_hidden_size,
             gather_output=False,
             init_method=init_method,
-            skip_bias_add=True)
+            skip_bias_add=True,
+            label='dense_h_to_4h')
 
         self.bias_gelu_fusion = args.bias_gelu_fusion
         self.activation_func = F.gelu
@@ -76,7 +77,8 @@ class ParallelMLP(MegatronModule):
             args.hidden_size,
             input_is_parallel=True,
             init_method=output_layer_init_method,
-            skip_bias_add=True)
+            skip_bias_add=True,
+            label='dense_4h_to_h')
 
     def forward(self, hidden_states):
 
@@ -137,20 +139,23 @@ class ParallelAttention(MegatronModule):
                 args.hidden_size,
                 3 * projection_size,
                 gather_output=False,
-                init_method=init_method)
+                init_method=init_method,
+                label='query_key_value')
         else:
             assert attention_type == AttnType.cross_attn
             self.query = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 projection_size,
                 gather_output=False,
-                init_method=init_method)
+                init_method=init_method,
+                label='query')
 
             self.key_value = mpu.ColumnParallelLinear(
                 args.hidden_size,
                 2 * projection_size,
                 gather_output=False,
-                init_method=init_method)
+                init_method=init_method,
+                label='key_value')
 
         coeff = None
         self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
@@ -177,7 +182,8 @@ class ParallelAttention(MegatronModule):
             args.hidden_size,
             input_is_parallel=True,
             init_method=output_layer_init_method,
-            skip_bias_add=True)
+            skip_bias_add=True,
+            label='dense')
 
 
     def _allocate_memory(self, inference_max_sequence_len, batch_size):
