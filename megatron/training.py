@@ -256,6 +256,10 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap
         for param in model_module.parameters():
             mpu.set_defaults_if_not_set_tensor_model_parallel_attributes(param)
 
+    from .debugging import register_non_finite_fwd_hooks, register_non_finite_bwd_hooks
+    register_non_finite_fwd_hooks(model)
+    register_non_finite_bwd_hooks(model)
+
     # Print number of parameters.
     if mpu.get_data_parallel_rank() == 0:
         print(' > number of parameters on (tensor, pipeline) '
@@ -525,6 +529,21 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
 
     total_iterations = total_loss_dict[advanced_iters_key] + \
                        total_loss_dict[skipped_iters_key]
+
+    # Do an all_gather for non-finite tensor tracking.
+    from .debugging import gather_non_finite_fwd, gather_non_finite_bwd
+    if args.log_non_finite_fwd:
+        all_non_finite_fwd = gather_non_finite_fwd() 
+    if args.log_non_finite_bwd:
+        all_non_finite_bwd = gather_non_finite_bwd()
+
+    # Write non-finite independent of tensorboard log interval.
+    from .debugging import write_non_finite_fwd_to_tensorboard, \
+                           write_non_finite_bwd_to_tensorboard 
+    if writer and args.log_non_finite_fwd:
+        write_non_finite_fwd_to_tensorboard(writer, all_non_finite_fwd, iteration)
+    if writer and args.log_non_finite_bwd:
+        write_non_finite_bwd_to_tensorboard(writer, all_non_finite_bwd, iteration)
 
     # Tensorboard values.
     if writer and (iteration % args.tensorboard_log_interval == 0 ) and \
