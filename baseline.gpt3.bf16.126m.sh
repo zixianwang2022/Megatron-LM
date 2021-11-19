@@ -1,15 +1,15 @@
 #!/bin/bash
 
-#SBATCH -p luna -A adlr -t 01:10:00 --nodes=4 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=adlr-nlp:develop:baseline.gpt3.bf16.126m.run3
+#SBATCH -p luna -A adlr -t 01:10:00 --nodes=4 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=adlr-nlp:develop:baseline.gpt3.bf16.126m
 
-NAME="baseline.gpt3.bf16/126m.run3"
+NAME="baseline.gpt3.bf16/126m"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 DIR="/lustre/fsw/adlr/adlr-nlp/jkamalu/fp8/${NAME}"
 
 # Megatron-LM main branch commit SHA f5345dfac5060afb86dad1d1926eb05d005e57f7 from 2021/10/29
-MEGATRON_DIR="/lustre/fsw/adlr/adlr-nlp/jkamalu/fp8/megatron-lm-main-dev"
+MEGATRON_DIR="/lustre/fsw/adlr/adlr-nlp/jkamalu/fp8/megatron-lm-main"
 
 LOG_DIR="${DIR}/logs"
 CHECKPOINT_DIR="${DIR}/checkpoints"

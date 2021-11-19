@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH -p luna -A adlr -t 04:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=adlr-nlp:develop:baseline.gpt3.bf16.357m.run2
+#SBATCH -p luna -A adlr -t 04:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=adlr-nlp:develop:baseline.gpt3.bf16.357m
 
-NAME="baseline.gpt3.bf16/357m.run2"
+NAME="baseline.gpt3.bf16/357m"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
