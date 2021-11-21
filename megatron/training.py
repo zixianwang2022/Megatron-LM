@@ -51,6 +51,7 @@ from megatron.utils import calc_params_l2_norm
 from megatron.schedules import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.fp.utils import CollectFp8TensorHistograms
+from megatron.fp.utils import process_data
 
 
 
@@ -661,7 +662,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     report_memory_flag = True
     while iteration < args.train_iters:
         update_num_microbatches(args.consumed_train_samples)
-        with CollectFp8TensorHistograms():
+        with CollectFp8TensorHistograms(args.micro_batch_size):
             loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
                 train_step(forward_step_func,
                         train_data_iterator,

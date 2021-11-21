@@ -23,7 +23,8 @@ python setup.py build
 cp build/lib*/*.so .
 cd ../../..
 
-export LINEAR='{fi:{e:4,m:3,s:1,f:1,p:0,v:1},fw:{e:4,m:3,s:1,f:1,p:0,v:1},do:{e:4,m:3,s:1,f:1,p:0,v:1}}'
+freq='16'
+export LINEAR="{fi:{e:4,m:3,s:1,f:1,p:0,v:$freq},fw:{e:4,m:3,s:1,f:1,p:0,v:$freq},do:{e:4,m:3,s:1,f:1,p:0,v:$freq},fo:{v:$freq},di:{v:$freq},dw:{v:$freq}}"
 
 options=" \
     --exit-duration-in-mins 230 \
@@ -36,7 +37,7 @@ options=" \
     --max-position-embeddings 2048 \
     --micro-batch-size 1 \
     --global-batch-size 16 \
-    --train-iters 10 \
+    --train-iters 100 \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
@@ -59,7 +60,6 @@ options=" \
     --log-num-zeros-in-grad \
     --bf16 \
     --DDP-impl local \
-    --tensorboard-dir ${TENSORBOARD_DIR} "
+    --tensorboard-dir ${TENSORBOARD_DIR}"
 
-#nsys profile --trace nvtx,cuda 
 python -m torch.distributed.launch --use_env --nnodes=1 --nproc_per_node=8 ${DIR}/pretrain_gpt.py ${options}
