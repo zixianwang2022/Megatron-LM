@@ -682,6 +682,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
         fp.utils.update = False
         if (fp.utils.interval > 0) and (iteration % fp.utils.interval == 0):
             fp.utils.update = True
+            fp.utils.group = mpu.get_data_parallel_group()
         update_num_microbatches(args.consumed_train_samples)
         loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
             train_step(forward_step_func,
