@@ -32,6 +32,7 @@ from .initialize import get_tensor_model_parallel_group
 from .initialize import get_tensor_model_parallel_rank
 from .initialize import get_tensor_model_parallel_world_size
 
+from megatron import fp
 
 # Default name for the model parallel rng tracker.
 _MODEL_PARALLEL_RNG_TRACKER_NAME = 'model-parallel-rng'
@@ -272,9 +273,11 @@ class CheckpointFunction(torch.autograd.Function):
         get_cuda_rng_tracker().set_states(ctx.fwd_cuda_rng_state_tracker)
 
         # Compute the forward pass.
+        fp.utils.no_track = True
         detached_inputs = detach_variable(inputs)
         with torch.enable_grad():
             outputs = ctx.run_function(*detached_inputs)
+        fp.utils.no_track = False
 
         # Set the states back to what it was at the start of this function.
         torch.set_rng_state(bwd_cpu_rng_state)

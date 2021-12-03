@@ -3,15 +3,15 @@
 #SBATCH -p luna 
 #SBATCH -A dlfw 
 #SBATCH -t 4:00:00 
-#SBATCH -N 4 
+#SBATCH -N 4
 #SBATCH --exclusive 
 #SBATCH --mem=0 
 #SBATCH --overcommit 
 #SBATCH --ntasks-per-node=8 
 #SBATCH --dependency=singleton 
-#SBATCH -J dlfw-megatron:126m_bf16_baseline
+#SBATCH -J dlfw-megatron:gpt3_126m_e4m3f1p3_linear
 
-NAME="126m_bf16_baseline"
+NAME="gpt3_126m_e4m3f1p3_linear"
 
 DIR=`pwd`
 WORKDIR="/workspace/gpt3"
@@ -33,8 +33,8 @@ mounts="/lustre/fsw/adlr:/lustre/fsw/adlr,/lustre/fsw/dlfw:/lustre/fsw/dlfw,${HI
 . /lustre/fsw/dlfw/dlfw-perf/ksivamani/megatron-fp8/data/gpt3/gpt3_blend.sh
 
 freq="128"
-#export LINEAR="{fi:{e:4,m:3,s:1,f:1,p:0,v:$freq},fw:{e:4,m:3,s:1,f:1,p:0,v:$freq},do:{e:4,m:3,s:1,f:1,p:0,v:$freq},fo:{v:$freq},di:{v:$freq},dw:{v:$freq}}"
-export LINEAR="{fi:{v:$freq},fw:{v:$freq},do:{v:$freq},fo:{v:$freq},di:{v:$freq},dw:{v:$freq}}"
+export LINEAR="{fi:{e:4,m:3,s:1,f:1,p:3,v:$freq},fw:{e:4,m:3,s:1,f:1,p:3,v:$freq},do:{e:4,m:3,s:1,f:1,p:3,v:$freq},fo:{v:$freq},di:{v:$freq},dw:{v:$freq}}"
+#export LINEAR="{fi:{v:$freq},fw:{v:$freq},do:{v:$freq},fo:{v:$freq},di:{v:$freq},dw:{v:$freq}}"
 
 options=" \
     --exit-duration-in-mins 230 \
@@ -47,7 +47,7 @@ options=" \
     --max-position-embeddings 2048 \
     --micro-batch-size 4 \
     --global-batch-size 256 \
-    --train-iters 2000 \
+    --train-iters 20000 \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \

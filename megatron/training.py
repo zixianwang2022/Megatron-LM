@@ -52,7 +52,7 @@ from megatron.schedules import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.fp.utils import CollectFp8TensorHistograms
 from megatron.fp.utils import process_data
-
+from megatron import fp
 
 
 def print_datetime(string):
@@ -661,6 +661,9 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     print_datetime('before the start of training step')
     report_memory_flag = True
     while iteration < args.train_iters:
+        fp.utils.update = False
+        if (fp.utils.interval > 0) and (iteration % fp.utils.interval == 0):
+            fp.utils.update = True
         update_num_microbatches(args.consumed_train_samples)
         with CollectFp8TensorHistograms(args.micro_batch_size):
             loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
