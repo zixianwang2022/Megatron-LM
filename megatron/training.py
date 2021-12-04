@@ -344,6 +344,8 @@ def setup_model_and_optimizer(model_provider_func, model_type):
 
     unwrapped_model = unwrap_model(model,
                                    (torchDDP, LocalDDP, Float16Module))
+    for m in unwrapped_model:
+        fp.initialize(m)
     optimizer = get_megatron_optimizer(unwrapped_model)
 
     lr_scheduler = get_learning_rate_scheduler(optimizer)
@@ -660,8 +662,7 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     print_datetime('before the start of training step')
     report_memory_flag = True
     while iteration < args.train_iters:
-        fp.utils.step = iteration
-        fp.utils.group = mpu.get_data_parallel_group()
+        fp.step(iteration, group=mpu.get_data_parallel_group())
         update_num_microbatches(args.consumed_train_samples)
         loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
             train_step(forward_step_func,
@@ -745,7 +746,7 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
 
     total_loss_dict = {}
 
-    fp.utils.no_track = True
+    fp.no_track(True)
 
     with torch.no_grad():
         iteration = 0
@@ -778,7 +779,7 @@ def evaluate(forward_step_func, data_iterator, model, verbose=False):
     for model_module in model:
         model_module.train()
 
-    fp.utils.no_track = False
+    fp.no_track(False)
 
     for key in total_loss_dict:
         total_loss_dict[key] /= args.eval_iters * get_num_microbatches()

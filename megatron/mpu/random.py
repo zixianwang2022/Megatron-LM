@@ -272,12 +272,12 @@ class CheckpointFunction(torch.autograd.Function):
         _set_cuda_rng_state(ctx.fwd_cuda_rng_state)
         get_cuda_rng_tracker().set_states(ctx.fwd_cuda_rng_state_tracker)
 
-        fp.utils.no_track = True
+        fp.utils.no_track(True)
         # Compute the forward pass.
         detached_inputs = detach_variable(inputs)
         with torch.enable_grad():
             outputs = ctx.run_function(*detached_inputs)
-        fp.utils.no_track = False
+        fp.utils.no_track(False)
 
         # Set the states back to what it was at the start of this function.
         torch.set_rng_state(bwd_cpu_rng_state)

@@ -208,8 +208,8 @@ class ColumnParallelLinearWithAsyncAllreduce(torch.autograd.Function):
     """
     @staticmethod
     def forward(ctx, input, weight, bias, meta=None, fi=None, fw=None, fo=None, di=None, dw=None, do=None):
-        input = fp.utils.tf.apply(input, meta['fi'], fi, 1.0)
-        weight = fp.utils.tf.apply(weight,meta['fw'], fw, 1.0)
+        input = fp.cast(input, meta['fi'], fi, 1.0)
+        weight = fp.cast(weight,meta['fw'], fw, 1.0)
 
         ctx.save_for_backward(input, weight, fi, fw, di, dw, do)
         ctx.use_bias = bias is not None
@@ -219,7 +219,7 @@ class ColumnParallelLinearWithAsyncAllreduce(torch.autograd.Function):
         if bias is not None:
             output = output + bias
 
-        output = fp.utils.tf.apply(output, ctx.meta['fo'], fo, fo)
+        output = fp.cast(output, ctx.meta['fo'], fo, fo)
         return output
 
     @staticmethod
@@ -227,7 +227,7 @@ class ColumnParallelLinearWithAsyncAllreduce(torch.autograd.Function):
         input, weight, fi, fw, di, dw, do = ctx.saved_tensors
         use_bias = ctx.use_bias
 
-        grad_output = fp.utils.tf.apply(grad_output, ctx.meta['do'], do, 1.0)
+        grad_output = fp.cast(grad_output, ctx.meta['do'], do, 1.0)
 
         grad_input = grad_output.matmul(weight) / (do * fw)
         # Asyncronous all-reduce
@@ -240,8 +240,8 @@ class ColumnParallelLinearWithAsyncAllreduce(torch.autograd.Function):
         grad_bias = (grad_output / do).sum(dim=0) if use_bias else None
         handle.wait()
 
-        grad_input = fp.utils.tf.apply(grad_input,ctx.meta['di'], di, di)
-        grad_weight = fp.utils.tf.apply(grad_weight,ctx.meta['dw'], dw, dw)
+        grad_input = fp.cast(grad_input,ctx.meta['di'], di, di)
+        grad_weight = fp.cast(grad_weight,ctx.meta['dw'], dw, dw)
         return grad_input, grad_weight, grad_bias, None, None, None, None, None, None, None
 
 
