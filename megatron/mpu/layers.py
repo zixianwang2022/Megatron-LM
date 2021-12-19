@@ -208,14 +208,14 @@ class ColumnParallelLinearWithAsyncAllreduce(torch.autograd.Function):
     """
     @staticmethod
     def forward(ctx, input, weight, bias, meta=None, fi=None, fw=None, fo=None, di=None, dw=None, do=None):
-        input = fp.cast(input, meta['fi'], fi, 1.0)
-        weight = fp.cast(weight,meta['fw'], fw, 1.0)
+        input = fp.cast(input, meta['fi'], fi, fi)
+        weight = fp.cast(weight,meta['fw'], fw, fw)
 
         ctx.save_for_backward(input, weight, fi, fw, di, dw, do)
         ctx.use_bias = bias is not None
         ctx.meta = meta
 
-        output = torch.matmul(input, weight.t()) / (fi * fw)
+        output = torch.matmul(input, weight.t()) #/ (fi * fw)
         if bias is not None:
             output = output + bias
 
@@ -227,17 +227,17 @@ class ColumnParallelLinearWithAsyncAllreduce(torch.autograd.Function):
         input, weight, fi, fw, di, dw, do = ctx.saved_tensors
         use_bias = ctx.use_bias
 
-        grad_output = fp.cast(grad_output, ctx.meta['do'], do, 1.0)
+        grad_output = fp.cast(grad_output, ctx.meta['do'], do, do)
 
-        grad_input = grad_output.matmul(weight) / (do * fw)
+        grad_input = grad_output.matmul(weight)# / (do * fw)
         # Asyncronous all-reduce
         handle = torch.distributed.all_reduce(
                 grad_input, group=get_tensor_model_parallel_group(), async_op=True)
         # Delay the start of weight gradient computation shortly (3us) to have
         # all-reduce scheduled first and have GPU resources allocated
         _ = torch.empty(1, device=grad_output.device) + 1
-        grad_weight = grad_output.t().matmul(input) / (do * fi)
-        grad_bias = (grad_output / do).sum(dim=0) if use_bias else None
+        grad_weight = grad_output.t().matmul(input)# / (do * fi)
+        grad_bias = (grad_output).sum(dim=0) if use_bias else None
         handle.wait()
 
         grad_input = fp.cast(grad_input,ctx.meta['di'], di, di)
