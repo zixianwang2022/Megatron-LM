@@ -81,13 +81,16 @@ def ems(prediction, ground_truths):
 
 def evaluate_ems(prediction_file, ground_truth_file):
 
-    assert ground_truth_file.endswith('json'), "the ground truth file should be the original json file" 
+    # assert ground_truth_file.endswith('json'), "the ground truth file should be the original json file" 
 
     prediction_list = []
     print_rank_0('reading %s' % prediction_file)
     with open(prediction_file, "r") as f:
         for i, line in enumerate(tqdm(f)):
+            line = line.replace("Answer:","")
             line = line.replace("Answer: ","")
+            line = line.replace('????  ', "")
+
             line = line.strip()
 
             if "<|endoftext|>" in line:
@@ -95,17 +98,29 @@ def evaluate_ems(prediction_file, ground_truth_file):
             prediction_list.append(line)
 
     ground_truths_list = []
-    with open(ground_truth_file, 'r') as f:
-        raw_data = json.load(f)
+    
+    if ground_truth_file.endswith('txt'):
+        raw_data = open(ground_truth_file, 'r')
+    else:
+        with open(ground_truth_file, 'r') as f:
+            raw_data = json.load(f)
+
     for each in raw_data:
-        ground_truths_list.append(each['answers'])
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
         
+        if 'answers' in each:
+            ground_truths_list.append(each['answers'])
+        elif 'answer' in each:
+            ground_truths_list.append(each['answer'])
+       
     exactmatch = []
     for i,each in enumerate(prediction_list):
         print("=============")
         print(each)
         print(ground_truths_list[i])
         score = ems(each, ground_truths_list[i])
+        print(score)
         exactmatch.append(score)
     
     final_em_score = np.mean(exactmatch)

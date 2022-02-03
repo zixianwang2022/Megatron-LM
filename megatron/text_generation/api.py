@@ -51,6 +51,8 @@ def generate_and_post_process(model,
         add_BOS=add_BOS,
         use_eod_token_for_early_termination=use_eod_token_for_early_termination)
 
+    
+
     # Only post-process on first stage.
     if mpu.is_pipeline_first_stage():
         tokens, prompts_plus_generations, prompts_plus_generations_segments = \
@@ -102,9 +104,15 @@ def generate(model,
     if torch.distributed.get_rank() == 0:
         assert prompts is not None
     
+    # # the original code 
     context_tokens_tensor, context_length_tensor = tokenize_prompts(
         prompts=prompts, tokens_to_generate=tokens_to_generate, add_BOS=add_BOS)
 
+    # sudan modify to support distributed generation
+    # context_tokens_tensor, context_length_tensor = tokenize_prompts(
+    #     prompts=prompts, tokens_to_generate=tokens_to_generate, add_BOS=add_BOS, rank=torch.distributed.get_rank())
+
+    
     if tokens_to_generate == 0:
         return score_and_return_on_first_stage(
             model, context_tokens_tensor, context_length_tensor)

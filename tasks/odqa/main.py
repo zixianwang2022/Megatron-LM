@@ -52,6 +52,8 @@ def get_tasks_args(parser):
                        help='setup model api for prompting')
     group.add_argument('--megatron-api-url', type=str, default=None,
                        help='url of the megatron api')
+    group.add_argument('--exp-name', type=str, default=None,
+                       help='name of the experiment')
 
     return parser
 
