@@ -109,7 +109,6 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
 #         --prompt-file ${PROMPT_PATH} \
 #         --num-prompt-examples 0 \
 #         --out-seq-length 50 \
-#         --exp-name ${EXP_NAME} \
 #         --task ODQA-PROMPT 
 
 # NOTE: If you use api for the model generation, please use 

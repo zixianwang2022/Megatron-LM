@@ -172,10 +172,10 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
         # Option1: GPT-3 paper format
         if format == 'GPT-3':
              # for NaturalQuestions
-            propmt_question = 'Q: ' + input['question'] + '?\n' + 'A: '
+            propmt_question = 'Q: ' + input['question'] + '?\n' + 'A:'
 
             # for TriviaQA and WebQuestions
-            # propmt_question = 'Q: ' + input['question'] + '\n' + 'A: '  
+            # propmt_question = 'Q: ' + input['question'] + '\n' + 'A:'  
             
             prompt_text = ''
             for each in prompt_sample_list:
@@ -192,9 +192,9 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
         # option2: EleutherAI format
         elif format == 'Eleuther-AI':
             # for NaturalQuestions
-            propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A: '
+            propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A:'
             # for TriviaQA and WebQuestions   
-            # propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer: ' 
+            # propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer:' 
 
             prompt_text=''
             for each in prompt_sample_list:
@@ -211,7 +211,7 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
         # Option3: Ours
         else: 
             if num_prompt_examples == 0:
-                propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer: '  
+                propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer:'  
 
             else:
                 propmt_question = 'Question: ' + input['question'] + '\n'
