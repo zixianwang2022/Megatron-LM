@@ -11,22 +11,28 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
                   --node_rank 0 \
                   --master_addr localhost \
                   --master_port 6004"
-                  
-MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k64_357m_withQAprefix.txt # (e.g., /testseen_knowledge_generations.txt)
-GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/test.json #\ (e.g., /testseen_knowledge_reference.txt)
 
-# TQA test set
-# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k64_1.3b.txt # (e.g., /testseen_knowledge_generations.txt)
+# NQ                  
+# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k0_1.3b_withnewnewGPTPrefix_l10.txt # (e.g., /testseen_knowledge_generations.txt)
+# GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/test.json #\ (e.g., /testseen_knowledge_reference.txt)
+
+# # TQA test set
+# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k64_357m_withGPTPrefix_l10.txt # (e.g., /testseen_knowledge_generations.txt)
 # GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/test.json #\ (e.g., /testseen_knowledge_reference.txt)
 
 # TQA dev set
-# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k1_1.3b_dev.txt # (e.g., /testseen_knowledge_generations.txt)
+# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k64_1.3b_dev.txt # (e.g., /testseen_knowledge_generations.txt)
 # GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/dev.json #\ (e.g., /testseen_knowledge_reference.txt)
 
 # WebQuestions test set
 
-# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generations_k64_1.3b.txt # (e.g., /testseen_knowledge_generations.txt)
+# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generations_k0_1.3b_withnewnewGPTPrefix_l10.txt # (e.g., /testseen_knowledge_generations.txt)
 # GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/WQ/WebQuestions-test.txt #\ (e.g., /testseen_knowledge_reference.txt)
+
+
+# PIQA
+MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/PIQA/output_answer_generations_k0_357m_l50_withgptneostyle_p0.0k2t1.1.txt # (e.g., /testseen_knowledge_generations.txt)
+GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/PIQA/valid-labels.lst #\ (e.g., /testseen_knowledge_reference.txt)
 
 
 python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \

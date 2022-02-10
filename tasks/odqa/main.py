@@ -54,6 +54,14 @@ def get_tasks_args(parser):
                        help='url of the megatron api')
     group.add_argument('--exp-name', type=str, default=None,
                        help='name of the experiment')
+    group.add_argument('--top-p-sampling', type=float, default=0.0,
+                       help='the top-p value')
+    group.add_argument('--top-k-sampling', type=float, default=0.0,
+                       help='the top-k value')
+    group.add_argument('--temperature', type=float, default=0.0,
+                       help='the temperature value')
+
+
 
     return parser
 

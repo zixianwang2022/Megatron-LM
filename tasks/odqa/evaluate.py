@@ -90,6 +90,8 @@ def evaluate_ems(prediction_file, ground_truth_file):
             line = line.replace("Answer:","")
             line = line.replace("Answer: ","")
             line = line.replace('????  ', "")
+            line = line.replace('A: ',"")
+            line = line.replace("A:", "")
 
             line = line.strip()
 
@@ -99,7 +101,7 @@ def evaluate_ems(prediction_file, ground_truth_file):
 
     ground_truths_list = []
     
-    if ground_truth_file.endswith('txt'):
+    if ground_truth_file.endswith(('txt', 'lst')):
         raw_data = open(ground_truth_file, 'r')
     else:
         with open(ground_truth_file, 'r') as f:
@@ -113,6 +115,8 @@ def evaluate_ems(prediction_file, ground_truth_file):
             ground_truths_list.append(each['answers'])
         elif 'answer' in each:
             ground_truths_list.append(each['answer'])
+        else:
+            ground_truths_list.append([each])
        
     exactmatch = []
     for i,each in enumerate(prediction_list):

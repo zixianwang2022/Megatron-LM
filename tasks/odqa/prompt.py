@@ -28,7 +28,7 @@ from megatron.training import get_model
 from megatron.checkpointing import load_checkpoint
 from megatron.initialize import initialize_megatron
 from megatron.text_generation import generate_and_post_process
-from .data import load_data, load_data_distributed
+from .data import load_data, load_data_distributed, load_piQA_data
 from .utils import write_output
 import random
 import os.path
@@ -52,43 +52,6 @@ def call_model_api(inputs, tokens_to_generate):
     outputs = outputs.split("\n")[0].strip()
     
     return outputs
-
-
-def read_prompts(prompt_path, prompt_type, n_example):
-    """Read prompt data"""
-
-    if prompt_type == "knowledge":
-        # prompts for the knowledge generation
-        prompt_examples_dict = {}
-        # read prompt_path
-        with open(prompt_path, "r") as f:
-            for i, line in enumerate(f):
-                line = line.strip()
-                line_dict = json.loads(line)
-                key = list(line_dict.keys())[0]
-                
-                if key not in prompt_examples_dict:
-                    prompt_examples = line_dict[key]
-                    prompt = ""
-                    for instance in prompt_examples:
-                        instance = instance.strip()
-                        prompt += instance + " \n"
-                    prompt_examples_dict[key] = prompt
-
-        return prompt_examples_dict
-
-    else:
-        # prompts for the response generation
-        # read prompt_path
-        prompt = ""
-        with open(prompt_path, "r") as f:
-            prompt_examples = f.readlines()
-            prompt_examples = prompt_examples[:n_example]
-            for instance in prompt_examples:
-                instance = instance.strip()
-                prompt += instance + " \n"
-
-        return prompt
 
 
 def generate_samples_by_calling_api():
@@ -187,7 +150,9 @@ def prompt_sample_selection(data_list, query = "", k=10, is_random=True):
 
 def post_process_generations(generations, min_token_length=5, sep='\n'):
     # return the first string that has length longer than 5
-    generations_split = generations.split("\n")
+    # print("=====================")
+    # print(generations)
+    generations_split = generations.split(sep)
     for each in generations_split:
         if len(each.strip()) >= min_token_length:
             return each.strip()
@@ -303,7 +268,8 @@ def batch_generate_samples_by_prompting_input_from_file(model):
     with torch.no_grad():
         with open(output_file, "w") as fname_out:
             while True:
-                print("input_pos is {} and input_count is {}, and rank is {}".format(input_pos, input_count, torch.distributed.get_rank()), flush=True)      
+                print("input_pos is {} and input_count is {}, and rank is {}".format(input_pos, \
+                    input_count, torch.distributed.get_rank()), flush=True)      
 
                 if mpu.is_pipeline_first_stage() \
                    and mpu.get_tensor_model_parallel_rank() == 0:
@@ -315,20 +281,27 @@ def batch_generate_samples_by_prompting_input_from_file(model):
                     for input in input_list:
                         propmt_question = ''
                         if args.num_prompt_examples == 0:
-                            propmt_question = 'Question: ' + input['question'] + '? ' + 'Answer: '
+                            # my original one
+                            # propmt_question = 'Question: ' + input['question'] + '? ' + 'Answer:'  
+                            # for TriviaQA and WebQuestion (GPT paper)
+                            propmt_question = 'Question: ' + input['question'] + '\n\n' + 'Answer:'  
+                            # for NQ (GPT paper)
+                            # propmt_question = 'Q: ' + input['question'] + '?\n\n' + 'A:'
                         else:
                             # propmt_question = 'Question: ' + input['question'] + '? ' + 'Answer: ' # just for comparison
-                            propmt_question = 'Question: ' + input['question'] + '? '
-                            # propmt_question = 'Q: ' + input['question'] + '? '   # results for this is very bad... just for comparision
+                            propmt_question = 'Question: ' + input['question'] + '\n\n'
+                            # propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A:' 
 
                         prompt_sample_list= prompt_sample_selection(prompt_data, input['question'], args.num_prompt_examples)
                         prompt_text = ''
                         for each in prompt_sample_list:
                             if 'target' in each:
-                                prompt_text += 'Question: ' + each['question'] + '? ' + 'Answer: ' + each['target'] + '\n'
+                                prompt_text += 'Question: ' + each['question'] + '\n\n' + 'Answer: ' + each['target'] + '\n'
+                                # prompt_text += 'Q: ' + each['question'] + '?\n\n' + 'A: ' + each['target'] + '\n'
+
                             else:
-                                prompt_text += 'Question: ' + each['question'] + '? ' + 'Answer: ' + each['answers'][0] + '\n'
-                                # prompt_text += 'Q: ' + each['question'] + '? ' + 'A: ' + each['answers'][0] + '\n'
+                                prompt_text += 'Question: ' + each['question'] + '\n\n' + 'Answer: ' + each['answers'][0] + '\n'
+                                # prompt_text += 'Q: ' + each['question'] + '\n\n' + 'A: ' + each['answers'][0] + '\n'
 
                         prompt_text += propmt_question
                         prompt_text_list.append(prompt_text)
@@ -361,6 +334,125 @@ def batch_generate_samples_by_prompting_input_from_file(model):
     
 
 
+
+
+
+# just for PiQA
+def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
+    """Prompt a pretrained language model to generate answer"""
+    
+    # get tokenizer
+    args = get_args()
+    tokenizer = get_tokenizer()
+
+    # Read the sample file and open the output file.
+    assert args.input_file is not None, \
+        'sample input file is not provided.'
+    if mpu.is_pipeline_first_stage():
+        # load the data from input and prompt file
+        raw_data = load_piQA_data(args.input_file)
+        prompt_data = load_piQA_data(args.prompt_file)
+        input_count = len(raw_data)
+
+        if args.output_file is None:
+            output_file = args.input_file + ".out"
+            print('`output-file` not specified, setting '
+                    'it to {}'.format(output_file))
+        else:
+            output_file = args.output_file
+            print("output_file is {}".format(output_file))
+    
+    input_pos = 0
+    bz = args.micro_batch_size
+    model.eval()
+    # perform prompting
+    with torch.no_grad():
+        with open(output_file, "w") as fname_out:
+            while True:
+                print("input_pos is {} and input_count is {}, and rank is {}".format(input_pos, \
+                    input_count, torch.distributed.get_rank()), flush=True)      
+
+                if mpu.is_pipeline_first_stage() \
+                   and mpu.get_tensor_model_parallel_rank() == 0:
+                    start_pos = input_pos
+                    end_pos = input_pos + bz if input_pos + bz < input_count else input_count
+                    input_list = raw_data[start_pos: end_pos]
+                    prompt_text_list_1 = []
+                    prompt_text_list_2 = []
+                    for input in input_list:
+                        propmt_question_1, propmt_question_2  = '', ''
+                        if args.num_prompt_examples == 0:
+                            # GPT-3 style
+                            # propmt_question_1 = input['goal'] + ' ' + input['sol1']  
+                            # propmt_question_2 = input['goal'] + ' ' + input['sol2'] 
+                            # GPT-Neo style
+                            propmt_question_1 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol1']  
+                            propmt_question_2 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol2'] 
+
+
+                        prompt_sample_list= prompt_sample_selection(prompt_data, input['goal'], args.num_prompt_examples)
+                        prompt_text = ''
+                        for each in prompt_sample_list:
+                            if int(each['golden']) == 0:
+                                #GPT-3
+                                # prompt_text += each['goal'] + ' ' + each['sol2'] + ' '
+                                # GPT-Neo
+                                prompt_text += 'Question: ' + each['goal'] + '\nAnswer: ' + each['sol1'] + '\n\n'
+
+                            elif int(each['golden']) == 1:
+                                # prompt_text += each['goal'] + ' ' + each['sol2'] + ' '
+                                prompt_text += 'Question: ' + each['goal'] + '\nAnswer: ' + each['sol2'] + '\n\n'
+
+                        prompt_text_1 = prompt_text + propmt_question_1
+                        prompt_text_2 = prompt_text + propmt_question_2
+                        prompt_text_list_1.append(prompt_text_1)
+                        prompt_text_list_2.append(prompt_text_2)
+
+                        input_pos += 1
+                    
+                    if input_pos % 100 == 0:
+                        print_rank_0("rank is {}, input_pos: {}".format(torch.distributed.get_rank(),input_pos))
+
+                outputs_1 = generate_and_post_process(
+                            model=model, 
+                            prompts=prompt_text_list_1, 
+                            tokens_to_generate=args.out_seq_length,
+                            return_output_log_probs=True,
+                            top_k_sampling=args.top_k_sampling,
+                            top_p_sampling=args.top_p_sampling,
+                            temperature = args.temperature)
+                output_log_probs_1 = outputs_1[2]
+                
+                outputs_2 = generate_and_post_process(
+                            model=model, 
+                            prompts=prompt_text_list_2, 
+                            tokens_to_generate=args.out_seq_length,
+                            return_output_log_probs=True,
+                            top_k_sampling=args.top_k_sampling,
+                            top_p_sampling=args.top_p_sampling,
+                            temperature = args.temperature)
+
+                output_log_probs_2 = outputs_2[2]
+
+
+                # write the generated output to the output file
+                if mpu.get_tensor_model_parallel_rank() == 0:
+                    if mpu.is_pipeline_first_stage():
+                        for log_prob1, log_prob2 in zip(output_log_probs_1, output_log_probs_2):
+                            avg_log_prob1 = sum(log_prob1) / len(log_prob1)
+                            avg_log_prob2 = sum(log_prob2) / len(log_prob2)
+                            # print("The two probability is {} and {}".format(avg_log_prob1, avg_log_prob2))
+                            if avg_log_prob1 >= avg_log_prob2:
+                                predicted_lable = '0'
+                            else:
+                                predicted_lable = '1'
+                            fname_out.write(predicted_lable)
+                            fname_out.write("\n")
+                
+                if input_pos == input_count:
+                    print("Rank {} finished the genration!".format(torch.distributed.get_rank()), flush=True)
+                    return 
+    
 
 
 def distributed_generate_samples_by_prompting_input_from_file(model):
@@ -397,7 +489,8 @@ def distributed_generate_samples_by_prompting_input_from_file(model):
         with open(output_file, "w") as fname_out:
             # while True:
             while input_pos < input_count:
-                print("input_pos is {} and input_count is {}, and rank is {}".format(input_pos, input_count, torch.distributed.get_rank()), flush=True)      
+                print("input_pos is {} and input_count is {}, and rank is {}".format(input_pos, \
+                     input_count, torch.distributed.get_rank()), flush=True)      
 
                 raw_text_len = 0
                 if mpu.is_pipeline_first_stage() \
@@ -476,7 +569,10 @@ def main():
 
     # perform the prompting
     # generate_samples_by_prompting_input_from_file(model)
-    batch_generate_samples_by_prompting_input_from_file(model)
+    # batch_generate_samples_by_prompting_input_from_file(model)
+
+    # for PIQA, need to merge with other functions later
+    batch_generate_samples_by_prompting_input_from_file_for_piQA(model)
 
 
     # the distrubted generation
