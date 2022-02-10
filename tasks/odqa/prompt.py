@@ -34,6 +34,7 @@ import random
 import os.path
 from pathlib import Path
 import shutil
+import time
 
 def call_model_api(inputs, tokens_to_generate):
     """Calling the model api to get the output generations"""
@@ -53,6 +54,24 @@ def call_model_api(inputs, tokens_to_generate):
     
     return outputs
 
+def call_openai_api(my_prompt, engine):
+    """call openai api to get the output"""
+
+    import openai
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    response = openai.Completion.create(
+      engine=engine,
+      prompt=my_prompt,
+      temperature=0,
+      max_tokens=100,
+      top_p=1,
+      frequency_penalty=0.0,
+      presence_penalty=0.0,
+      stop=["\n"]
+    )
+
+    return  response['choices']
 
 def generate_samples_by_calling_api():
     """ Generate outputs by calling"""
@@ -209,7 +228,7 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
                 # prompt_text += 'Question: ' + input['question'] + '\n' + 'Answer: ' + answer + '\n' 
         
         # Option3: Ours
-        else: 
+        elif format == "ours": 
             if num_prompt_examples == 0:
                 propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer:'  
 
@@ -225,6 +244,8 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
                     answer = each['answer'][0]
                 
                 prompt_text += 'Question: ' + each['question'] + '\n' + 'Answer: ' + answer + '\n'
+        else:
+            raise ValueError("invalid prompt format")
 
         prompt_text += propmt_question
         prompt_text_list.append(prompt_text)
@@ -339,6 +360,10 @@ def batch_generate_samples_by_prompting_input_from_file(model):
     input_pos = 0
     bz = args.micro_batch_size
     model.eval()
+    start_time = time.time()
+    last_time = start_time
+    cnt = 0
+
     # perform prompting
     with torch.no_grad():
         with open(output_file, "w") as fname_out:
@@ -360,21 +385,35 @@ def batch_generate_samples_by_prompting_input_from_file(model):
                     if input_pos % 100 == 0:
                         print_rank_0("input_pos: {}".format(input_pos))
 
-                outputs = generate_and_post_process(
-                            model=model, 
-                            prompts=prompt_text_list, 
-                            tokens_to_generate=args.out_seq_length,
-                            top_k_sampling=1)
-                prompts_plus_generations_list = outputs[0]
+                if args.openai_api:
+                    assert args.engine is not None
+                    print("input is '{}'".format(prompt_text_list[0]))
+                    api_text_list = [item.strip() for item in prompt_text_list]
+                    results = call_openai_api(api_text_list, engine=args.engine)
+                    for item in results:
+                        cnt += 1
+                        generations_str = item['text']
+                        print("output is ", item['text'])
+                        fname_out.write(generations_str)
+                        fname_out.write("\n")
+                        if cnt % 100 == 0:
+                            print("{} examples need {}".format(cnt, time.time() - start_time))
+                else:
+                    outputs = generate_and_post_process(
+                                model=model, 
+                                prompts=prompt_text_list, 
+                                tokens_to_generate=args.out_seq_length,
+                                top_k_sampling=1)
+                    prompts_plus_generations_list = outputs[0]
 
-                # write the generated output to the output file
-                if mpu.get_tensor_model_parallel_rank() == 0:
-                    if mpu.is_pipeline_first_stage():
-                        for prompts_plus_generations, raw_text_len in zip(prompts_plus_generations_list, raw_text_len_list):
-                            generations = prompts_plus_generations[raw_text_len:].strip()
-                            generations_str = post_process_generations(generations, min_token_length=5, sep='\n')
-                            fname_out.write(generations_str)
-                            fname_out.write("\n")
+                    # write the generated output to the output file
+                    if mpu.get_tensor_model_parallel_rank() == 0:
+                        if mpu.is_pipeline_first_stage():
+                            for prompts_plus_generations, raw_text_len in zip(prompts_plus_generations_list, raw_text_len_list):
+                                generations = prompts_plus_generations[raw_text_len:].strip()
+                                generations_str = post_process_generations(generations, min_token_length=5, sep='\n')
+                                fname_out.write(generations_str)
+                                fname_out.write("\n")
                 
                 if input_pos == input_count:
                     print("Rank {} finished the genration!".format(torch.distributed.get_rank()), flush=True)

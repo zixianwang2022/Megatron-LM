@@ -62,7 +62,10 @@ def get_tasks_args(parser):
                        help='the temperature value')
 
 
-
+    group.add_argument('--openai-api', default=False, action="store_true",
+                       help='call openai api')
+    group.add_argument('--engine', type=str, default=None,
+                       help='engine of openai gpt, ada, davinci')
     return parser
 
 
