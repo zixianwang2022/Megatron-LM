@@ -171,8 +171,11 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
         
         # Option1: GPT-3 paper format
         if format == 'GPT-3':
-            propmt_question = 'Q: ' + input['question'] + '?\n' + 'A: '   # for NaturalQuestions
-            # propmt_question = 'Q: ' + input['question'] + '\n' + 'A: '  # for TriviaQA and WebQuestions
+             # for NaturalQuestions
+            propmt_question = 'Q: ' + input['question'] + '?\n' + 'A: '
+
+            # for TriviaQA and WebQuestions
+            # propmt_question = 'Q: ' + input['question'] + '\n' + 'A: '  
             
             prompt_text = ''
             for each in prompt_sample_list:
@@ -181,13 +184,17 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
                     answer = each['target']
                 else:
                     answer = each['answer'][0]
-                prompt_text += 'Q: ' + each['question'] + '?\n' + 'A: ' + answer + '\n' # for NaturalQuestions
-                # prompt_text += 'Q: ' + each['question'] + '\n' + 'A: ' + each['target'] + '\n'  # for TriviaQA and WebQuestions
+                # for NaturalQuestions
+                prompt_text += 'Q: ' + each['question'] + '?\n' + 'A: ' + answer + '\n' 
+                # for TriviaQA and WebQuestions
+                # prompt_text += 'Q: ' + each['question'] + '\n' + 'A: ' + each['target'] + '\n'  
         
         # option2: EleutherAI format
         elif format == 'Eleuther-AI':
-            propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A: '   # for NaturalQuestions
-            # propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer: ' # for TriviaQA and WebQuestions
+            # for NaturalQuestions
+            propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A: '
+            # for TriviaQA and WebQuestions   
+            # propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer: ' 
 
             prompt_text=''
             for each in prompt_sample_list:
@@ -196,9 +203,10 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
                     answer = each['target']
                 else:
                     answer = each['answer'][0]                
-
-                prompt_text  += 'Q: ' + input['question'] + '\n\n' + 'A: ' + answer + '\n'  # for NaturalQuestions
-                # prompt_text += 'Question: ' + input['question'] + '\n' + 'Answer: ' + answer + '\n' # for TriviaQA and WebQuestions
+                # for NaturalQuestions
+                prompt_text  += 'Q: ' + input['question'] + '\n\n' + 'A: ' + answer + '\n'  
+                # for TriviaQA and WebQuestions
+                # prompt_text += 'Question: ' + input['question'] + '\n' + 'Answer: ' + answer + '\n' 
         
         # Option3: Ours
         else: 
@@ -604,10 +612,10 @@ def main():
 
     # perform the prompting
     # generate_samples_by_prompting_input_from_file(model)
-    # batch_generate_samples_by_prompting_input_from_file(model)
+    batch_generate_samples_by_prompting_input_from_file(model)
 
     # for PIQA, need to merge with other functions later
-    batch_generate_samples_by_prompting_input_from_file_for_piQA(model)
+    # batch_generate_samples_by_prompting_input_from_file_for_piQA(model)
 
 
     # the distrubted generation
