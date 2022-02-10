@@ -75,10 +75,6 @@ if __name__ == '__main__':
 
     args = get_args()
 
-    if args.openai_api:
-        import openai
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-
     if args.num_layers_per_virtual_pipeline_stage is not None:
         print("Interleaved pipeline schedule is not yet supported for downstream tasks.")
         exit()
