@@ -34,6 +34,7 @@ import random
 import os.path
 from pathlib import Path
 import shutil
+import time
 
 def call_model_api(inputs, tokens_to_generate):
     """Calling the model api to get the output generations"""
@@ -360,7 +361,7 @@ def batch_generate_samples_by_prompting_input_from_file(model):
     last_time = start_time
     cnt = 0
     if args.openai_api:
-        import openai, time
+        import openai
         openai.api_key = os.getenv("OPENAI_API_KEY")
 
     # perform prompting
