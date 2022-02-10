@@ -57,6 +57,9 @@ def call_model_api(inputs, tokens_to_generate):
 def call_openai_api(my_prompt, engine):
     """call openai api to get the output"""
 
+    import openai
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
     response = openai.Completion.create(
       engine=engine,
       prompt=my_prompt,
@@ -384,7 +387,9 @@ def batch_generate_samples_by_prompting_input_from_file(model):
 
                 if args.openai_api:
                     assert args.engine is not None
-                    results = call_openai_api(prompt_text_list, engine=args.engine)
+                    print("input is '{}'".format(prompt_text_list[0]))
+                    api_text_list = [item.strip() for item in prompt_text_list]
+                    results = call_openai_api(api_text_list, engine=args.engine)
                     for item in results:
                         cnt += 1
                         generations_str = item['text']
