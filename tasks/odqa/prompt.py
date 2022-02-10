@@ -360,9 +360,6 @@ def batch_generate_samples_by_prompting_input_from_file(model):
     start_time = time.time()
     last_time = start_time
     cnt = 0
-    if args.openai_api:
-        import openai
-        openai.api_key = os.getenv("OPENAI_API_KEY")
 
     # perform prompting
     with torch.no_grad():
