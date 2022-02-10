@@ -57,9 +57,9 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --prompt-file ${PROMPT_PATH} \
         --num-prompt-examples 0 \
         --out-seq-length 50 \
-        --exp-name ${EXP_NAME} \
-        --top-p-sampling 0.5 \
-        --top-k-sampling 0 \
+        --prompt-format 'GPT-3' \
+        --top-p-sampling 0.0 \
+        --top-k-sampling 1 \
         --temperature 1.0 \
         --task ODQA-PROMPT
 

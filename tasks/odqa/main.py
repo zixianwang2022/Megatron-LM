@@ -52,8 +52,8 @@ def get_tasks_args(parser):
                        help='setup model api for prompting')
     group.add_argument('--megatron-api-url', type=str, default=None,
                        help='url of the megatron api')
-    group.add_argument('--exp-name', type=str, default=None,
-                       help='name of the experiment')
+    group.add_argument('--prompt-format', type=str, default=None,
+                       help='name of prompt format, like GPT-3, Eleuther-AI, or Nvidia')
     group.add_argument('--top-p-sampling', type=float, default=0.0,
                        help='the top-p value')
     group.add_argument('--top-k-sampling', type=float, default=0.0,

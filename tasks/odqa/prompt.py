@@ -160,6 +160,72 @@ def post_process_generations(generations, min_token_length=5, sep='\n'):
     return "No proper answer!"
 
 
+def construct_input_prompt(input_list, prompt_data, format='', num_prompt_examples=0):
+
+    prompt_text_list = []
+    raw_text_len_list = []
+
+    for input in input_list:
+        propmt_question = ''
+        prompt_sample_list= prompt_sample_selection(prompt_data, input['question'], num_prompt_examples)
+        
+        # Option1: GPT-3 paper format
+        if format == 'GPT-3':
+            propmt_question = 'Q: ' + input['question'] + '?\n' + 'A: '   # for NaturalQuestions
+            # propmt_question = 'Q: ' + input['question'] + '\n' + 'A: '  # for TriviaQA and WebQuestions
+            
+            prompt_text = ''
+            for each in prompt_sample_list:
+                answer=''
+                if 'target' in each:
+                    answer = each['target']
+                else:
+                    answer = each['answer'][0]
+                prompt_text += 'Q: ' + each['question'] + '?\n' + 'A: ' + answer + '\n' # for NaturalQuestions
+                # prompt_text += 'Q: ' + each['question'] + '\n' + 'A: ' + each['target'] + '\n'  # for TriviaQA and WebQuestions
+        
+        # option2: EleutherAI format
+        elif format == 'Eleuther-AI':
+            propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A: '   # for NaturalQuestions
+            # propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer: ' # for TriviaQA and WebQuestions
+
+            prompt_text=''
+            for each in prompt_sample_list:
+                answer=''
+                if 'target' in each:
+                    answer = each['target']
+                else:
+                    answer = each['answer'][0]                
+
+                prompt_text  += 'Q: ' + input['question'] + '\n\n' + 'A: ' + answer + '\n'  # for NaturalQuestions
+                # prompt_text += 'Question: ' + input['question'] + '\n' + 'Answer: ' + answer + '\n' # for TriviaQA and WebQuestions
+        
+        # Option3: Ours
+        else: 
+            if num_prompt_examples == 0:
+                propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer: '  
+
+            else:
+                propmt_question = 'Question: ' + input['question'] + '\n'
+
+            prompt_text = ''
+            for each in prompt_sample_list:
+                answer=''
+                if 'target' in each:
+                    answer = each['target']
+                else:
+                    answer = each['answer'][0]
+                
+                prompt_text += 'Question: ' + each['question'] + '\n' + 'Answer: ' + answer + '\n'
+
+        prompt_text += propmt_question
+        prompt_text_list.append(prompt_text)
+        raw_text_len = len(prompt_text)
+        raw_text_len_list.append(raw_text_len)
+    
+    return prompt_text_list, raw_text_len_list
+
+
 def generate_samples_by_prompting_input_from_file(model):
     """Prompt a pretrained language model to generate answer"""
     
@@ -237,6 +303,7 @@ def generate_samples_by_prompting_input_from_file(model):
                 return True
     
 
+
 def batch_generate_samples_by_prompting_input_from_file(model):
     """Prompt a pretrained language model to generate answer"""
     
@@ -276,41 +343,14 @@ def batch_generate_samples_by_prompting_input_from_file(model):
                     start_pos = input_pos
                     end_pos = input_pos + bz if input_pos + bz < input_count else input_count
                     input_list = raw_data[start_pos: end_pos]
-                    prompt_text_list = []
-                    raw_text_len_list = []
-                    for input in input_list:
-                        propmt_question = ''
-                        if args.num_prompt_examples == 0:
-                            # my original one
-                            # propmt_question = 'Question: ' + input['question'] + '? ' + 'Answer:'  
-                            # for TriviaQA and WebQuestion (GPT paper)
-                            propmt_question = 'Question: ' + input['question'] + '\n\n' + 'Answer:'  
-                            # for NQ (GPT paper)
-                            # propmt_question = 'Q: ' + input['question'] + '?\n\n' + 'A:'
-                        else:
-                            # propmt_question = 'Question: ' + input['question'] + '? ' + 'Answer: ' # just for comparison
-                            propmt_question = 'Question: ' + input['question'] + '\n\n'
-                            # propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A:' 
 
-                        prompt_sample_list= prompt_sample_selection(prompt_data, input['question'], args.num_prompt_examples)
-                        prompt_text = ''
-                        for each in prompt_sample_list:
-                            if 'target' in each:
-                                prompt_text += 'Question: ' + each['question'] + '\n\n' + 'Answer: ' + each['target'] + '\n'
-                                # prompt_text += 'Q: ' + each['question'] + '?\n\n' + 'A: ' + each['target'] + '\n'
+                    # to peng: you can change the third parameters from 'GPT-3', 'Eleuther-AI', or 'Nvidia', to indicate
+                    prompt_text_list, raw_text_len_list = construct_input_prompt(input_list, prompt_data, args.prompt_format, args.num_prompt_examples)
 
-                            else:
-                                prompt_text += 'Question: ' + each['question'] + '\n\n' + 'Answer: ' + each['answers'][0] + '\n'
-                                # prompt_text += 'Q: ' + each['question'] + '\n\n' + 'A: ' + each['answers'][0] + '\n'
-
-                        prompt_text += propmt_question
-                        prompt_text_list.append(prompt_text)
-                        input_pos += 1
-                        raw_text_len = len(prompt_text)
-                        raw_text_len_list.append(raw_text_len)
+                    input_pos += len(prompt_text_list)
                     
                     if input_pos % 100 == 0:
-                        print_rank_0("rank is {}, input_pos: {}".format(torch.distributed.get_rank(),input_pos))
+                        print_rank_0("input_pos: {}".format(input_pos))
 
                 outputs = generate_and_post_process(
                             model=model, 
@@ -330,12 +370,7 @@ def batch_generate_samples_by_prompting_input_from_file(model):
                 
                 if input_pos == input_count:
                     print("Rank {} finished the genration!".format(torch.distributed.get_rank()), flush=True)
-                    return 
-    
-
-
-
-
+                    return     
 
 # just for PiQA
 def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
