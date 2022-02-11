@@ -152,9 +152,13 @@ def construct_input_prompt(input_list, prompt_data, format='', task_name='', num
         # option2: EleutherAI format
         elif format == 'Eleuther-AI':
             # for NaturalQuestions
-            propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A:'
-            # for TriviaQA and WebQuestions   
-            # propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer:' 
+            if task_name == 'nq':
+                propmt_question = 'Q: ' + input['question'] + '\n\n' + 'A:'
+            elif task_name in ['triviaqa', 'webqs']:
+                # for TriviaQA and WebQuestions   
+                propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer:' 
+            else:
+                raise ValueError('the task_name is illegal')
 
             prompt_text=''
             for each in prompt_sample_list:
