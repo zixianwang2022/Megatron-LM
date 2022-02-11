@@ -73,73 +73,6 @@ def call_openai_api(my_prompt, engine):
 
     return  response['choices']
 
-def generate_samples_by_calling_api():
-    """ Generate outputs by calling"""
-    args = get_args()
-    assert args.prompt_type in ["knowledge", "response"], \
-                "Please input a correct prompt type!"
-
-    if args.prompt_type == "knowledge":
-        # read knowledge generation prompts
-        knwl_gen_prompt_dict = read_prompts(
-            args.prompt_file, args.prompt_type, args.num_prompt_examples)
-        
-    else:
-        resp_gen_prompt = read_prompts(
-            args.prompt_file, args.prompt_type, args.num_prompt_examples)
-
-    # read the test data
-    fname = open(args.input_file, "r")
-    test_sample_list = fname.readlines()
-    # create output file
-    fname_out = open(args.output_file, "w")
-
-    # call the api to get the output generations
-    for test_sample in test_sample_list:
-        test_sample = test_sample.strip()
-        splits = test_sample.split("\t")
-        topic = splits[0]
-
-        # prepare the inputs for the api
-        if args.prompt_type == "knowledge":
-            ## inputs = prompt + current test
-            # get the prompt
-            turns = splits[1].split(" [SEP] ")
-            last_turn = turns[-1]
-            key = topic + " " + last_turn
-            inputs = knwl_gen_prompt_dict[key]
-
-            # add current test
-            inputs += "( " + last_turn + " ) " + topic + " =>"
-
-        else:
-            # inputs = prompt + current test
-            # get the prompt
-            inputs = resp_gen_prompt
-
-            # add current test
-            turns = splits[1].split(" [SEP] ")
-            knowledge = splits[2]
-            last_turn = turns[-1]
-            last_turn = " ".join(word_tokenize(last_turn))
-            knowledge = " ".join(word_tokenize(knowledge))
-            knowledge = knowledge.strip()
-            last_turn = last_turn.strip()
-            inputs += "Topic: " + topic + ". "
-            inputs += "User says: " + last_turn + " "
-            inputs += "We know that: " + knowledge + " "
-            inputs += "System replies:"
-
-        # get the output generations from the api, 
-        # and write to the output file
-        generations = call_model_api(inputs, args.out_seq_length)
-        fname_out.write(generations)
-        fname_out.write("\n")
-
-    fname.close()
-    fname_out.close()
-
-
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
@@ -179,7 +112,7 @@ def post_process_generations(generations, min_token_length=5, sep='\n'):
     return "No proper answer!"
 
 
-def construct_input_prompt(input_list, prompt_data, format='', num_prompt_examples=0):
+def construct_input_prompt(input_list, prompt_data, format='', task_name='', num_prompt_examples=0):
 
     prompt_text_list = []
     raw_text_len_list = []
@@ -191,10 +124,13 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
         # Option1: GPT-3 paper format
         if format == 'GPT-3':
              # for NaturalQuestions
-            propmt_question = 'Q: ' + input['question'] + '?\n' + 'A:'
-
-            # for TriviaQA and WebQuestions
-            # propmt_question = 'Q: ' + input['question'] + '\n' + 'A:'  
+            if task_name == 'nq':
+                propmt_question = 'Q: ' + input['question'] + '?\n' + 'A:'
+            elif task_name in ['triviaqa', 'webqs']:
+                # for TriviaQA and WebQuestions
+                propmt_question = 'Q: ' + input['question'] + '\n' + 'A:'  
+            else:
+                raise ValueError('the task_name is illegal')
             
             prompt_text = ''
             for each in prompt_sample_list:
@@ -203,11 +139,16 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
                     answer = each['target']
                 else:
                     answer = each['answer'][0]
+                
+                if task_name == 'nq':
                 # for NaturalQuestions
-                prompt_text += 'Q: ' + each['question'] + '?\n' + 'A: ' + answer + '\n' 
-                # for TriviaQA and WebQuestions
-                # prompt_text += 'Q: ' + each['question'] + '\n' + 'A: ' + each['target'] + '\n'  
-        
+                    prompt_text += 'Q: ' + each['question'] + '?\n' + 'A: ' + answer + '\n' 
+                elif task_name in ['triviaqa', 'webqs']:
+                    # for TriviaQA and WebQuestions
+                    prompt_text += 'Q: ' + each['question'] + '\n' + 'A: ' + each['target'] + '\n'  
+                else:
+                    raise ValueError('the task_name is illegal')
+
         # option2: EleutherAI format
         elif format == 'Eleuther-AI':
             # for NaturalQuestions
@@ -221,17 +162,21 @@ def construct_input_prompt(input_list, prompt_data, format='', num_prompt_exampl
                 if 'target' in each:
                     answer = each['target']
                 else:
-                    answer = each['answer'][0]                
-                # for NaturalQuestions
-                prompt_text  += 'Q: ' + input['question'] + '\n\n' + 'A: ' + answer + '\n'  
-                # for TriviaQA and WebQuestions
-                # prompt_text += 'Question: ' + input['question'] + '\n' + 'Answer: ' + answer + '\n' 
-        
+                    answer = each['answer'][0]
+
+                if task_name == 'nq':                
+                    # for NaturalQuestions
+                    prompt_text  += 'Q: ' + input['question'] + '\n\n' + 'A: ' + answer + '\n'  
+                elif task_name in ['triviaqa', 'webqs']:
+                    # for TriviaQA and WebQuestions
+                    prompt_text += 'Question: ' + input['question'] + '\n' + 'Answer: ' + answer + '\n' 
+                else:
+                    raise ValueError('the task_name is illegal')
+
         # Option3: Ours
         elif format == "ours": 
             if num_prompt_examples == 0:
                 propmt_question = 'Question: ' + input['question'] + '\n' + 'Answer:'  
-
             else:
                 propmt_question = 'Question: ' + input['question'] + '\n'
 
@@ -377,9 +322,8 @@ def batch_generate_samples_by_prompting_input_from_file(model):
                     end_pos = input_pos + bz if input_pos + bz < input_count else input_count
                     input_list = raw_data[start_pos: end_pos]
 
-                    # to peng: you can change the third parameters from 'GPT-3', 'Eleuther-AI', or 'Nvidia', to indicate
-                    prompt_text_list, raw_text_len_list = construct_input_prompt(input_list, prompt_data, args.prompt_format, args.num_prompt_examples)
-
+                    prompt_text_list, raw_text_len_list = construct_input_prompt(input_list, prompt_data, args.prompt_format, args.task_name, args.num_prompt_examples)
+                    
                     input_pos += len(prompt_text_list)
                     
                     if input_pos % 100 == 0:
@@ -461,6 +405,9 @@ def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
                     input_list = raw_data[start_pos: end_pos]
                     prompt_text_list_1 = []
                     prompt_text_list_2 = []
+                    len_prompt_text_list_1 = []
+                    len_prompt_text_list_2 = []
+
                     for input in input_list:
                         propmt_question_1, propmt_question_2  = '', ''
                         if args.num_prompt_examples == 0:
@@ -470,7 +417,6 @@ def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
                             # GPT-Neo style
                             propmt_question_1 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol1']  
                             propmt_question_2 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol2'] 
-
 
                         prompt_sample_list= prompt_sample_selection(prompt_data, input['goal'], args.num_prompt_examples)
                         prompt_text = ''
@@ -489,6 +435,8 @@ def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
                         prompt_text_2 = prompt_text + propmt_question_2
                         prompt_text_list_1.append(prompt_text_1)
                         prompt_text_list_2.append(prompt_text_2)
+                        len_prompt_text_list_1.append(len(prompt_text_1))
+                        len_prompt_text_list_2.append(len(prompt_text_2))
 
                         input_pos += 1
                     
@@ -504,6 +452,7 @@ def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
                             top_p_sampling=args.top_p_sampling,
                             temperature = args.temperature)
                 output_log_probs_1 = outputs_1[2]
+                output_str_1 = outputs_1[0]
                 
                 outputs_2 = generate_and_post_process(
                             model=model, 
@@ -515,14 +464,27 @@ def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
                             temperature = args.temperature)
 
                 output_log_probs_2 = outputs_2[2]
-
+                output_str_2 = outputs_2[0]
 
                 # write the generated output to the output file
                 if mpu.get_tensor_model_parallel_rank() == 0:
                     if mpu.is_pipeline_first_stage():
-                        for log_prob1, log_prob2 in zip(output_log_probs_1, output_log_probs_2):
-                            avg_log_prob1 = sum(log_prob1) / len(log_prob1)
-                            avg_log_prob2 = sum(log_prob2) / len(log_prob2)
+                        for log_prob1, log_prob2, str_1, str_2, prompt_len_1, prompt_len_2 in zip(output_log_probs_1, output_log_probs_2, \
+                            output_str_1, output_str_2, len_prompt_text_list_1, len_prompt_text_list_2):
+                            # avg_log_prob1 = sum(log_prob1) / len(log_prob1)
+                            # avg_log_prob2 = sum(log_prob2) / len(log_prob2)
+                            tmp_str_1 = str_1[prompt_len_1:].strip().split('\n')[0]
+                            tmp_str_2 = str_2[prompt_len_2:].strip().split('\n')[0]
+                            len_str_1 = len(str_1.split('\n')[0])
+                            len_str_2 = len(str_2.split('\n')[0])
+                            print('======')
+                            print(str_1[prompt_len_1:])
+                            print(str_2[prompt_len_2:])
+                            print("the str_1 and str_2 is {} and {}".format(tmp_str_1, tmp_str_2))
+                            print("the len_1 and len_2 is {} and {}".format(len_str_1, len_str_2))
+
+                            avg_log_prob1 = sum(log_prob1[:len_str_1])
+                            avg_log_prob2 = sum(log_prob2[:len_str_2])
                             # print("The two probability is {} and {}".format(avg_log_prob1, avg_log_prob2))
                             if avg_log_prob1 >= avg_log_prob2:
                                 predicted_lable = '0'
@@ -632,10 +594,6 @@ def distributed_generate_samples_by_prompting_input_from_file(model):
 def main():
 
     args = get_args()
-    if args.api_prompt:
-        # obtain the generations by calling the api
-        generate_samples_by_calling_api()
-        return
 
     if args.num_layers_per_virtual_pipeline_stage is not None:
         print("Interleaved pipeline schedule is not yet supported for text generation.")
@@ -651,10 +609,10 @@ def main():
 
     # perform the prompting
     # generate_samples_by_prompting_input_from_file(model)
-    batch_generate_samples_by_prompting_input_from_file(model)
+    # batch_generate_samples_by_prompting_input_from_file(model)
 
     # for PIQA, need to merge with other functions later
-    # batch_generate_samples_by_prompting_input_from_file_for_piQA(model)
+    batch_generate_samples_by_prompting_input_from_file_for_piQA(model)
 
 
     # the distrubted generation

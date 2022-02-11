@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=2
 
 WORLD_SIZE=1
 
@@ -8,8 +8,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
                   --nnodes 1 \
                   --node_rank 0 \
                   --master_addr localhost \
-                  --master_port 6001"
-
+                  --master_port 6002"
 
 CHECKPOINT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m #(e.g., /357m)
 VOCAB_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-vocab.json #(e.g., /gpt2-vocab.json)
@@ -18,26 +17,25 @@ MERGE_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-3
 # export EXP_NAME='nq_k0_357m'
 # INPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/test.json #\  (e.g., /testseen_processed.txt)
 # PROMPT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/train.json #\(e.g., /testseen_knowledge_prompts.json)
-# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k0_357m_withnewnewGPTPrefix_l10.txt #\(e.g., /testseen_knowledge_generations.txt)
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k0_357m_withnewnewGPTPrefix_l10_test3.txt
 
 # export EXP_NAME='tqa_k1_357m'
 # INPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/test.json #\  (e.g., /testseen_processed.txt)
 # # INPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/dev.json #\  (e.g., /testseen_processed.txt)
 # PROMPT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/train.json #\(e.g., /testseen_knowledge_prompts.json)
-# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k0_357m_withnewnewGPTPrefix_l10.txt #\(e.g., /testseen_knowledge_generations.txt)
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k0_357m_withnewnewGPTPrefix_l10_k2p0t1.txt 
 
 # export EXP_NAME='wq_k1_357m'
 # INPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/WQ/WebQuestions-test.txt #\  (e.g., /testseen_processed.txt)
 # PROMPT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/WQ/WebQuestions-train.txt #\(e.g., /testseen_knowledge_prompts.json)
-# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generations_k0_357m_withnewnewGPTPrefix_l10.txt #\(e.g., /testseen_knowledge_generations.txt)
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generations_k0_357m_withnewnewGPTPrefix_l10.txt 
 
 
 # PIQA dataset
-export EXP_NAME='k0_357m_l50_withgptneostyle_p0.5k0t1.0'
+export EXP_NAME='k0_357m_l50_withgptneostyle_p0.0k1t1.0_new'
 INPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/PIQA/valid.jsonl #\  (the label file is valid-labels.lst)
 PROMPT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/PIQA/train.jsonl #\(the label file is train-labels.lst)
-OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/PIQA/output_answer_generations_${EXP_NAME}.txt #\(e.g., /testseen_knowledge_generations.txt)
-
+OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/PIQA/output_answer_generations_${EXP_NAME}.txt 
 
 python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --num-layers 24 \
@@ -56,8 +54,8 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --output-file ${OUTPUT_PATH} \
         --prompt-file ${PROMPT_PATH} \
         --num-prompt-examples 0 \
-        --out-seq-length 50 \
-        --prompt-format 'GPT-3' \
+        --out-seq-length 256 \
+        --prompt-format 'ours' \
         --top-p-sampling 0.0 \
         --top-k-sampling 1 \
         --temperature 1.0 \

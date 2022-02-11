@@ -134,8 +134,6 @@ def _forward_step_helper(model, tokens, position_ids, attention_mask,
 
     return output_tensor
 
-
-
 def _no_pipelining_forward_step(model, tokens, position_ids, attention_mask,
                                 inference_params, recv_buffer=None):
     """If recv_buffer is none, we will allocate one on the fly."""
@@ -151,7 +149,6 @@ def _no_pipelining_forward_step(model, tokens, position_ids, attention_mask,
         logits = output_tensor
 
     return logits
-
 
 
 def _with_pipelining_forward_step(model, tokens, position_ids, attention_mask,

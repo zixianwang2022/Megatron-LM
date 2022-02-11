@@ -60,7 +60,8 @@ def get_tasks_args(parser):
                        help='the top-k value')
     group.add_argument('--temperature', type=float, default=0.0,
                        help='the temperature value')
-
+    group.add_argument('--task-name', type=str, default=None,
+                       help='name of task, like nq, triviaqa or webqs')
 
     group.add_argument('--openai-api', default=False, action="store_true",
                        help='call openai api')
