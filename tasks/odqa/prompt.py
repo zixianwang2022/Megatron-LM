@@ -138,7 +138,7 @@ def construct_input_prompt(input_list, prompt_data, format='', task_name='', num
                 if 'target' in each:
                     answer = each['target']
                 else:
-                    answer = each['answer'][0]
+                    answer = each['answers'][0]
                 
                 if task_name == 'nq':
                 # for NaturalQuestions
@@ -166,7 +166,7 @@ def construct_input_prompt(input_list, prompt_data, format='', task_name='', num
                 if 'target' in each:
                     answer = each['target']
                 else:
-                    answer = each['answer'][0]
+                    answer = each['answers'][0]
 
                 if task_name == 'nq':                
                     # for NaturalQuestions
@@ -190,7 +190,7 @@ def construct_input_prompt(input_list, prompt_data, format='', task_name='', num
                 if 'target' in each:
                     answer = each['target']
                 else:
-                    answer = each['answer'][0]
+                    answer = each['answers'][0]
                 
                 prompt_text += 'Question: ' + each['question'] + '\n' + 'Answer: ' + answer + '\n'
         else:
@@ -351,7 +351,10 @@ def batch_generate_samples_by_prompting_input_from_file(model):
                                 model=model, 
                                 prompts=prompt_text_list, 
                                 tokens_to_generate=args.out_seq_length,
-                                top_k_sampling=1)
+                                top_k_sampling=args.top_k_sampling,
+                                top_p_sampling=args.top_p_sampling,
+                                temperature = args.temperature)
+
                     prompts_plus_generations_list = outputs[0]
 
                     # write the generated output to the output file
@@ -416,24 +419,24 @@ def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
                         propmt_question_1, propmt_question_2  = '', ''
                         if args.num_prompt_examples == 0:
                             # GPT-3 style
-                            # propmt_question_1 = input['goal'] + ' ' + input['sol1']  
-                            # propmt_question_2 = input['goal'] + ' ' + input['sol2'] 
+                            propmt_question_1 = input['goal'] + ' ' + input['sol1']  
+                            propmt_question_2 = input['goal'] + ' ' + input['sol2'] 
                             # GPT-Neo style
-                            propmt_question_1 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol1']  
-                            propmt_question_2 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol2'] 
+                            # propmt_question_1 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol1']  
+                            # propmt_question_2 = 'Question: ' + input['goal'] + '\nAnswer: ' + input['sol2'] 
 
                         prompt_sample_list= prompt_sample_selection(prompt_data, input['goal'], args.num_prompt_examples)
                         prompt_text = ''
                         for each in prompt_sample_list:
                             if int(each['golden']) == 0:
                                 #GPT-3
-                                # prompt_text += each['goal'] + ' ' + each['sol2'] + ' '
+                                prompt_text += each['goal'] + ' ' + each['sol2'] + ' '
                                 # GPT-Neo
-                                prompt_text += 'Question: ' + each['goal'] + '\nAnswer: ' + each['sol1'] + '\n\n'
+                                # prompt_text += 'Question: ' + each['goal'] + '\nAnswer: ' + each['sol1'] + '\n\n'
 
                             elif int(each['golden']) == 1:
-                                # prompt_text += each['goal'] + ' ' + each['sol2'] + ' '
-                                prompt_text += 'Question: ' + each['goal'] + '\nAnswer: ' + each['sol2'] + '\n\n'
+                                prompt_text += each['goal'] + ' ' + each['sol2'] + ' '
+                                # prompt_text += 'Question: ' + each['goal'] + '\nAnswer: ' + each['sol2'] + '\n\n'
 
                         prompt_text_1 = prompt_text + propmt_question_1
                         prompt_text_2 = prompt_text + propmt_question_2
@@ -477,18 +480,19 @@ def batch_generate_samples_by_prompting_input_from_file_for_piQA(model):
                             output_str_1, output_str_2, len_prompt_text_list_1, len_prompt_text_list_2):
                             # avg_log_prob1 = sum(log_prob1) / len(log_prob1)
                             # avg_log_prob2 = sum(log_prob2) / len(log_prob2)
-                            tmp_str_1 = str_1[prompt_len_1:].strip().split('\n')[0]
-                            tmp_str_2 = str_2[prompt_len_2:].strip().split('\n')[0]
-                            len_str_1 = len(str_1.split('\n')[0])
-                            len_str_2 = len(str_2.split('\n')[0])
+                            # tmp_str_1 = str_1[prompt_len_1:].strip().split('\n')[0]
+                            # tmp_str_2 = str_2[prompt_len_2:].strip().split('\n')[0]
+                            # len_tmp_str_1 = len(tmp_str_1.split('\n')[0])
+                            # len_tmp_str_2 = len(tmp_str_2.split('\n')[0])
+
                             print('======')
                             print(str_1[prompt_len_1:])
                             print(str_2[prompt_len_2:])
-                            print("the str_1 and str_2 is {} and {}".format(tmp_str_1, tmp_str_2))
-                            print("the len_1 and len_2 is {} and {}".format(len_str_1, len_str_2))
+                            # print("the tmp_str_1 and tmp_str_2 is {} and {}".format(tmp_str_1, tmp_str_2))
+                            # print("the len_1 and len_2 is {} and {}".format(len_tmp_str_1, len_tmp_str_2))
 
-                            avg_log_prob1 = sum(log_prob1[:len_str_1])
-                            avg_log_prob2 = sum(log_prob2[:len_str_2])
+                            avg_log_prob1 = sum(log_prob1[prompt_len_1:])
+                            avg_log_prob2 = sum(log_prob2[prompt_len_2:])
                             # print("The two probability is {} and {}".format(avg_log_prob1, avg_log_prob2))
                             if avg_log_prob1 >= avg_log_prob2:
                                 predicted_lable = '0'
