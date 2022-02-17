@@ -93,46 +93,6 @@ def model_provider(pre_process=True, post_process=True):
     return model
 
 
-def select_prompts_based_on_similarity(
-        query, data_list, data_embeddings, topk, \
-            query_tokenizer, query_encoder, ctx_tokenizer, ctx_encoder):
-    """Select samples based on the similarity"""
-    
-    with torch.no_grad():
-        # get the query embeddings
-        query_ids = query_tokenizer.encode(query)
-        query_ids = torch.LongTensor([query_ids]).cuda()
-        query_emb = query_encoder(input_ids=query_ids).pooler_output
-        query_emb = query_emb[0]
-        
-        # calculate embeddings for the samples in the database
-        if data_embeddings is None:
-            for idx, data in enumerate(data_list):
-                example = data['ctxs']['text'] + ' ' + data['ctxs']['title']
-                example_ids = ctx_tokenizer.encode(example)
-                example_ids = torch.LongTensor([example_ids]).cuda()
-                example_emb = ctx_encoder(input_ids=example_ids).pooler_output
-                if idx == 0:
-                    data_embeddings = example_emb
-                else:
-                    data_embeddings = torch.cat(
-                        (data_embeddings, example_emb), dim=0)
-
-        # compare the similarity and select the topk samples
-        similarity_list = data_embeddings.matmul(query_emb)
-        _, indices = torch.topk(similarity_list, k=topk)
-    
-    indices = indices.tolist()
-    indices = indices[::-1] # reverse the order
-    selected_prompts = []
-    for index in indices:
-        # index = index.item()
-        selected_prompts.append(data_list[index])
-
-    return selected_prompts
-
-
-
 def prompt_sample_selection(data_list, query = "", k=10, is_random=True, retriever=None):
 
     if k==0:
@@ -147,8 +107,6 @@ def prompt_sample_selection(data_list, query = "", k=10, is_random=True, retriev
         assert retriever is not None
         print("select the samples based on similarity!")
         return retriever.get_topk(query, k)
-        # return select_prompts_based_on_similarity(query, data_list, data_embeddings, k, \
-        #     query_tokenizer, query_encoder, ctx_tokenizer, ctx_encoder)
 
 def post_process_generations(generations, min_token_length=5, sep='\n'):
     # return the first string that has length longer than 5
@@ -158,7 +116,6 @@ def post_process_generations(generations, min_token_length=5, sep='\n'):
             return each.strip()
     
     return "No proper answer!"
-
 
 
 
