@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 
-def load_data(data_path=None):
+def load_data(data_path=None, with_context=False):
     assert data_path
     if data_path.endswith(('.jsonl', 'txt')):
         data = open(data_path, 'r')
@@ -25,6 +25,11 @@ def load_data(data_path=None):
             new_example['answers'] = example['answer']
         if 'target' in example:
             new_example['target'] = example['target']
+        if with_context:
+            if 'ctxs' in example:
+                new_example['ctxs'] = example['ctxs'][0]
+            else:
+                new_example['ctxs'] = 'no context'
         examples.append(new_example)
 
     if data_path is not None and data_path.endswith('.jsonl'):

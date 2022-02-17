@@ -2,3 +2,4 @@ __pycache__
 
 **/logs
 /megatron/fused_kernels/build
+tasks/odqa/prompt_tmp.py

@@ -63,6 +63,19 @@ def get_tasks_args(parser):
     group.add_argument('--task-name', type=str, default=None,
                        help='name of task, like nq, triviaqa or webqs')
 
+    group.add_argument('--is-random', default=False, action="store_true",
+                       help='weather select the samples randomly or not')
+    group.add_argument('--with-context', default=False, action="store_true",
+                       help='weather will append the context in the prompt construction')
+    group.add_argument('--use-golden', default=False, action="store_true",
+                       help='use golden or the top-1 instances context as the question context')
+    group.add_argument('--shift-steps', default=0, type=int,
+                       help='the starting index of the top-k list top-(k+shift_steps)[shift_steps:]')
+
+    group.add_argument('--encoded-ctx-files', type=str, default="",
+                       help='the path of the encoded context files')
+
+
     group.add_argument('--openai-api', default=False, action="store_true",
                        help='call openai api')
     group.add_argument('--engine', type=str, default=None,

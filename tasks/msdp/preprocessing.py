@@ -337,7 +337,7 @@ emb_dict = {}
 def select_prompts_based_on_similarity(
         query, dialog_list, prompt_list, topic, tokenizer, encoder, topk):
     """Select samples based on the similarity"""
-
+    
     with torch.no_grad():
         # get the query embeddings
         query_ids = tokenizer.encode(query)
