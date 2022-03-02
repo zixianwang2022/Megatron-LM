@@ -74,6 +74,13 @@ def get_tasks_args(parser):
 
     group.add_argument('--encoded-ctx-files', type=str, default="",
                        help='the path of the encoded context files')
+    group.add_argument('--save-context-path', type=str, default="",
+                       help='the path to save the generated context files')
+    group.add_argument('--is-context-generated', default=False, action="store_true",
+                       help='whether generated the context or use retreival')
+    group.add_argument('--emb-type', default='', type=str,
+                       help='the type of embeddings for the context retriever, can based on "query", "ctx", or "query_ctx')
+
 
 
     group.add_argument('--openai-api', default=False, action="store_true",
@@ -95,6 +102,9 @@ if __name__ == '__main__':
 
     if args.task == 'ODQA-PROMPT':
         from tasks.odqa.prompt import main
+    
+    elif args.task == 'ODQA-CONTEXT-GEN-PROMPT':
+        from tasks.odqa.context_gen import main
 
     elif args.task == 'ODQA-EVAL-EM':
         from tasks.odqa.evaluate import main

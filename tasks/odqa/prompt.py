@@ -39,8 +39,7 @@ import shutil
 import time
 from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
 from transformers import DPRQuestionEncoderTokenizer, DPRQuestionEncoder
-
-
+from transformers import BertTokenizer, BertModel
 
 
 def call_model_api(inputs, tokens_to_generate):
@@ -95,6 +94,8 @@ def model_provider(pre_process=True, post_process=True):
 
 def prompt_sample_selection(data_list, query = "", k=10, is_random=True, retriever=None):
 
+    args = get_args()
+
     if k==0:
         return []
 
@@ -106,7 +107,7 @@ def prompt_sample_selection(data_list, query = "", k=10, is_random=True, retriev
         ## option1: return the top-k
         assert retriever is not None
         print("select the samples based on similarity!")
-        return retriever.get_topk(query, k)
+        return retriever.get_topk(query, k, args.emb_type)
 
 def post_process_generations(generations, min_token_length=5, sep='\n'):
     # return the first string that has length longer than 5
@@ -307,14 +308,30 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
             print("output_file is {}".format(output_file))
 
         print("> loading tokenizer and encoder")
+        # query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
+        #                 'facebook/dpr-question_encoder-single-nq-base')
+        # query_encoder = DPRQuestionEncoder.from_pretrained(
+        #         "facebook/dpr-question_encoder-single-nq-base").cuda()
+        # ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
+        #                     "facebook/dpr-ctx_encoder-single-nq-base")
+        # ctx_encoder = DPRContextEncoder.from_pretrained(
+        #                 "facebook/dpr-ctx_encoder-single-nq-base").cuda()
+
+
+        # query_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        # query_encoder = BertModel.from_pretrained("bert-base-uncased").cuda()
+        # ctx_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        # ctx_encoder = BertModel.from_pretrained("bert-base-uncased").cuda()
+
+
         query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
-                        'facebook/dpr-question_encoder-single-nq-base')
+                        'facebook/dpr-question_encoder-multiset-base')
         query_encoder = DPRQuestionEncoder.from_pretrained(
-                "facebook/dpr-question_encoder-single-nq-base").cuda()
+                "facebook/dpr-question_encoder-multiset-base").cuda()
         ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
-                            "facebook/dpr-ctx_encoder-single-nq-base")
+                            "facebook/dpr-ctx_encoder-multiset-base")
         ctx_encoder = DPRContextEncoder.from_pretrained(
-                        "facebook/dpr-ctx_encoder-single-nq-base").cuda()
+                        "facebook/dpr-ctx_encoder-multiset-base").cuda()
 
         retriever = MyRetriever(query_encoder,
             query_tokenizer,
