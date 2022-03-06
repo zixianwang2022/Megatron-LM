@@ -96,7 +96,10 @@ def generate_tokens_probs_and_return_on_first_stage(
         return_output_log_probs=False,
         top_k=0, top_p=0.0,
         temperature=1.0,
-        use_eod_token_for_early_termination=True):
+        use_eod_token_for_early_termination=True,
+        stop_on_double_eol=False,
+        stop_on_eol=False
+        ):
     """Main token generation function.
     Arguments:
         model: no interleaving is supported.
@@ -130,6 +133,10 @@ def generate_tokens_probs_and_return_on_first_stage(
     min_prompt_length = lengths.min().item()
     max_sequence_length = tokens.size(1)
     max_sequence_length = min(max_sequence_length, args.max_position_embeddings)
+    
+    # If the context is too big, this happens
+    if min_prompt_length >= max_sequence_length:
+        raise ValueError("context length + tokens_to_generate too large")
 
     # forward step.
     forward_step = ForwardStep(model, batch_size, max_sequence_length)
@@ -193,6 +200,7 @@ def generate_tokens_probs_and_return_on_first_stage(
                                     top_p=top_p,
                                     temperature=temperature,
                                     vocab_size=tokenizer.vocab_size)
+                
                 # If a prompt length is smaller or equal th current context
                 # length, it means we have started generating tokens
                 started = lengths <= context_length
@@ -227,8 +235,20 @@ def generate_tokens_probs_and_return_on_first_stage(
             # Check if all the sequences have hit the termination_id.
             done = None
             if mpu.is_pipeline_last_stage():
-                done_token = (new_sample == termination_id).byte() & \
-                    started.byte()
+                # TODO(rprenger) These stopping methods are tokenizer dependent
+                # instead tokenization should be in the inference loop so stop sequences can be used
+                if stop_on_double_eol:
+                    hit_double_eol = (new_sample == 628).byte() & started.byte()
+                    hit_two_eols = (new_sample == 198).byte() & (tokens[:, context_length-1] == 198).byte() & started.byte()
+                    done_token = hit_double_eol | hit_two_eols
+                elif stop_on_eol:
+                    hit_double_eol = (new_sample == 628).byte() & started.byte()
+                    hit_eol = (new_sample == 198).byte() & started.byte()
+                    done_token = hit_double_eol | hit_eol
+                else: 
+                    done_token = (new_sample == termination_id).byte() & \
+                        started.byte()
+                
                 just_finished = (done_token & ~is_generation_done).bool()
                 generated_sequence_lengths[just_finished.view(-1)] = \
                     context_length + 1
@@ -261,6 +281,74 @@ def generate_tokens_probs_and_return_on_first_stage(
 
     return tokens, generated_sequence_lengths, output_log_probs
 
+
+def beam_search_and_return_on_first_stage(model, tokens, lengths, beam_size):
+    args = get_args()
+    tokenizer = get_tokenizer()
+
+    batch_size = tokens.size(0)
+    assert(batch_size == 1)
+    prompt_length = lengths.item()
+    final_sequence_length = tokens.size(1)
+    final_sequence_length = min(final_sequence_length, args.max_position_embeddings)
+    
+    # If the context is too big, this happens
+    if prompt_length >= final_sequence_length:
+        raise ValueError("context length + tokens_to_generate too large")
+
+    # forward step.
+    forward_step = ForwardStep(model, beam_size, final_sequence_length)
+
+    if mpu.is_pipeline_last_stage():
+        scores = torch.zeros(beam_size,
+                             dtype=torch.float32,
+                             device=torch.cuda.current_device()).unsqueeze(1)
+    # =============
+    # Run infernece
+    # =============
+    with torch.no_grad():
+        tokens = tokens.repeat(beam_size, 1)
+        attention_mask, position_ids = _build_attention_mask_and_position_ids(tokens)
+        prev_context_length = 0
+        for context_length in range(prompt_length, final_sequence_length):
+
+            # Pick the slice that we need to pass through the network.
+            tokens2use = tokens[:, prev_context_length:context_length]
+            positions2use = position_ids[:, prev_context_length:context_length]
+            attention_mask2use = attention_mask[
+                ..., prev_context_length:context_length, :context_length]
+
+            # logits will be meanigful only in the last pipeline stage.
+            logits = forward_step(tokens2use, positions2use, attention_mask2use)
+            vocab_size = logits.size(2)
+
+            if mpu.is_pipeline_last_stage():
+                log_probs = F.log_softmax(logits, dim=2)
+                new_scores = log_probs[:, -1, :] + scores
+
+                if context_length == prompt_length:  # if this is the first one
+                    sorted_scores, indices = torch.sort(new_scores[0,:], descending=True)
+                else:
+                    sorted_scores, indices = torch.sort(new_scores.view(-1), descending=True)
+
+                best_batches = torch.div(indices[:beam_size], vocab_size, rounding_mode='floor')
+                best_words = indices[:beam_size] % vocab_size
+                
+                tokens = tokens[best_batches,:]
+                tokens[:, context_length] = best_words
+                scores = sorted_scores[:beam_size].unsqueeze(1)
+            
+            # Update the tokens on the first stage so the next input to
+            # the network is correct.
+            copy_from_last_to_first_pipeline_stage(batch_size, torch.int64,
+                                                   tokens[:, context_length])
+
+            # Update the context length for the next token generation.
+            prev_context_length = context_length
+    
+        copy_from_last_to_first_pipeline_stage(scores.size(0), torch.float32,
+                                               scores[:,0])
+    return tokens, scores
 
 
 def _build_attention_mask_and_position_ids(tokens):
