@@ -24,6 +24,8 @@ import regex
 import string
 import json
 import numpy as np
+from pathlib import Path
+import os.path
 
 def evaluate_f1(guess_file, answer_file):
     """Evaluating F1 Score"""
@@ -136,7 +138,111 @@ def evaluate_ems(prediction_file, ground_truth_file):
     return final_em_score
 
 
+def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
+
+    # assert ground_truth_file.endswith('json'), "the ground truth file should be the original json file" 
+
+    gen_ctx_list = []
+
+    with open(gen_ctx_file, 'r') as f:
+        gen_ctx_list = f.readlines()
+
+    prediction_list = []
+    print_rank_0('reading %s' % prediction_file)
+    with open(prediction_file, "r") as f:
+        for i, line in enumerate(tqdm(f)):
+            line = line.replace("Answer:","")
+            line = line.replace("Answer: ","")
+            line = line.replace('????  ', "")
+            line = line.replace('A: ',"")
+            line = line.replace("A:", "")
+
+            line = line.strip()
+
+            if "<|endoftext|>" in line:
+                line = line.replace("<|endoftext|>", "")
+            prediction_list.append(line)
+
+    ground_truths_list = []
+    
+    if ground_truth_file.endswith(('txt', 'lst')):
+        raw_data = open(ground_truth_file, 'r')
+    else:
+        with open(ground_truth_file, 'r') as f:
+            raw_data = json.load(f)
+
+    for each in raw_data:
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
+        
+        if 'answers' in each:
+            ground_truths_list.append(each['answers'])
+        elif 'answer' in each:
+            ground_truths_list.append(each['answer'])
+        else:
+            ground_truths_list.append([each])
+    
+    true_list = []
+    false_list = []
+
+    exactmatch = []
+    for i,each in enumerate(prediction_list):
+        print("=============")
+        print(each)
+        print(ground_truths_list[i])
+        score = ems(each, ground_truths_list[i])
+        print(score)
+        exactmatch.append(score)
+        if score:
+            true_list.append(i)
+        else:
+            false_list.append(i)
+    
+    #
+    analysis_true_data = []
+    analysis_false_data = []
+    analysis_data = {}
+    for i in range(len(prediction_list)):
+        analysis_data = {}
+        analysis_data['question'] = raw_data[i]['question']
+        analysis_data['golden_ctx'] = raw_data[i]['ctxs'][0]
+        if 'answer' in raw_data[i]: 
+            analysis_data['golden_ans'] = raw_data[i]['answer'] 
+        elif 'answers' in raw_data[i]:
+           analysis_data['golden_ans'] = raw_data[i]['answers']
+        else:  
+            analysis_data['golden_ans'] = raw_data[i]['target'] 
+        analysis_data['gen_ctx'] = gen_ctx_list[i]
+        analysis_data['gen_ans'] = prediction_list[i]
+
+        if i < 10:
+            print(analysis_data)
+
+        if i in true_list:
+            analysis_true_data.append(analysis_data)
+        else:
+            analysis_false_data.append(analysis_data) 
+    
+    save_true_result_path = Path(os.path.dirname(gen_ctx_file)) / os.path.basename(gen_ctx_file).replace('.txt', '.txt.true')
+    save_false_result_path = Path(os.path.dirname(gen_ctx_file)) / os.path.basename(gen_ctx_file).replace('.txt', '.txt.false')
+
+    with open(save_true_result_path, 'w') as f:
+        json.dump(analysis_true_data, f, indent=4)
+    print("save the true file done!")
+    with open(save_false_result_path, 'w') as f:
+        json.dump(analysis_false_data, f, indent=4)
+    print("save the false file done!")
+    final_em_score = np.mean(exactmatch)
+   
+    print_rank_0('Exact Match: %.4f;' % final_em_score)
+
+    print_rank_0('done :-)')
+
+    return final_em_score
+
+
 def main():
     args = get_args()
     
-    evaluate_ems(args.guess_file, args.answer_file)
+    # evaluate_ems(args.guess_file, args.answer_file)
+    result_analysis(args.guess_file, args.answer_file, args.save_context_path)
