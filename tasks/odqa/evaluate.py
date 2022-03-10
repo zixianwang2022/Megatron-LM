@@ -26,6 +26,74 @@ import json
 import numpy as np
 from pathlib import Path
 import os.path
+import torch
+
+
+def perplexity():
+    import math
+    from pytorch_pretrained_bert import OpenAIGPTTokenizer, OpenAIGPTModel, OpenAIGPTLMHeadModel
+# Load pre-trained model (weights)
+    model = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt')
+    model.eval()
+    # Load pre-trained model tokenizer (vocabulary)
+    tokenizer = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
+
+    def score(sentence):
+        tokenize_input = tokenizer.tokenize(sentence)
+        tensor_input = torch.tensor([tokenizer.convert_tokens_to_ids(tokenize_input)])
+        loss=model(tensor_input, lm_labels=tensor_input)
+        return math.exp(loss)
+
+
+def similarity_score(compare_file):
+
+    from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
+    from transformers import DPRQuestionEncoderTokenizer, DPRQuestionEncoder
+
+    query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
+                    'facebook/dpr-question_encoder-multiset-base')
+    query_encoder = DPRQuestionEncoder.from_pretrained(
+            "facebook/dpr-question_encoder-multiset-base").cuda()
+    ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
+                        "facebook/dpr-ctx_encoder-multiset-base")
+    ctx_encoder = DPRContextEncoder.from_pretrained(
+                    "facebook/dpr-ctx_encoder-multiset-base").cuda()
+
+    with open(compare_file, 'r') as f:
+        r_g_data =  json.load(f)
+
+    score_list = []
+    for each in r_g_data:
+        # re_text = each['golden_ctx']['title'] + ' ' + each['golden_ctx']['text']
+        re_text = each['question']
+        ge_text = each['gen_ctx']
+        # ge_text = each['question']
+
+
+        with torch.no_grad():
+            # get the query embeddings
+            re_ids = query_tokenizer.encode(re_text, truncation=True, max_length=512)
+            re_ids = torch.LongTensor([re_ids]).cuda()
+            re_emb = query_encoder(input_ids=re_ids).pooler_output
+            re_emb = re_emb[0]
+
+            ge_ids = ctx_tokenizer.encode(ge_text, truncation=True, max_length=512)
+            ge_ids = torch.LongTensor([ge_ids]).cuda()
+            ge_emb = ctx_encoder(input_ids=ge_ids).pooler_output
+            ge_emb = ge_emb[0]
+
+            similarity_score = re_emb.matmul(ge_emb)
+            similarity_score = similarity_score.tolist()
+
+            print(similarity_score)
+            score_list.append(similarity_score)
+
+    score = np.mean(score_list)
+    print('The similarity score avarage is {}'.format(score))
+
+    return score
+
+
 
 def evaluate_f1(guess_file, answer_file):
     """Evaluating F1 Score"""
@@ -121,6 +189,8 @@ def evaluate_ems(prediction_file, ground_truth_file):
             ground_truths_list.append([each])
        
     exactmatch = []
+
+    good_example_list = []
     for i,each in enumerate(prediction_list):
         print("=============")
         print(each)
@@ -128,6 +198,23 @@ def evaluate_ems(prediction_file, ground_truth_file):
         score = ems(each, ground_truths_list[i])
         print(score)
         exactmatch.append(score)
+        if score:
+            good_example_list.append(i)
+        
+    good_examples = []
+    
+    for i, each in enumerate(raw_data):
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
+        if i in good_example_list:
+            good_examples.append(each)
+    
+    good_examples_save_path = Path(os.path.dirname(ground_truth_file)) / os.path.basename(ground_truth_file).replace('.json', '_good_examples.json')
+
+    with open(good_examples_save_path, 'w') as f:
+        json.dump(good_examples, f, indent=4)
+    
+    print("write to {} finished!".format(good_examples_save_path))
     
     final_em_score = np.mean(exactmatch)
    
@@ -201,6 +288,7 @@ def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
     #
     analysis_true_data = []
     analysis_false_data = []
+    all_data = []
     analysis_data = {}
     for i in range(len(prediction_list)):
         analysis_data = {}
@@ -215,6 +303,8 @@ def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
         analysis_data['gen_ctx'] = gen_ctx_list[i]
         analysis_data['gen_ans'] = prediction_list[i]
 
+        all_data.append(analysis_data)
+
         if i < 10:
             print(analysis_data)
 
@@ -223,8 +313,13 @@ def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
         else:
             analysis_false_data.append(analysis_data) 
     
+    save_result_path = Path(os.path.dirname(gen_ctx_file)) / os.path.basename(gen_ctx_file).replace('.txt', '.txt.all')
+    with open(save_result_path, 'w') as f:
+        json.dump(all_data, f, indent=4)
+
     save_true_result_path = Path(os.path.dirname(gen_ctx_file)) / os.path.basename(gen_ctx_file).replace('.txt', '.txt.true')
     save_false_result_path = Path(os.path.dirname(gen_ctx_file)) / os.path.basename(gen_ctx_file).replace('.txt', '.txt.false')
+
 
     with open(save_true_result_path, 'w') as f:
         json.dump(analysis_true_data, f, indent=4)
@@ -232,6 +327,20 @@ def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
     with open(save_false_result_path, 'w') as f:
         json.dump(analysis_false_data, f, indent=4)
     print("save the false file done!")
+
+    save_true_list_path = Path(os.path.dirname(gen_ctx_file)) / os.path.basename(gen_ctx_file).replace('.txt', '.true_list.txt')
+    save_false_list_path = Path(os.path.dirname(gen_ctx_file)) / os.path.basename(gen_ctx_file).replace('.txt', '.false_list.txt')
+
+    with open(save_true_list_path, 'w') as f:
+        for each in true_list:
+            f.write("%s\n" % each)
+
+    with open(save_false_list_path, 'w') as f:
+        for each in false_list:
+            f.write("%s\n" % each)
+
+    print("save the true list and false_list to file done!")
+
     final_em_score = np.mean(exactmatch)
    
     print_rank_0('Exact Match: %.4f;' % final_em_score)
@@ -244,5 +353,9 @@ def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
 def main():
     args = get_args()
     
-    # evaluate_ems(args.guess_file, args.answer_file)
-    result_analysis(args.guess_file, args.answer_file, args.save_context_path)
+    evaluate_ems(args.guess_file, args.answer_file)
+    # result_analysis(args.guess_file, args.answer_file, args.save_context_path)
+
+    # calculate the similarity score between the generated context and the retrieved golden
+
+    # similarity_score(args.compare_file)

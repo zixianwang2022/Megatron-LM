@@ -80,7 +80,12 @@ def get_tasks_args(parser):
                        help='whether generated the context or use retreival')
     group.add_argument('--emb-type', default='', type=str,
                        help='the type of embeddings for the context retriever, can based on "query", "ctx", or "query_ctx')
+    group.add_argument('--query-type', default='', type=str,
+                       help='the type of embeddings for the context retriever, can based on "question", "context", or "question_context')
 
+
+    group.add_argument('--compare-file', type=str, default="",
+                       help='')
 
 
     group.add_argument('--openai-api', default=False, action="store_true",

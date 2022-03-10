@@ -138,9 +138,11 @@ class MyRetriever(object):
             raise ValueError("the emb_type is illegal!")
 
         
-        _, indices = torch.topk(similarity_list, k=topk)
-    
+        scores, indices = torch.topk(similarity_list, k=topk)
+
+        scores = scores.tolist()
         indices = indices.tolist()
+
         indices = indices[::-1] # reverse the order
         selected_prompts = []
         for index in indices:

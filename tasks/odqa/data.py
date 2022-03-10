@@ -18,6 +18,7 @@ def load_data(data_path=None, with_context=False):
         if data_path is not None and data_path.endswith(('.jsonl', 'txt')):
             example = json.loads(example)
         new_example = {}
+        new_example['id'] = k
         new_example['question'] = example['question']
         if 'answers' in example:
             new_example['answers'] = example['answers']
