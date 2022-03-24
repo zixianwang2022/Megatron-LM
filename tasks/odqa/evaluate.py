@@ -27,7 +27,7 @@ import numpy as np
 from pathlib import Path
 import os.path
 import torch
-
+from collections import Counter
 
 def perplexity():
     import math
@@ -64,11 +64,10 @@ def similarity_score(compare_file):
 
     score_list = []
     for each in r_g_data:
-        # re_text = each['golden_ctx']['title'] + ' ' + each['golden_ctx']['text']
-        re_text = each['question']
+        re_text = each['golden_ctx']['title'] + ' ' + each['golden_ctx']['text']
+        # re_text = each['question']
         ge_text = each['gen_ctx']
         # ge_text = each['question']
-
 
         with torch.no_grad():
             # get the query embeddings
@@ -151,8 +150,6 @@ def ems(prediction, ground_truths):
 
 def evaluate_ems(prediction_file, ground_truth_file):
 
-    # assert ground_truth_file.endswith('json'), "the ground truth file should be the original json file" 
-
     prediction_list = []
     print_rank_0('reading %s' % prediction_file)
     with open(prediction_file, "r") as f:
@@ -201,20 +198,20 @@ def evaluate_ems(prediction_file, ground_truth_file):
         if score:
             good_example_list.append(i)
         
-    good_examples = []
+    # good_examples = []
     
-    for i, each in enumerate(raw_data):
-        if ground_truth_file.endswith('txt'):
-            each = json.loads(each)
-        if i in good_example_list:
-            good_examples.append(each)
+    # for i, each in enumerate(raw_data):
+    #     if ground_truth_file.endswith('txt'):
+    #         each = json.loads(each)
+    #     if i in good_example_list:
+    #         good_examples.append(each)
     
-    good_examples_save_path = Path(os.path.dirname(ground_truth_file)) / os.path.basename(ground_truth_file).replace('.json', '_good_examples.json')
+    # good_examples_save_path = Path(os.path.dirname(ground_truth_file)) / os.path.basename(ground_truth_file).replace('.json', '_good_examples.json')
 
-    with open(good_examples_save_path, 'w') as f:
-        json.dump(good_examples, f, indent=4)
+    # with open(good_examples_save_path, 'w') as f:
+    #     json.dump(good_examples, f, indent=4)
     
-    print("write to {} finished!".format(good_examples_save_path))
+    # print("write to {} finished!".format(good_examples_save_path))
     
     final_em_score = np.mean(exactmatch)
    
@@ -222,7 +219,113 @@ def evaluate_ems(prediction_file, ground_truth_file):
 
     print_rank_0('done :-)')
 
-    return final_em_score
+    return final_em_score, exactmatch
+
+
+def marginalize_prediction(prediction_file_list):
+    prediction_list_list = []
+    for prediction_file in prediction_file_list:
+        prediction_list = []
+        print_rank_0('reading %s' % prediction_file)
+        with open(prediction_file, "r") as f:
+            for i, line in enumerate(tqdm(f)):
+                line = line.replace("Answer:","")
+                line = line.replace("Answer: ","")
+                line = line.replace('????  ', "")
+                line = line.replace('A: ',"")
+                line = line.replace("A:", "")
+
+                line = line.strip()
+
+                if "<|endoftext|>" in line:
+                    line = line.replace("<|endoftext|>", "")
+                line = normalize_answer(line) # normalize the answer
+                prediction_list.append(line)
+        prediction_list_list.append(prediction_list)
+    
+    most_predicted_answer_list = []
+    for j in range(len(prediction_list_list[0])):
+        current_list=[]
+        for i in range(len(prediction_list_list)):
+            current_list.append(prediction_list_list[i][j])
+        x = Counter(current_list)
+        (most_predicted_answer, _) = x.most_common()[0]
+        most_predicted_answer_list.append(most_predicted_answer)
+    
+    return most_predicted_answer_list
+
+
+def evaluate_ems_multiple_marginalize(prediction_file_list, ground_truth_file):
+
+    # assert ground_truth_file.endswith('json'), "the ground truth file should be the original json file" 
+    
+    most_predicted_answer_list = marginalize_prediction(prediction_file_list)
+
+
+    ground_truths_list = []
+    
+    if ground_truth_file.endswith(('txt', 'lst')):
+        raw_data = open(ground_truth_file, 'r')
+    else:
+        with open(ground_truth_file, 'r') as f:
+            raw_data = json.load(f)
+
+    for each in raw_data:
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
+        
+        if 'answers' in each:
+            ground_truths_list.append(each['answers'])
+        elif 'answer' in each:
+            ground_truths_list.append(each['answer'])
+        else:
+            ground_truths_list.append([each])
+
+    exactmatch=[]
+    for i,each in enumerate(most_predicted_answer_list):
+        print("=============")
+        print(each)
+        print(ground_truths_list[i])
+        score = ems(each, ground_truths_list[i])
+        print(score)
+        exactmatch.append(score)
+
+
+    final_em_score = np.mean(exactmatch)
+   
+    print_rank_0('Final Exact Match: %.4f;' % final_em_score)
+
+    print_rank_0('done :-)')
+
+    return
+
+
+def evaluate_ems_multiple(prediction_file_list, ground_truth_file):
+
+    # assert ground_truth_file.endswith('json'), "the ground truth file should be the original json file" 
+    exactmatch_list_list = []
+    for prediction_file in prediction_file_list:
+        _, exactmatch_list = evaluate_ems(prediction_file, ground_truth_file)
+        exactmatch_list_list.append(exactmatch_list)
+
+    new_exactmatch_list=[]
+    for j in range(len(exactmatch_list_list[0])):
+        sum = 0
+        for i in range(len(exactmatch_list_list)):
+            sum += int(exactmatch_list_list[i][j])
+        new_exactmatch_list.append(bool(sum))
+    
+    new_score = np.mean(new_exactmatch_list)
+
+    print_rank_0('Final Exact Match: %.4f;' % new_score)
+
+    print_rank_0('done :-)')
+
+    return new_score
+
+
+
+
 
 
 def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
@@ -353,7 +456,11 @@ def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
 def main():
     args = get_args()
     
-    evaluate_ems(args.guess_file, args.answer_file)
+    # evaluate_ems(args.guess_file, args.answer_file)
+    guess_file_list = args.guess_file.strip(',').split(',')
+    # evaluate_ems_multiple(guess_file_list, args.answer_file)
+    evaluate_ems_multiple_marginalize(guess_file_list, args.answer_file)
+
     # result_analysis(args.guess_file, args.answer_file, args.save_context_path)
 
     # calculate the similarity score between the generated context and the retrieved golden

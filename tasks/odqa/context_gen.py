@@ -29,7 +29,7 @@ from megatron.training import get_model
 from megatron.checkpointing import load_checkpoint
 from megatron.initialize import initialize_megatron
 from megatron.text_generation import generate_and_post_process, beam_search_and_post_process
-from .data import load_data, load_data_distributed, load_piQA_data
+from .data import load_data, load_data_distributed, load_piQA_data, load_data_qg
 from .retriever import MyRetriever
 from .utils import write_output
 import random
@@ -40,6 +40,7 @@ import time
 from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
 from transformers import DPRQuestionEncoderTokenizer, DPRQuestionEncoder
 
+from .question_gen import generate_question
 
 
 
@@ -71,8 +72,10 @@ def prompt_sample_selection(data_list, query = "", k=10, is_random=True, retriev
         ## option1: return the top-k
         assert retriever is not None
         # print("select the samples based on query : {} similarity!".format(args.emb_type))
-        return retriever.get_topk(query, k, args.emb_type)
-        # return retriever.get_topk(query, k)
+        if args.remove_duplicate_ctx:
+            return retriever.get_topk(query, k+10, args.emb_type)
+        else:
+            return retriever.get_topk(query, k, args.emb_type)
 
 def post_process_generations(generations, min_token_length=5, sep='\n'):
     # return the first string that has length longer than 5
@@ -103,7 +106,7 @@ def context_generation(input_list, list_of_topk_list, num_prompt_examples=0, gen
 
     else:
         for input, topk_list in zip(input_list,list_of_topk_list):
-            context_prompt = construct_context_prompt(input['question'], topk_list, num_prompt_examples)
+            context_prompt = construct_context_prompt(input, topk_list, num_prompt_examples, args.remove_duplicate_ctx)
             context_prompt_len_list.append(len(context_prompt))
             context_prompt_list.append(context_prompt)
         
@@ -127,7 +130,9 @@ def context_generation(input_list, list_of_topk_list, num_prompt_examples=0, gen
                             tokens_to_generate=100,
                             top_k_sampling=0,
                             top_p_sampling=0.9,
-                            temperature = args.temperature)
+                            temperature = args.temperature,
+                            random_seed=args.random_seed
+                            )
 
                 # try beam_search
                 # assert len(context_prompt_batch) == 1 
@@ -137,8 +142,6 @@ def context_generation(input_list, list_of_topk_list, num_prompt_examples=0, gen
                 #             tokens_to_generate = 100,
                 #             beam_size=4,
                 #             )
-
-
                 prompts_plus_generations_list = outputs_batch[0]
 
                 # write the generated output to the output file
@@ -154,15 +157,34 @@ def context_generation(input_list, list_of_topk_list, num_prompt_examples=0, gen
                     return generation_list
  
 
-def construct_context_prompt(query, topk_list, num_prompt_examples=0):
+def construct_context_prompt(input, topk_list, num_prompt_examples=0, remove_duplicate_ctx=False):
 
+    query = input['question']
     prompt_question = 'Q: ' + query + '\n'
 
     prompt_ctxs = ''
-    for each in topk_list[:num_prompt_examples]:
-        each_prompt_question = 'Q: ' + each['question'] + '\n'
-        each_prompt_ctx = 'A: ' + each['ctxs']['title'] + ' ' + each['ctxs']['text'] + '\n\n'
-        prompt_ctxs += each_prompt_question + each_prompt_ctx
+    cnt = 0
+    duplicate_flag = 0
+    if remove_duplicate_ctx:
+        golden_ctx = input['ctxs']['text']
+        for each in topk_list[::-1]:
+            if each['ctxs']['text'] == golden_ctx:
+                print("REMOVE DUPLICATE!")
+                duplicate_flag = 1 
+                continue
+            else:
+                if cnt < num_prompt_examples:
+                    each_prompt_question = 'Q: ' + each['question'] + '\n'
+                    each_prompt_ctx = 'A: ' + each['ctxs']['title'] + ' ' + each['ctxs']['text'] + '\n\n'
+                    prompt_ctxs = each_prompt_question + each_prompt_ctx + prompt_ctxs
+                    cnt += 1
+                else:
+                    break
+    else:
+        for each in topk_list[:num_prompt_examples]:
+            each_prompt_question = 'Q: ' + each['question'] + '\n'
+            each_prompt_ctx = 'A: ' + each['ctxs']['title'] + ' ' + each['ctxs']['text'] + '\n\n'
+            prompt_ctxs += each_prompt_question + each_prompt_ctx
     
     prompt_ctxs += prompt_question
 
@@ -176,29 +198,45 @@ def construct_input_prompt_ours(input_list, prompt_data, retriever=None, model=N
 
     # step1: sample selection
     list_of_prompt_sample_list = []
-
+    list_of_scores = []
     
+    # prepare the k-samples by generation
+    if args.question_generation:
+        #randomly select 10 examples, and fix them for all question generations
 
-    for input in input_list:
-        if args.query_type == 'question':
-            query = input['question']
-        elif args.query_type == 'context':
-            query = input['ctxs']['title'] + ' ' + input['ctxs']['text']
-        elif args.query_type == 'question_context':
-            query = input['question'] + input['ctxs']['title'] + ' ' + input['ctxs']['text']
+        for input in input_list:
+            prompt_sample_list = prompt_sample_selection(prompt_data, query='', \
+                    k=args.num_prompt_examples, is_random=True)
 
-        if args.with_context:
-            if args.use_golden:
-                prompt_sample_list= prompt_sample_selection(prompt_data, query, \
-                    args.num_prompt_examples, args.is_random, retriever)
+            question_context_pairs,scores = generate_question(input, gen_model=model,prompt_list=prompt_sample_list, num_prompt_examples=10)
+            list_of_prompt_sample_list.append(question_context_pairs)
+            list_of_scores.append(scores)
+    # retrieve the k-samples    
+    else:
+        for input in input_list:
+            if args.query_type == 'question':
+                query = input['question']
+            elif args.query_type == 'context':
+                query = input['ctxs']['title'] + ' ' + input['ctxs']['text']
+            elif args.query_type == 'question_context':
+                query = input['question'] + input['ctxs']['title'] + ' ' + input['ctxs']['text']
+
+            scores = []
+            if args.with_context:
+                if args.use_golden:
+                    prompt_sample_list, scores = prompt_sample_selection(prompt_data, query, \
+                        args.num_prompt_examples, args.is_random, retriever)
+                else:
+                    prompt_sample_list, scores = prompt_sample_selection(prompt_data, query, \
+                        args.num_prompt_examples + args.shift_steps + 1, args.is_random, retriever)
             else:
-                prompt_sample_list= prompt_sample_selection(prompt_data, query, \
-                    args.num_prompt_examples + args.shift_steps + 1, args.is_random, retriever)
-        else:
-            prompt_sample_list= prompt_sample_selection(prompt_data, query, \
-                args.num_prompt_examples, is_random=True)
- 
-        list_of_prompt_sample_list.append(prompt_sample_list)
+                prompt_sample_list = prompt_sample_selection(prompt_data, query, \
+                    args.num_prompt_examples, is_random=True)
+    
+            list_of_prompt_sample_list.append(prompt_sample_list)
+            list_of_scores.append(scores)
+    
+    
 
     # step2: context generation
     context_current_list = []
@@ -209,18 +247,31 @@ def construct_input_prompt_ours(input_list, prompt_data, retriever=None, model=N
         context_current_list = context_generation(input_list, list_of_prompt_sample_list, args.num_prompt_examples, model)
     else: 
         print("Using the retrieved/golden passage as context!")
-        for input, prompt_sample_list in zip(input_list, list_of_prompt_sample_list):
-            context_current=""
-            if args.use_golden:
-                context_current = input['ctxs']['title'] + ' ' + input['ctxs']['text']
-            else:
-                context_current = prompt_sample_list[0]['ctxs']['title'] + ' ' + prompt_sample_list[0]['ctxs']['text']
-            
-            context_current_list.append(context_current)
+        if args.use_wiki_samples:
+            print("using the wikipedia retrieved top-1 as C_gen!")
+            for input in input_list:
+                top1 = input['output'][0]['provenance'][0]
+                context_current = top1['wikipedia_title'] + ' ' + top1['text']
+                context_current_list.append(context_current)
+        else:
+            for input, prompt_sample_list in zip(input_list, list_of_prompt_sample_list):
+                context_current=""
+                if args.use_golden:
+                    print("using the golden context as C_gen!")
+                    context_current = input['ctxs']['title'] + ' ' + input['ctxs']['text']
+                else:
+                    print("using the top-1 context as C_gen!")
+                    context_current = prompt_sample_list[0]['ctxs']['title'] + ' ' + prompt_sample_list[0]['ctxs']['text']
+                
+                context_current_list.append(context_current)
 
 
     prompt_text_list = []
     raw_text_len_list = []
+
+    if args.question_generation:
+        return [], [], context_current_list, list_of_prompt_sample_list, list_of_scores
+
 
     for input, prompt_sample_list, context_current in zip(input_list, list_of_prompt_sample_list, context_current_list):
         # prepare the prompt_question
@@ -270,7 +321,7 @@ def construct_input_prompt_ours(input_list, prompt_data, retriever=None, model=N
         raw_text_len_list.append(raw_text_len)
 
     
-    return prompt_text_list, raw_text_len_list, context_current_list
+    return prompt_text_list, raw_text_len_list, context_current_list, list_of_prompt_sample_list, list_of_scores
 
 
 def batch_generate_samples_by_prompting_input_from_file_new(model):
@@ -284,7 +335,11 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
         'sample input file is not provided.'
     if mpu.is_pipeline_first_stage():
         # load the data from input and prompt file
+        # if args.question_generation:
+        # raw_data = load_data_qg(args.input_file)
+        # else:
         raw_data = load_data(args.input_file, args.with_context)
+        
         prompt_data = load_data(args.prompt_file, args.with_context)
         input_count = len(raw_data)
 
@@ -331,6 +386,8 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
     cnt = 0
     
     context_list = []
+    topk_list=[]
+    scores_list =[]
 
     # perform prompting
     with torch.no_grad():
@@ -345,13 +402,17 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
                     start_pos = input_pos
                     end_pos = input_pos + bz if input_pos + bz < input_count else input_count
                     input_list = raw_data[start_pos: end_pos]
-                    prompt_text_list, raw_text_len_list, context_current_list = \
+                    prompt_text_list, raw_text_len_list, context_current_list, \
+                        list_of_prompt_sample_list, list_of_scores = \
                         construct_input_prompt_ours(input_list, prompt_data, \
                                                         retriever = retriever,\
                                                         model=model,
                                                         )
 
                     context_list.extend(context_current_list)
+                    topk_list.extend(list_of_prompt_sample_list)
+                    scores_list.extend(list_of_scores)
+
 
                     if input_pos < int(args.micro_batch_size) * 5:
                         print("======samples=====!")
@@ -362,7 +423,6 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
                     
                     if input_pos % 100 == 0:
                         print_rank_0("input_pos: {}".format(input_pos))
-
 
                 if args.openai_api:
                     assert args.engine is not None
@@ -378,22 +438,22 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
                         if cnt % 100 == 0:
                             print("{} examples need {}".format(cnt, time.time() - start_time))
                 else:
-                    # outputs = generate_and_post_process(
-                    #             model=model, 
-                    #             prompts=prompt_text_list, 
-                    #             tokens_to_generate=args.out_seq_length,
-                    #             top_k_sampling=args.top_k_sampling,
-                    #             top_p_sampling=args.top_p_sampling,
-                    #             temperature = args.temperature)
-
-                    # try beam_search
-                    outputs = beam_search_and_post_process(
+                    outputs = generate_and_post_process(
                                 model=model, 
                                 prompts=prompt_text_list, 
-                                tokens_to_generate = args.out_seq_length,
-                                beam_size=4,
+                                tokens_to_generate=args.out_seq_length,
+                                top_k_sampling=args.top_k_sampling,
+                                top_p_sampling=args.top_p_sampling,
+                                temperature = args.temperature,
                                 )
 
+                    # try beam_search
+                    # outputs = beam_search_and_post_process(
+                    #             model=model, 
+                    #             prompts=prompt_text_list, 
+                    #             tokens_to_generate = args.out_seq_length,
+                    #             beam_size=4,
+                    #             )
 
                     prompts_plus_generations_list = outputs[0]
 
@@ -412,14 +472,47 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
                     break
 
         if os.path.exists(args.save_context_path) == False:
+            print("write the generated context to file {}".format(args.save_context_path))
             with open(args.save_context_path, 'w') as fcontxt_out: 
                 if mpu.get_tensor_model_parallel_rank() == 0 \
                                 and mpu.is_pipeline_first_stage():
                                     for context_generation in context_list:
                                         fcontxt_out.write(context_generation)
                                         fcontxt_out.write('\n')
-        
+
+        if args.save_topk_context_path is not None and os.path.exists(args.save_topk_context_path) == False:
+            if mpu.get_tensor_model_parallel_rank() == 0 \
+                                and mpu.is_pipeline_first_stage():
+                data_list = save_topk_context(topk_list, scores_list, context_list, raw_data)
+                with open(args.save_topk_context_path, 'w') as f:
+                    json.dump(data_list, f, indent=4)
+                
+                print('write to {} finished!'.format(args.save_topk_context_path))
+
         return
+
+def save_topk_context(topk_list, scores_list, context_list, raw_data_list):
+    data_list=[]
+    data_item={}
+    for each_topk, each_scores, each_gen_context, raw_data_item in zip(topk_list, scores_list, context_list, raw_data_list):
+    # C1-Ck, Q1-Qk, scores, C_gen, Q
+        data_item={}
+        data_item['question'] = raw_data_item['question']
+        data_item['gen_ctx'] = each_gen_context
+        data_item['topk'] = []
+        for i, (each_topk_item, each_scores_item) in enumerate(zip(each_topk, each_scores)):
+            each={}
+            each['id'] = i
+            each['ctx'] = each_topk_item['ctxs']
+            each['question'] = each_topk_item['question']
+            each['score'] = each_scores_item
+            data_item['topk'].append(each)
+        
+        data_list.append(data_item)
+    
+    return data_list
+
+
 
 
 def batch_generate_context(model):
@@ -433,7 +526,10 @@ def batch_generate_context(model):
         'sample input file is not provided.'
     if mpu.is_pipeline_first_stage():
         # load the data from input and prompt file
-        raw_data = load_data(args.input_file, args.with_context)
+        if args.question_generation:
+            raw_data = load_data_qg(args.input_file)
+        else:
+            raw_data = load_data(args.input_file, args.with_context)
         prompt_data = load_data(args.prompt_file, args.with_context)
         input_count = len(raw_data)
 
@@ -480,38 +576,46 @@ def batch_generate_context(model):
     cnt = 0
     
     context_list = []
+    topk_list=[]
+    scores_list =[]
+
     # perform prompting
     with torch.no_grad():
         with open(output_file, "w") as fname_out:
-                while True:
-                    start_time = time.time()
-                    print("input_pos is {} and input_count is {}, and rank is {}".format(input_pos, \
-                        input_count, torch.distributed.get_rank()), flush=True)      
+            while True:
+                start_time = time.time()
+                print("input_pos is {} and input_count is {}, and rank is {}".format(input_pos, \
+                    input_count, torch.distributed.get_rank()), flush=True)      
+                
+                if mpu.is_pipeline_first_stage() \
+                and mpu.get_tensor_model_parallel_rank() == 0:
+                    start_pos = input_pos
+                    end_pos = input_pos + bz if input_pos + bz < input_count else input_count
+                    input_list = raw_data[start_pos: end_pos]
+                    _, _, context_current_list,\
+                        list_of_prompt_sample_list, list_of_scores = \
+                            construct_input_prompt_ours(input_list, prompt_data, \
+                                                        retriever = retriever,\
+                                                        model=model,
+                                                        )
+                    context_list.extend(context_current_list)
+                    topk_list.extend(list_of_prompt_sample_list)
+                    scores_list.extend(list_of_scores)
                     
-                    if mpu.is_pipeline_first_stage() \
-                    and mpu.get_tensor_model_parallel_rank() == 0:
-                        start_pos = input_pos
-                        end_pos = input_pos + bz if input_pos + bz < input_count else input_count
-                        input_list = raw_data[start_pos: end_pos]
-                        prompt_text_list, _, context_current_list = construct_input_prompt_ours(input_list, prompt_data, \
-                                                            retriever = retriever,\
-                                                            model=model,
-                                                            )
-                        context_list.extend(context_current_list)
+                    if input_pos < int(args.micro_batch_size) * 5:
+                        print("======generated context samples=====!")
+                        print(context_current_list[0])                                    
 
-                        if input_pos < int(args.micro_batch_size) * 5:
-                            print("======samples=====!")
-                            print(prompt_text_list[0])                                    
-                        
-                        input_pos += len(prompt_text_list)
-                        
-                        if input_pos % 100 == 0:
-                            print_rank_0("input_pos: {}".format(input_pos))
-                    
-                    if input_pos == input_count:
-                        print("Rank {} finished the context genration in {} seconds !".format(torch.distributed.get_rank(), \
-                            time.time()- start_time), flush=True)
-                        break    
+                    input_pos += len(context_current_list)
+
+
+                    if input_pos % 100 == 0:
+                        print_rank_0("input_pos: {}".format(input_pos))
+                
+                if input_pos == input_count:
+                    print("Rank {} finished the context genration in {} seconds !".format(torch.distributed.get_rank(), \
+                        time.time()- start_time), flush=True)
+                    break    
 
         if os.path.exists(args.save_context_path) == False:
             print("write the generated context to file {}".format(args.save_context_path))
@@ -521,9 +625,17 @@ def batch_generate_context(model):
                                     for context_generation in context_list:
                                         fcontxt_out.write(context_generation)
                                         fcontxt_out.write('\n')
-        
-        return
 
+        if args.save_topk_context_path is not None and os.path.exists(args.save_topk_context_path) == False:
+            if mpu.get_tensor_model_parallel_rank() == 0 \
+                                and mpu.is_pipeline_first_stage():
+                data_list = save_topk_context(topk_list, scores_list, context_list, raw_data)
+                with open(args.save_topk_context_path, 'w') as f:
+                    json.dump(data_list, f, indent=4)
+                
+                print('write to {} finished!'.format(args.save_topk_context_path))
+
+        return
 
 
 def main():

@@ -14,6 +14,7 @@ def load_data(data_path=None, with_context=False):
             data = json.load(fin)
     
     examples = []
+        
     for k, example in enumerate(data):
         if data_path is not None and data_path.endswith(('.jsonl', 'txt')):
             example = json.loads(example)
@@ -36,6 +37,21 @@ def load_data(data_path=None, with_context=False):
     if data_path is not None and data_path.endswith('.jsonl'):
         data.close()
     return examples
+
+
+def load_data_qg(data_path=None):
+    assert data_path
+    data = open(data_path, 'r')
+    
+    examples = []
+    for example in data:
+        example = json.loads(example)
+        example['question'] = example['input']
+        examples.append(example)
+    
+    data.close()
+    return examples
+
 
 def load_data_distributed(data_path=None, global_rank=-1, world_size=-1):
     assert data_path

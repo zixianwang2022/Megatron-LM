@@ -107,7 +107,8 @@ def prompt_sample_selection(data_list, query = "", k=10, is_random=True, retriev
         ## option1: return the top-k
         assert retriever is not None
         print("select the samples based on similarity!")
-        return retriever.get_topk(query, k, args.emb_type)
+        list, scores = retriever.get_topk(query, k, args.emb_type)
+        return list
 
 def post_process_generations(generations, min_token_length=5, sep='\n'):
     # return the first string that has length longer than 5
@@ -227,13 +228,15 @@ def construct_input_prompt_ours(input_list, prompt_data, num_prompt_examples=0, 
             if use_golden:
                 prompt_sample_list= prompt_sample_selection(prompt_data, input['question'], num_prompt_examples, is_random, retriever)
             else:
-                prompt_sample_list= prompt_sample_selection(prompt_data, input['question'], num_prompt_examples + shift_steps + 1, is_random, retriever)
+                prompt_sample_list= prompt_sample_selection(prompt_data, input['question'], num_prompt_examples + shift_steps, is_random, retriever)
             # prepare the prompt_question
             context_current=''
             if use_golden:
                 context_current = input['ctxs']['title'] + ' ' + input['ctxs']['text']
             else:
-                context_current = prompt_sample_list[0]['ctxs']['title'] + ' ' + prompt_sample_list[0]['ctxs']['text']
+                # context_current = prompt_sample_list[0]['ctxs']['title'] + ' ' + prompt_sample_list[0]['ctxs']['text']
+                context_current = prompt_sample_list[-1]['ctxs']['title'] + ' ' + prompt_sample_list[-1]['ctxs']['text']
+
             if num_prompt_examples == 0:
                 propmt_question = 'Context: ' + context_current + '\n' + 'Question: ' + input['question'] + '\n' + 'Answer:'  
             else:
@@ -243,7 +246,9 @@ def construct_input_prompt_ours(input_list, prompt_data, num_prompt_examples=0, 
             prompt_text = ''
 
             if not use_golden and shift_steps:
-                prompt_sample_list = prompt_sample_list[shift_steps:]
+                # prompt_sample_list = prompt_sample_list[shift_steps:]
+                prompt_sample_list = prompt_sample_list[:-shift_steps]
+
 
             for each in prompt_sample_list[:num_prompt_examples]:
                 answer=''
@@ -308,14 +313,14 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
             print("output_file is {}".format(output_file))
 
         print("> loading tokenizer and encoder")
-        # query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
-        #                 'facebook/dpr-question_encoder-single-nq-base')
-        # query_encoder = DPRQuestionEncoder.from_pretrained(
-        #         "facebook/dpr-question_encoder-single-nq-base").cuda()
-        # ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
-        #                     "facebook/dpr-ctx_encoder-single-nq-base")
-        # ctx_encoder = DPRContextEncoder.from_pretrained(
-        #                 "facebook/dpr-ctx_encoder-single-nq-base").cuda()
+        query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
+                        'facebook/dpr-question_encoder-single-nq-base')
+        query_encoder = DPRQuestionEncoder.from_pretrained(
+                "facebook/dpr-question_encoder-single-nq-base").cuda()
+        ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
+                            "facebook/dpr-ctx_encoder-single-nq-base")
+        ctx_encoder = DPRContextEncoder.from_pretrained(
+                        "facebook/dpr-ctx_encoder-single-nq-base").cuda()
 
 
         # query_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -324,14 +329,14 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
         # ctx_encoder = BertModel.from_pretrained("bert-base-uncased").cuda()
 
 
-        query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
-                        'facebook/dpr-question_encoder-multiset-base')
-        query_encoder = DPRQuestionEncoder.from_pretrained(
-                "facebook/dpr-question_encoder-multiset-base").cuda()
-        ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
-                            "facebook/dpr-ctx_encoder-multiset-base")
-        ctx_encoder = DPRContextEncoder.from_pretrained(
-                        "facebook/dpr-ctx_encoder-multiset-base").cuda()
+        # query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(
+        #                 'facebook/dpr-question_encoder-multiset-base')
+        # query_encoder = DPRQuestionEncoder.from_pretrained(
+        #         "facebook/dpr-question_encoder-multiset-base").cuda()
+        # ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained(
+        #                     "facebook/dpr-ctx_encoder-multiset-base")
+        # ctx_encoder = DPRContextEncoder.from_pretrained(
+        #                 "facebook/dpr-ctx_encoder-multiset-base").cuda()
 
         retriever = MyRetriever(query_encoder,
             query_tokenizer,

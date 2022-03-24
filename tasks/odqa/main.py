@@ -82,10 +82,22 @@ def get_tasks_args(parser):
                        help='the type of embeddings for the context retriever, can based on "query", "ctx", or "query_ctx')
     group.add_argument('--query-type', default='', type=str,
                        help='the type of embeddings for the context retriever, can based on "question", "context", or "question_context')
+    group.add_argument('--remove-duplicate-ctx', default=False, action="store_true",
+                       help='ablation: remove the duplicated context')
+    group.add_argument('--random-seed', default=-1, type=int,
+                       help='the random seed that megatron model used to generate text')
+
+    group.add_argument('--question-generation', default=False, action="store_true",
+                       help='whether use question generation for the C_gen generation')
+    group.add_argument('--use-wiki-samples', default=False, action="store_true",
+                       help='whether use the wikipedia retrieved passages as C_gen')
 
 
-    group.add_argument('--compare-file', type=str, default="",
-                       help='')
+
+    group.add_argument('--compare-file', type=str, default=None,
+                       help='tmp parameter for analysis')
+    group.add_argument('--save-topk-context-path', type=str, default=None,
+                       help='tmp parameter for results analysis')
 
 
     group.add_argument('--openai-api', default=False, action="store_true",

@@ -2,7 +2,7 @@
 
 pip install transformers==4.10.0 --use-feature=2020-resolver
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=4
 
 WORLD_SIZE=1
 
@@ -10,7 +10,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
                   --nnodes 1 \
                   --node_rank 0 \
                   --master_addr localhost \
-                  --master_port 6000 \
+                  --master_port 6004 \
                   "
 
 CHECKPOINT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m #(e.g., /357m)
