@@ -27,7 +27,11 @@ import numpy as np
 from pathlib import Path
 import os.path
 import torch
+import torch.nn.functional as F
 from collections import Counter
+
+from .sampling import sample
+
 
 def perplexity():
     import math
@@ -224,7 +228,7 @@ def evaluate_ems(prediction_file, ground_truth_file):
 
 def marginalize_prediction(prediction_file_list):
     prediction_list_list = []
-    for prediction_file in prediction_file_list:
+    for i, prediction_file in enumerate(prediction_file_list):
         prediction_list = []
         print_rank_0('reading %s' % prediction_file)
         with open(prediction_file, "r") as f:
@@ -302,7 +306,6 @@ def evaluate_ems_multiple_marginalize(prediction_file_list, ground_truth_file):
 
 def evaluate_ems_multiple(prediction_file_list, ground_truth_file):
 
-    # assert ground_truth_file.endswith('json'), "the ground truth file should be the original json file" 
     exactmatch_list_list = []
     for prediction_file in prediction_file_list:
         _, exactmatch_list = evaluate_ems(prediction_file, ground_truth_file)
@@ -324,8 +327,281 @@ def evaluate_ems_multiple(prediction_file_list, ground_truth_file):
     return new_score
 
 
+def read_grounds_truth(ground_truth_file):
+    ground_truths_list = []
+    
+    if ground_truth_file.endswith(('txt', 'lst')):
+        raw_data = open(ground_truth_file, 'r')
+    else:
+        with open(ground_truth_file, 'r') as f:
+            raw_data = json.load(f)
+
+    for each in raw_data:
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
+        
+        if 'answers' in each:
+            ground_truths_list.append(each['answers'])
+        elif 'answer' in each:
+            ground_truths_list.append(each['answer'])
+        else:
+            ground_truths_list.append([each])
+    
+    return ground_truths_list
 
 
+
+def read_prediction_withprob(prediction_withprob_file):
+    prediction_list = []
+    logprob_list = []
+    print_rank_0('reading %s' % prediction_withprob_file)
+    with open(prediction_withprob_file, "r") as f:
+        for i, line_prob in enumerate(tqdm(f)):
+            [line, logprob] = line_prob.split('\t')
+            logprob_list.append(float(logprob))
+
+            line = line.replace("Answer:","")
+            line = line.replace("Answer: ","")
+            line = line.replace('????  ', "")
+            line = line.replace('A: ',"")
+            line = line.replace("A:", "")
+            line = line.strip()
+
+            if "<|endoftext|>" in line:
+                line = line.replace("<|endoftext|>", "")
+            
+            line = normalize_answer(line) # normalize the answer
+            prediction_list.append(line)
+
+    return prediction_list, logprob_list
+
+def read_prediction(prediction_file):
+    prediction_list = []
+    print_rank_0('reading %s' % prediction_file)
+    with open(prediction_file, "r") as f:
+        for i, line in enumerate(tqdm(f)):
+            line = line.replace("Answer:","")
+            line = line.replace("Answer: ","")
+            line = line.replace('????  ', "")
+            line = line.replace('A: ',"")
+            line = line.replace("A:", "")
+
+            line = line.strip()
+
+            if "<|endoftext|>" in line:
+                line = line.replace("<|endoftext|>", "")
+            line = normalize_answer(line) # normalize the answer
+            prediction_list.append(line)
+
+    return prediction_list
+
+
+def beam_prediction(prediction_file_list, beam_size=4):
+    prediction_list_list = []
+    logprob_list_list = []
+    for i, prediction_file in enumerate(prediction_file_list):
+        prediction_list, logprob_list = read_prediction_withprob(prediction_file)
+        prediction_list_list.append(prediction_list)
+        logprob_list_list.append(logprob_list)
+    
+    beam_predicted_answer_list_list = []
+    beam_predicted_prob_list=[]
+    beam_predicted_logprob_list=[]
+    answer_topk_list=[]
+
+    l1=len(prediction_list_list[0])
+    for j in range(l1):
+        current_list=[]
+        l= len(prediction_list_list)
+        for i in range(l):
+            current_list.append(prediction_list_list[i][j])
+        x = Counter(current_list)
+        beam_answer_list = x.most_common()[:beam_size]
+
+        answer_list=[]
+        count_list=[]
+        logprob_list=[]
+        answer_topk={}
+
+        for k, (answer, count) in enumerate(beam_answer_list):
+            count_list.append(count)
+            answer_list.append(answer)
+            logprob = 0.0
+            answer_topk[k+1]=[]
+            for i in range(l):
+                if prediction_list_list[i][j] == answer:
+                    logprob += logprob_list_list[i][j]
+                    answer_topk[k+1].append(i)
+            avg_logprob = logprob / count
+            logprob_list.append(avg_logprob)
+        
+        answer_topk_list.append(answer_topk)
+
+        count_sum=sum(count_list)
+        prob_list = [x/count_sum for x in count_list]
+        # print("====="*10)
+
+        # print(logprob_list)
+        logprob_list = my_softmax(np.array(logprob_list))
+        logprob_list = logprob_list.tolist()
+        assert abs(sum(logprob_list) - 1.0) <= 0.000001
+        # print(logprob_list)
+
+        # padding
+        if len(prob_list) < beam_size:
+            diff = beam_size - len(prob_list)
+            prob_list = prob_list + diff * [0.0]
+            answer_list = answer_list + [""] * diff
+            logprob_list = logprob_list + diff * [0.0]
+
+        # print(answer_list)
+        # print(prob_list)
+        # print(logprob_list)
+
+        beam_predicted_answer_list_list.append(answer_list)
+        beam_predicted_prob_list.append(prob_list)
+        beam_predicted_logprob_list.append(logprob_list)
+
+    return beam_predicted_answer_list_list, beam_predicted_prob_list, \
+        beam_predicted_logprob_list, answer_topk_list
+
+def my_softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
+
+
+def evaluate_ems_beam(prediction_file_list, ground_truth_file):
+
+    beam_size = 2
+
+    beam_predicted_answer_list_list, beam_predicted_prob_list, \
+        beam_predicted_logprob_list, _ = beam_prediction(prediction_file_list, beam_size=beam_size)
+
+    new_answer_list = []
+    for each_prob, answer_list in zip(beam_predicted_prob_list, beam_predicted_answer_list_list):
+        beam_logits = torch.tensor(data=[each_prob], dtype=torch.float32,\
+                                    device=torch.cuda.current_device()) 
+        beam_logits_new = sample(beam_logits, top_k=1, top_p=0.0, temperature=1.0, vocab_size=beam_size)
+        print("====")
+        print(beam_logits)
+        print(beam_logits_new)
+
+        index = beam_logits_new.tolist()[0]
+        new_answer_list.append(answer_list[index])
+
+    ground_truths_list = read_grounds_truth(ground_truth_file)
+
+    exactmatch_list=[]
+    for i,each in enumerate(new_answer_list):
+        score = 0
+        # for each_prediction in each:
+        score += int(ems(each, ground_truths_list[i]))
+        exactmatch_list.append(bool(score))
+
+    # # new_exactmatch_list=[]
+    # # for j in range(len(exactmatch_list[0])):
+    # #     sum = 0
+    # #     for i in range(len(exactmatch_list)):
+    # #         sum += int(exactmatch_list[i][j])
+    # #     new_exactmatch_list.append(bool(sum))
+    
+    new_score = np.mean(exactmatch_list)
+   
+    print_rank_0('Final Exact Match: %.4f;' % new_score)
+
+    print_rank_0('done :-)')
+    return new_score
+
+
+
+def topk_read(prediction_file_list, beam_size=4):
+    prediction_list_list = []
+    for i, prediction_file in enumerate(prediction_file_list):
+        prediction_list = read_prediction(prediction_file)
+        prediction_list_list.append(prediction_list)
+    
+    beam_predicted_answer_list_list = []
+    beam_predicted_prob_list=[]
+    answer_topk_list=[]
+
+    l1=len(prediction_list_list[0])
+    for j in range(l1):
+        current_list=[]
+        l= len(prediction_list_list)
+        for i in range(l):
+            current_list.append(prediction_list_list[i][j])
+        x = Counter(current_list)
+        beam_answer_list = x.most_common()[:beam_size]
+
+        answer_list=[]
+        count_list=[]
+        answer_topk={}
+        
+        for k, (answer, count) in enumerate(beam_answer_list):
+            count_list.append(count)
+            answer_list.append(answer)
+            answer_topk[k+1]=[]
+            for i in range(l):
+                if prediction_list_list[i][j] == answer:
+                    answer_topk[k+1].append(i)
+        
+        answer_topk_list.append(answer_topk)
+
+        count_sum=sum(count_list)
+        prob_list = [x/count_sum for x in count_list]
+        # print("====="*10)
+
+        # padding
+        if len(prob_list) < beam_size:
+            diff = beam_size - len(prob_list)
+            prob_list = prob_list + diff * [0.0]
+            answer_list = answer_list + [""] * diff
+
+        beam_predicted_answer_list_list.append(answer_list)
+        beam_predicted_prob_list.append(prob_list)
+
+    return beam_predicted_answer_list_list, beam_predicted_prob_list, answer_topk_list
+
+
+
+def topk_context(prediction_file_list, context_file_list, topk=1):
+    '''get the top-k context based on the answer frequency'''
+    import random
+    import re
+    beam_size=3
+
+    assert topk <= beam_size
+    _, _, answer_topk_list = topk_read(prediction_file_list, beam_size=beam_size)
+
+    # read the context file list
+    context_data_list = []
+    for context_file in context_file_list:
+        with open(context_file, 'r') as f:
+            context_data = f.readlines()
+        context_data_list.append(context_data)
+
+    new_topk_context_file_path = Path(os.path.dirname(context_file_list[-1])) / re.sub('_rnd[0-9]+.txt', '.top{}.txt'.format(topk), os.path.basename(context_file_list[-1]))
+
+    new_topk_context_list=[]
+    for i, each in enumerate(answer_topk_list):
+        new_topk_context = ""
+        for top_k in each.keys():
+            if top_k > topk:
+                break
+            top_k_id_list = each[top_k]
+            top_k_id = random.choice(top_k_id_list)
+            new_topk_context += context_data_list[top_k_id][i].strip() + "\t"
+        new_topk_context_list.append(new_topk_context)
+    
+    with open(new_topk_context_file_path, 'w') as f:
+        for new_topk_context in new_topk_context_list:
+            f.write(new_topk_context)
+            f.write('\n')
+
+    print("write to {} done! :P".format(new_topk_context_file_path))
+
+    return
+        
 
 
 def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
@@ -459,8 +735,11 @@ def main():
     # evaluate_ems(args.guess_file, args.answer_file)
     guess_file_list = args.guess_file.strip(',').split(',')
     # evaluate_ems_multiple(guess_file_list, args.answer_file)
-    evaluate_ems_multiple_marginalize(guess_file_list, args.answer_file)
+    # evaluate_ems_multiple_marginalize(guess_file_list, args.answer_file)
+    # evaluate_ems_beam(guess_file_list, args.answer_file)
 
+    context_file_list=args.save_context_path.strip(',').split(',')
+    topk_context(guess_file_list, context_file_list, topk=2)
     # result_analysis(args.guess_file, args.answer_file, args.save_context_path)
 
     # calculate the similarity score between the generated context and the retrieved golden

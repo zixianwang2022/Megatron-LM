@@ -40,7 +40,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 # /gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_rnd9.txt" 
 
 # MODEL_GEN_PATH_LIST=""
-# for i in `seq 1 48`
+# for i in `seq 1 64`
 #         do
 #                 MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_rnd${i}.txt,"
 #         done
@@ -57,7 +57,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/outputs/pengx/qa/megatron-lm/tasks/odqa/TQA/openai_ada_ours_np_0.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/outputs/pengx/qa/megatron-lm/tasks/odqa/TQA/openai_ada_GPT-3_np_0.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/outputs/pengx/qa/megatron-lm/tasks/odqa/TQA/openai_ada_Eleuther-AI_np_0.txt
-GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/test.json #\ (e.g., /testseen_knowledge_reference.txt)
+GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/test_2000.json #\ (e.g., /testseen_knowledge_reference.txt)
 # GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/GenCTX/generated_context_k10_357m_multisetdpr_queryctx_p0.9_all.txt
 # COMPARE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/rf_gt.json
 # MODEL_GEN_PATH_LIST="/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all.txt,\
@@ -72,11 +72,19 @@ GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA
 # /gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all_rnd10.txt" 
 
 MODEL_GEN_PATH_LIST=""
-for i in `seq 1 48`
+for i in `seq 1 64`
         do
-        MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all_rnd${i}.txt,"
+        MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_11313_rnd${i}.txt,"
         done
-echo $MODEL_GEN_PATH_LISTs
+echo $MODEL_GEN_PATH_LIST
+
+
+CONTEXT_GEN_PATH_LIST=""
+for i in `seq 1 64`
+        do
+        CONTEXT_GEN_PATH_LIST="${CONTEXT_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/GenCTX/357m/generated_context_k10_357m_multisetdpr_queryctx_p0.9_11313_rnd${i}.txt,"
+        done
+echo $CONTEXT_GEN_PATH_LIST
 
 
 # TQA dev set
@@ -108,7 +116,7 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --task ODQA-EVAL-EM \
         --guess-file ${MODEL_GEN_PATH_LIST} \
         --answer-file ${GROUND_TRUTH_PATH} \
-        # --save-context-path ${GEN_CTX_PATH} \
+        --save-context-path ${CONTEXT_GEN_PATH_LIST} \
         # --compare-file ${COMPARE_FILE} \
 
 

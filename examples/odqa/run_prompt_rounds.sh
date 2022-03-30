@@ -1,11 +1,23 @@
 
 #!/bin/bash
-
-# random_seed='2345 3456 4567 5678 6789 7890'
+# gpu='4'
 
 
 for i in `seq 57 64` 
     do
-        bash examples/odqa/run_prompt.sh $RANDOM rnd${i} 
+        bash examples/odqa/run_prompt.sh $RANDOM
         sleep 10
     done
+
+# list='4 49'
+# list='24 39'
+# list='61 22'
+# list='32'
+# list='18 15'
+# list='33'
+
+# for i in ${list}
+#     do
+#         bash examples/odqa/run_prompt.sh $RANDOM rnd${i} ${gpu}
+#         sleep 10
+#     done
