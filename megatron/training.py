@@ -670,6 +670,8 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
                        model,
                        optimizer,
                        lr_scheduler)
+        for m in model:
+            fp.save(m)
         iteration += 1
         args.consumed_train_samples += mpu.get_data_parallel_world_size() * \
                                        args.micro_batch_size * \
@@ -720,6 +722,8 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
                 if not saved_checkpoint:
                     save_checkpoint_and_time(iteration, model, optimizer,
                                              lr_scheduler)
+                for m in model:
+                    fp.save(m, force_save=True)
                 print_datetime('exiting program after {} minutes'.format(train_time))
                 sys.exit()
 
