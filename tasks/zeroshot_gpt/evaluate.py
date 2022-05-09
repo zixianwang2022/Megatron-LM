@@ -36,6 +36,7 @@ from .datasets import build_dataset
 from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 from megatron.model import DistributedDataParallel as LocalDDP
 from megatron.model import Float16Module
+from megatron import fp
 
 def get_model_provider(eval_metric):
     """Based on evaluation metric set the parallel-output flag and
@@ -136,6 +137,8 @@ def evaluate(data_loader, model, eval_metric):
     with torch.no_grad():
         # For all the batches in the dataset.
         for iteration, batch in enumerate(data_loader):
+            fp.step(iteration, group=mpu.get_data_parallel_group())
+
             if iteration % args.log_interval == 0:
                 print_rank_0('> working on iteration: {}'.format(iteration))
             # Forward evaluation.
