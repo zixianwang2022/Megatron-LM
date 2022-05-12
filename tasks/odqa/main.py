@@ -72,9 +72,13 @@ def get_tasks_args(parser):
     group.add_argument('--shift-steps', default=0, type=int,
                        help='the starting index of the top-k list top-(k+shift_steps)[shift_steps:]')
 
+    group.add_argument('--kth-context-from-retrieval', default=1, type=int,
+                       help='the ranked kth context to be used as the context for the current question.')
+
+
     group.add_argument('--encoded-ctx-files', type=str, default="",
                        help='the path of the encoded context files')
-    group.add_argument('--save-context-path', type=str, default="",
+    group.add_argument('--save-context-path', type=str, default=None,
                        help='the path to save the generated context files')
     group.add_argument('--is-context-generated', default=False, action="store_true",
                        help='whether generated the context or use retreival')
@@ -92,11 +96,18 @@ def get_tasks_args(parser):
     group.add_argument('--use-wiki-samples', default=False, action="store_true",
                        help='whether use the wikipedia retrieved passages as C_gen')
 
+    group.add_argument('--save-context-prompt-path', type=str, default="",
+                       help='the path to save the generated context files')
+
+    group.add_argument('--with-answer-probability', default=False, action="store_true",
+                       help='')
 
 
     group.add_argument('--compare-file', type=str, default=None,
                        help='tmp parameter for analysis')
     group.add_argument('--save-topk-context-path', type=str, default=None,
+                       help='tmp parameter for results analysis')
+    group.add_argument('--save-similarity-file-path', type=str, default=None,
                        help='tmp parameter for results analysis')
 
 
@@ -125,6 +136,9 @@ if __name__ == '__main__':
 
     elif args.task == 'ODQA-EVAL-EM':
         from tasks.odqa.evaluate import main
+
+    elif args.task == 'ODQA-API-PROMPT-PREP':
+        from tasks.odqa.context_gen_api_prep import main
 
     else:
         raise NotImplementedError('Task {} is not implemented.'.format(

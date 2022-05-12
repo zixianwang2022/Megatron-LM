@@ -52,6 +52,45 @@ def load_data_qg(data_path=None):
     data.close()
     return examples
 
+def load_data_kilt(data_path=None, answer_filtering=False):
+    assert data_path
+    data = open(data_path, 'r')
+    
+    examples=[]
+    for k, each in enumerate(data):
+        example=json.loads(each)
+        new_example={}
+        new_example['id'] = k
+        new_example['question'] = example['input']
+        new_example['answers'] = example['answers']
+        new_example['ctxs'] = {
+                'title': example['output'][0]['provenance'][0]['wikipedia_title'],
+                'text': example['output'][0]['provenance'][0]['text'],
+            }
+        examples.append(new_example)
+    
+    return examples
+        
+
+def load_data_dpr_wq(data_path=None):
+    assert data_path
+    with open(data_path, 'r') as f:
+        data = json.load(f)
+
+    examples=[]
+    for i, each in enumerate(data):
+        example={}
+        example['id'] = i
+        example['question'] = each['question']
+        example['answers'] = each['answers']
+        example['ctxs'] = {
+            'text': each['positive_ctxs'][0]['text'],
+            'title': each['positive_ctxs'][0]['title'],
+        }
+        examples.append(example)
+
+    return examples
+
 
 def load_data_distributed(data_path=None, global_rank=-1, world_size=-1):
     assert data_path

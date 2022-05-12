@@ -143,13 +143,18 @@ class MyRetriever(object):
         scores = scores.tolist()
         indices = indices.tolist()
 
+        print('using the reversed order!')
         scores = scores[::-1]
-        
         indices = indices[::-1] # reverse the order
+        
         selected_prompts = []
         for index in indices:
             # index = index.item()
+            current_data = self.data_list[index]
+            if query == current_data['question']:
+                continue
             selected_prompts.append(self.data_list[index])
+        
          
         return selected_prompts, scores
 

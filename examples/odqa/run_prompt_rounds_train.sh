@@ -1,13 +1,12 @@
 
 #!/bin/bash
-gpu='5'
+# gpu='6'
 
 
-for i in {1..1..1} 
+for i in {17..24..1} 
     do
         echo ${i}
-        nohup bash examples/odqa/run_prompt.sh rnd${i} ${gpu}
-        eval wc /gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_10000_rnd${i}_withprob.txt
+        nohup bash examples/odqa/run_prompt_train.sh rnd${i}
         sleep 10
     done
 
