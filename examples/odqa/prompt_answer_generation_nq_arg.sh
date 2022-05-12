@@ -39,7 +39,14 @@ PROMPT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/train.
 
 
 #### retrieval: top-k as context + 357m ans model
-OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_top$2_ctx_357m_ans.txt 
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_top$2_ctx_357m_ans.txt 
+
+
+#### 357m + 357m (beam_search)
+export beam_size=4
+OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_357m_ans_beam${beam_size}_$2.txt 
+GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/GenCTX/generated_context_k10_357m_gc_multisetdpr_queryctx_p0.9_$2.txt
+TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/topk_context_k10_357m_multisetdpr_queryctx_p0.9.json
 
 
 # using the megatron API
@@ -72,7 +79,7 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --num-attention-heads 16 \
         --seq-length 2048 \
         --max-position-embeddings 2048 \
-        --micro-batch-size 16 \
+        --micro-batch-size 1 \
         --vocab-file ${VOCAB_PATH} \
         --merge-file ${MERGE_PATH} \
         --load ${CHECKPOINT_PATH} \
@@ -96,11 +103,13 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --emb-type 'query_ctx' \
         --query-type 'question' \
         --random-seed $1 \
-        --kth-context-from-retrieval $2 \
-        # --use-golden \
-        # --save-context-path ${GEN_CTX_PATH} \
-        # --is-context-generated \
-        # --save-topk-context-path ${TOPK_CTX_PATH} \
+        --use-golden \
+        --save-context-path ${GEN_CTX_PATH} \
+        --is-context-generated \
+        --save-topk-context-path ${TOPK_CTX_PATH} \
+        --beam-search \
+        --beam-size ${beam_size} \
+        # --kth-context-from-retrieval $2 \
 
 
         # --question-generation \

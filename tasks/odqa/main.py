@@ -74,6 +74,10 @@ def get_tasks_args(parser):
 
     group.add_argument('--kth-context-from-retrieval', default=1, type=int,
                        help='the ranked kth context to be used as the context for the current question.')
+    group.add_argument('--beam-search', default=False, action="store_true",
+                       help='weather use beam search in the answer generation')
+    group.add_argument('--beam-size', default=1, type=int,
+                       help='beam size')
 
 
     group.add_argument('--encoded-ctx-files', type=str, default="",

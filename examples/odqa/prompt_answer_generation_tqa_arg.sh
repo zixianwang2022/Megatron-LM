@@ -34,7 +34,7 @@ MERGE_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-3
 # TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/qg/topk_context_k10_357m_multisetdpr_queryctx_p0.9_fewshot.json
 
 ### TQA test Data
-export EXP_NAME='tqa_k1_357m'
+export EXP_NAME='tqa_357m'
 # export ENCODED_CTX_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/encoded_ctx_files_all_multisetdpr_queryctx_traingoodk0.pickle
 export ENCODED_CTX_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/encoded_ctx_files_all_multisetdpr_queryctx.pickle
 # export ENCODED_CTX_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/encoded_ctx_files_all_multisetdpr_queryctx_new.pickle
@@ -49,14 +49,21 @@ PROMPT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/train
 # TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/357m/dev/topk_context_k10_357m_multisetdpr_queryctx_p0.9_$2.json
 
 
-### for the 357m + 357 m
+### for the 357m + 357 m new
 # OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_$2_new.txt  
 # GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/GenCTX/357m/generated_context_k10_357m_multisetdpr_queryctx_p0.9_$2_new.txt
 # TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/357m/topk_context_k10_357m_multisetdpr_queryctx_p0.9_new.json
 
+### for the 357m + 357m ans with beam search
+export beam_size=4
+OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_357m_ans_beam${beam_size}_$2.txt 
+GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/GenCTX/357m/generated_context_k10_357m_multisetdpr_queryctx_p0.9_all_$2.txt
+TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/357m/topk_context_k10_357m_multisetdpr_queryctx_p0.9_all.json
+
+
 
 ### for topk context from retrieval + 357m
-OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k10_top$2_ctx_357m_ans.txt
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k10_top$2_ctx_357m_ans.txt
 
 python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --num-layers 24 \
@@ -64,7 +71,7 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --num-attention-heads 16 \
         --seq-length 2048 \
         --max-position-embeddings 2048 \
-        --micro-batch-size 16 \
+        --micro-batch-size 1 \
         --vocab-file ${VOCAB_PATH} \
         --merge-file ${MERGE_PATH} \
         --load ${CHECKPOINT_PATH} \
@@ -88,11 +95,13 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --emb-type 'query_ctx' \
         --query-type 'question' \
         --random-seed $1 \
-        --kth-context-from-retrieval $2 \
-        # --use-golden \
-        # --is-context-generated \
-        # --save-context-path ${GEN_CTX_PATH} \
-        # --save-topk-context-path ${TOPK_CTX_PATH} \
+        --use-golden \
+        --is-context-generated \
+        --save-context-path ${GEN_CTX_PATH} \
+        --save-topk-context-path ${TOPK_CTX_PATH} \
+        --beam-search \
+        --beam-size ${beam_size} \
+        # --kth-context-from-retrieval $2 \
 
 
 

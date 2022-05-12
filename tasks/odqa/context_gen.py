@@ -31,7 +31,7 @@ from megatron.initialize import initialize_megatron
 from megatron.text_generation import generate_and_post_process, beam_search_and_post_process
 from .data import load_data, load_data_distributed, load_piQA_data, load_data_qg, load_data_dpr_wq,load_data_kilt
 from .retriever import MyRetriever
-from .utils import write_output
+from .utils import write_output, truncate_input, check_context_length
 import random
 import os.path
 from pathlib import Path
@@ -245,7 +245,8 @@ def construct_context_prompt(input, topk_list, num_prompt_examples=0, remove_dup
     return prompt_ctxs
  
 
-def construct_input_prompt_ours(input_list, prompt_data, ctx_generation_list=None, retriever=None, model=None, multiple_gen=1):
+def construct_input_prompt_ours(input_list, prompt_data, ctx_generation_list=None, retriever=None, model=None, \
+                                tokenizer=None ,multiple_gen=1):
     """construct the prompt for context prompting-based generation"""
 
     args = get_args()
@@ -381,11 +382,10 @@ def construct_input_prompt_ours(input_list, prompt_data, ctx_generation_list=Non
                 prompt_text += 'Question: ' + each['question'] + '\n' + 'Answer: ' + answer + '\n'
 
         prompt_text += prompt_question
-        # when too long to fit in context, truncate from the left
-        # prompt_text = 
-        # inp = torch.tensor(
-        #                 (context_enc + continuation_enc)[-(self.max_length+1):][:-1]
-        #             , dtype=torch.long).cuda()
+
+        # this is to guarantee the length is within 2048, since the megatron model do not check will rasie an error.
+        if tokenizer is not None:
+            prompt_text = truncate_input(prompt_text, tokenizer)
 
         prompt_text_list.append(prompt_text)
         raw_text_len = len(prompt_text)
@@ -414,11 +414,12 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
         #     raw_data = load_data_dpr_wq(args.input_file)
         #     prompt_data = load_data_dpr_wq(args.prompt_file)
         # else:
-        # raw_data = load_data(args.input_file, args.with_context)
-        # prompt_data = load_data(args.prompt_file, args.with_context)
 
-        raw_data = load_data_kilt(args.input_file, answer_filtering=False)
-        prompt_data = load_data_kilt(args.prompt_file, answer_filtering=False)
+        raw_data = load_data(args.input_file, args.with_context)
+        prompt_data = load_data(args.prompt_file, args.with_context)
+
+        # raw_data = load_data_kilt(args.input_file, answer_filtering=False)
+        # prompt_data = load_data_kilt(args.prompt_file, answer_filtering=False)
 
 
         # raw_data = load_data_dpr_wq(args.input_file)
@@ -476,20 +477,22 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
     ctx_generation_list=None
 
     if args.save_context_path is not None:
-        # if os.path.exists(args.save_context_path):
-        #     print("loading the context_gen_file from {}".format(args.save_context_path))
-        #     with open(args.save_context_path, 'r') as f:
-        #         ctx_generation_list = f.readlines()
-        if os.path.exists(args.save_context_path) and os.path.getsize(args.save_context_path) > 0:
-            import csv
-            with open(args.save_context_path, "r") as fin:
-                wr = csv.reader(fin)
-                context_data = list(wr)
-            ctx_generation_list = []
-            for each in context_data:
-                ctx_generation_list.append(each[1])
-            print("Directly read the currect context data from {}, and the sample is:".format(args.save_context_path))
-            print(ctx_generation_list[0])
+        if '530' in args.save_context_path:
+            if os.path.exists(args.save_context_path) and os.path.getsize(args.save_context_path) > 0:
+                import csv
+                with open(args.save_context_path, "r") as fin:
+                    wr = csv.reader(fin)
+                    context_data = list(wr)
+                ctx_generation_list = []
+                for each in context_data:
+                    ctx_generation_list.append(each[1])
+                print("Directly read the currect context data from {}, and the sample is:".format(args.save_context_path))
+                print(ctx_generation_list[0])
+        else:
+            if os.path.exists(args.save_context_path):
+                print("loading the context_gen_file from {}".format(args.save_context_path))
+                with open(args.save_context_path, 'r') as f:
+                    ctx_generation_list = f.readlines()
 
 
     # perform prompting
@@ -521,6 +524,7 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
                                                 ctx_generation_list, \
                                                 retriever = retriever,\
                                                 model=model,
+                                                tokenizer=megatron_tokenizer,
                                                     )
 
                 context_list.extend(context_current_list)
@@ -550,28 +554,39 @@ def batch_generate_samples_by_prompting_input_from_file_new(model):
                     if cnt % 100 == 0:
                         print("{} examples need {}".format(cnt, time.time() - start_time))
             else:
-                outputs = generate_and_post_process(
-                            model=model, 
-                            prompts=prompt_text_list, 
-                            tokens_to_generate=args.out_seq_length,
-                            top_k_sampling=args.top_k_sampling,
-                            top_p_sampling=args.top_p_sampling,
-                            temperature = args.temperature,
-                            return_output_log_probs=True,
-                            )
+                if args.beam_search:
+                    outputs = beam_search_and_post_process(
+                                model=model, 
+                                prompts=prompt_text_list, 
+                                tokens_to_generate=args.out_seq_length,
+                                beam_size=args.beam_size,
+                                )
+                    prompts_plus_generations_list = outputs[0]
+                    prompts_plus_generations_prob_list = outputs[2]  # scores, though we wont use it
+                else:
+                    outputs = generate_and_post_process(
+                                model=model, 
+                                prompts=prompt_text_list, 
+                                tokens_to_generate=args.out_seq_length,
+                                top_k_sampling=args.top_k_sampling,
+                                top_p_sampling=args.top_p_sampling,
+                                temperature = args.temperature,
+                                return_output_log_probs=True,
+                                )
 
-                prompts_plus_generations_list = outputs[0]
-                prompts_plus_generations_prob_list = outputs[2]
-                prompts_plus_generations_token_list = outputs[3]
+
+                    prompts_plus_generations_list = outputs[0]
+                    prompts_plus_generations_prob_list = outputs[2]
+                    # prompts_plus_generations_token_list = outputs[3]
 
                 # write the generated output to the output file
                 if mpu.get_tensor_model_parallel_rank() == 0:
                     if mpu.is_pipeline_first_stage():                            
-                        for prompts_plus_generations, raw_text_len, logprob, tokens in zip(prompts_plus_generations_list, raw_text_len_list, prompts_plus_generations_prob_list,\
-                            prompts_plus_generations_token_list):
+                        for prompts_plus_generations, raw_text_len, logprob in zip(prompts_plus_generations_list, \
+                                                raw_text_len_list, prompts_plus_generations_prob_list):
                             generations = prompts_plus_generations[raw_text_len:].strip()
                             
-                            if args.with_answer_probability:
+                            if args.with_answer_probability and not args.beam_search:
                                 generations_str, (start_pos, end_pos) = post_process_generations_with_positions(generations, min_token_length=5, sep='\n')
                                 # print("===="*10)
                                 context_enc = megatron_tokenizer.tokenize(prompts_plus_generations[:raw_text_len + start_pos])
@@ -711,6 +726,7 @@ def batch_generate_context(model):
                                                         retriever = retriever,\
                                                         model=model, \
                                                         multiple_gen=multiple_gen,
+                                                        
                                                         )
                     ##
 

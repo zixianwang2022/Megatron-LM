@@ -10,6 +10,24 @@ from typing import Tuple, List, Dict
 
 
 
+def truncate_input(prompt_text, tokenizer):
+    actual_len = check_context_length(prompt_text, tokenizer)
+    if actual_len < 2048:
+        return prompt_text
+    else:
+        prompt_text_list = prompt_text.split('Question: ')
+        prompt_text = "Question: ".join(prompt_text_list[2:])
+        return truncate_input(prompt_text, tokenizer)
+
+
+def check_context_length(prompt, tokenizer):
+    '''check the length of prompt after tokenization, if it is too long, than 2048, we need to truncate from the left'''
+
+    prompt_id = tokenizer.tokenize(prompt)
+
+    return len(prompt_id)
+
+
 def write_output(glob_path, output_path):
     files = list(glob_path.glob('*.txt'))
     files.sort()
