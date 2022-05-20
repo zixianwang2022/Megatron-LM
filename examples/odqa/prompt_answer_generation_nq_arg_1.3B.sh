@@ -110,7 +110,11 @@ MERGE_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-3
 
 #### top1 C1 + 1.3B ans
 # OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_$2.txt  # this means we fix all other parameters
-OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_$2_reversed.txt  # this means we fix all other parameters
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_$2_reversed.txt  # this means we fix all other parameters
+
+
+#### retrieval: top-k as context + 1.3B ans model
+OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_top$2_ctx_1.3b_ans.txt 
 
 
 python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
@@ -143,7 +147,9 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --emb-type 'query_ctx' \
         --query-type 'question' \
         --random-seed $1 \
+        --kth-context-from-retrieval $2 \
+
         # --use-golden \
         # --save-context-path ${GEN_CTX_PATH} \
         # --is-context-generated \
-                           
+                     

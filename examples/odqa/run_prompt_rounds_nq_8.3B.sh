@@ -42,15 +42,18 @@ export DATANAME='nq_test'
 # gpu='0'
 # rnds='1'
 
-array1=($gpu)
+## 8.3B gc + 8.3B ans
+export EXPNAME='8.3B_gc'
+gpu_start_ids='0 4'
+# rnds='1 2 3 4 5 6 7 8'
+rnds='3 4'
+
+array1=($gpu_start_ids)
 array2=($rnds)
 # array2=($topk)
 
 for i in `seq 1 ${#array1[@]}`
     do
-        # nohup sh examples/odqa/prompt_answer_generation_nq_arg.sh $RANDOM rnd${array2[$i-1]} ${array1[$i-1]}> logs/api_prompt_answer_generation_${DATANAME}_${EXPNAME}_rnd${array2[$i-1]}.txt &
-        # nohup sh examples/odqa/prompt_answer_generation_nq_arg.sh $RANDOM ${array2[$i-1]} ${array1[$i-1]}> logs/api_prompt_answer_generation_${DATANAME}_${EXPNAME}_top${array2[$i-1]}.txt &
-        # nohup sh examples/odqa/prompt_answer_generation_nq_arg_1.3B.sh $RANDOM rnd${array2[$i-1]} ${array1[$i-1]}> logs/api_prompt_answer_generation_${DATANAME}_${EXPNAME}_rnd${array2[$i-1]}.txt &
-        # nohup sh examples/odqa/prompt_answer_generation_nq_arg_1.3B.sh $RANDOM ${array2[$i-1]} ${array1[$i-1]}> logs/api_prompt_answer_generation_${DATANAME}_${EXPNAME}_top${array2[$i-1]}.txt &
+        nohup sh examples/odqa/prompt_answer_generation_nq_arg_8.3B.sh $RANDOM rnd${array2[$i-1]} ${array1[$i-1]}> logs/api_prompt_answer_generation_${DATANAME}_${EXPNAME}_rnd${array2[$i-1]}.txt &
         echo "round${i} finished!"
     done

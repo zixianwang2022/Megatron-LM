@@ -1076,10 +1076,10 @@ def evaluate_topk_cgen_ems(prediction_file_list, context_file_list, ground_truth
 def main():
     args = get_args()
     
-    evaluate_ems(args.guess_file, args.answer_file)
-    # guess_file_list = args.guess_file.strip(',').split(',')
+    # evaluate_ems(args.guess_file, args.answer_file)
+    guess_file_list = args.guess_file.strip(',').split(',')
     # evaluate_ems_multiple(guess_file_list, args.answer_file)
-    # evaluate_ems_multiple_marginalize(guess_file_list, args.answer_file)
+    evaluate_ems_multiple_marginalize(guess_file_list, args.answer_file)
     # evaluate_ems_beam(guess_file_list, args.answer_file)
 
     # context_file_list=args.save_context_path.strip(',').split(',')

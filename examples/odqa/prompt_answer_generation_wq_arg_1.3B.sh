@@ -33,9 +33,10 @@ echo $random_seed
 
 ### this is for megatron 530B gc + 1.3B ans
 # export EXP_NAME='wq_530b_gc_1.3b_ans'
-# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/api_output_answer_generation_530b_gc_1.3b_ans_$2.txt
-# GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/GenCTX/api_generated_context_k10_530b_gc_multisetdpr_queryctx_p0.9_new_$2.txt
-# TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/analysi_result/topk_context_k10_530_gc_multisetdpr_train.json
+OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/api_output_answer_generation_530b_gc_1.3b_ans_$2.txt
+GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/GenCTX/api_generated_context_k10_530b_gc_multisetdpr_queryctx_p0.9_new_$2.txt
+TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/analysi_result/topk_context_k10_530_gc_multisetdpr.json
+
 
 
 ### this is for golden + 1.3B ans model
@@ -43,7 +44,12 @@ echo $random_seed
 
 ### this is for top1 + 1.3B ans model
 # OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generation_top1_ctx_1.3b_ans_$2.txt
-OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generation_top1_ctx_1.3b_ans_$2_reversed.txt
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generation_top1_ctx_1.3b_ans_$2_reversed.txt
+
+### TQA topk + 1.3B ans model
+
+# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generations_k10_top$2_ctx_1.3b_ans.txt 
+
 
 
 python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
@@ -72,10 +78,10 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --task ODQA-CONTEXT-GEN-PROMPT \
         --with-context \
         --shift-steps 0 \
-        --emb-type 'ctx' \
         --emb-type 'query_ctx' \
         --query-type 'question' \
         --random-seed $random_seed \
-        # --use-golden \
-        # --is-context-generated \
-        # --save-context-path ${GEN_CTX_PATH} \
+        --use-golden \
+        --is-context-generated \
+        --save-context-path ${GEN_CTX_PATH} \
+        # --kth-context-from-retrieval $2 \

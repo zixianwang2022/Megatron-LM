@@ -25,7 +25,11 @@ class MyRetriever(object):
         self.ctx_embeddings = ctx_embeddings
         self.query_embeddings = query_embeddings
         self.query_ctx_embeddings = query_ctx_embeddings
-        
+
+        if self.query_ctx_embeddings is None:
+            self.get_query_ctx_embedding()
+
+
     
     def get_ctx_embedding(self):
         start_time = time.time()
@@ -35,6 +39,7 @@ class MyRetriever(object):
                 print("load the ctx_embedding from file {}".format(self.encoded_ctx_files))
                 with open(self.encoded_ctx_files, "rb") as reader:
                     self.ctx_embeddings = pickle.load(reader)
+                    self.ctx_embeddings = self.ctx_embeddings.cuda()
                 print("Finished loading cxt_embeddings in {}".format(time.time() - start_time))
 
             else:
@@ -62,6 +67,7 @@ class MyRetriever(object):
                 print("load the query_embedding from file {}".format(self.encoded_ctx_files))
                 with open(self.encoded_ctx_files, "rb") as reader:
                     self.query_embeddings = pickle.load(reader)
+                    self.query_embeddings = self.query_embeddings.cuda()
                 print("Finished loading query_embeddings in {}".format(time.time() - start_time))
 
             else:
@@ -86,10 +92,11 @@ class MyRetriever(object):
 
         if self.query_ctx_embeddings is None:
             if os.path.exists(self.encoded_ctx_files):
-                print("load the query_ctx_embeddings from file {}".format(self.encoded_ctx_files))
+                print("load the query_ctx_embeddings from file {}".format(self.encoded_ctx_files), flush=True)
                 with open(self.encoded_ctx_files, "rb") as reader:
                     self.query_ctx_embeddings = pickle.load(reader)
-                print("Finished loading query_ctx_embeddings in {}".format(time.time() - start_time))
+                    self.query_ctx_embeddings = self.query_ctx_embeddings.cuda()
+                print("Finished loading query_ctx_embeddings in {}".format(time.time() - start_time), flush=True)
 
             else:
                 print("construct the index embeddings!----")
@@ -118,7 +125,6 @@ class MyRetriever(object):
             query_emb = self.query_encoder(input_ids=query_ids).pooler_output
             query_emb = query_emb[0]
 
-
         if emb_type == 'ctx':
             assert self.ctx_embeddings is not None or self.data_list is not None
             if self.ctx_embeddings is None:
@@ -136,14 +142,13 @@ class MyRetriever(object):
             similarity_list = self.query_ctx_embeddings.matmul(query_emb)
         else:
             raise ValueError("the emb_type is illegal!")
-
-        
+     
         scores, indices = torch.topk(similarity_list, k=topk)
-
+        
         scores = scores.tolist()
         indices = indices.tolist()
 
-        print('using the reversed order!')
+        # print('using the reversed order!')
         scores = scores[::-1]
         indices = indices[::-1] # reverse the order
         

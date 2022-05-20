@@ -7,14 +7,14 @@
 pip install transformers==4.18.0 --use-feature=2020-resolver
 
 
-export CUDA_VISIBLE_DEVICES=7
+export CUDA_VISIBLE_DEVICES=0
 
 WORLD_SIZE=1
 DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
                   --nnodes 1 \
                   --node_rank 0 \
                   --master_addr localhost \
-                  --master_port 6007"
+                  --master_port 6000"
 
 
 # /gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9.txt.1,
@@ -28,7 +28,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/outputs/pengx/qa/megatron-lm/tasks/odqa/NQ/openai_ada_ours_np_64.txt # (e.g., /testseen_knowledge_generations.txt)
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/outputs/pengx/qa/megatron-lm/tasks/odqa/NQ/openai_ada_GPT-3_np_64.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/outputs/pengx/qa/megatron-lm/tasks/odqa/NQ/openai_ada_Eleuther-AI_np_64.txt
-# GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/test.json #\ (e.g., /testseen_knowledge_reference.txt)
+GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/test.json #\ (e.g., /testseen_knowledge_reference.txt)
 # GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/GenCTX/generated_context_k10_357m_gc_multisetdpr_queryctx_p0.9.txt.1
 # COMPARE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/rt_gf.json
 # MODEL_GEN_PATH_LIST="/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9.txt.1,\
@@ -44,11 +44,24 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/api/output_answer_generations_k10_530b_gc_multisetdpr_queryctx_p0.9_rnd1_new_withoutanswerprob.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/api/output_answer_generations_k10_530b_gc_multisetdpr_queryctx_p0.9_rnd1_new_withoutanswerprob.txt
 
-######## this is the 530B baseline
+############# this is the 530B baseline
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/api/output_answer_generations_k64_multisetdpr_queryctx_530b_nocontext.txt
 ############# this is the 530B gc + 530 ans
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/api/output_answer_generations_k10_530b_gc_530_ans_rnd1.txt
-####### 530gc + 357m
+
+############# this is the 530B gc + 530 ans, margin
+
+# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/api/output_answer_generations_k10_530b_gc_530_ans_rnd1.txt
+
+MODEL_GEN_PATH_LIST=""
+for i in `seq 1 8`
+        do
+                MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/api/output_answer_generations_k10_530b_gc_multisetdpr_queryctx_p0.9_rnd${i}.txt,"
+        done
+echo $MODEL_GEN_PATH_LIST
+
+
+############# 530gc + 357m
 # MODEL_GEN_PATH_LIST=""
 # for i in `seq 1 8`
 #         do
@@ -56,7 +69,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 #         done
 # echo $MODEL_GEN_PATH_LIST
 
-####### 530gc + 1.3B
+############# 530gc + 1.3B
 # MODEL_GEN_PATH_LIST=""
 # for i in `seq 1 1`
 #         do
@@ -65,18 +78,18 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 # echo $MODEL_GEN_PATH_LIST
 
 
-### golden + 1.3B ans model
+############# golden + 1.3B ans model
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_golden_ctx_multisetdpr_queryctx_p0.9_rnd1.txt
 
-#### top 1+ 1.3B ans model
+############# top 1+ 1.3B ans model
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_rnd1.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_rnd1_reversed.txt
 
-### top1 + 357m ans model
+############# top1 + 357m ans model
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/357m/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_rnd1.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/357m/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_rnd1_reversed.txt
 
-##$$$$$$ The new model
+############# The new model 357m gc + 357m ans
 # MODEL_GEN_PATH_LIST=""
 # for i in `seq 1 8`
 #         do
@@ -85,7 +98,16 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 # echo $MODEL_GEN_PATH_LIST
 
 
-#### the retrieve topk + 357m ans model
+############# 357m gc + 357m ans beam search
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
+#         do
+#                 MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_357m_ans_beam4_rnd${i}.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
+
+
+############# the retrieve topk + 357m ans model
 # MODEL_GEN_PATH_LIST=""
 # for i in `seq 1 8`
 #         do
@@ -93,10 +115,19 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 #         done
 # echo $MODEL_GEN_PATH_LIST
 
+############# the retrieve topk + 1.3B ans model
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
+#         do
+#                 MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/1.3b/output_answer_generations_k10_top${i}_ctx_1.3b_ans.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
 
+
+############# original 357m gc + 357m ans
 
 # MODEL_GEN_PATH_LIST=""
-# for i in `seq 1 16`
+# for i in `seq 1 8`
 #         do
 #                 MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_rnd${i}.txt,"
 #         done
@@ -127,7 +158,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/outputs/pengx/qa/megatron-lm/tasks/odqa/TQA/openai_ada_Eleuther-AI_np_0.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all.top2.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all_rnd1.txt
-GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/test.json #\ (e.g., /testseen_knowledge_reference.txt)
+# GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/test.json #\ (e.g., /testseen_knowledge_reference.txt)
 # GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/GenCTX/generated_context_k10_357m_multisetdpr_queryctx_p0.9_all.txt
 # COMPARE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/rf_gt.json
 # MODEL_GEN_PATH_LIST="/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all.txt,\
@@ -148,26 +179,27 @@ GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/api/output_answer_generations_k10_530b_gc_multisetdpr_queryctx_p0.9_all_withprob.txt
 
 
-### for golden + 1.3B ans model
+############# for golden + 1.3B ans model
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/1.3b/output_answer_generations_k10_golden_ctx_multisetdpr_queryctx_p0.9_rnd1.txt
 
-### top1 + 1.3B ans model
-MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_rnd1_reversed.txt
+############# top1 + 1.3B ans model
+# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_rnd1_reversed.txt
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/1.3b/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_rnd1.txt
 
-#### top1 + 357m model
+############# top1 + 357m model
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_top1_ctx_rnd1.txt
 
-# this is for 530B baseline
+############# this is for 530B baseline
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/api/output_answer_generations_k64_multisetdpr_queryctx_530b_nocontext.txt
 
-# this is for 530B + 530B
+############# this is for 530B + 530B
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/api/output_answer_generations_k10_530b_gc_530_ans_rnd1.txt
 
 
-## this is for 530B + 1.3B
+############# this is for 530B + 1.3B
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/1.3b/api_output_answer_generations_k10_530b_gc_multisetdpr_queryctx_p0.9_rnd1.txt
-#### this is for the train data
+
+############# this is for the train data
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/train/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all_rnd2_withprob.txt
 
 # GROUND_TRUTH_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/TQA/train.json #\ (e.g., /testseen_knowledge_reference.txt)
@@ -179,7 +211,7 @@ MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA
 # echo $MODEL_GEN_PATH_LIST
 
 
-### the new 357m + 357m
+############# the new 357m + 357m
 # MODEL_GEN_PATH_LIST=""
 # for i in `seq 1 8`
 #         do
@@ -187,8 +219,16 @@ MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA
 #         done
 # echo $MODEL_GEN_PATH_LIST
 
+############# the 357m + 357m 
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
+#         do
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_357m_ans_beam4_rnd${i}.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
 
-### for topk retrieval ctx + 357m answer model
+
+############# for topk retrieval ctx + 357m answer model
 # MODEL_GEN_PATH_LIST=""
 # for i in `seq 1 8`
 #         do
@@ -196,8 +236,18 @@ MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA
 #         done
 # echo $MODEL_GEN_PATH_LIST
 
+############# for topk retrieval ctx + 1.3B answer model
 # MODEL_GEN_PATH_LIST=""
-# for i in `seq 1 16`
+# for i in `seq 1 8`
+#         do
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/1.3b/output_answer_generations_k10_top${i}_ctx_1.3b_ans.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
+
+
+############# the original 357m gc + 357m ans model
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
 #         do
 #         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/357m/output_answer_generations_k10_357m_gc_multisetdpr_queryctx_p0.9_all_rnd${i}.txt,"
 #         done
@@ -256,43 +306,80 @@ MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generation_retrieve_nogolden_shift1.txt
 
 
-### this is 530 gc + 1.3b ans
+############# this is 530 gc + 1.3b ans
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/api_output_answer_generation_530b_gc_1.3b_ans_rnd1.txt
 
-## baseline: 530B
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
+#         do
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/api_output_answer_generation_530b_gc_1.3b_ans_rnd${i}.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
+
+############# baseline: 530B
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/api/output_answer_generations_k64_multisetdpr_queryctx_530b_nocontext.txt
 
-### 530 gc + 357m ans model
+############# 530 gc + 357m ans model
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/api_output_answer_generation_train_rnd1.txt
 
-### golden + 1.3B ans model
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
+#         do
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/api_output_answer_generation_530b_gc_357m_ans_rnd${i}.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
+
+############# golden + 1.3B ans model
 # MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generation_golden_1.3b_ans_rnd1.txt
 
-#### top 1 + 1.3B ans model
 
-# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generation_top1_ctx_1.3b_ans_rnd1_reversed.txt
-
+############# topk retrieval + 357m model
 # MODEL_GEN_PATH_LIST=""
-# for i in `seq 1 16`
+# for i in `seq 1 8`
 #         do
-#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generations_k10_357m_gc_multisetdpr_new_rnd${i}.txt,"
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generations_k10_top${i}_ctx_357m_ans.txt,"
 #         done
 # echo $MODEL_GEN_PATH_LIST
 
 
-### this is the 1.3B + 1.3B model output
+############# top 1 + 1.3B ans model
+
+# MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generation_top1_ctx_1.3b_ans_rnd1_reversed.txt
+
+
+############# top k marginalization + 1.3B ans model
+
 # MODEL_GEN_PATH_LIST=""
-# for i in `seq 1 16`
+# for i in `seq 1 8`
+#         do
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generations_k10_top${i}_ctx_1.3b_ans.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
+
+
+############# this is the 1.3B + 1.3B model output
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
 #         do
 #         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/1.3b/output_answer_generations_k10_1.3b_gc_multisetdpr_queryctx_p0.9_rnd${i}.txt,"
 #         done
 # echo $MODEL_GEN_PATH_LIST
 
-## Weq 1.3B + 357m model output
+############# Weq 1.3B + 357m model output
 # MODEL_GEN_PATH_LIST=""
 # for i in `seq 1 1`
 #         do
 #         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/357m/output_answer_generations_k10_1.3b_gc_multisetdpr_queryctx_p0.9_rnd${i}.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
+
+
+############# the ogrinal 357m + 357m
+
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
+#         do
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/output_answer_generations_k10_357m_gc_multisetdpr_new_rnd${i}.txt,"
 #         done
 # echo $MODEL_GEN_PATH_LIST
 
@@ -304,7 +391,14 @@ MODEL_GEN_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA
 #         done
 # echo $CONTEXT_GEN_PATH_LIST
 
+############# the 530b gc + 530b ans
 
+# MODEL_GEN_PATH_LIST=""
+# for i in `seq 1 8`
+#         do
+#         MODEL_GEN_PATH_LIST="${MODEL_GEN_PATH_LIST}/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/api/output_answer_generations_k10_530b_gc_multisetdpr_queryctx_p0.9_new_rnd${i}.txt,"
+#         done
+# echo $MODEL_GEN_PATH_LIST
 
 
 
@@ -322,7 +416,7 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --max-position-embeddings 2048 \
         --micro-batch-size 1 \
         --task ODQA-EVAL-EM \
-        --guess-file ${MODEL_GEN_PATH} \
+        --guess-file ${MODEL_GEN_PATH_LIST} \
         --answer-file ${GROUND_TRUTH_PATH} \
         # --save-context-path ${CONTEXT_GEN_PATH_LIST} \
         # --save-similarity-file-path ${SIMILARITY_FILE} \
