@@ -9,7 +9,6 @@ import unicodedata
 from typing import Tuple, List, Dict
 
 
-
 def truncate_input(prompt_text, tokenizer):
     actual_len = check_context_length(prompt_text, tokenizer)
     if actual_len < 2048:
@@ -172,6 +171,7 @@ def result_analysis(prediction_file, ground_truth_file, gen_ctx_file):
     print('done :-)')
 
     return final_em_score
+
 
 
 def check_answer(questions_answers_docs, tokenizer, match_type) -> List[bool]:

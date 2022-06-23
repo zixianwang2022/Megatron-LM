@@ -17,7 +17,6 @@
 
 from megatron import get_args
 from megatron import print_rank_0
-from tasks.msdp.metrics import F1Metric
 from tqdm import tqdm
 
 import regex
@@ -29,7 +28,6 @@ import os.path
 from collections import Counter
 import torch
 from .sampling import sample
-# from .tokenizers import SimpleTokenizer
 from .utils import has_answer
 
 
@@ -97,8 +95,6 @@ def similarity_score(compare_file):
     return score
 
 
-
-
 def similarity_score(query_text, context_text_list, topk, query_tokenizer, \
                     query_encoder, ctx_tokenizer, ctx_encoder):
 
@@ -158,39 +154,6 @@ def similarity_score_upper(golden_context, context_text_list, topk, ctx_tokenize
         similarity_score_list = similarity_score_list.tolist()
 
     return similarity_score_list, scores, indices
-
-
-
-
-def evaluate_f1(guess_file, answer_file):
-    """Evaluating F1 Score"""
-
-    guess_list = []
-    print_rank_0('reading %s' % guess_file)
-    with open(guess_file, "r") as f:
-        for i, line in enumerate(tqdm(f)):
-            line = line.strip()
-            if "<|endoftext|>" in line:
-                line = line.replace("<|endoftext|>", "")
-            guess_list.append(line)
-
-    answer_list = []
-    print_rank_0('reading %s' % answer_file)
-    with open(answer_file, "r") as f:
-        for i, line in enumerate(tqdm(f)):
-            line = line.strip()
-            if line == "no_passages_used":
-                line = ""
-            answer_list.append(line)
-
-    assert len(guess_list) == len(answer_list), \
-        "lengths of guess and answer are different!"
-
-    precision, recall, f1 = F1Metric.compute_all_pairs(guess_list, answer_list)
-    print_rank_0('Precision: %.4f; recall: %.4f; f1: %.4f' % (precision, recall, f1))
-
-    print_rank_0('done :-)')
-
 
 #Normalization from SQuAD evaluation script https://worksheets.codalab.org/rest/bundles/0x6b567e1cf2e041ec80d7098f031c5c9e/contents/blob/
 def normalize_answer(s):
@@ -253,21 +216,6 @@ def evaluate_ems(prediction_file, ground_truth_file):
         exactmatch.append(score)
         if score:
             good_example_list.append(i)
-        
-    # good_examples = []
-    
-    # for i, each in enumerate(raw_data):
-    #     if ground_truth_file.endswith('txt'):
-    #         each = json.loads(each)
-    #     if i in good_example_list:
-    #         good_examples.append(each)
-    
-    # good_examples_save_path = Path(os.path.dirname(ground_truth_file)) / os.path.basename(ground_truth_file).replace('.json', '_good_examples.json')
-
-    # with open(good_examples_save_path, 'w') as f:
-    #     json.dump(good_examples, f, indent=4)
-    
-    # print("write to {} finished!".format(good_examples_save_path))
     
     final_em_score = np.mean(exactmatch)
    
@@ -290,6 +238,11 @@ def marginalize_prediction(prediction_file_list):
                 line = line.replace('????  ', "")
                 line = line.replace('A: ',"")
                 line = line.replace("A:", "")
+
+                line = line.replace('Ans: ',"")  # this is for 8.3B model
+                line = line.replace("Ans:", "") # this is for 8.3B model
+                line = line.replace('B: ',"")
+                line = line.replace("B:", "")
 
                 line = line.strip()
 
@@ -1072,6 +1025,70 @@ def evaluate_topk_cgen_ems(prediction_file_list, context_file_list, ground_truth
 
     return top1_cgen_ems_score
 
+def result_analysis_cgap_vs_standard_prompting(prediction_file_list, ground_truth_file):
+
+    most_predicted_answer_list = marginalize_prediction(prediction_file_list)
+
+
+    ground_truths_list = []
+    
+    if ground_truth_file.endswith(('txt', 'lst')):
+        raw_data = open(ground_truth_file, 'r')
+    else:
+        with open(ground_truth_file, 'r') as f:
+            raw_data = json.load(f)
+
+    for each in raw_data:
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
+        
+        if 'answers' in each:
+            ground_truths_list.append(each['answers'])
+        elif 'answer' in each:
+            ground_truths_list.append(each['answer'])
+        else:
+            ground_truths_list.append([each])
+
+    true_list, false_list = [], []
+    for i,each in enumerate(most_predicted_answer_list):
+        score = ems(each, ground_truths_list[i])
+        print(score)
+        if score:
+            true_list.append(i)
+        else:
+            false_list.append(i)
+
+    # result_analysis_dir='/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/'
+
+    # save_true_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/tqa_530b_530b_rnd1to8.true_list.txt'
+    # save_false_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/tqa_530b_530b_rnd1to8.false_list.txt'
+    # save_true_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/nq_530b_530b_rnd1to8.true_list.txt'
+    # save_false_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/nq_530b_530b_rnd1to8.false_list.txt'
+    # save_true_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/analysi_result/wq_530b_530b_rnd1to8.true_list.txt'
+    # save_false_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/analysi_result/wq_530b_530b_rnd1to8.false_list.txt'
+
+    
+    # save_true_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/tqa_standard_prompting.true_list.txt'
+    # save_false_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/TQA/analysi_result/tqa_standard_prompting.false_list.txt'
+    # save_true_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/nq_standard_prompting.true_list.txt'
+    # save_false_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/nq_standard_prompting.false_list.txt'
+    save_true_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/analysi_result/wq_standard_prompting.true_list.txt'
+    save_false_list_path = '/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/WQ/analysi_result/wq_standard_prompting.false_list.txt'
+
+    with open(save_true_list_path, 'w') as f:
+        for each in true_list:
+            f.write("%s\n" % each)
+
+    with open(save_false_list_path, 'w') as f:
+        for each in false_list:
+            f.write("%s\n" % each)
+
+    print("save the true list and false_list to file done!")
+
+    return True
+
+
+
 
 def main():
     args = get_args()
@@ -1079,7 +1096,7 @@ def main():
     # evaluate_ems(args.guess_file, args.answer_file)
     guess_file_list = args.guess_file.strip(',').split(',')
     # evaluate_ems_multiple(guess_file_list, args.answer_file)
-    evaluate_ems_multiple_marginalize(guess_file_list, args.answer_file)
+    # evaluate_ems_multiple_marginalize(guess_file_list, args.answer_file)
     # evaluate_ems_beam(guess_file_list, args.answer_file)
 
     # context_file_list=args.save_context_path.strip(',').split(',')
@@ -1094,3 +1111,6 @@ def main():
 
     # this is not useful.
     # evaluate_ems_multiple_marginalize_with_answer_filtering(guess_file_list, context_file_list, args.answer_file)
+
+    ################# Final analysis
+    result_analysis_cgap_vs_standard_prompting(guess_file_list, args.answer_file,)

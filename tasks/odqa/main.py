@@ -48,7 +48,7 @@ def get_tasks_args(parser):
                        help='datapath for golden sentences')
     group.add_argument('--out-seq-length', type=int, default=100,
                        help='output sequence length')
-    group.add_argument('--api-prompt', default=False, action="store_true",
+    group.add_argument('--megatron-api', default=False, action="store_true",
                        help='setup model api for prompting')
     group.add_argument('--megatron-api-url', type=str, default=None,
                        help='url of the megatron api')
@@ -141,8 +141,8 @@ if __name__ == '__main__':
     elif args.task == 'ODQA-EVAL-EM':
         from tasks.odqa.evaluate import main
 
-    elif args.task == 'ODQA-API-PROMPT-PREP':
-        from tasks.odqa.context_gen_api_prep import main
+    elif args.task == 'ODQA-API-CTX-GEN':
+        from tasks.odqa.context_gen_api import main
 
     else:
         raise NotImplementedError('Task {} is not implemented.'.format(

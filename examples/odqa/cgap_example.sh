@@ -1,7 +1,7 @@
 #!/bin/bash
 
-pip install transformers==4.10.0 
-# --use-feature=2020-resolver
+# this gives you an concrete example
+pip install transformers==4.10.0 --use-feature=2020-resolver
 
 export CUDA_VISIBLE_DEVICES=$3
 
@@ -14,33 +14,17 @@ DISTRIBUTED_ARGS="--nproc_per_node $WORLD_SIZE \
                   --master_port $((6000+$3)) \
                   "
 
-
 CHECKPOINT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m #(e.g., /357m)
 VOCAB_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-vocab.json #(e.g., /gpt2-vocab.json)
 MERGE_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-merges.txt #(e.g., /gpt2-merges.txt)
-
 
 export ENCODED_CTX_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/encoded_ctx_files_all_multisetdpr_queryctx.pickle
 INPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/test.json
 PROMPT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/open_domain_data/NQ/train.json
 
-random_seed=$1
-echo $random_seed
-
-# export EXP_NAME='nq_1.3b_cgen_ans'
-# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/357m/output_answer_generations_k10_1.3b_gc_multisetdpr_queryctx_p0.9_$2.txt  
-# GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/GenCTX/1.3b/generated_context_k10_1.3b_gc_multisetdpr_queryctx_p0.9_$2.txt
-# TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/1.3b/topk_context_k10_1.3b_multisetdpr_queryctx_p0.9.json
-
-# CHECKPOINT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-1.3b/ #(e.g., /357m)
-# VOCAB_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-vocab.json #(e.g., /gpt2-vocab.json)
-# MERGE_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-merges.txt #(e.g., /gpt2-merges.txt
-
-
-#### this is for top1 + 357m ans model
-# OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/357m/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_$2.txt  
-
-OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/357m/output_answer_generations_k10_top1_ctx_multisetdpr_queryctx_p0.9_$2_reversed.txt  
+OUTPUT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/output_answer_generations_k10_357m_gc_357m_ans.txt 
+GEN_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/GenCTX/generated_context_k10_357m_gc_multisetdpr_queryctx_p0.9.txt
+TOPK_CTX_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/dasu/prompting/predicted/NQ/analysi_result/topk_context_k10_357m_multisetdpr_queryctx_p0.9.json
 
 
 python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
@@ -49,7 +33,7 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --num-attention-heads 16 \
         --seq-length 2048 \
         --max-position-embeddings 2048 \
-        --micro-batch-size 16 \
+        --micro-batch-size 1 \
         --vocab-file ${VOCAB_PATH} \
         --merge-file ${MERGE_PATH} \
         --load ${CHECKPOINT_PATH} \
@@ -69,10 +53,10 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS ./tasks/odqa/main.py \
         --task ODQA-CONTEXT-GEN-PROMPT \
         --with-context \
         --shift-steps 0 \
-        --emb-type 'ctx' \
         --emb-type 'query_ctx' \
         --query-type 'question' \
-        --random-seed $random_seed \
-        # --use-golden \
-        # --save-context-path ${GEN_CTX_PATH} \
-        # --is-context-generated \
+        --random-seed $1 \
+        --use-golden \
+        --save-context-path ${GEN_CTX_PATH} \
+        --is-context-generated \
+        --save-topk-context-path ${TOPK_CTX_PATH} \

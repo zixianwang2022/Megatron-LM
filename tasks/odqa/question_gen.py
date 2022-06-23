@@ -20,7 +20,6 @@ def post_process_generations(generations, min_token_length=5, sep='\n'):
     
     return "No proper answer!"
 
-
 def construct_qg_prompt(context, prompt_list=None, num_prompt_examples=0):
 
     prompt =''
