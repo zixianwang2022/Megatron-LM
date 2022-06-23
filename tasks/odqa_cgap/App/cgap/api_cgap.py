@@ -25,8 +25,8 @@ from transformers import DPRQuestionEncoderTokenizer, DPRQuestionEncoder
 import argparse
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(
-    os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir)))
+# sys.path.append(os.path.abspath(os.path.join(
+#     os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir)))
 # from megatron import get_tokenizer
 from App.cgap.retriever import MyRetriever
 from App.cgap.api_utils import load_data, normalize_answer, get_tasks_args
@@ -80,27 +80,37 @@ def check_context_length(prompt, tokenizer):
     return len(prompt_id)
 
 def context_generation(input_list, list_of_topk_list, \
-                    megatron_api_url=None, tokenizer=None, random_seed=1234, ctx_len=100):
+                    megatron_api_url=None, tokenizer=None, \
+                    random_seed=1234, ctx_len=100, args=None):
 
     context_prompt_len_list=[]
     prompts_plus_generations_list=[]
     gen_ctx_list = []
 
-    for i, (input, topk_list) in enumerate(zip(input_list,list_of_topk_list)):
-        context_prompt = construct_context_prompt(input, topk_list, tokenizer)
-        context_prompt_len_list.append(len(context_prompt))
+    context_prompt_list, context_prompt_len_list = \
+                construct_context_prompt(input_list, list_of_topk_list, tokenizer)
     
+    current_pos=0
+    bz=args.micro_batch_size
+    input_count=len(input_list)
+    
+    while True:
+        start_pos=current_pos
+        end_pos = current_pos + bz if current_pos + bz < input_count else input_count
+        current_batch= context_prompt_list[start_pos: end_pos]
         outputs = call_model_api(
-                            inputs=[context_prompt], 
+                            inputs=current_batch, 
                             tokens_to_generate=ctx_len,
                             top_k_sampling=0,
                             top_p_sampling=0.9,
                             temperature = 1,
-                            random_seed= random_seed + int(i) *10,
+                            random_seed= random_seed,
                             url=megatron_api_url,
                             )
-        prompts_plus_generations_list.append(outputs[0])
-
+        prompts_plus_generations_list.extend(outputs)  
+        current_pos += len(current_batch)
+        if current_pos == input_count:
+            break                  
     for prompts_plus_generations, raw_text_len in zip(prompts_plus_generations_list, context_prompt_len_list):
         generations = prompts_plus_generations[raw_text_len:].strip()
         generations_str = post_process_generations(generations, min_token_length=5, sep='\n')
@@ -109,22 +119,28 @@ def context_generation(input_list, list_of_topk_list, \
     return gen_ctx_list
  
 
-def construct_context_prompt(input, topk_list, tokenizer=None):
+def construct_context_prompt(input_list, list_of_topk_list, tokenizer=None):
+    prompt_ctxs_list=[]
+    raw_text_len_list = []
 
-    query = input['question']
-    prompt_question = 'Q: ' + query + '\n'
+    for input, topk_list in zip(input_list, list_of_topk_list):
+        query = input['question']
+        prompt_question = 'Q: ' + query + '\n'
 
-    prompt_ctxs = ''
-    for each in topk_list:
-        each_prompt_question = 'Q: ' + each['question'] + '\n'
-        each_prompt_ctx = 'A: ' + each['ctxs']['title'] + ' ' + each['ctxs']['text'] + '\n\n'
-        prompt_ctxs += each_prompt_question + each_prompt_ctx
-    
-    prompt_ctxs += prompt_question
-    if tokenizer is not None:
-        prompt_ctxs = truncate_input(prompt_ctxs, tokenizer, spliter='Q: ')
+        prompt_ctxs = ''
+        for each in topk_list:
+            each_prompt_question = 'Q: ' + each['question'] + '\n'
+            each_prompt_ctx = 'A: ' + each['ctxs']['title'] + ' ' + each['ctxs']['text'] + '\n\n'
+            prompt_ctxs += each_prompt_question + each_prompt_ctx
+        
+        prompt_ctxs += prompt_question
+        if tokenizer is not None:
+            prompt_ctxs = truncate_input(prompt_ctxs, tokenizer, spliter='Q: ')
+        
+        prompt_ctxs_list.append(prompt_ctxs)
+        raw_text_len_list.append(len(prompt_ctxs))
 
-    return prompt_ctxs
+    return prompt_ctxs_list, raw_text_len_list
  
 def construct_answer_prompt(input_list, list_of_prompt_sample_list, \
                             context_current_list, tokenizer=None):
@@ -218,9 +234,9 @@ def cgap(input, margin_number, ctx_len, retriever=None, megatron_tokenizer=None,
     start_time = time.time()
     print('>>>start CGAP!', flush=True)
 
-    # if retriever is None:
-    #     print('no retriever is provided, and we initiate retriever using default configuration')
-    #     retriever, _, args = init_all()
+    if retriever is None:
+        print('no retriever is provided, and we initiate retriever using default configuration')
+        retriever, _, args = init_all(args)
 
     # sample selection
     list_of_prompt_sample_list = []
@@ -237,7 +253,7 @@ def cgap(input, margin_number, ctx_len, retriever=None, megatron_tokenizer=None,
     print(">>>Using megatron API to generate the context!")
     context_current_list = context_generation(input_list, list_of_prompt_sample_list, \
                                 args.megatron_api_url, megatron_tokenizer, \
-                                    args.random_seed, ctx_len)
+                                    args.random_seed, ctx_len, args)
     # answer prediction
     answers_list = answer_prediction(input_list, list_of_prompt_sample_list,\
                             context_current_list, megatron_tokenizer, args)                        
@@ -249,6 +265,7 @@ def cgap(input, margin_number, ctx_len, retriever=None, megatron_tokenizer=None,
     final_answer = marginalize_prediction(answers_list)
 
     result ={
+            'question': input['question'],
             'final_answer': final_answer,
             'answer_list': answers_list,
             'generated_context': context_current_list,
@@ -293,14 +310,14 @@ def init_all(args):
     all_models = init_models()
     print('>>>initialize the retriever', flush=True)
     retriever = init_others(all_models, args)
-    # query_tokenizer, _, _, _ = all_models
+    query_tokenizer, _, _, _ = all_models
 
     # this is heuristic, since we don't want to init megatron tokenizer
     if args.length_check:
         # megatron_tokenizer =  get_tokenizer()
         # megatron_tokenizer.pad_token = "<|endoftext|>"
         # assert megatron_tokenizer.tokenize('hello\n\nhello') == [31373, 198, 198, 31373]
-        megatron_tokenizer = None
+        megatron_tokenizer = query_tokenizer
     else:
         megatron_tokenizer = None
 

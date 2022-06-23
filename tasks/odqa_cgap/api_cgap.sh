@@ -25,5 +25,6 @@ python3 ./cgap/api_cgap.py \
         --nq-encoded-ctx-file ${nq_encoded_ctx_file} \
         --tqa-encoded-ctx-file ${tqa_encoded_ctx_file} \
         --db-name 'NQ' \
-        --margin-number 2 \
+        --margin-number 4 \
+        --micro-batch-size 4 \
         --ctx-length 128 \

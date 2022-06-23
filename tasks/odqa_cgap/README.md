@@ -13,8 +13,7 @@ Create your data dirctory:
 `mkdir DATASET_FOLDER`
 Put the downloaded prompt file under corresponding directory as:
 `${DATASET_FOLDER}/NQ/train.json` and `${DATASET_FOLDER}/TQA/train.json`
-
-You also need to provide the file path to save the prompt data embeddings, so that the retriever will load the embeddings directly next time for faster retrieval.
+You also need to provide the file to save the prompt data embeddings, so that the retriever will load the embeddings directly next time for faster retrieval.
 
 ### Call the API via Python COMMAND
 `sh api_cgap.sh`
