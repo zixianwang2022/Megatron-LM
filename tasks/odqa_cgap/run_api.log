@@ -1,0 +1,623 @@
+[06/20/2022 17:57:37] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/20/2022 17:57:37] {_internal.py:113} INFO -  * Restarting with stat
+[06/20/2022 17:58:28] {_internal.py:113} WARNING -  * Debugger is active!
+[06/20/2022 17:58:28] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/20/2022 18:04:14] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:04:14] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/20/2022 18:06:21] {views.py:70} INFO - -------------------------------------------------
+[06/20/2022 18:06:21] {views.py:71} INFO - who is the president of US? 
+ {'final_answer': '', 'answer_list': '', 'generated_context': ''}
+[06/20/2022 18:06:21] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:06:21] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/20/2022 18:06:41] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/20/2022 18:06:42] {_internal.py:113} INFO -  * Restarting with stat
+[06/20/2022 18:07:33] {_internal.py:113} WARNING -  * Debugger is active!
+[06/20/2022 18:07:33] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/20/2022 18:07:34] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:34] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/20/2022 18:07:34] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:34] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/20/2022 18:07:34] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:34] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/20/2022 18:07:35] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/20/2022 18:07:35] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/20/2022 18:07:35] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/20/2022 18:07:35] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/20/2022 18:07:35] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/20/2022 18:07:36] {_internal.py:113} INFO - 10.2.58.232 - - [20/Jun/2022 18:07:36] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 03:33:53] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/21/2022 03:33:53] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 03:34:44] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 03:34:44] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 03:34:44] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 03:34:44] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 04:01:38] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 04:01:39] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:02:30] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:02:30] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:02:31] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:02:31] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:02:31] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:02:31] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:02:32] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:02:32] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:02:32] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:02:32] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:02:33] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:02:33] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:02:33] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:02:33] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:05:37] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:05:38] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:06:27] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:06:27] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:06:28] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:06:28] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:06:28] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:06:28] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:06:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:06:29] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:06:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:06:29] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:06:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:06:29] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:06:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:06:29] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:06:30] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:06:30] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:07:40] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 04:07:41] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:08:32] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:08:32] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:08:33] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:08:33] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:08:33] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:08:33] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:08:34] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:08:34] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:08:34] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:08:34] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:08:35] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:08:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:08:35] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:08:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:08:36] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:08:36] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:18:28] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:18:29] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:19:18] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:19:18] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:19:19] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:19:19] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:19:19] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:19:19] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:19:19] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:19:19] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:19:19] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:19:19] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:19:20] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:19:20] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:19:20] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:19:20] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:19:21] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:19:21] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:21:31] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:21:32] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:22:24] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:22:25] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:22:25] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:22:25] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:22:26] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:22:26] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:22:26] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:22:26] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:22:26] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:22:26] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:22:26] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:22:26] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:22:26] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:22:26] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:22:27] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:22:27] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:24:05] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:24:06] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:24:55] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:24:55] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:25:07] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:25:07] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:25:07] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:25:07] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:25:07] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:25:07] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:25:07] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:25:07] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:25:08] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:25:08] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:25:08] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:25:08] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:25:09] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:25:09] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:27:02] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:27:03] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:27:52] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:27:53] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:27:53] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:27:53] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:27:54] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:27:54] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:27:54] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:27:54] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:27:54] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:27:54] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:27:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:27:55] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:27:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:27:55] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:27:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:27:55] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:29:05] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:29:06] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:29:56] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:29:56] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:29:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:29:57] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:29:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:29:57] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:29:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:29:57] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:29:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:29:57] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:29:58] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:29:58] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:29:58] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:29:58] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:29:59] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:29:59] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:31:57] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 04:31:58] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:32:49] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:32:50] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:32:51] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:32:51] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:32:51] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:32:51] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:32:51] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:32:51] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:32:51] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:32:51] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:32:52] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:32:52] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:32:52] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:32:52] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:32:52] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:32:52] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:37:16] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:37:17] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:38:06] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:38:06] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:39:19] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:39:20] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:40:12] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:40:12] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:40:24] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:40:24] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:40:24] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:40:24] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:40:24] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:40:24] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:40:24] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:40:24] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:40:25] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:40:25] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:40:25] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:40:25] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:40:25] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:40:25] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:44:56] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:44:58] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:45:47] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:45:47] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:46:04] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:46:05] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:46:56] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:46:56] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:46:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:46:57] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:46:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:46:57] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:46:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:46:57] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:46:57] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:46:57] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:46:58] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:46:58] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:46:58] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:46:58] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:46:59] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:46:59] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:50:33] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:50:34] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:51:26] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:51:26] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:51:34] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:51:35] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:52:28] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:52:28] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:52:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:52:29] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:52:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:52:29] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:52:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:52:29] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:52:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:52:29] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:52:30] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:52:30] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:52:30] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:52:30] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:52:31] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:52:31] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:55:58] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 04:55:59] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 04:56:50] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 04:56:50] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 04:57:02] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:57:02] "[35m[1mGET /get_input?input=%27who%20is%20the%20president%20of%20US?%27 HTTP/1.1[0m" 500 -
+[06/21/2022 04:57:02] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:57:02] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 04:57:02] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:57:02] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:57:02] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:57:02] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 04:57:03] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:57:03] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 04:57:03] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:57:03] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 04:57:04] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 04:57:04] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 05:03:01] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 05:03:02] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 05:03:54] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 05:03:55] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 05:03:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:03:55] "[35m[1mGET /get_input?__debugger__=yes&cmd=pinauth&pin=289-752-751&s=ZYuamN2QIMYUIDIqeEB7 HTTP/1.1[0m" 500 -
+[06/21/2022 05:03:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:03:55] "[35m[1mGET /get_input?__debugger__=yes&cmd=printpin&s=ZYuamN2QIMYUIDIqeEB7 HTTP/1.1[0m" 500 -
+[06/21/2022 05:04:07] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:04:07] "[35m[1mGET /get_input?__debugger__=yes&cmd=pinauth&pin=289-752-751&s=ZYuamN2QIMYUIDIqeEB7 HTTP/1.1[0m" 500 -
+[06/21/2022 05:04:32] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:04:32] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 05:04:32] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:04:32] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 05:04:32] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:04:32] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 05:04:32] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:04:32] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 05:04:33] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:04:33] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 05:04:33] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:04:33] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 05:05:43] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 05:05:44] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 05:06:35] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 05:06:36] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 05:06:47] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:06:47] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 05:06:47] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:06:47] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 05:06:48] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:06:48] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 05:06:48] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:06:48] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 05:06:48] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:06:48] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 05:06:48] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:06:48] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 05:06:49] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 05:06:49] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 05:16:13] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 05:16:14] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 05:17:04] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 05:17:04] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:17:16] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:17:17] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:18:07] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:18:08] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:18:45] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:18:45] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:18:46] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:18:46] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:18:46] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:18:46] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:18:46] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:18:46] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:18:46] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:18:46] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:18:46] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:18:46] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:18:47] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:18:47] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:21:25] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:21:26] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:22:18] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:22:18] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:22:29] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:22:29] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:22:30] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:22:30] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:22:30] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:22:30] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:22:30] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:22:30] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:22:31] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:22:31] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:22:31] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:22:31] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:22:31] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:22:31] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:25:16] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:25:17] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:26:08] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:26:09] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:27:28] {views.py:74} INFO - -------------------------------------------------
+[06/21/2022 06:27:28] {views.py:75} INFO - who is the president of US? 
+ {'final_answer': 'donald john trump', 'answer_list': ['Answer: Donald John Trump', 'Answer: Donald Trump', 'Answer: Donald John Trump', 'Answer: Donald Trump'], 'generated_context': ['This is a list of people who have served as President of the United States. Since the office was established in 1789, 44 men have served as President of the United States. The first, George Washington, won a unanimous vote of the Electoral College. Grover Cleveland served two non-consecutive terms', 'This is a list of people who have served as President of the United States. Since the office was established in 1789, 44 men have served as President of the United States. The first, George Washington, won a unanimous vote of the Electoral College. Grover Cleveland served two non-consecutive terms', 'This is a list of people who have served as President of the United States. Since the office was established in 1789, 44 men have served as President of the United States. The first, George Washington, won a unanimous vote of the Electoral College. Grover Cleveland served two non-consecutive terms', 'This is a list of people who have served as President of the United States. Since the office was established in 1789, 44 men have served as President of the United States. The first, George Washington, won a unanimous vote of the Electoral College. Grover Cleveland served two non-consecutive terms']}
+[06/21/2022 06:27:28] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:27:28] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 06:28:17] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:28:19] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:29:08] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:29:09] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:29:09] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:29:09] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:29:10] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:29:10] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:29:10] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:29:10] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:29:10] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:29:10] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:29:11] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:29:11] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:29:11] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:29:11] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:29:11] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:29:11] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:30:48] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:30:49] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:31:38] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:31:38] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:31:39] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:31:39] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:31:39] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:31:39] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:31:39] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:31:39] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:31:39] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:31:39] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:31:40] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:31:40] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:31:40] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:31:40] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:31:41] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:31:41] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:33:49] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:33:50] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:34:41] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:34:41] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:34:42] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:34:42] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:34:42] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:34:42] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:34:42] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:34:42] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:34:42] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:34:42] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:34:43] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:34:43] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:34:43] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:34:43] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:34:44] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:34:44] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:41:01] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 06:41:02] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:41:53] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:41:54] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:42:25] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:42:26] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:46:52] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/21/2022 06:46:52] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:47:42] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:47:43] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:47:44] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:47:44] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:47:44] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:47:44] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:47:44] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:47:44] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:47:44] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:47:44] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:47:45] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:47:45] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:47:45] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:47:45] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:47:45] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:47:45] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:50:42] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:50:43] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:51:34] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:51:34] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:51:35] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:51:35] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:51:35] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:51:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:51:35] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:51:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:51:35] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:51:35] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:51:36] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:51:36] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:51:36] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:51:36] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:51:37] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:51:37] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:54:20] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:54:22] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:55:12] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:55:13] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:56:22] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:56:23] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:57:13] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:57:13] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:57:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:57:14] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:57:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:57:14] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:57:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:57:14] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:57:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:57:14] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:57:15] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:57:15] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:57:15] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:57:15] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:57:15] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:57:15] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:58:21] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 06:58:22] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 06:59:13] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 06:59:13] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 06:59:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:59:14] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 06:59:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:59:14] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 06:59:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:59:14] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:59:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:59:14] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 06:59:15] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:59:15] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 06:59:15] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:59:15] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 06:59:16] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 06:59:16] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 07:05:33] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 07:05:34] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:08:18] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/21/2022 07:08:45] {app.py:1891} ERROR - Exception on /get_input [GET]
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 2447, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1952, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1821, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/opt/conda/lib/python3.8/site-packages/flask/_compat.py", line 39, in reraise
+    raise value
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1950, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1936, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/dansu/project/server/App/controller/views.py", line 67, in get_input
+    final_answer, answers_list, context_current_list = cgap(input, prompt_data, retriever, megatron_tokenizer, margin_number, ctx_len, args)
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 247, in cgap
+    context_current_list = context_generation(input_list, list_of_prompt_sample_list, \
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 106, in context_generation
+    outputs = call_model_api(
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 59, in call_model_api
+    print(outputs.json()['text'])
+TypeError: string indices must be integers
+[06/21/2022 07:08:45] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:08:45] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 07:11:21] {app.py:1891} ERROR - Exception on /get_input [GET]
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 2447, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1952, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1821, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/opt/conda/lib/python3.8/site-packages/flask/_compat.py", line 39, in reraise
+    raise value
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1950, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1936, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/dansu/project/server/App/controller/views.py", line 67, in get_input
+    final_answer, answers_list, context_current_list = cgap(input, prompt_data, retriever, megatron_tokenizer, margin_number, ctx_len, args)
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 247, in cgap
+    print("Using megatron API to generate the context!")
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 106, in context_generation
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 59, in call_model_api
+    print(outputs.json())
+TypeError: string indices must be integers
+[06/21/2022 07:11:21] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:11:21] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 07:13:14] {app.py:1891} ERROR - Exception on /get_input [GET]
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 2447, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1952, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1821, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/opt/conda/lib/python3.8/site-packages/flask/_compat.py", line 39, in reraise
+    raise value
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1950, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/opt/conda/lib/python3.8/site-packages/flask/app.py", line 1936, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/home/dansu/project/server/App/controller/views.py", line 67, in get_input
+    final_answer, answers_list, context_current_list = cgap(input, prompt_data, retriever, megatron_tokenizer, margin_number, ctx_len, args)
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 247, in cgap
+    print("Using megatron API to generate the context!")
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 106, in context_generation
+  File "/home/dansu/project/server/App/controller/api_cgap.py", line 59, in call_model_api
+    print(outputs.json())
+TypeError: string indices must be integers
+[06/21/2022 07:13:14] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:13:14] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 07:14:26] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/21/2022 07:14:26] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:15:17] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:15:17] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 07:15:18] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:15:18] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 07:15:18] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:15:18] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 07:15:18] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:15:18] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 07:15:18] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:15:18] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 07:15:19] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:15:19] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 07:15:19] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:15:19] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 07:15:20] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:15:20] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 07:17:29] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 07:17:30] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:18:19] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:18:20] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 07:18:20] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:18:20] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 07:18:21] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:18:21] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 07:18:21] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:18:21] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 07:18:21] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:18:21] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 07:18:22] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:18:22] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 07:18:22] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:18:22] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 07:18:22] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:18:22] "[37mGET /get_input?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 07:21:41] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/retriever.py', reloading
+[06/21/2022 07:21:42] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:32:25] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/21/2022 07:32:25] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:33:15] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:33:15] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 07:33:43] {views.py:60} INFO - -------------------------------------------------
+[06/21/2022 07:33:43] {views.py:61} INFO - who is the president of US? 
+ {'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump'], 'generated_context': ['President of the United States The president of the United States (POTUS) is the head of state and head of government of the United States. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. The president is indirectly elected to a four']}
+[06/21/2022 07:33:43] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:33:43] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 07:34:52] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 07:34:53] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:35:43] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:35:43] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 07:37:02] {views.py:60} INFO - -------------------------------------------------
+[06/21/2022 07:37:02] {views.py:61} INFO - who is the president of US? 
+ {'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump'], 'generated_context': ['President of the United States 2016 United States presidential election 2016 United States presidential election The 2016 United States presidential election was the 58th quadrennial American presidential election, held on Tuesday, November 8, 2016. The Republican ticket of businessman Donald Trump and Indiana Governor Mike Pence defeated the Democratic ticket of former Secretary of', 'Presidents of the United States Presidents of the United States The president of the United States (POTUS) is the head of state and head of government of the United States of America. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. Donald', 'President of the United States Trump is the current First Lady of the United States, and wife of 45th President of the United States, Donald Trump. While the title was not in general use until much later, Martha Washington, the wife of George Washington, the first U.S. President (1789–', 'United States presidential election had never held a position in either government or the military prior to taking office. The only previous experience that Zachary Taylor, Ulysses S. Grant, and Dwight D. Eisenhower had was in the military. Herbert Hoover previously served as the Secretary of Commerce. Everyone else served in elected']}
+[06/21/2022 07:37:02] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:37:02] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 07:37:53] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:37:53] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 07:38:57] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 07:38:58] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:39:47] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:39:47] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 07:41:39] {views.py:60} INFO - -------------------------------------------------
+[06/21/2022 07:41:39] {views.py:61} INFO - who is the president of US? 
+ {'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump'], 'generated_context': ['2017 United States presidential inauguration 2017 United States presidential inauguration President Donald Trump was inaugurated as the 45th President of the United States on January 20, 2017. On the evening of January 19, Trump visited the three official inaugural balls, which were held at the Walter E. Washington Convention Center. The theme of the balls was "The Great Gatsby" in honor of F. Scott Fitzgerald, who was born in St. Paul, Minnesota. On the morning of January 20, Trump and', 'President of the United States In the United States, the president is the head of state and head of government of the United States. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. The president is indirectly elected to a 4-year term by the people through the Electoral College. As a result, the president serves as both the head of state and head of government of the United States. The president is considered to be', 'Presidency of Donald Trump Presidency of Donald Trump The presidency of Donald Trump began at noon EST on January 20, 2017, when Donald Trump was inaugurated as the 45th President of the United States, succeeding Barack Obama. A Republican, Trump was a businessman and reality television personality from New York City at the time of his 2016 presidential election victory over Democratic nominee Hillary Clinton. While Trump lost the popular vote by nearly 3 million votes, he won the Electoral College vote, 304 to 227, in a', 'United States presidential election had never held a position in either government or the military prior to taking office. The only previous experience that Zachary Taylor, Ulysses S. Grant, and Dwight D. Eisenhower had was in the military. Herbert Hoover previously served as the Secretary of Commerce. Everyone else served in elected public office before becoming president, such as being Vice President, a member of the United States Congress, or a state or territorial governor. Fourteen Presidents also served as vice president.']}
+[06/21/2022 07:41:39] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:41:39] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 07:43:00] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 07:43:01] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:43:56] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:43:56] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 07:45:40] {views.py:60} INFO - -------------------------------------------------
+[06/21/2022 07:45:40] {views.py:61} INFO - who is the president of US? 
+ {'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Article II, Section 1, Clause 5 of the Constitution of the United States of America', 'Answer: Donald Trump', "Answer: Article II, Section 1, Clause 5 of the Constitution of the United States of America Article II, Section 1, Clause 5 of the Constitution of the United States of America The space between the Vice President's right arm and the President's right arm (or the space to the right of the arm furthest from the edge of the bench, on which the President sits) will always be visible. No photographer will be allowed closer than [] Nothing should obscure this space where the President or Vice President"], 'generated_context': ['Donald Trump Donald Trump Donald John Trump (born June 14, 1946) is an American businessman, television personality, author, politician, and the Republican Party nominee for President of the United States in the 2016 election. He is chairman of The Trump Organization, which is the principal holding company for his real estate ventures and other business interests. During his career, Trump has built office towers, hotels, casinos, golf courses, and other branded facilities worldwide. Several of his hotels and golf courses have since', 'The United States of America Trump, the winner of the 2016 presidential election, is serving as the 45th President of the United States. Leadership in the Senate includes Republican Vice President Mike Pence, Republican President Pro Tempore Orrin Hatch, Majority Leader Mitch McConnell, and Minority Leader Chuck Schumer. Leadership in the House includes Speaker of the House Paul Ryan, Majority Leader Kevin McCarthy, and Minority Leader Nancy Pelosi. In the 115th United States Congress, both the House of Representatives and the Senate are', 'United States presidential election had never held a position in either government or the military prior to taking office. The only previous experience that Zachary Taylor, Ulysses S. Grant, and Dwight D. Eisenhower had was in the military. Herbert Hoover previously served as the Secretary of Commerce. Everyone else served in elected public office before becoming president, such as being Vice President, a member of the United States Congress, or a state or territorial governor. Fourteen Presidents also served as vice president.', 'Barack Obama became the 44th president of the United States on January 20, 2009, and was re-elected for a second term on November 6, 2012. As a candidate, Obama promised to implement a progressive agenda, emphasizing the importance of bipartisanship in achieving effective legislation. His leading domestic policies were the Patient Protection and Affordable Care Act, a major reform of the American health care system, and the economic stimulus package in response to the Great Recession in the United States. In foreign']}
+[06/21/2022 07:45:40] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:45:40] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 07:46:00] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:46:00] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 07:49:35] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 07:49:36] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:50:26] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:50:26] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 07:54:52] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 07:54:52] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 07:57:41] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 07:57:42] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 07:58:32] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 07:58:32] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 08:10:59] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 08:10:59] {views.py:44} INFO - who is the president of US? 
+ {'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump'], 'generated_context': ['Trump is the current President of the United States and the Republican Party candidate for President in the 2016 election.', "United States The United States of America (USA), commonly known as the United States (US) or America, is a country composed of 50 states, a federal district, five major self-governing territories, and various possessions. At 3.8 million square miles (9.8 million km2), it is the world's third or fourth-largest country by total area and is slightly smaller than the entire continent of Europe. Most of the country is located in central North America between Canada", "The United States presidential election of 2016 The United States presidential election of 2016 was the 58th quadrennial presidential election, held on Tuesday, November 8, 2016. The electoral vote was expected to be strongly in favor of the Democratic nominee Hillary Clinton according to prediction markets, polling, and forecasting models, but Republican nominee Donald Trump won the Electoral College vote by 74 votes to Clinton's 232, although he lost the popular vote. Trump's victory was considered one of the most shocking political ups", 'Presidential race of 1864 The first president of the United States was the Founding Father George Washington, who served from 1789 to 1797. Since then, 44 different individuals have served the nation as president. The president is the head of state and head of government of the United States, and the commander-in-chief of the United States Armed Forces. The president also r… The executive branch of the government of the United States is one of three branches, along with the legislative and judicial']}
+[06/21/2022 08:10:59] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:10:59] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 08:18:05] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 08:18:06] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 08:18:57] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 08:18:57] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 08:22:59] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 08:23:00] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 08:23:50] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 08:23:50] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 08:23:50] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:23:50] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 08:28:23] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:28:23] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 08:28:58] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 08:28:59] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 08:29:49] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 08:29:50] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 08:34:52] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 08:34:52] {views.py:44} INFO - who is the president of US? 
+ [{'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump'], 'generated_context': ['First Lady of the United States Trump is the current First Lady of the United States, and wife of 45th President of the United States, Donald Trump. While the title was not in general use until much later, Martha Washington, the wife of George Washington, the first U.S. President (1789–1797), is considered to be the inaugural First Lady of the United States. During her lifetime, she was often referred to as "Lady Washington". Since the 1790s', 'The president of the United States of America is the head of state and head of government of the United States. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. The president is indirectly elected to a four-year term by the people through the Electoral College. The election takes place every four years, with the next election scheduled for 2020. Five people have served as President of the United States: George Washington (1789', 'Donald Trump Donald Trump 45th President of the United States of America (2017–present), chairman and president of The Trump Organization (1971–present), and founder of Trump Entertainment Resorts (1992–2009). Donald John Trump (born June 14, 1946) is the 45th and current president of the United States. Before entering politics, he was a businessman and a television personality. Born and raised in Queens, New York City, Trump attended Fordham University for two years and received a', 'United States presidential election The United States presidential election of 2016 was the 58th quadrennial American presidential election, held on Tuesday, November 8, 2016. The Republican ticket of businessman Donald Trump and Indiana Governor Mike Pence defeated the Democratic ticket of former Secretary of State Hillary Clinton and U.S. Senator from Virginia Tim Kaine. Trump took office as the 45th President, and Pence as the 48th Vice President, on January 20, 2017. Incumbent Democratic President Barack Obama was']}]
+[06/21/2022 08:34:52] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:34:52] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 08:35:24] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:35:24] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 08:45:55] {_internal.py:113} ERROR - 10.2.53.38 - - [21/Jun/2022 08:45:55] code 400, message Bad request version ('êê\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x01\x93jj\x00\x00\x00\x17\x00\x00ÿ\x01\x00\x01\x00\x00')
+[06/21/2022 08:45:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:45:55] "[35m[1m  üÓZ4ÐÈ«ÿH®!HÃTVÌ,J9ésÉñ |á¤ÌLªÚß i«ñ!d Îv¸QÛÁÈ¨  êêÀ+À/À,À0Ì©Ì¨ÀÀ   / 5 jj     ÿ   [0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:45:55] {_internal.py:113} ERROR - 10.2.53.38 - - [21/Jun/2022 08:45:55] code 400, message Bad request version ('H\x9a\x9f\x02ç=\x94ú"Wf')
+[06/21/2022 08:45:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:45:55] "[35m[1m  üñÉ/@VÏCV=Ú6w*áXd¹8h	_·:Å0 NðA·sVHç=ú"Wf[0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:45:55] {_internal.py:113} ERROR - 10.2.53.38 - - [21/Jun/2022 08:45:55] code 400, message Bad request version ('êê\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x01\x93\x9a\x9a\x00\x00\x00\x17\x00\x00ÿ\x01\x00\x01\x00\x00')
+[06/21/2022 08:45:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:45:55] "[35m[1m  üLínÑÕçÚÒXZ$5ýe(¢{ÃùgÆu_à~*ö 1(ãáé_D¨]{^ÖåIó³iTÌ{<Î¨ *  êêÀ+À/À,À0Ì©Ì¨ÀÀ   / 5      ÿ   [0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:45:55] {_internal.py:113} ERROR - 10.2.53.38 - - [21/Jun/2022 08:45:55] code 400, message Bad request version ('ZZ\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x01\x93JJ\x00\x00\x00\x17\x00\x00ÿ\x01\x00\x01\x00\x00')
+[06/21/2022 08:45:55] {_internal.py:113} ERROR - 10.2.53.38 - - [21/Jun/2022 08:45:55] code 400, message Bad request version ('JJ\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x01\x93\x8a\x8a\x00\x00\x00\x17\x00\x00ÿ\x01\x00\x01\x00\x00')
+[06/21/2022 08:45:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:45:55] "[35m[1m  ü=bRù2T+z²4þ#¾Z©)usÆU&qqÂÍæ ¥6>"±éâVåmÜIqw#HÇÿíhÝÛ{Ñà©  ZZÀ+À/À,À0Ì©Ì¨ÀÀ   / 5 JJ     ÿ   [0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:45:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:45:55] "[35m[1m  ü~WA 	G=LÄ´¡ü$ÍÝ3¡:ÜåÞÿ Ú¨Ôè1£~t¥.ÌqÇ_Ú2dE1åeüñO  JJÀ+À/À,À0Ì©Ì¨ÀÀ   / 5      ÿ   [0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:45:55] {_internal.py:113} ERROR - 10.2.53.38 - - [21/Jun/2022 08:45:55] code 400, message Bad request version ('**\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x01\x93\x9a\x9a\x00\x00\x00\x17\x00\x00ÿ\x01\x00\x01\x00\x00')
+[06/21/2022 08:45:55] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:45:55] "[35m[1m  ü÷ æ¹Î^¨G_}ûr[Ú0wh'1«L¥ÊÃ ò>N¯Ø]t_ùÎÝj¹	½ïüÞÃÍVBl½z  **À+À/À,À0Ì©Ì¨ÀÀ   / 5      ÿ   [0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:46:01] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:46:01] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 08:49:16] {_internal.py:113} INFO - 10.33.1.207 - - [21/Jun/2022 08:49:16] "[31m[1mPUT /index HTTP/1.1[0m" 405 -
+[06/21/2022 08:49:49] {_internal.py:113} INFO - 10.33.1.207 - - [21/Jun/2022 08:49:49] "[33mPUT / HTTP/1.1[0m" 404 -
+[06/21/2022 08:50:04] {_internal.py:113} INFO - 10.33.1.207 - - [21/Jun/2022 08:50:04] "[31m[1mPUT /index HTTP/1.1[0m" 405 -
+[06/21/2022 08:50:24] {_internal.py:113} INFO - 10.33.1.207 - - [21/Jun/2022 08:50:24] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 08:50:36] {_internal.py:113} INFO - 10.33.1.207 - - [21/Jun/2022 08:50:36] "[31m[1mPUT /index HTTP/1.1[0m" 405 -
+[06/21/2022 08:52:17] {_internal.py:113} ERROR - 10.33.1.207 - - [21/Jun/2022 08:52:17] code 400, message Bad request syntax ('GET /get_input?input=who is president of US? HTTP/1.1')
+[06/21/2022 08:52:17] {_internal.py:113} INFO - 10.33.1.207 - - [21/Jun/2022 08:52:17] "[35m[1mGET /get_input?input=who is president of US? HTTP/1.1[0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:53:54] {_internal.py:113} ERROR - 10.33.1.207 - - [21/Jun/2022 08:53:54] code 400, message Bad request syntax ('GET /get_input?input=who is president of US? HTTP/1.1')
+[06/21/2022 08:53:54] {_internal.py:113} INFO - 10.33.1.207 - - [21/Jun/2022 08:53:54] "[35m[1mGET /get_input?input=who is president of US? HTTP/1.1[0m" HTTPStatus.BAD_REQUEST -
+[06/21/2022 08:54:20] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 08:54:20] {views.py:44} INFO - who is the president of US? 
+ [{'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump'], 'generated_context': ['First Lady of the United States Trump is the current First Lady of the United States, and wife of 45th President of the United States, Donald Trump. While the title was not in general use until much later, Martha Washington, the wife of George Washington, the first U.S. President (1789–1797), is considered to be the inaugural First Lady of the United States. During her lifetime, she was often referred to as "Lady Washington". Since the 1790s', 'The president of the United States of America is the head of state and head of government of the United States. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. The president is indirectly elected to a four-year term by the people through the Electoral College. The election takes place every four years, with the next election scheduled for 2020. Five people have served as President of the United States: George Washington (1789', 'Donald Trump Donald Trump 45th President of the United States of America (2017–present), chairman and president of The Trump Organization (1971–present), and founder of Trump Entertainment Resorts (1992–2009). Donald John Trump (born June 14, 1946) is the 45th and current president of the United States. Before entering politics, he was a businessman and a television personality. Born and raised in Queens, New York City, Trump attended Fordham University for two years and received a', 'United States presidential election The United States presidential election of 2016 was the 58th quadrennial American presidential election, held on Tuesday, November 8, 2016. The Republican ticket of businessman Donald Trump and Indiana Governor Mike Pence defeated the Democratic ticket of former Secretary of State Hillary Clinton and U.S. Senator from Virginia Tim Kaine. Trump took office as the 45th President, and Pence as the 48th Vice President, on January 20, 2017. Incumbent Democratic President Barack Obama was']}]
+[06/21/2022 08:54:20] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 08:54:20] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 08:54:40] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 08:54:41] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 08:55:32] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 08:55:33] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 09:20:39] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:20:39] "[35m[1mGET /index HTTP/1.1[0m" 500 -
+[06/21/2022 09:20:40] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:20:40] "[37mGET /index?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 200 -
+[06/21/2022 09:20:40] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:20:40] "[37mGET /index?__debugger__=yes&cmd=resource&f=jquery.js HTTP/1.1[0m" 200 -
+[06/21/2022 09:20:40] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:20:40] "[37mGET /index?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 200 -
+[06/21/2022 09:20:41] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:20:41] "[37mGET /index?__debugger__=yes&cmd=resource&f=ubuntu.ttf HTTP/1.1[0m" 200 -
+[06/21/2022 09:20:41] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:20:41] "[37mGET /index?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 09:20:42] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:20:42] "[37mGET /index?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 200 -
+[06/21/2022 09:21:03] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 09:21:04] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 09:21:54] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 09:21:54] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 09:21:54] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:21:54] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 09:21:54] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:21:54] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 09:21:54] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:21:54] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 09:25:22] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 09:25:22] {views.py:44} INFO - who is president of China? 
+ [{'final_answer': 'xi jinping', 'answer_list': ['Answer: Xi Jinping', 'Answer: Jair Bolsonaro', 'Answer: Xi Jinping', 'Answer: Jair Bolsonaro'], 'generated_context': ["The President of the People's Republic of China is the head of state of the People's Republic of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than an administrative post; theoretically, the President serves", "The President of the People's Republic of China is the head of state of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than an administrative post; theoretically, the President serves at the pleasure of the", "President for life terms. Such limit was abolished by the Central Committee of the Communist Party of China to the 13th National People's Congress on 25 February 2018, making it possible for the President and the Vice President to service the office for life. According to the British Financial Times, China's leader Xi Jinping expressed his views of constitutional amendment at meetings with Chinese officials and foreign dignitaries. Xi explained the decision in terms of needing to align his two more powerful posts — General Secretary of the", 'He Guoqiang He Guoqiang He Guoqiang (Chinese: 何国强; born May 1942) is a retired Chinese politician. He served in prominent municipal and provincial posts in Hebei, and was a member of the Politburo of the Communist Party of China. He retired in 2013, and left politics completely in 2015. He was a member of the 18th Politburo of the Communist Party of China, serving from 2002']}]
+[06/21/2022 09:25:22] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:25:22] "[37mGET /get_input?input=who%20is%20president%20of%20China? HTTP/1.1[0m" 200 -
+[06/21/2022 09:26:13] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 09:26:13] {views.py:44} INFO - who is president of China? 
+ [{'final_answer': 'xi jinping', 'answer_list': ['Answer: Xi Jinping', 'Answer: Jair Bolsonaro', 'Answer: Xi Jinping', 'Answer: Jair Bolsonaro'], 'generated_context': ["The President of the People's Republic of China is the head of state of the People's Republic of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than an administrative post; theoretically, the President serves", "The President of the People's Republic of China is the head of state of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than an administrative post; theoretically, the President serves at the pleasure of the", "President for life terms. Such limit was abolished by the Central Committee of the Communist Party of China to the 13th National People's Congress on 25 February 2018, making it possible for the President and the Vice President to service the office for life. According to the British Financial Times, China's leader Xi Jinping expressed his views of constitutional amendment at meetings with Chinese officials and foreign dignitaries. Xi explained the decision in terms of needing to align his two more powerful posts — General Secretary of the", 'He Guoqiang He Guoqiang He Guoqiang (Chinese: 何国强; born May 1942) is a retired Chinese politician. He served in prominent municipal and provincial posts in Hebei, and was a member of the Politburo of the Communist Party of China. He retired in 2013, and left politics completely in 2015. He was a member of the 18th Politburo of the Communist Party of China, serving from 2002']}]
+[06/21/2022 09:26:13] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:26:13] "[37mGET /get_input?input=who%20is%20president%20of%20China? HTTP/1.1[0m" 200 -
+[06/21/2022 09:27:03] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 09:27:03] {views.py:44} INFO - who is president of China? 
+ [{'final_answer': 'xi jinping', 'answer_list': ['Answer: Xi Jinping', 'Answer: Jair Bolsonaro', 'Answer: Xi Jinping', 'Answer: Jair Bolsonaro'], 'generated_context': ["The President of the People's Republic of China is the head of state of the People's Republic of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than an administrative post; theoretically, the President serves", "The President of the People's Republic of China is the head of state of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than an administrative post; theoretically, the President serves at the pleasure of the", "President for life terms. Such limit was abolished by the Central Committee of the Communist Party of China to the 13th National People's Congress on 25 February 2018, making it possible for the President and the Vice President to service the office for life. According to the British Financial Times, China's leader Xi Jinping expressed his views of constitutional amendment at meetings with Chinese officials and foreign dignitaries. Xi explained the decision in terms of needing to align his two more powerful posts — General Secretary of the", 'He Guoqiang He Guoqiang He Guoqiang (Chinese: 何国强; born May 1942) is a retired Chinese politician. He served in prominent municipal and provincial posts in Hebei, and was a member of the Politburo of the Communist Party of China. He retired in 2013, and left politics completely in 2015. He was a member of the 18th Politburo of the Communist Party of China, serving from 2002']}]
+[06/21/2022 09:27:03] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 09:27:03] "[37mGET /get_input?input=who%20is%20president%20of%20China? HTTP/1.1[0m" 200 -
+[06/21/2022 10:34:52] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 10:34:52] {views.py:44} INFO - who is the president of China? 
+ [{'final_answer': 'xi jinping', 'answer_list': ['Answer: Xi Jinping', 'Answer: Jair Bolsonaro', 'Answer: Xi Jinping', 'Answer: Jair Bolsonaro'], 'generated_context': ["The President of the People's Republic of China is the head of state of the People's Republic of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than an administrative post; theoretically, the President serves", "The President of the People's Republic of China The President of the People's Republic of China is the head of state of the People's Republic of China. Under the country's constitution, the presidency is a largely ceremonial office with limited powers. However, since 1993, as a matter of convention, the presidency has been held simultaneously by the General Secretary of the Communist Party of China, the top leader in the one party system. The office is officially regarded as an institution of the state rather than", "President for life terms. Such limit was abolished by the Central Committee of the Communist Party of China to the 13th National People's Congress on 25 February 2018, making it possible for the President and the Vice President to service the office for life. According to the British Financial Times, China's leader Xi Jinping expressed his views of constitutional amendment at meetings with Chinese officials and foreign dignitaries. Xi explained the decision in terms of needing to align his two more powerful posts — General Secretary of the", 'He Guoqiang He Guoqiang He Guoqiang (Chinese: 何国强; born May 1942) is a retired Chinese politician. He served in prominent municipal and provincial posts in Hebei, and was a member of the Politburo of the Communist Party of China. He retired in 2013, and left politics completely in 2015. He was a member of the 18th Politburo of the Communist Party of China, serving from 2002']}]
+[06/21/2022 10:34:52] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 10:34:52] "[37mGET /get_input?input=who%20is%20the%20president%20of%20China? HTTP/1.1[0m" 200 -
+[06/21/2022 10:37:24] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 10:37:24] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 10:37:56] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/views.py', reloading
+[06/21/2022 10:37:57] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 10:38:48] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 10:38:48] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 10:41:05] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 10:41:05] {views.py:44} INFO - When is the next deadpool movie being released? 
+ [{'final_answer': 'may 18 2018', 'answer_list': ['Answer: May 18, 2018', 'Answer: May 18, 2018', 'Answer: May 18, 2018', 'Answer: May 18, 2018'], 'generated_context': ['Deadpool 2 is dedicated to her memory. The film\'s score is the first to receive a parental advisory warning for explicit content, and the soundtrack also includes the original song "Ashes" by Céline Dion. "Deadpool 2" was released in the United States on May 18, 2018. It has grossed over $738 million worldwide, becoming the seventh highest-grossing film of 2018, as well as the third highest-grossing R-rated film and the third', '"Deadpool 2" (stylized as "DEADPOOL 2" and sometimes "DEAD ₋₧₊ₛ 2") is a 2018 American superhero film based on the Marvel Comics character Deadpool, distributed by 20th Century Fox. It is the eleventh installment in the "X-Men" film series, and a direct sequel to the 2016 film "Deadpool". The film is directed by David Leitch from a script by R', 'The film was well-received upon release, with critics highlighting the film\'s humor, acting (particularly Reynolds, Brolin, and Beetz\'s performances), story, and action sequences, with some calling it better than the first film. It has become the highest-grossing R-rated film and the third-highest-grossing "X-Men" film of all time, and the sixth-highest-grossing film of 2018. A sequel, Deadpool 2, was released on', 'Deadpool 2 is dedicated to her memory. The film\'s score is the first to receive a parental advisory warning for explicit content, and the soundtrack also includes the original song "Ashes" by Céline Dion. "Deadpool 2" was released in the United States on May 18, 2018. It has grossed over $738 million worldwide, becoming the seventh highest-grossing film of 2018, as well as the third highest-grossing R-rated film and the third']}]
+[06/21/2022 10:41:05] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 10:41:05] "[37mGET /get_input?input=When%20is%20the%20next%20deadpool%20movie%20being%20released? HTTP/1.1[0m" 200 -
+[06/21/2022 10:43:31] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 10:43:31] {views.py:44} INFO - When is the next deadpool movie being released? 
+ [{'final_answer': 'may 18 2018', 'answer_list': ['Answer: May 18, 2018', 'Answer: May 18, 2018', 'Answer: May 18, 2018', 'Answer: May 18, 2018'], 'generated_context': ['Deadpool 2 is dedicated to her memory. The film\'s score is the first to receive a parental advisory warning for explicit content, and the soundtrack also includes the original song "Ashes" by Céline Dion. "Deadpool 2" was released in the United States on May 18, 2018. It has grossed over $738 million worldwide, becoming the seventh highest-grossing film of 2018, as well as the third highest-grossing R-rated film and the third', '"Deadpool 2" (stylized as "DEADPOOL 2" and sometimes "DEAD ₋₧₊ₛ 2") is a 2018 American superhero film based on the Marvel Comics character Deadpool, distributed by 20th Century Fox. It is the eleventh installment in the "X-Men" film series, and a direct sequel to the 2016 film "Deadpool". The film is directed by David Leitch from a script by R', 'The film was well-received upon release, with critics highlighting the film\'s humor, acting (particularly Reynolds, Brolin, and Beetz\'s performances), story, and action sequences, with some calling it better than the first film. It has become the highest-grossing R-rated film and the third-highest-grossing "X-Men" film of all time, and the sixth-highest-grossing film of 2018. A sequel, Deadpool 2, was released on', 'Deadpool 2 is dedicated to her memory. The film\'s score is the first to receive a parental advisory warning for explicit content, and the soundtrack also includes the original song "Ashes" by Céline Dion. "Deadpool 2" was released in the United States on May 18, 2018. It has grossed over $738 million worldwide, becoming the seventh highest-grossing film of 2018, as well as the third highest-grossing R-rated film and the third']}]
+[06/21/2022 10:43:31] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 10:43:31] "[37mGET /get_input?input=When%20is%20the%20next%20deadpool%20movie%20being%20released? HTTP/1.1[0m" 200 -
+[06/21/2022 10:44:05] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 10:44:05] {views.py:44} INFO - When is the next deadpool movie being released? 
+ [{'final_answer': 'may 18 2018', 'answer_list': ['Answer: May 18, 2018', 'Answer: May 18, 2018', 'Answer: May 18, 2018', 'Answer: May 18, 2018'], 'generated_context': ['Deadpool 2 is dedicated to her memory. The film\'s score is the first to receive a parental advisory warning for explicit content, and the soundtrack also includes the original song "Ashes" by Céline Dion. "Deadpool 2" was released in the United States on May 18, 2018. It has grossed over $738 million worldwide, becoming the seventh highest-grossing film of 2018, as well as the third highest-grossing R-rated film and the third', '"Deadpool 2" (stylized as "DEADPOOL 2" and sometimes "DEAD ₋₧₊ₛ 2") is a 2018 American superhero film based on the Marvel Comics character Deadpool, distributed by 20th Century Fox. It is the eleventh installment in the "X-Men" film series, and a direct sequel to the 2016 film "Deadpool". The film is directed by David Leitch from a script by R', 'The film was well-received upon release, with critics highlighting the film\'s humor, acting (particularly Reynolds, Brolin, and Beetz\'s performances), story, and action sequences, with some calling it better than the first film. It has become the highest-grossing R-rated film and the third-highest-grossing "X-Men" film of all time, and the sixth-highest-grossing film of 2018. A sequel, Deadpool 2, was released on', 'Deadpool 2 is dedicated to her memory. The film\'s score is the first to receive a parental advisory warning for explicit content, and the soundtrack also includes the original song "Ashes" by Céline Dion. "Deadpool 2" was released in the United States on May 18, 2018. It has grossed over $738 million worldwide, becoming the seventh highest-grossing film of 2018, as well as the third highest-grossing R-rated film and the third']}]
+[06/21/2022 10:44:05] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 10:44:05] "[37mGET /get_input?input=When%20is%20the%20next%20deadpool%20movie%20being%20released? HTTP/1.1[0m" 200 -
+[06/21/2022 10:49:17] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 10:49:17] {views.py:44} INFO - who has won the mens singles title in the australian open tennis tournament 
+ [{'final_answer': 'roger federer', 'answer_list': ['Answer: Roger Federer', 'Answer: Novak Djokovic', 'Answer: Roger Federer', 'Answer: Novak Djokovic'], 'generated_context': ["2018 Australian Open – Men's Singles 2018 Australian Open – Men's Singles Roger Federer was the defending champion and successfully defended his title, defeating Marin Čilić in the final, 6–2, 6–7, 6–3, 3–6, 6–1. It was Federer's 20th Grand Slam singles title and record-equalling sixth Australian Open men's singles title (tied with Roy Emerson and Novak Djokovic). With the win", "2019 Australian Open – Men's Singles 2019 Australian Open – Men's Singles Novak Djokovic was the defending champion, but lost in the fourth round to Hyeon Chung. Federer won a record-extending 20th Grand Slam title and a record-equalling sixth Australian Open title (equalling Roy Emerson's all-time record). With the win, he also extended his all-time lead in Grand Slam men's singles titles to six. Djokovic,", 'The Australian Open is a tennis tournament held annually over the last fortnight of January in Melbourne, Australia. First held in 1905, the tournament is chronologically the first of the four Grand Slam tennis events of the year – the other three being the French Open, Wimbledon and the US Open. The Australian Open typically has high attendance, second only to the US Open, with the 2016 tournament attracting 703,899 spectators.[1] The tournament holds the record for the highest attendance at a Grand', "2019 Australian Open – Men's Singles 2019 Australian Open – Men's Singles Novak Djokovic was the defending champion and successfully defended his title, defeating Rafael Nadal in the final, 7–6(8–6), 6–2, 6–3, to win a record seventh Australian Open men's singles title and a record eighth Australian Open men's title overall. This win saw Djokovic surpass Roy Emerson as the all-time men's leader in Australian Open titles"]}]
+[06/21/2022 10:49:17] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 10:49:17] "[37mGET /get_input?input=who%20has%20won%20the%20mens%20singles%20title%20in%20the%20australian%20open%20tennis%20tournament HTTP/1.1[0m" 200 -
+[06/21/2022 10:52:09] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 10:52:11] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 10:53:02] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 10:53:02] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 10:54:43] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 10:54:43] "[35m[1mGET /get_input?input=who%20is%20president%20of%20the%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 15:18:16] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 15:18:16] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 15:21:47] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 15:21:47] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 15:22:58] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 15:22:58] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 15:24:47] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 15:24:47] "[35m[1mGET /get_input?input=who%20is%20president%20of%20China? HTTP/1.1[0m" 500 -
+[06/21/2022 19:36:14] {_internal.py:113} INFO - 10.2.50.240 - - [21/Jun/2022 19:36:14] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/21/2022 19:36:35] {_internal.py:113} INFO - 10.2.50.240 - - [21/Jun/2022 19:36:35] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[06/21/2022 19:39:11] {_internal.py:113} INFO - 10.2.50.240 - - [21/Jun/2022 19:39:11] "[35m[1mGET /get_input?input=Who%20is%20the%20preseident%20of%20US? HTTP/1.1[0m" 500 -
+[06/21/2022 19:46:37] {_internal.py:113} INFO - 10.2.50.240 - - [21/Jun/2022 19:46:37] "[35m[1mGET /get_input?input=who%20is%20the%20president%20of%20the%20US HTTP/1.1[0m" 500 -
+[06/21/2022 23:03:32] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/21/2022 23:03:33] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 23:05:06] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/21/2022 23:05:06] {_internal.py:113} INFO -  * Restarting with stat
+[06/21/2022 23:05:55] {_internal.py:113} WARNING -  * Debugger is active!
+[06/21/2022 23:05:55] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/21/2022 23:08:41] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 23:08:41] {views.py:44} INFO - who is the president of US? 
+ [{'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump'], 'generated_context': ["President of the United States In addition to being chief of state, the president has a role as head of government and is the commander-in-chief of the United States Armed Forces. The president is considered to be one of the world's most powerful political figures, the leader of the only remaining global superpower. The role includes responsibility for the world's most expensive military, which has the second-largest nuclear arsenal. The office of President holds significant hard and soft power both in the United States", 'Presidency of Donald Trump The presidency of Donald Trump began at noon EST on January 20, 2017, when Donald Trump was inaugurated as the 45th President of the United States, succeeding Barack Obama. A Republican, Trump was a businessman and reality television personality from New York City at the time of his 2016 presidential election victory over Democratic nominee Hillary Clinton. While Trump lost the popular vote by nearly 3 million votes, he won the Electoral College vote, 304 to 227, in a presidential contest targeted by', 'President of the United States of America The United States has had 45 presidents, and 45 vice presidents. Of the 45 presidents, four died in office of natural causes (William Henry Harrison, Zachary Taylor, Warren G. Harding and Franklin D. Roosevelt); four were assassinated (Abraham Lincoln, James A. Garfield, William McKinley and John F. Kennedy); and one resigned (Richard Nixon, facing impeachment). The Twenty-fifth Amendment to the Constitution, ratified in 1967, established a', 'The President of the United States The president of the United States (US president) is the head of state and head of government of the United States. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. The president is indirectly elected to office by the people through the Electoral College to a four-year term, and is eligible to serve up to two terms. The officeholder leads the executive branch of the federal government through']}]
+[06/21/2022 23:08:41] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 23:08:41] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/21/2022 23:09:32] {views.py:43} INFO - -------------------------------------------------
+[06/21/2022 23:09:32] {views.py:44} INFO - who is president of US? 
+ [{'final_answer': 'barack obama', 'answer_list': ['Answer: Barack Obama', 'Answer: Donald Trump', 'Answer: Barack Obama', 'Answer: Donald Trump'], 'generated_context': ['President of the United States In addition to being chief of the executive branch and Commander-in-Chief of the United States Armed Forces, the president has a political role, with the status of a leader of a political party and chief legislator of the United States Congress. The president is indirectly elected to a four-year term by the people through the Electoral College. The Electoral College consists of 538 electors, and an absolute majority of 270 electoral votes is required to win the election. The Tw', "Elizabeth II was proclaimed queen regnant on February 6, 1952, succeeding her father, George VI. Since her coronation on June 2, 1953, the queen has issued an average of around 600 royal proclamations each year. The royal proclamations are listed in the London Gazette and many are reprinted in the official publication, The London Gazette Extraordinary, and in other newspapers and publications. Each proclamation contains one or more 'whereas' clauses, setting out the reasons for", 'President of the United States of America The President of the United States (POTUS) is the head of state and head of government of the United States. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. The president is elected to a four-year term by the people through the Electoral College, and is limited by the Twenty-second Amendment to the Constitution to a maximum of two terms. The officeholder takes office', 'The President of the United States (POTUS) is the head of state and head of government of the United States. The president directs the executive branch of the federal government and is the commander-in-chief of the United States Armed Forces. The president is elected to a four-year term by the people through the Electoral College. The Twenty-second Amendment to the United States Constitution limits any president to two terms, amounting to a maximum of eight years, if the president serves two']}]
+[06/21/2022 23:09:32] {_internal.py:113} INFO - 10.2.53.38 - - [21/Jun/2022 23:09:32] "[37mGET /get_input?input=who%20is%20president%20of%20US? HTTP/1.1[0m" 200 -
+[06/22/2022 00:17:06] {_internal.py:113} INFO - 10.2.50.240 - - [22/Jun/2022 00:17:06] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/22/2022 00:17:21] {_internal.py:113} INFO - 10.2.50.240 - - [22/Jun/2022 00:17:21] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/22/2022 00:24:33] {views.py:43} INFO - -------------------------------------------------
+[06/22/2022 00:24:33] {views.py:44} INFO - When does people perform Hajj? 
+ [{'final_answer': 'once in their lifetime', 'answer_list': ['Answer: Once in their lifetime', 'Answer: api 2017', 'Answer: Once a year in October Muharram', 'Answer: api'], 'generated_context': ['Hajj Hajj (; Arabic: هَجّٰ \u200e; "pilgrimage") is an annual Islamic pilgrimage to Mecca, Saudi Arabia, the holiest city for Muslims, and a mandatory religious duty for Muslims that must be carried out at least once in their lifetime by all adult Muslims who are physically and financially capable of undertaking the journey, and can support their family during their absence. Literally speaking, Hajj means heading to a place for the sake of', 'Hajj 2017 Hajj 2017 The Hajj is expected to begin on September 21 and end on September 25. Makkah is currently preparing for the annual Hajj pilgrimage. Hajj 2017 marks the eighth year that the government of Saudi Arabia will not charge any fees for pilgrims coming to perform Hajj. Around 2 million people will be performing the Hajj, and hotels are already filling up. This is the highest amount of people coming to perform Hajj since 2012, when around 3 million', 'Haram Sharif Temple Mount (Arabic:  \u2009Al-Haram Al-Sharif "the Noble Sanctuary") known to Muslims as the "Masjid al-Aqsa" ("the farthest mosque"), is a holy site located in the Old City of Jerusalem. The site is a platform built by Herod the Great during the Roman era, expanded under the reign of his son, Herod Antipas. It is an elevated plaza, approximately 144m (468ft', 'The Hajj The Hajj (Arabic: هج\u200e; "pilgrimage") is an annual Islamic pilgrimage to Mecca, Saudi Arabia, the holiest city for Muslims, and a mandatory religious duty for Muslims that must be carried out at least once in their lifetime by all adult Muslims who are physically and financially capable of undertaking the journey, and can support their family during their absence. Literally speaking, Hajj means heading to a place for the sake of visiting. In']}]
+[06/22/2022 00:24:33] {_internal.py:113} INFO - 10.2.50.240 - - [22/Jun/2022 00:24:33] "[37mGET /get_input?input=When%20does%20people%20perform%20Hajj? HTTP/1.1[0m" 200 -
+[06/22/2022 00:31:05] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/22/2022 00:31:06] {_internal.py:113} INFO -  * Restarting with stat
+[06/22/2022 00:31:58] {_internal.py:113} WARNING -  * Debugger is active!
+[06/22/2022 00:31:58] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/22/2022 06:29:56] {_internal.py:113} INFO - 10.2.50.240 - - [22/Jun/2022 06:29:56] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/22/2022 06:33:52] {views.py:43} INFO - -------------------------------------------------
+[06/22/2022 06:33:52] {views.py:44} INFO - Where is the fingerprint sensor? 
+ [{'final_answer': 'synaptics', 'answer_list': ['Answer: Synaptics', 'Answer: home entered.', 'Answer: on a 5 inch screen', 'Answer: surface of the scanner'], 'generated_context': ['Fingerprint scanner (in some devices), usually a physical hardware sensor which can be touched with a finger or fingers to perform authentication and identification. However, Microsoft has introduced a new fingerprint authentication feature as part of Windows Hello. It is also known as biometric authentication and is based on the human physiological or behavioral characteristic for authentication. Microsoft introduced it with the Lumia 950 and 950 XL, and Synaptics announced in June 2015 that it had been added to its Natural ID portfolio. Fingerprint scanners', "The fingerprint sensor, touch sensor or fingerprint reader is an electronic device that can optically scan a person's fingerprint to authenticate and authorize someone to gain access to a computer system or restricted area. These sensors are commonly found on the outside of laptops, on the inside of home and office computer cases and on the entry keypads of cell phones. There are different types of fingerprint sensors such as optical, capacitive, ultrasonic and thermal. Currently fingerprint sensors are manufactured by a number of", 'A fingerprint sensor (fingerprint reader) is an electronic device used to capture a digital image of the fingerprint pattern. After capturing, the pattern is then digitally processed for extracting biometric feature.', 'The scanners most often use an optical technique in which the scanner emits a beam of infrared (IR) light which is reflected from the skin or the print to be captured. The emitted light must be in the infrared spectrum so it may be picked up by the scanner. The returned light is converted into an electrical signal which is processed to produce a biometric template unique to the user. Thus, the emitter and detector must be positioned so the reflection from the skin or print to be captured can']}]
+[06/22/2022 06:33:52] {_internal.py:113} INFO - 10.2.50.240 - - [22/Jun/2022 06:33:52] "[37mGET /get_input?input=Where%20is%20the%20fingerprint%20sensor? HTTP/1.1[0m" 200 -
+[06/22/2022 11:56:37] {_internal.py:113} INFO -  * Detected change in '/home/dansu/project/server/App/controller/api_cgap.py', reloading
+[06/22/2022 11:56:38] {_internal.py:113} INFO -  * Restarting with stat
+[06/23/2022 05:15:37] {_internal.py:113} INFO -  * Running on http://10.33.1.207:8084/ (Press CTRL+C to quit)
+[06/23/2022 05:15:37] {_internal.py:113} INFO -  * Restarting with stat
+[06/23/2022 05:16:27] {_internal.py:113} WARNING -  * Debugger is active!
+[06/23/2022 05:16:28] {_internal.py:113} INFO -  * Debugger PIN: 289-752-751
+[06/23/2022 05:17:27] {_internal.py:113} INFO - 10.2.53.38 - - [23/Jun/2022 05:17:27] "[37mGET /index HTTP/1.1[0m" 200 -
+[06/23/2022 05:19:15] {views.py:57} INFO - -------------------------------------------------
+[06/23/2022 05:19:15] {views.py:58} INFO - who is the president of US? 
+ [{'final_answer': 'donald trump', 'answer_list': ['Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump', 'Answer: Donald Trump'], 'generated_context': ['Current presidential administrations of the United States The current administration of Donald Trump, the 45th president of the United States, began on January 20, 2017. The presidential line of succession is the order in which officials of the United States federal government assume the powers and duties of the office of president of the United States if', 'Presidency of Donald Trump Presidency of Donald Trump The presidency of Donald Trump began at noon EST on January 20, 2017, when Donald Trump was inaugurated as the 45th President of the United States, succeeding Barack Obama. A Republican, Trump was a businessman and reality television personality from New York City at the time of', 'United States Donald Trump became the 45th President of the United States on January 20, 2017. Trump, a businessman and former host of the NBC reality show The Apprentice, defeated Democratic presidential nominee Hillary Clinton, a former secretary of state, in the general election on November 8, 2016, and was inaugurated on', 'The President of the United States Donald John Trump is the 45th and current president of the United States. Before entering politics, he was a businessman and a television personality. Trump was born and raised in Queens, New York City, and earned an economics degree from the Wharton School of the University of Pennsylvania.']}]
+[06/23/2022 05:19:15] {_internal.py:113} INFO - 10.2.53.38 - - [23/Jun/2022 05:19:15] "[37mGET /get_input?input=who%20is%20the%20president%20of%20US? HTTP/1.1[0m" 200 -

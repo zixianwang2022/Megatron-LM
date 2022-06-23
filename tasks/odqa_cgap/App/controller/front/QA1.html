@@ -1,0 +1,183 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>NVIDIA QA Demo</title>
+    <!-- <script src="https://unpkg.com/vue/dist/vue.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/1.0.18/vue.min.js"></script>
+    <script src="https://cdn.bootcss.com/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    
+</head>
+
+<body>
+    <div id="app">
+        <h1>NVIDIA QA Demo</h1>
+        <input type="text" id="inp" v-model="inputVal" @keyup.enter="postInput()" placeholder="Input question here: who is the president of US?">
+        <button class="btn" @click="postInput()">Enter</button>
+       
+        <div id="container">
+            <table>
+                <tr>
+                    <td>
+                        <div class="content" id="d1">final_answer</div>
+                    </td>
+                    <td>
+                        <div class="content" id="d2"></div>
+                    </td>
+            </table>
+        </div>
+        <pre id="result"></pre>
+  </div>
+    <script>
+
+        function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+        json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
+        var app = new Vue({
+            el: "#app",
+            data: {
+                inputVal: ""
+            },
+            methods: {
+                postInput: function () {
+                    var val = document.getElementById("inp").value;
+                    if (val == "") {
+                        return;
+                    }
+                    else{input=val.replaceAll(' ','%20');}
+                    fetch('http://10.33.1.207:8084/get_input?input='+input
+                        ,{method: 'GET',
+                        headers: new Headers({
+                            'Content-Type': 'application/json'
+                        }),
+                           
+                        credentials: "include"}
+                    ).then(res => res.json())
+                        .then(resp => {
+                            console.log(resp);	           
+                            var arr = Object.keys(resp[0]);
+                            console.log(arr);
+                            document.getElementById("d1").innerHTML = arr[1];
+                            document.getElementById("d2").innerHTML = resp[0][arr[1]];
+	            $('#result').html(syntaxHighlight(resp));
+                        })
+
+                    this.inputVal = "";
+                },
+            }
+        })
+    </script>
+
+</body>
+<style>
+    #app {
+
+        height: auto;
+    }
+
+    h1 {
+        font: 50px "Bauhaus 93";
+    }
+
+    #inp {
+        width: 500px;
+        height: 50px;
+        line-height: 50px;
+        background-color: #86acac;
+        box-shadow: inset 1px 1px 2px 1px #a0a0a0;
+        border-radius: 3px;
+        border: none;
+        padding: 1px 6px;
+        font-size: 16px;
+        color: black;
+        vertical-align: middle;
+    }
+
+    .btn {
+        width: 100px;
+        height: 50px;
+        line-height: 50px;
+        background-color: #006666;
+        color: #fff;
+        border-radius: 3px;
+        font-size: 20px;
+        padding: 1px 6px;
+        border: none;
+        cursor: pointer;
+        border: none;
+        vertical-align: middle;
+    }
+    
+  
+
+    #container {
+        width: 1000px;
+        height: 300px;
+        border: 1px solid #006666;
+        border-radius: 3px;
+        background-color: #f7f7f7;
+        overflow-y: scroll;
+    }
+
+    table {
+        font-size: 20px;
+        margin: 0 auto;
+        margin-top: 63px;
+    }
+
+    td {
+        padding: 20px;
+    }
+
+    .content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }  
+
+    #d1 {
+        width: 100px;
+        height: 20px;
+        border: 1px solid #ffcc66;
+        border-radius: 5px;
+        background-color: #ffcc99;
+    }    
+
+    #d2 {
+        width: 700px;
+        height: 100px;
+    }
+   
+    pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; font-size: 15px;white-space:pre-wrap; }
+    .string { color: green; text-indent:100px;}
+    .number { color: darkorange; }
+    .boolean { color: blue; }
+    .null { color: magenta; }
+    .key { color: red; }
+</style>
+
+</html>
