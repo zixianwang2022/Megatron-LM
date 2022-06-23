@@ -288,7 +288,7 @@ def init_others(all_models, args):
     print('>>>retriever initialization done!', flush=True)
     return retriever
 
-def init_all():
+def init_all(args):
     print('>>>initialize the models', flush=True)
     all_models = init_models()
     print('>>>initialize the retriever', flush=True)
