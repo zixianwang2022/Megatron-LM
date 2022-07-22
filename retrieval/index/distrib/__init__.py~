@@ -1,0 +1,11 @@
+# lawrence mcafee
+
+# ~~~~~~~~ import ~~~~~~~~
+from .index import Index
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class DistribIndex(Index):
+
+    pass
+
+# eof

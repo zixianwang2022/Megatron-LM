@@ -1,0 +1,530 @@
+0: pyxis: importing docker image ...
+0: /workspace
+0: /home/lmcafee/src/megatrons/megatron-lm-boxin
+0: Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+0: Collecting h5py
+0:   Downloading h5py-3.7.0-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (4.5 MB)
+0: Requirement already satisfied: numpy>=1.14.5 in /opt/conda/lib/python3.8/site-packages (from h5py) (1.22.3)
+0: Installing collected packages: h5py
+0: Successfully installed h5py-3.7.0
+0: WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+0: Collecting package metadata (current_repodata.json): ...working... done
+0: Solving environment: ...working... done
+0: 
+0: ## Package Plan ##
+0: 
+0:   environment location: /opt/conda
+0: 
+0:   added / updated specs:
+0:     - faiss-gpu
+0: 
+0: 
+0: The following packages will be downloaded:
+0: 
+0:     package                    |            build
+0:     ---------------------------|-----------------
+0:     ca-certificates-2022.6.15  |       ha878542_0         149 KB  conda-forge
+0:     cudatoolkit-11.7.0         |      hd8887f6_10       831.6 MB  conda-forge
+0:     faiss-1.7.2                |py38cuda112h5d0fea0_0_cuda         2.6 MB  conda-forge
+0:     faiss-gpu-1.7.2            |       h788eb59_0          14 KB  conda-forge
+0:     libfaiss-1.7.2             |cuda112hc9ed507_0_cuda        97.2 MB  conda-forge
+0:     libfaiss-avx2-1.7.2        |cuda112h1234567_0_cuda        97.2 MB  conda-forge
+0:     libgcc-ng-12.1.0           |      h8d9b700_16         940 KB  conda-forge
+0:     openssl-1.1.1q             |       h166bdaf_0         2.1 MB  conda-forge
+0:     readline-8.1.2             |       h0f457ee_0         291 KB  conda-forge
+0:     ------------------------------------------------------------
+0:                                            Total:        1.01 GB
+0: 
+0: The following NEW packages will be INSTALLED:
+0: 
+0:   cudatoolkit        conda-forge/linux-64::cudatoolkit-11.7.0-hd8887f6_10
+0:   faiss              conda-forge/linux-64::faiss-1.7.2-py38cuda112h5d0fea0_0_cuda
+0:   faiss-gpu          conda-forge/linux-64::faiss-gpu-1.7.2-h788eb59_0
+0:   libfaiss           conda-forge/linux-64::libfaiss-1.7.2-cuda112hc9ed507_0_cuda
+0:   libfaiss-avx2      conda-forge/linux-64::libfaiss-avx2-1.7.2-cuda112h1234567_0_cuda
+0: 
+0: The following packages will be REMOVED:
+0: 
+0:   libgomp-11.2.0-h1d223b6_14
+0: 
+0: The following packages will be UPDATED:
+0: 
+0:   ca-certificates                      2021.10.8-ha878542_0 --> 2022.6.15-ha878542_0
+0:   libgcc-ng                              11.2.0-h1d223b6_14 --> 12.1.0-h8d9b700_16
+0:   openssl                                 1.1.1n-h166bdaf_0 --> 1.1.1q-h166bdaf_0
+0:   readline                                   8.1-h46c0cb4_0 --> 8.1.2-h0f457ee_0
+0: 
+0: 
+0: 
+0: Downloading and Extracting Packages
+0: readline-8.1.2       | 291 KB    |            |   0% readline-8.1.2       | 291 KB    | 5          |   5% readline-8.1.2       | 291 KB    | ########## | 100% readline-8.1.2       | 291 KB    | ########## | 100% 
+0: libfaiss-1.7.2       | 97.2 MB   |            |   0% libfaiss-1.7.2       | 97.2 MB   |            |   0% libfaiss-1.7.2       | 97.2 MB   |            |   0% libfaiss-1.7.2       | 97.2 MB   |            |   1% libfaiss-1.7.2       | 97.2 MB   |            |   1% libfaiss-1.7.2       | 97.2 MB   | 1          |   1% libfaiss-1.7.2       | 97.2 MB   | 2          |   2% libfaiss-1.7.2       | 97.2 MB   | 4          |   5% libfaiss-1.7.2       | 97.2 MB   | 8          |   8% libfaiss-1.7.2       | 97.2 MB   | #2         |  13% libfaiss-1.7.2       | 97.2 MB   | #6         |  16% libfaiss-1.7.2       | 97.2 MB   | #9         |  20% libfaiss-1.7.2       | 97.2 MB   | ##5        |  25% libfaiss-1.7.2       | 97.2 MB   | ###1       |  31% libfaiss-1.7.2       | 97.2 MB   | ###6       |  37% libfaiss-1.7.2       | 97.2 MB   | ####1      |  41% libfaiss-1.7.2       | 97.2 MB   | ####7      |  48% libfaiss-1.7.2       | 97.2 MB   | #####3     |  53% libfaiss-1.7.2       | 97.2 MB   | #####8     |  58
+0: % libfaiss-1.7.2       | 97.2 MB   | ######3    |  63% libfaiss-1.7.2       | 97.2 MB   | ######8    |  69% libfaiss-1.7.2       | 97.2 MB   | #######4   |  74% libfaiss-1.7.2       | 97.2 MB   | ########   |  81% libfaiss-1.7.2       | 97.2 MB   | ########7  |  87% libfaiss-1.7.2       | 97.2 MB   | #########3 |  93% libfaiss-1.7.2       | 97.2 MB   | #########9 |  99% libfaiss-1.7.2       | 97.2 MB   | ########## | 100% 
+0: faiss-1.7.2          | 2.6 MB    |            |   0% faiss-1.7.2          | 2.6 MB    |            |   1% faiss-1.7.2          | 2.6 MB    | 9          |   9% faiss-1.7.2          | 2.6 MB    | ##5        |  26% faiss-1.7.2          | 2.6 MB    | ########## | 100% faiss-1.7.2          | 2.6 MB    | ########## | 100% 
+0: libgcc-ng-12.1.0     | 940 KB    |            |   0% libgcc-ng-12.1.0     | 940 KB    | ########## | 100% libgcc-ng-12.1.0     | 940 KB    | ########## | 100% 
+0: ca-certificates-2022 | 149 KB    |            |   0% ca-certificates-2022 | 149 KB    | ########## | 100% 
+0: cudatoolkit-11.7.0   | 831.6 MB  |            |   0% cudatoolkit-11.7.0   | 831.6 MB  |            |   0% cudatoolkit-11.7.0   | 831.6 MB  |            |   1% cudatoolkit-11.7.0   | 831.6 MB  | 1          |   1% cudatoolkit-11.7.0   | 831.6 MB  | 2          |   2% cudatoolkit-11.7.0   | 831.6 MB  | 2          |   3% cudatoolkit-11.7.0   | 831.6 MB  | 3          |   4% cudatoolkit-11.7.0   | 831.6 MB  | 4          |   4% cudatoolkit-11.7.0   | 831.6 MB  | 5          |   5% cudatoolkit-11.7.0   | 831.6 MB  | 5          |   6% cudatoolkit-11.7.0   | 831.6 MB  | 6          |   7% cudatoolkit-11.7.0   | 831.6 MB  | 7          |   7% cudatoolkit-11.7.0   | 831.6 MB  | 7          |   8% cudatoolkit-11.7.0   | 831.6 MB  | 8          |   9% cudatoolkit-11.7.0   | 831.6 MB  | 9          |  10% cudatoolkit-11.7.0   | 831.6 MB  | #          |  10% cudatoolkit-11.7.0   | 831.6 MB  | #1         |  11% cudatoolkit-11.7.0   | 831.6 MB  | #1         |  12% cudatoolkit-11.7.0   | 831.6 MB  | #2         |  13
+0: % cudatoolkit-11.7.0   | 831.6 MB  | #3         |  13% cudatoolkit-11.7.0   | 831.6 MB  | #4         |  14% cudatoolkit-11.7.0   | 831.6 MB  | #4         |  15% cudatoolkit-11.7.0   | 831.6 MB  | #5         |  16% cudatoolkit-11.7.0   | 831.6 MB  | #6         |  16% cudatoolkit-11.7.0   | 831.6 MB  | #7         |  17% cudatoolkit-11.7.0   | 831.6 MB  | #7         |  18% cudatoolkit-11.7.0   | 831.6 MB  | #8         |  19% cudatoolkit-11.7.0   | 831.6 MB  | #9         |  20% cudatoolkit-11.7.0   | 831.6 MB  | ##         |  20% cudatoolkit-11.7.0   | 831.6 MB  | ##1        |  21% cudatoolkit-11.7.0   | 831.6 MB  | ##1        |  22% cudatoolkit-11.7.0   | 831.6 MB  | ##2        |  23% cudatoolkit-11.7.0   | 831.6 MB  | ##3        |  23% cudatoolkit-11.7.0   | 831.6 MB  | ##4        |  24% cudatoolkit-11.7.0   | 831.6 MB  | ##4        |  25% cudatoolkit-11.7.0   | 831.6 MB  | ##5        |  26% cudatoolkit-11.7.0   | 831.6 MB  | ##6        |  26% cudatoolkit-11.7.0   | 831.6 MB  | ##7        |  
+0: 27% cudatoolkit-11.7.0   | 831.6 MB  | ##7        |  28% cudatoolkit-11.7.0   | 831.6 MB  | ##8        |  29% cudatoolkit-11.7.0   | 831.6 MB  | ##9        |  29% cudatoolkit-11.7.0   | 831.6 MB  | ###        |  30% cudatoolkit-11.7.0   | 831.6 MB  | ###        |  31% cudatoolkit-11.7.0   | 831.6 MB  | ###1       |  32% cudatoolkit-11.7.0   | 831.6 MB  | ###2       |  32% cudatoolkit-11.7.0   | 831.6 MB  | ###3       |  33% cudatoolkit-11.7.0   | 831.6 MB  | ###3       |  34% cudatoolkit-11.7.0   | 831.6 MB  | ###4       |  35% cudatoolkit-11.7.0   | 831.6 MB  | ###5       |  35% cudatoolkit-11.7.0   | 831.6 MB  | ###5       |  36% cudatoolkit-11.7.0   | 831.6 MB  | ###6       |  37% cudatoolkit-11.7.0   | 831.6 MB  | ###7       |  37% cudatoolkit-11.7.0   | 831.6 MB  | ###8       |  38% cudatoolkit-11.7.0   | 831.6 MB  | ###8       |  39% cudatoolkit-11.7.0   | 831.6 MB  | ###9       |  40% cudatoolkit-11.7.0   | 831.6 MB  | ####       |  40% cudatoolkit-11.7.0   | 831.6 MB  | ####1      |
+0:   41% cudatoolkit-11.7.0   | 831.6 MB  | ####1      |  42% cudatoolkit-11.7.0   | 831.6 MB  | ####2      |  43% cudatoolkit-11.7.0   | 831.6 MB  | ####3      |  44% cudatoolkit-11.7.0   | 831.6 MB  | ####4      |  44% cudatoolkit-11.7.0   | 831.6 MB  | ####5      |  45% cudatoolkit-11.7.0   | 831.6 MB  | ####5      |  46% cudatoolkit-11.7.0   | 831.6 MB  | ####6      |  47% cudatoolkit-11.7.0   | 831.6 MB  | ####7      |  47% cudatoolkit-11.7.0   | 831.6 MB  | ####8      |  48% cudatoolkit-11.7.0   | 831.6 MB  | ####8      |  49% cudatoolkit-11.7.0   | 831.6 MB  | ####9      |  50% cudatoolkit-11.7.0   | 831.6 MB  | #####      |  50% cudatoolkit-11.7.0   | 831.6 MB  | #####1     |  51% cudatoolkit-11.7.0   | 831.6 MB  | #####2     |  52% cudatoolkit-11.7.0   | 831.6 MB  | #####2     |  53% cudatoolkit-11.7.0   | 831.6 MB  | #####3     |  53% cudatoolkit-11.7.0   | 831.6 MB  | #####4     |  54% cudatoolkit-11.7.0   | 831.6 MB  | #####4     |  55% cudatoolkit-11.7.0   | 831.6 MB  | #####5    
+0:  |  56% cudatoolkit-11.7.0   | 831.6 MB  | #####6     |  56% cudatoolkit-11.7.0   | 831.6 MB  | #####6     |  57% cudatoolkit-11.7.0   | 831.6 MB  | #####7     |  58% cudatoolkit-11.7.0   | 831.6 MB  | #####8     |  58% cudatoolkit-11.7.0   | 831.6 MB  | #####9     |  59% cudatoolkit-11.7.0   | 831.6 MB  | #####9     |  60% cudatoolkit-11.7.0   | 831.6 MB  | ######     |  61% cudatoolkit-11.7.0   | 831.6 MB  | ######1    |  61% cudatoolkit-11.7.0   | 831.6 MB  | ######2    |  62% cudatoolkit-11.7.0   | 831.6 MB  | ######2    |  63% cudatoolkit-11.7.0   | 831.6 MB  | ######3    |  64% cudatoolkit-11.7.0   | 831.6 MB  | ######4    |  64% cudatoolkit-11.7.0   | 831.6 MB  | ######5    |  65% cudatoolkit-11.7.0   | 831.6 MB  | ######5    |  66% cudatoolkit-11.7.0   | 831.6 MB  | ######6    |  67% cudatoolkit-11.7.0   | 831.6 MB  | ######7    |  67% cudatoolkit-11.7.0   | 831.6 MB  | ######8    |  68% cudatoolkit-11.7.0   | 831.6 MB  | ######8    |  69% cudatoolkit-11.7.0   | 831.6 MB  | ######9 
+0:    |  70% cudatoolkit-11.7.0   | 831.6 MB  | #######    |  70% cudatoolkit-11.7.0   | 831.6 MB  | #######1   |  71% cudatoolkit-11.7.0   | 831.6 MB  | #######1   |  72% cudatoolkit-11.7.0   | 831.6 MB  | #######2   |  72% cudatoolkit-11.7.0   | 831.6 MB  | #######3   |  73% cudatoolkit-11.7.0   | 831.6 MB  | #######3   |  74% cudatoolkit-11.7.0   | 831.6 MB  | #######4   |  75% cudatoolkit-11.7.0   | 831.6 MB  | #######5   |  75% cudatoolkit-11.7.0   | 831.6 MB  | #######6   |  76% cudatoolkit-11.7.0   | 831.6 MB  | #######6   |  77% cudatoolkit-11.7.0   | 831.6 MB  | #######7   |  78% cudatoolkit-11.7.0   | 831.6 MB  | #######8   |  78% cudatoolkit-11.7.0   | 831.6 MB  | #######9   |  79% cudatoolkit-11.7.0   | 831.6 MB  | #######9   |  80% cudatoolkit-11.7.0   | 831.6 MB  | ########   |  81% cudatoolkit-11.7.0   | 831.6 MB  | ########1  |  81% cudatoolkit-11.7.0   | 831.6 MB  | ########2  |  82% cudatoolkit-11.7.0   | 831.6 MB  | ########2  |  83% cudatoolkit-11.7.0   | 831.6 MB  | ######
+0: ##3  |  84% cudatoolkit-11.7.0   | 831.6 MB  | ########4  |  84% cudatoolkit-11.7.0   | 831.6 MB  | ########5  |  85% cudatoolkit-11.7.0   | 831.6 MB  | ########5  |  86% cudatoolkit-11.7.0   | 831.6 MB  | ########6  |  87% cudatoolkit-11.7.0   | 831.6 MB  | ########7  |  87% cudatoolkit-11.7.0   | 831.6 MB  | ########7  |  88% cudatoolkit-11.7.0   | 831.6 MB  | ########8  |  89% cudatoolkit-11.7.0   | 831.6 MB  | ########9  |  89% cudatoolkit-11.7.0   | 831.6 MB  | #########  |  90% cudatoolkit-11.7.0   | 831.6 MB  | #########  |  91% cudatoolkit-11.7.0   | 831.6 MB  | #########1 |  92% cudatoolkit-11.7.0   | 831.6 MB  | #########2 |  92% cudatoolkit-11.7.0   | 831.6 MB  | #########3 |  93% cudatoolkit-11.7.0   | 831.6 MB  | #########3 |  94% cudatoolkit-11.7.0   | 831.6 MB  | #########4 |  95% cudatoolkit-11.7.0   | 831.6 MB  | #########5 |  95% cudatoolkit-11.7.0   | 831.6 MB  | #########6 |  96% cudatoolkit-11.7.0   | 831.6 MB  | #########6 |  97% cudatoolkit-11.7.0   | 831.6 MB  | ####
+0: #####7 |  98% cudatoolkit-11.7.0   | 831.6 MB  | #########8 |  98% cudatoolkit-11.7.0   | 831.6 MB  | #########9 |  99% cudatoolkit-11.7.0   | 831.6 MB  | #########9 | 100% cudatoolkit-11.7.0   | 831.6 MB  | ########## | 100% 
+0: libfaiss-avx2-1.7.2  | 97.2 MB   |            |   0% libfaiss-avx2-1.7.2  | 97.2 MB   |            |   0% libfaiss-avx2-1.7.2  | 97.2 MB   | 4          |   4% libfaiss-avx2-1.7.2  | 97.2 MB   | 8          |   9% libfaiss-avx2-1.7.2  | 97.2 MB   | #3         |  13% libfaiss-avx2-1.7.2  | 97.2 MB   | #7         |  17% libfaiss-avx2-1.7.2  | 97.2 MB   | ##1        |  22% libfaiss-avx2-1.7.2  | 97.2 MB   | ##7        |  28% libfaiss-avx2-1.7.2  | 97.2 MB   | ###3       |  34% libfaiss-avx2-1.7.2  | 97.2 MB   | ####       |  40% libfaiss-avx2-1.7.2  | 97.2 MB   | ####5      |  46% libfaiss-avx2-1.7.2  | 97.2 MB   | #####1     |  51% libfaiss-avx2-1.7.2  | 97.2 MB   | #####7     |  58% libfaiss-avx2-1.7.2  | 97.2 MB   | ######4    |  64% libfaiss-avx2-1.7.2  | 97.2 MB   | #######    |  70% libfaiss-avx2-1.7.2  | 97.2 MB   | #######5   |  76% libfaiss-avx2-1.7.2  | 97.2 MB   | ########   |  81% libfaiss-avx2-1.7.2  | 97.2 MB   | ########6  |  87% libfaiss-avx2-1.7.2  | 97.2 MB   | #########3 |  93
+0: % libfaiss-avx2-1.7.2  | 97.2 MB   | #########9 |  99% libfaiss-avx2-1.7.2  | 97.2 MB   | ########## | 100% 
+0: faiss-gpu-1.7.2      | 14 KB     |            |   0% faiss-gpu-1.7.2      | 14 KB     | ########## | 100% faiss-gpu-1.7.2      | 14 KB     | ########## | 100% 
+0: openssl-1.1.1q       | 2.1 MB    |            |   0% openssl-1.1.1q       | 2.1 MB    | ####8      |  49% openssl-1.1.1q       | 2.1 MB    | ########## | 100% openssl-1.1.1q       | 2.1 MB    | ########## | 100% 
+0: Preparing transaction: ...working... done
+0: Verifying transaction: ...working... done
+0: Executing transaction: ...working... By downloading and using the CUDA Toolkit conda packages, you accept the terms and conditions of the CUDA End User License Agreement (EULA): https://docs.nvidia.com/cuda/eula/index.html
+0: 
+0: done
+0: 
+0: The environment is inconsistent, please check the package plan carefully
+0: The following packages are causing the inconsistency:
+0: 
+0:   - conda-forge/noarch::pytz==2022.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::matplotlib-inline==0.1.3=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::python_abi==3.8=2_cp38
+0:   - conda-forge/noarch::pkginfo==1.8.2=pyhd8ed1ab_0
+0:   - conda-forge/noarch::colorama==0.4.4=pyh9f0ad1d_0
+0:   - conda-forge/linux-64::click==8.0.4=py38h578d9bd_0
+0:   - conda-forge/linux-64::conda-build==3.21.8=py38h578d9bd_0
+0:   - conda-forge/linux-64::pycosat==0.6.3=py38h0a891b7_1010
+0:   - conda-forge/linux-64::pydantic==1.8.2=py38h497a2fe_2
+0:   - conda-forge/linux-64::spacy==3.2.4=py38h514daf8_0
+0:   - conda-forge/noarch::backports.functools_lru_cache==1.6.4=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::mock==4.0.3=py38h578d9bd_3
+0:   - conda-forge/noarch::decorator==5.1.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::llvmlite==0.36.0=py38h4630a5e_0
+0:   - conda-forge/noarch::pip==21.2.4=pyhd8ed1ab_0
+0:   - conda-forge/noarch::idna==3.3=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::scipy==1.6.3=py38h7b17777_0
+0:   - conda-forge/noarch::backports==1.0=py_2
+0:   - conda-forge/linux-64::ipython==8.2.0=py38h578d9bd_0
+0:   - conda-forge/linux-64::srsly==2.4.3=py38hfa26641_1
+0:   - conda-forge/linux-64::preshed==3.0.6=py38hfa26641_2
+0:   - conda-forge/linux-64::cymem==2.0.6=py38hfa26641_3
+0:   - conda-forge/noarch::packaging==21.3=pyhd8ed1ab_0
+0:   - conda-forge/noarch::prompt-toolkit==3.0.29=pyha770c72_0
+0:   - conda-forge/linux-64::conda==4.12.0=py38h578d9bd_0
+0:   - conda-forge/linux-64::cryptography==36.0.2=py38h2b5fc30_1
+0:   - conda-forge/noarch::six==1.16.0=pyh6c4a22f_0
+0:   - conda-forge/linux-64::python-libarchive-c==4.0=py38h578d9bd_1
+0:   - conda-forge/linux-64::conda-package-handling==1.8.1=py38h0a891b7_1
+0:   - conda-forge/linux-64::setuptools==59.5.0=py38h578d9bd_0
+0:   - conda-forge/noarch::traitlets==5.1.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::spacy-loggers==1.0.2=pyhd8ed1ab_0
+0:   - conda-forge/noarch::parso==0.8.3=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::cffi==1.15.0=py38h3931269_0
+0:   - conda-forge/noarch::pathy==0.6.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::catalogue==2.0.6=py38h578d9bd_2
+0:   - conda-forge/noarch::pickleshare==0.7.5=py_1003
+0:   - conda-forge/linux-64::brotlipy==0.7.0=py38h0a891b7_1004
+0:   - conda-forge/noarch::charset-normalizer==2.0.12=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::ruamel_yaml==0.15.80=py38h497a2fe_1006
+0:   - conda-forge/noarch::executing==0.8.3=pyhd8ed1ab_0
+0:   - conda-forge/noarch::typing-extensions==4.1.1=hd8ed1ab_0
+0:   - conda-forge/noarch::filelock==3.6.0=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::cython-blis==0.7.7=py38h71d37f0_1
+0:   - conda-forge/noarch::ptyprocess==0.7.0=pyhd3deb0d_0
+0:   - conda-forge/linux-64::markupsafe==2.1.1=py38h0a891b7_1
+0:   - conda-forge/noarch::langcodes==3.3.0=pyhd8ed1ab_0
+0:   - conda-forge/noarch::dataclasses==0.8=pyhc8e2a94_3
+0:   - conda-forge/noarch::shellingham==1.4.0=pyh44b312d_0
+0:   - conda-forge/linux-64::jedi==0.18.1=py38h578d9bd_1
+0:   - conda-forge/noarch::wheel==0.37.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::asttokens==2.0.5=pyhd8ed1ab_0
+0:   - conda-forge/noarch::jinja2==3.1.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::pygments==2.11.2=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::python==3.8.13=h582c2e5_0_cpython
+0:   - conda-forge/noarch::backcall==0.2.0=pyh9f0ad1d_0
+0:   - conda-forge/linux-64::certifi==2021.10.8=py38h578d9bd_2
+0:   - conda-forge/noarch::soupsieve==2.3.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::beautifulsoup4==4.11.1=pyha770c72_0
+0:   - conda-forge/linux-64::pysocks==1.7.1=py38h578d9bd_5
+0:   - conda-forge/noarch::typer==0.4.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::tqdm==4.63.0=pyhd8ed1ab_0
+0:   - conda-forge/noarch::requests==2.27.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::numpy==1.22.3=py38h1d589f8_2
+0:   - conda-forge/linux-64::thinc==8.0.15=py38h514daf8_0
+0:   - conda-forge/noarch::pexpect==4.8.0=pyh9f0ad1d_2
+0:   - conda-forge/linux-64::py-lief==0.11.5=py38h709712a_1
+0:   - conda-forge/linux-64::readline==8.1=h46c0cb4_0
+0:   - conda-forge/noarch::urllib3==1.26.9=pyhd8ed1ab_0
+0:   - conda-forge/noarch::smart_open==5.2.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::spacy-legacy==3.0.9=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::sqlite==3.37.1=h4ff8645_0
+0:   - conda-forge/linux-64::psutil==5.9.0=py38h0a891b7_1
+0:   - conda-forge/noarch::pure_eval==0.2.2=pyhd8ed1ab_0
+0:   - conda-forge/noarch::typing_extensions==4.1.1=pyha770c72_0
+0:   - conda-forge/noarch::pyparsing==3.0.8=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::murmurhash==1.0.6=py38hfa26641_3
+0:   - conda-forge/noarch::wcwidth==0.2.5=pyh9f0ad1d_2
+0:   - conda-forge/linux-64::chardet==4.0.0=py38h578d9bd_3
+0:   - conda-forge/noarch::pyopenssl==22.0.0=pyhd8ed1ab_0
+0:   - conda-forge/noarch::pycparser==2.21=pyhd8ed1ab_0
+0:   - conda-forge/noarch::glob2==0.7=py_0
+0:   - conda-forge/noarch::wasabi==0.9.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::stack_data==0.2.0=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::pyyaml==6.0=py38h0a891b7_4
+0:   - conda-forge/linux-64::numba==0.53.1=py38h8b71fd7_1
+0: 
+0: 
+0: ==> WARNING: A newer version of conda exists. <==
+0:   current version: 4.12.0
+0:   latest version: 4.13.0
+0: 
+0: Please update conda by running
+0: 
+0:     $ conda update -n base conda
+0: 
+0: 
+0: CMD = python -m lawrence.build.build_index             --task train             --data-ty corpus             --ntrain 100000000             --index-ty faiss-decomp             --index-str OPQ32_256,IVF4194304_HNSW32,PQ32             --profile-stage-stop ivf             --profile-single-encoder 
+0: hi, index.
+0: timer | 'train/init' ... [1] single 0.000, total 0.000.
+0: timer | 'train/opq/train' ... [1] single 0.002, total 0.002.
+0: timer | 'train/opq/forward' ... [1] single 0.163, total 0.163.
+0: timer | 'train/opq' ... [1] single 0.167, total 0.167.
+0: timer | 'train/ivf/ivf/train/load-data/shape' ... [1] single 0.502, total 0.502.
+0: timer | 'train/ivf/ivf/train/load-data/alloc' ... [1] single 0.000, total 0.000.
+0: load path 0 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_0.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [1] single 2.715, total 2.715.
+0: load path 1 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_1.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [2] single 2.803, total 5.606.
+0: load path 2 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_2.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [3] single 2.768, total 8.304.
+0: load path 3 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_3.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [4] single 2.859, total 11.436.
+0: load path 4 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_4.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [5] single 2.743, total 13.713.
+0: load path 5 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_5.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [6] single 2.704, total 16.226.
+0: load path 6 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_6.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [7] single 2.671, total 18.696.
+0: load path 7 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_7.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [8] single 2.640, total 21.116.
+0: load path 8 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_8.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [9] single 2.683, total 24.146.
+0: load path 9 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_9.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [10] single 2.725, total 27.250.
+0: load path 10 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_10.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [11] single 2.688, total 29.566.
+0: load path 11 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_11.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [12] single 2.701, total 32.416.
+0: load path 12 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_12.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [13] single 2.678, total 34.811.
+0: load path 13 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_13.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [14] single 2.672, total 37.403.
+0: load path 14 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_14.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [15] single 2.676, total 40.136.
+0: load path 15 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_15.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [16] single 2.707, total 43.312.
+0: load path 16 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_16.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [17] single 2.740, total 46.575.
+0: load path 17 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_17.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [18] single 2.748, total 49.465.
+0: load path 18 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_18.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [19] single 2.746, total 52.168.
+0: load path 19 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_19.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [20] single 2.757, total 55.139.
+0: load path 20 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_20.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [21] single 2.782, total 58.419.
+0: load path 21 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_21.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [22] single 2.766, total 60.858.
+0: load path 22 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_22.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [23] single 2.764, total 63.576.
+0: load path 23 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_23.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [24] single 2.772, total 66.537.
+0: load path 24 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_24.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [25] single 2.773, total 69.331.
+0: load path 25 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_25.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [26] single 2.759, total 71.744.
+0: load path 26 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_26.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [27] single 2.770, total 74.795.
+0: load path 27 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_27.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [28] single 2.792, total 78.163.
+0: load path 28 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_28.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [29] single 2.801, total 81.227.
+0: load path 29 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_29.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [30] single 2.794, total 83.806.
+0: load path 30 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_30.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [31] single 2.778, total 86.112.
+0: load path 31 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_31.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [32] single 2.785, total 89.123.
+0: load path 32 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_32.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [33] single 2.783, total 91.829.
+0: load path 33 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_33.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [34] single 2.790, total 94.864.
+0: load path 34 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_34.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [35] single 2.796, total 97.876.
+0: load path 35 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_35.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [36] single 2.802, total 100.859.
+0: load path 36 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_36.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [37] single 2.788, total 103.153.
+0: load path 37 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_37.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [38] single 2.803, total 106.518.
+0: load path 38 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_38.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [39] single 2.795, total 108.990.
+0: load path 39 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_39.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [40] single 2.804, total 112.144.
+0: load path 40 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_40.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [41] single 2.809, total 115.171.
+0: load path 41 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_41.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [42] single 2.811, total 118.045.
+0: load path 42 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_42.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [43] single 2.816, total 121.088.
+0: load path 43 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_43.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [44] single 2.823, total 124.205.
+0: load path 44 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_44.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [45] single 2.812, total 126.552.
+0: load path 45 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_45.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [46] single 2.815, total 129.500.
+0: load path 46 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_46.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [47] single 2.810, total 132.093.
+0: load path 47 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_47.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [48] single 2.813, total 135.031.
+0: load path 48 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_48.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [49] single 2.819, total 138.152.
+0: load path 49 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_49.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [50] single 2.822, total 141.112.
+0: load path 50 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_50.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [51] single 2.818, total 143.723.
+0: load path 51 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_51.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [52] single 2.807, total 145.980.
+0: load path 52 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_52.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [53] single 2.801, total 148.460.
+0: load path 53 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_53.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [54] single 2.801, total 151.267.
+0: load path 54 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_54.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [55] single 2.798, total 153.867.
+0: load path 55 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_55.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [56] single 2.786, total 156.031.
+0: load path 56 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_56.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [57] single 2.786, total 158.826.
+0: load path 57 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_57.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [58] single 2.789, total 161.768.
+0: load path 58 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_58.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [59] single 2.794, total 164.850.
+0: load path 59 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_59.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [60] single 2.797, total 167.844.
+0: load path 60 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_60.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [61] single 2.807, total 171.255.
+0: load path 61 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_61.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [62] single 2.820, total 174.811.
+0: load path 62 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_62.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [63] single 2.812, total 177.151.
+0: load path 63 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_63.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [64] single 2.805, total 179.502.
+0: load path 64 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_64.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [65] single 2.808, total 182.542.
+0: load path 65 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_65.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [66] single 2.809, total 185.412.
+0: load path 66 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_66.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [67] single 2.812, total 188.420.
+0: load path 67 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_67.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [68] single 2.816, total 191.498.
+0: load path 68 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_68.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [69] single 2.820, total 194.553.
+0: load path 69 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_69.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [70] single 2.823, total 197.587.
+0: load path 70 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_70.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [71] single 2.821, total 200.306.
+0: load path 71 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_71.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [72] single 2.824, total 203.321.
+0: load path 72 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_72.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [73] single 2.823, total 206.115.
+0: load path 73 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_73.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [74] single 2.817, total 208.426.
+0: load path 74 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_74.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [75] single 2.816, total 211.215.
+0: load path 75 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_75.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [76] single 2.823, total 214.550.
+0: load path 76 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_76.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [77] single 2.829, total 217.839.
+0: load path 77 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_77.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [78] single 2.823, total 220.177.
+0: load path 78 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_78.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [79] single 2.815, total 222.401.
+0: load path 79 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_79.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [80] single 2.817, total 225.333.
+0: load path 80 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_80.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [81] single 2.819, total 228.324.
+0: load path 81 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_81.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [82] single 2.815, total 230.853.
+0: load path 82 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_82.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [83] single 2.810, total 233.220.
+0: load path 83 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_83.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [84] single 2.816, total 236.572.
+0: load path 84 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_84.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [85] single 2.817, total 239.425.
+0: load path 85 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_85.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [86] single 2.815, total 242.060.
+0: load path 86 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_86.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [87] single 2.816, total 244.990.
+0: load path 87 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_87.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [88] single 2.819, total 248.095.
+0: load path 88 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_88.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [89] single 2.821, total 251.087.
+0: load path 89 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_89.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [90] single 2.824, total 254.155.
+0: load path 90 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_90.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [91] single 2.818, total 256.483.
+0: load path 91 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_91.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [92] single 2.812, total 258.736.
+0: load path 92 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_92.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [93] single 2.817, total 262.026.
+0: load path 93 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_93.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [94] single 2.820, total 265.076.
+0: load path 94 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_94.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [95] single 2.825, total 268.374.
+0: load path 95 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_95.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [96] single 2.821, total 270.845.
+0: load path 96 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_96.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [97] single 2.821, total 273.640.
+0: load path 97 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_97.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [98] single 2.822, total 276.589.
+0: load path 98 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_98.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [99] single 2.826, total 279.736.
+0: load path 99 / 100 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/opq/train_output_99.hdf5'.
+0: timer | 'train/ivf/ivf/train/load-data/load' ... [100] single 2.826, total 282.580.
+0: timer | 'train/ivf/ivf/train/load-data' ... [1] single 283.088, total 283.088.
+0: timer | 'train/ivf/ivf/train/init' ... [1] single 15.281, total 15.281.
+0: WARNING clustering 100000000 points to 4194304 centroids: please provide at least 163577856 training points
+0: Training level-1 quantizer
+0: Training level-1 quantizer on 100000000 vectors in 256D
+0: begin add replica 0 on 4194304 points
+0: begin add replica 2 on 4194304 points
+0: begin add replica 3 on 4194304 points
+0: begin add replica 7 on 4194304 points
+0: begin add replica 1 on 4194304 points
+0: begin add replica 4 on 4194304 points
+0: begin add replica 5 on 4194304 points
+0: begin add replica 6 on 4194304 points
+0: end add replica 2
+0: end add replica 7
+0: end add replica 3
+0: end add replica 0
+0: end add replica 4
+0: end add replica 6
+0: end add replica 5
+0: end add replica 1
+0: begin search replica 1 on 12500000 points
+0: begin search replica 0 on 12500000 points
+0: begin search replica 3 on 12500000 points
+0: begin search replica 2 on 12500000 points
+0: begin search replica 7 on 12500000 points
+0: begin search replica 4 on 12500000 points
+0: begin search replica 5 on 12500000 points
+0: begin search replica 6 on 12500000 points
+0: end search replica 0
+0: end search replica 5
+0: end search replica 1
+0: end search replica 2
+0: end search replica 4
+0: end search replica 3
+0: end search replica 7
+0: end search replica 6
+0: begin add replica 0 on 4194304 points
+0: begin add replica 2 on 4194304 points
+0: begin add replica 4 on 4194304 points
+0: begin add replica 6 on 4194304 points
+0: begin add replica 3 on 4194304 points
+0: begin add replica 5 on 4194304 points
+0: begin add replica 1 on 4194304 points
+0: begin add replica 7 on 4194304 points
+0: end add replica 7
+0: end add replica 5
+0: end add replica 3
+0: end add replica 1
+0: end add replica 4
+0: end add replica 0
+0: end add replica 6
+0: end add replica 2
+0: begin search replica 0 on 12500000 points
+0: begin search replica 2 on 12500000 points
+0: begin search replica 6 on 12500000 points
+0: begin search replica 1 on 12500000 points
+0: begin search replica 5 on 12500000 points
+0: begin search replica 4 on 12500000 points
+0: begin search replica 3 on 12500000 points
+0: begin search replica 7 on 12500000 points
+0: end search replica 0
+0: end search replica 5
+0: end search replica 1
+0: end search replica 2
+0: end search replica 6
+0: end search replica 7
+0: end search replica 4
+0: end search replica 3
+0: begin add replica 0 on 4194304 points
+0: begin add replica 1 on 4194304 points
+0: begin add replica 3 on 4194304 points
+0: begin add replica 4 on 4194304 points
+0: begin add replica 5 on 4194304 points
+0: begin add replica 7 on 4194304 points
+0: begin add replica 6 on 4194304 points
+0: begin add replica 2 on 4194304 points
+0: end add replica 2
+0: end add replica 3
+0: end add replica 0
+0: end add replica 4
+0: end add replica 5
+0: end add replica 6
+0: end add replica 7
+0: end add replica 1
+0: begin search replica 1 on 12500000 points
+0: begin search replica 0 on 12500000 points
+0: begin search replica 2 on 12500000 points
+0: begin search replica 3 on 12500000 points
+0: begin search replica 4 on 12500000 points
+0: begin search replica 5 on 12500000 points
+0: begin search replica 6 on 12500000 points
+0: begin search replica 7 on 12500000 points
+0: end search replica 0
+0: end search replica 5
+0: end search replica 1
+0: end search replica 6
+0: end search replica 7
+0: end search replica 2
+0: end search replica 4
+0: end search replica 3
+0: begin add replica 0 on 4194304 points
+0: begin add replica 1 on 4194304 points
+0: begin add replica 2 on 4194304 points
+0: begin add replica 4 on 4194304 points
+0: begin add replica 3 on 4194304 points
+0: begin add replica 7 on 4194304 points
+0: begin add replica 5 on 4194304 points
+0: begin add replica 6 on 4194304 points
+0: end add replica 0
+0: end add replica 2
+0: end add replica 3
+0: end add replica 4
+0: end add replica 5
+0: end add replica 6
+0: end add replica 7
+0: end add replica 1
+0: begin search replica 1 on 12500000 points
+0: begin search replica 3 on 12500000 points
+0: begin search replica 4 on 12500000 points
+0: begin search replica 5 on 12500000 points
+0: begin search replica 0 on 12500000 points
+0: begin search replica 2 on 12500000 points
+0: begin search replica 7 on 12500000 points
+0: begin search replica 6 on 12500000 points
+0: end search replica 0
+0: end search replica 5
+0: end search replica 1
+0: end search replica 7
+0: end search replica 6
+0: end search replica 2
+0: end search replica 4
+0: end search replica 3
+0: begin add replica 1 on 4194304 points
+0: begin add replica 3 on 4194304 points
+0: begin add replica 4 on 4194304 points
+0: begin add replica 5 on 4194304 points
+0: begin add replica 2 on 4194304 points
+0: slurmstepd: error: *** STEP 270129.0 ON ip-10-14-74-176 CANCELLED AT 2022-07-06T19:20:25 DUE TO TIME LIMIT ***

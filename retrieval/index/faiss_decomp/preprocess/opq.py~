@@ -1,0 +1,102 @@
+# lawrence mcafee
+
+# ~~~~~~~~ import ~~~~~~~~
+import faiss
+import h5py
+import numpy as np
+import os
+
+from lutil import pax
+
+from lawrence.index import Index
+import lawrence.utils as utils
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# class OPQStage(Index):
+class OPQIndex(Index):
+
+    def __init__(self, args, d, stage_str):
+        super().__init__(args, d)
+    
+        tokens = stage_str.split("_")
+        assert len(tokens) == 2
+        assert tokens[0].startswith("OPQ") # redundant
+
+        self.m = int(tokens[0].replace("OPQ", ""))
+        self._dout = int(tokens[1])
+
+        # self.pq = faiss.IndexPQ(d, self.m, 8)
+        # self.opq = faiss.OPQMatrix(d = d, M = self.m, d2 = self._dout)
+        # self.opq = faiss.OPQMatrix(d = d, M = self.m)
+        # self.opq = faiss.PCAMatrix(d_in = d, d_out = self._dout)
+        self.opq = faiss.IndexPreTransform(
+            faiss.OPQMatrix(d = d, M = self.m, d2 = self._dout),
+            faiss.IndexFlatL2(self._dout),
+        )
+        # self.opq = faiss.index_factory(d, stage_str)
+
+        # pax({"opq": self.opq})
+
+    def dout(self):
+        return self._dout
+
+    # def init(self):
+    #     self.opq = faiss.OPQMatrix(d = self.nfeats, M = self.m, d2 = self.d2)
+
+    def verbose(self, v):
+        # self.c_verbose(self.opq, v)
+        self.opq.verbose = True
+
+    # def train(self, data_map_0):
+    # def train(self, data_map_0, dirname, timer):
+    def train(self, input_data_path, dir_path, timer):
+
+        empty_index_path = self.get_empty_index_path(dir_path)
+        output_data_path = self.get_output_data_path(dir_path)
+
+        # pax({
+        #     "empty_index_path" : empty_index_path,
+        #     "input_data_path" : input_data_path,
+        #     "output_data_path" : output_data_path,
+        # })
+
+        if not os.path.isfile(empty_index_path):
+
+            timer.push("train")
+            inp = utils.load_data(input_data_path)["data"]
+            self.opq.train(inp)
+            faiss.write_index(self.opq, empty_index_path)
+            timer.pop()
+
+        if not os.path.isfile(output_data_path):
+
+            timer.push("forward")
+
+            self.opq = faiss.read_index(empty_index_path)
+            inp = utils.load_data(input_data_path)["data"]
+            # out = self.opq.apply_chain(len(inp), inp)
+            out = self.opq.chain.at(0).apply(inp)
+
+            # pax({
+            #     "opq" : self.opq,
+            #     "chain" : self.opq.chain,
+            #     "chain / 0" : self.opq.chain.at(0),
+            #     "inp" : inp,
+            #     "out" : out,
+            # })
+
+            utils.save_data({"data": out}, output_data_path)
+
+            timer.pop()
+
+        # pax({
+        #     # "inp" : inp,
+        #     # "out" : out,
+        #     "data_map_0" : data_map_0,
+        #     "data_map_1" : data_map_1,
+        # })
+
+        # return data_map_1
+        return output_data_path
+
+# eof

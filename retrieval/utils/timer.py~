@@ -1,0 +1,57 @@
+# lawrence mcafee
+
+# ~~~~~~~~ import ~~~~~~~~
+from collections import defaultdict
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class Timer:
+
+    def __init__(self):
+        self.active_stack = []
+        self.time_map = defaultdict(lambda : {"time": 0, "count": 0})
+
+    def push(self, key):
+        self.active_stack.append((key, time.time()))
+
+    def pop(self):
+        p = "/".join([ a[0] for a in self.active_stack ])
+        k, t = self.active_stack.pop(-1)
+        m = self.time_map[p]
+        m["time"] += time.time() - t
+        m["count"] += 1
+        print("timer | '%s' ... time %.3f, count %d." % (
+            p,
+            m["time"] / m["count"],
+            m["count"],
+        ), flush = True)
+
+    def get_root_str(self):
+        time_map = {
+            k : (d["time"] / d["count"])
+            for k, d in self.time_map.items()
+            if len(k.split("/")) == 1
+        }
+        return "%.1f [ %s ]" % (
+            sum(time_map.values()),
+            ", ".join("%s %.1f" % (k, t) for k, t in time_map.items()),
+        )
+
+    def print(self, depth = None):
+        # >>>
+        # assert len(self.active_stack) == 0
+        # <<<
+        print("~~~~~~~~~~~~~~~~~~~~~", flush = True)
+        print("[ root = %s. ]" % self.get_root_str(), flush = True)
+        for k, d in self.time_map.items():
+            klen = len(k.split("/"))
+            if depth is not None and klen > depth:
+                continue
+            print("%s ... time %.3f, count %d." % (
+                k.ljust(20),
+                d["time"] / d["count"],
+                d["count"],
+            ), flush = True)
+        print("~~~~~~~~~~~~~~~~~~~~~", flush = True)
+        # raise Exception("timer.")
+
+# eof

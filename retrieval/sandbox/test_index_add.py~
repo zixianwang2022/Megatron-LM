@@ -1,0 +1,16 @@
+# lawrence mcafee
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if __name__ == "__main__":
+
+    nfeats = 1024
+
+    index_str = "OPQ32_256,IVF4194304_HNSW32,PQ32"
+    index = faiss.index_factory(nfeats, index_str)
+
+    pax({
+        "index_str" : index_str,
+        "index" : index,
+    })
+
+# eof

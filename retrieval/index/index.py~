@@ -1,0 +1,71 @@
+# lawrence mcafee
+
+# ~~~~~~~~ import ~~~~~~~~
+import faiss
+import os
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class Index:
+
+    # @classmethod
+    # def init(cls, index_str, nfeats):
+    #     raise NotImplementedError
+    # def __init__(self, args, index_str, nfeats):
+    #     self.args = args
+    #     self.index_str = index_str
+    #     self.nfeats = nfeats
+    def __init__(self, args, di):
+        self.args = args
+        self._di = di
+
+    def __str__(self):
+        return "dim %d,%d" % (self.din(), self.dout())
+
+    @classmethod
+    def get_empty_index_path(cls, dirname):
+        return os.path.join(dirname, "empty.faissindex")
+    @classmethod
+    def get_full_index_path(cls, dirname):
+        return os.path.join(dirname, "full.faissindex")
+    @classmethod
+    def get_output_data_path(cls, dirname):
+        return os.path.join(dirname, "output.hdf5")
+
+    # def get_input_dim(self):
+    #     return self.nfeats
+    # def get_output_dim(self):
+    #     raise NotImplementedError
+    # def di(self):
+    def din(self):
+        return self._di
+    # def do(self):
+    def dout(self):
+        raise NotImplementedError
+
+    def init(self):
+        raise NotImplementedError
+
+    def load(self, path):
+        raise NotImplementedError
+
+    @classmethod
+    def c_verbose(cls, index, v):
+        assert isinstance(v, bool)
+        faiss.ParameterSpace().set_index_parameter(index, "verbose", v) # 1)
+        # index.verbose = True # ... maybe?
+    def verbose(self, v):
+        raise NotImplementedError
+
+    def to_gpu(self):
+        raise NotImplementedError
+
+    def train(self, data):
+        raise NotImplementedError
+
+    def add(self, data):
+        raise NotImplementedError
+
+    def save(self, path):
+        raise NotImplementedError
+
+# eof

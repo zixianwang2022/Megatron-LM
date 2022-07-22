@@ -1,0 +1,253 @@
+# lawrence mcafee
+
+# ~~~~~~~~ import ~~~~~~~~
+import faiss
+import h5py
+import numpy as np
+import os
+
+from lutil import pax
+
+from lawrence import utils
+# from lawrence.data import load_data
+from lawrence.index import Index
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class OPQIndex(Index):
+
+    def __init__(self, args, d, stage_str):
+        super().__init__(args, d)
+    
+        tokens = stage_str.split("_")
+        assert len(tokens) == 2
+        assert tokens[0].startswith("OPQ") # redundant
+
+        self.m = int(tokens[0].replace("OPQ", ""))
+        self._dout = int(tokens[1])
+
+    def dout(self):
+        return self._dout
+
+    def _train(
+            self,
+            input_data_paths,
+            dir_path,
+            timer,
+    ):
+
+        empty_index_path = self.get_empty_index_path(dir_path)
+
+        if os.path.isfile(empty_index_path):
+            return
+
+        timer.push("load-data")
+        # inp = load_data(self.args)
+        inp = utils.load_data(input_data_paths, timer)["data"]
+        # pax({
+        #     "input_data_paths" : input_data_paths,
+        #     "inp" : str(inp.shape),
+        # })
+        timer.pop()
+
+        timer.push("init")
+        # pq = faiss.IndexPQ(d, self.m, 8)
+        # opq = faiss.OPQMatrix(d = d, M = self.m, d2 = self._dout)
+        # opq = faiss.OPQMatrix(d = d, M = self.m)
+        # opq = faiss.PCAMatrix(d_in = d, d_out = self._dout)
+        # opq = faiss.index_factory(d, stage_str)
+        opq = faiss.IndexPreTransform(
+            faiss.OPQMatrix(d = self.din(), M = self.m, d2 = self.dout()),
+            faiss.IndexFlatL2(self._dout),
+        )
+        self.c_verbose(opq, True)
+        timer.pop()
+
+        timer.push("train")
+        opq.train(inp)
+        timer.pop()
+
+        timer.push("save")
+        faiss.write_index(opq, empty_index_path)
+        timer.pop()
+
+    # def _forward(
+    #         self,
+    #         input_data_paths,
+    #         dir_path,
+    #         timer,
+    #         task,
+    # ):
+
+    #     # pax({"input_data_paths": input_data_paths})
+
+    #     empty_index_path = self.get_empty_index_path(dir_path)
+    #     # output_data_path = self.get_output_data_path(dir_path, "train")
+
+    #     # all_output_data_paths, missing_output_data_path_map = \
+    #     #     self.get_missing_output_data_path_map(dir_path, task)
+    #     all_output_data_paths, missing_output_data_path_map = \
+    #         self.get_missing_output_data_path_map(
+    #             input_data_paths,
+    #             dir_path,
+    #             task,
+    #         )
+
+    #     pax({
+    #         "input_data_paths" : input_data_paths,
+    #         "all_output_data_paths" : all_output_data_paths,
+    #         "missing_output_data_path_map" : missing_output_data_path_map,
+    #     })
+
+    #     if not missing_output_data_path_map:
+    #         return all_output_data_paths
+
+    #     timer.push("load-data")
+    #     inp = load_data(self.args)
+    #     timer.pop()
+
+    #     # pax({"inp": inp})
+
+    #     timer.push("init")
+    #     opq = faiss.read_index(empty_index_path)
+    #     self.c_verbose(opq, True)
+    #     timer.pop()
+
+    #     timer.push("forward-batches")
+    #     for (i0, i1), output_data_path in missing_output_data_path_map.items():
+
+    #         timer.push("forward-batch")
+    #         ntrain = self.args.ntrain
+    #         print("foward batch [%d:%d] / %d." % (i0, i1, ntrain), flush = True)
+
+    #         sub_inp = inp[i0:i1]
+
+    #         # pax({
+    #         #     "i0" : i0,
+    #         #     "i1" : i1,
+    #         #     "output_data_path" : output_data_path,
+    #         #     "inp" : str(inp.shape),
+    #         #     "sub_inp" : str(sub_inp.shape),
+    #         # })
+
+    #         timer.push("forward")
+    #         # out = self.opq.apply_chain(ntrain, inp)
+    #         sub_out = opq.chain.at(0).apply(sub_inp)
+    #         timer.pop()
+
+    #         timer.push("save-data")
+    #         utils.save_data({"data": sub_out}, output_data_path)
+    #         timer.pop()
+
+    #         timer.pop()
+
+    #     timer.pop()
+
+    #     # pax({ ... })
+
+    #     return all_output_data_paths
+    def _forward(
+            self,
+            input_data_paths,
+            dir_path,
+            timer,
+            task,
+    ):
+
+        empty_index_path = self.get_empty_index_path(dir_path)
+
+        all_output_data_paths, missing_output_data_path_map = \
+            self.get_missing_output_data_path_map(
+                input_data_paths,
+                dir_path,
+                task,
+            )
+
+        # pax({
+        #     "input_data_paths" : input_data_paths,
+        #     "all_output_data_paths" : all_output_data_paths,
+        #     "missing_output_data_path_map" : missing_output_data_path_map,
+        # })
+
+        if not missing_output_data_path_map:
+            return all_output_data_paths
+
+        timer.push("init")
+        opq = faiss.read_index(empty_index_path)
+        self.c_verbose(opq, True)
+        timer.pop()
+
+        timer.push("forward-batches")
+        for output_index, (input_index, output_data_path) \
+            in enumerate(missing_output_data_path_map.items()):
+
+            timer.push("load-data")
+            input_data_path = input_data_paths[input_index]
+            inp = utils.load_data([ input_data_path ], timer)["data"]
+            timer.pop()
+
+            # pax({"inp": str(inp.shape)})
+
+            timer.push("forward-batch")
+            print("foward batch %d / %d [ %d vecs ]." % (
+                output_index,
+                len(missing_output_data_path_map),
+                len(inp),
+            ), flush = True)
+
+            timer.push("forward")
+            # out = self.opq.apply_chain(ntrain, inp)
+            out = opq.chain.at(0).apply(inp)
+            timer.pop()
+
+            # pax({
+            #     "input_index" : input_index,
+            #     "output_index" : output_index,
+            #     "input_data_path" : input_data_path,
+            #     "output_data_path" : output_data_path,
+            #     "inp" : str(inp.shape),
+            #     "out" : str(out.shape),
+            # })
+
+            timer.push("save-data")
+            utils.save_data({"data": out}, output_data_path)
+            timer.pop()
+
+            timer.pop()
+
+        timer.pop()
+
+        # pax({ ... })
+
+        return all_output_data_paths
+
+    def train(self, *args):
+
+        timer = args[-1]
+
+        timer.push("train")
+        self._train(*args)
+        timer.pop()
+
+        timer.push("forward")
+        output_data_paths = self._forward(*args, "train")
+        timer.pop()
+
+        # pax({"output_data_paths": output_data_paths})
+
+        return output_data_paths
+
+    def add(self, *args):
+
+        # pax({"args": args[0]})
+
+        timer = args[-1]
+
+        timer.push("forward")
+        output_data_paths = self._forward(*args, "add")
+        timer.pop()
+
+        # pax({"output_data_paths": output_data_paths})
+
+        return output_data_paths
+
+# eof

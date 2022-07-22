@@ -1,0 +1,166 @@
+# lawrence mcafee
+
+# ~~~~~~~~ import ~~~~~~~~
+import faiss
+import h5py
+import os
+
+from lutil import pax
+
+# from lawrence.utils import mkdir
+# from lawrence.utils import * as utils
+import lawrence.utils as utils
+# import * as utils from lawrence.utils
+
+from ..index import Index
+from .cluster import IVFHNSWIndex
+from .encode import PQsIndex
+from .preprocess import OPQIndex
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class FaissDecompIndex(Index):
+
+    @classmethod
+    def get_stage(cls, args, d, stage_str):
+        if stage_str.startswith("OPQ"):
+            return "opq", OPQ(args, d, stage_str)
+        elif stage_str.startswith("IVF"):
+            return "ivf", IVFHNSW(args, d, stage_str)
+        elif stage_str.startswith("PQ"):
+            return "pqs", PQs(args, d, stage_str)
+        else:
+            raise Exception("specialize for '%s'." % stage_str)
+
+    # def __init__(self, args, index_str, nfeats):
+    #     super().__init__(args, index_str, nfeats)
+    def __init__(self, args, din, index_str, timer):
+
+        super().__init__(args, din)
+
+        dim = self.din()
+        self.stage_map = {}
+        for stage_str in index_str.split(","):
+
+            # timer.push(stage_str)
+            key, stage = self.get_stage(args, dim, stage_str)
+            # timer.pop()
+
+            dim = stage.dout()
+
+            # pax({"dim": dim})
+
+            assert key not in self.stage_map
+            self.stage_map[key] = stage
+
+        # pax({
+        #     "index_str" : self.index_str,
+        #     # "stage_strs" : self.stage_strs,
+        #     "stages" : self.stages,
+        # })
+
+    def dout(self):
+        return self.stage_map["pq"].dout()
+
+    # def init(self):
+    #     for stage in self.stage_map.values():
+    #         stage.init()
+    #         stage.verbose(1)
+
+    def load(self, path):
+        raise Exception("hi.")
+        self.index = faiss.read_index(path)
+        self.verbose(1)
+    
+    def verbose(self, v):
+        [ s.verbose(v) for s in self.stage_map.values() ]
+        # raise Exception("hi.")
+        # faiss.ParameterSpace().set_index_parameter(self.index, "verbose", v) # 1)
+        # # index.verbose = True # ... maybe?
+
+    def to_gpu(self):
+
+        # ~~~~~~~~ move ~~~~~~~~
+        index_ivf = self.stage_map["ivf"]
+        d = index_ivf.din()
+        clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(d))
+        index_ivf.clustering_index = clustering_index
+
+        # ~~~~~~~~ debug ~~~~~~~~
+        # pax({
+        #     "index" : self,
+        #     "index_ivf" : index_ivf,
+        # })
+
+        # ~~~~~~~~ return ~~~~~~~~
+        # return index
+
+    def train(self, input_data, dir_path, timer):
+
+        # >>>
+        # import numpy as np
+
+        # stage = self.stage_map["ivf"]
+        # inp = np.random.rand(len(data), stage.din()).astype("f4")
+        # pax({"inp": inp})
+        # out = stage.train(inp)
+
+        # pax({
+        #     "inp" : inp,
+        #     "out" : out,
+        # })
+        # +++
+        # import numpy as np
+
+        # stage = self.stage_map["pqs"]
+        # data_map_0 = {
+        #     "data" : np.random.rand(len(data), stage.din()).astype("f4"),
+        #     "centroid_ids" :
+        #     np.random.randint(self.args.nlist, size = (len(data), 1)),
+        # }
+
+        # stage_dirname = os.path.join(dirname, "pqs")
+        # mkdir(stage_dirname)
+        # # raise Exception("hi.")
+        # stage.train(data_map_0, stage_dirname, timer)
+        # stage.add(data_map_0, stage_dirname, timer)
+
+        # pax({
+        #     "data_map_0" : data_map_0,
+        # })
+        # <<<
+
+        input_data_path = utils.save_data(
+            {"data": input_data},
+            dir_path,
+            "input.hdf5",
+        )
+
+        # pax({"input_data_path": input_data_path})
+
+        # data_map = {"data": data}
+        data_path = input_data_path
+
+        for key, stage in self.stage_map.items():
+
+            timer.push(key)
+
+            sub_dir_path = utils.make_sub_dir(dir_path, key)
+
+            data_path = stage.train(data_path, sub_dir_path, timer)
+
+            timer.pop()
+
+            # if key == "pqs":
+            #     timer.print()
+
+        # pax({"data_map": data_map});
+
+    def add(self, data, dirname, timer):
+        raise Exception("hi.")
+        self.index.add(data)
+
+    def save(self, path):
+        raise Exception("hi.")
+        faiss.write_index(self.index, path)
+
+# eof

@@ -1,0 +1,5 @@
+srun: pyxis: skipping duplicate mount entry: /home/lmcafee /home/lmcafee x-create=auto,rbind,rw
+pyxis: importing docker image ...
+slurmstepd: error: *** STEP 472907.0 ON rno1-m02-c07-dgx2h-037 CANCELLED AT 2022-06-15T14:35:38 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 472907 ON rno1-m02-c07-dgx2h-037 CANCELLED AT 2022-06-15T14:35:38 DUE TO TIME LIMIT ***

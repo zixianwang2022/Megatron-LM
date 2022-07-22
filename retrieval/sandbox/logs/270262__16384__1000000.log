@@ -1,0 +1,187 @@
+0: pyxis: importing docker image ...
+0: /workspace
+0: /home/lmcafee/src/megatrons/megatron-lm-boxin
+0: Collecting package metadata (current_repodata.json): ...working... done
+0: Solving environment: ...working... done
+0: 
+0: ## Package Plan ##
+0: 
+0:   environment location: /opt/conda
+0: 
+0:   added / updated specs:
+0:     - faiss-gpu
+0: 
+0: 
+0: The following packages will be downloaded:
+0: 
+0:     package                    |            build
+0:     ---------------------------|-----------------
+0:     ca-certificates-2022.6.15  |       ha878542_0         149 KB  conda-forge
+0:     cudatoolkit-11.7.0         |      hd8887f6_10       831.6 MB  conda-forge
+0:     faiss-1.7.2                |py38cuda112h5d0fea0_0_cuda         2.6 MB  conda-forge
+0:     faiss-gpu-1.7.2            |       h788eb59_0          14 KB  conda-forge
+0:     libfaiss-1.7.2             |cuda112hc9ed507_0_cuda        97.2 MB  conda-forge
+0:     libfaiss-avx2-1.7.2        |cuda112h1234567_0_cuda        97.2 MB  conda-forge
+0:     libgcc-ng-12.1.0           |      h8d9b700_16         940 KB  conda-forge
+0:     openssl-1.1.1q             |       h166bdaf_0         2.1 MB  conda-forge
+0:     readline-8.1.2             |       h0f457ee_0         291 KB  conda-forge
+0:     ------------------------------------------------------------
+0:                                            Total:        1.01 GB
+0: 
+0: The following NEW packages will be INSTALLED:
+0: 
+0:   cudatoolkit        conda-forge/linux-64::cudatoolkit-11.7.0-hd8887f6_10
+0:   faiss              conda-forge/linux-64::faiss-1.7.2-py38cuda112h5d0fea0_0_cuda
+0:   faiss-gpu          conda-forge/linux-64::faiss-gpu-1.7.2-h788eb59_0
+0:   libfaiss           conda-forge/linux-64::libfaiss-1.7.2-cuda112hc9ed507_0_cuda
+0:   libfaiss-avx2      conda-forge/linux-64::libfaiss-avx2-1.7.2-cuda112h1234567_0_cuda
+0: 
+0: The following packages will be REMOVED:
+0: 
+0:   libgomp-11.2.0-h1d223b6_14
+0: 
+0: The following packages will be UPDATED:
+0: 
+0:   ca-certificates                      2021.10.8-ha878542_0 --> 2022.6.15-ha878542_0
+0:   libgcc-ng                              11.2.0-h1d223b6_14 --> 12.1.0-h8d9b700_16
+0:   openssl                                 1.1.1n-h166bdaf_0 --> 1.1.1q-h166bdaf_0
+0:   readline                                   8.1-h46c0cb4_0 --> 8.1.2-h0f457ee_0
+0: 
+0: 
+0: 
+0: Downloading and Extracting Packages
+0: libfaiss-1.7.2       | 97.2 MB   |            |   0% libfaiss-1.7.2       | 97.2 MB   |            |   0% libfaiss-1.7.2       | 97.2 MB   |            |   0% libfaiss-1.7.2       | 97.2 MB   | 4          |   4% libfaiss-1.7.2       | 97.2 MB   | 8          |   9% libfaiss-1.7.2       | 97.2 MB   | #4         |  14% libfaiss-1.7.2       | 97.2 MB   | #8         |  19% libfaiss-1.7.2       | 97.2 MB   | ##4        |  24% libfaiss-1.7.2       | 97.2 MB   | ##9        |  29% libfaiss-1.7.2       | 97.2 MB   | ###3       |  34% libfaiss-1.7.2       | 97.2 MB   | ###8       |  39% libfaiss-1.7.2       | 97.2 MB   | ####4      |  45% libfaiss-1.7.2       | 97.2 MB   | ####9      |  50% libfaiss-1.7.2       | 97.2 MB   | #####4     |  55% libfaiss-1.7.2       | 97.2 MB   | ######1    |  61% libfaiss-1.7.2       | 97.2 MB   | ######6    |  67% libfaiss-1.7.2       | 97.2 MB   | #######2   |  73% libfaiss-1.7.2       | 97.2 MB   | #######9   |  79% libfaiss-1.7.2       | 97.2 MB   | ########5  |  85
+0: % libfaiss-1.7.2       | 97.2 MB   | #########1 |  91% libfaiss-1.7.2       | 97.2 MB   | #########7 |  97% libfaiss-1.7.2       | 97.2 MB   | ########## | 100% 
+0: openssl-1.1.1q       | 2.1 MB    |            |   0% openssl-1.1.1q       | 2.1 MB    | #######2   |  72% openssl-1.1.1q       | 2.1 MB    | ########## | 100% 
+0: libfaiss-avx2-1.7.2  | 97.2 MB   |            |   0% libfaiss-avx2-1.7.2  | 97.2 MB   |            |   1% libfaiss-avx2-1.7.2  | 97.2 MB   | 5          |   5% libfaiss-avx2-1.7.2  | 97.2 MB   | 9          |  10% libfaiss-avx2-1.7.2  | 97.2 MB   | #4         |  15% libfaiss-avx2-1.7.2  | 97.2 MB   | #9         |  19% libfaiss-avx2-1.7.2  | 97.2 MB   | ##3        |  23% libfaiss-avx2-1.7.2  | 97.2 MB   | ##6        |  27% libfaiss-avx2-1.7.2  | 97.2 MB   | ###3       |  33% libfaiss-avx2-1.7.2  | 97.2 MB   | ###8       |  38% libfaiss-avx2-1.7.2  | 97.2 MB   | ####3      |  43% libfaiss-avx2-1.7.2  | 97.2 MB   | ####8      |  49% libfaiss-avx2-1.7.2  | 97.2 MB   | #####4     |  54% libfaiss-avx2-1.7.2  | 97.2 MB   | ######     |  60% libfaiss-avx2-1.7.2  | 97.2 MB   | ######6    |  67% libfaiss-avx2-1.7.2  | 97.2 MB   | #######2   |  73% libfaiss-avx2-1.7.2  | 97.2 MB   | #######8   |  79% libfaiss-avx2-1.7.2  | 97.2 MB   | ########4  |  85% libfaiss-avx2-1.7.2  | 97.2 MB   | #########  |  91
+0: % libfaiss-avx2-1.7.2  | 97.2 MB   | #########6 |  97% libfaiss-avx2-1.7.2  | 97.2 MB   | ########## | 100% 
+0: ca-certificates-2022 | 149 KB    |            |   0% ca-certificates-2022 | 149 KB    | ########## | 100% 
+0: libgcc-ng-12.1.0     | 940 KB    |            |   0% libgcc-ng-12.1.0     | 940 KB    | ########## | 100% libgcc-ng-12.1.0     | 940 KB    | ########## | 100% 
+0: faiss-1.7.2          | 2.6 MB    |            |   0% faiss-1.7.2          | 2.6 MB    | ########## | 100% faiss-1.7.2          | 2.6 MB    | ########## | 100% 
+0: faiss-gpu-1.7.2      | 14 KB     |            |   0% faiss-gpu-1.7.2      | 14 KB     | ########## | 100% 
+0: readline-8.1.2       | 291 KB    |            |   0% readline-8.1.2       | 291 KB    | ########## | 100% 
+0: cudatoolkit-11.7.0   | 831.6 MB  |            |   0% cudatoolkit-11.7.0   | 831.6 MB  |            |   0% cudatoolkit-11.7.0   | 831.6 MB  |            |   1% cudatoolkit-11.7.0   | 831.6 MB  | 1          |   1% cudatoolkit-11.7.0   | 831.6 MB  | 2          |   2% cudatoolkit-11.7.0   | 831.6 MB  | 2          |   3% cudatoolkit-11.7.0   | 831.6 MB  | 3          |   4% cudatoolkit-11.7.0   | 831.6 MB  | 4          |   4% cudatoolkit-11.7.0   | 831.6 MB  | 5          |   5% cudatoolkit-11.7.0   | 831.6 MB  | 5          |   6% cudatoolkit-11.7.0   | 831.6 MB  | 6          |   6% cudatoolkit-11.7.0   | 831.6 MB  | 7          |   7% cudatoolkit-11.7.0   | 831.6 MB  | 7          |   8% cudatoolkit-11.7.0   | 831.6 MB  | 8          |   9% cudatoolkit-11.7.0   | 831.6 MB  | 9          |   9% cudatoolkit-11.7.0   | 831.6 MB  | 9          |  10% cudatoolkit-11.7.0   | 831.6 MB  | #          |  11% cudatoolkit-11.7.0   | 831.6 MB  | #1         |  11% cudatoolkit-11.7.0   | 831.6 MB  | #2         |  12
+0: % cudatoolkit-11.7.0   | 831.6 MB  | #2         |  13% cudatoolkit-11.7.0   | 831.6 MB  | #3         |  13% cudatoolkit-11.7.0   | 831.6 MB  | #4         |  14% cudatoolkit-11.7.0   | 831.6 MB  | #4         |  15% cudatoolkit-11.7.0   | 831.6 MB  | #5         |  15% cudatoolkit-11.7.0   | 831.6 MB  | #6         |  16% cudatoolkit-11.7.0   | 831.6 MB  | #6         |  17% cudatoolkit-11.7.0   | 831.6 MB  | #7         |  17% cudatoolkit-11.7.0   | 831.6 MB  | #8         |  18% cudatoolkit-11.7.0   | 831.6 MB  | #8         |  19% cudatoolkit-11.7.0   | 831.6 MB  | #9         |  19% cudatoolkit-11.7.0   | 831.6 MB  | ##         |  20% cudatoolkit-11.7.0   | 831.6 MB  | ##         |  21% cudatoolkit-11.7.0   | 831.6 MB  | ##1        |  21% cudatoolkit-11.7.0   | 831.6 MB  | ##2        |  22% cudatoolkit-11.7.0   | 831.6 MB  | ##2        |  23% cudatoolkit-11.7.0   | 831.6 MB  | ##3        |  23% cudatoolkit-11.7.0   | 831.6 MB  | ##4        |  24% cudatoolkit-11.7.0   | 831.6 MB  | ##4        |  
+0: 25% cudatoolkit-11.7.0   | 831.6 MB  | ##5        |  25% cudatoolkit-11.7.0   | 831.6 MB  | ##6        |  26% cudatoolkit-11.7.0   | 831.6 MB  | ##6        |  27% cudatoolkit-11.7.0   | 831.6 MB  | ##7        |  27% cudatoolkit-11.7.0   | 831.6 MB  | ##8        |  28% cudatoolkit-11.7.0   | 831.6 MB  | ##8        |  29% cudatoolkit-11.7.0   | 831.6 MB  | ##9        |  30% cudatoolkit-11.7.0   | 831.6 MB  | ###        |  30% cudatoolkit-11.7.0   | 831.6 MB  | ###        |  31% cudatoolkit-11.7.0   | 831.6 MB  | ###1       |  32% cudatoolkit-11.7.0   | 831.6 MB  | ###2       |  32% cudatoolkit-11.7.0   | 831.6 MB  | ###2       |  33% cudatoolkit-11.7.0   | 831.6 MB  | ###3       |  33% cudatoolkit-11.7.0   | 831.6 MB  | ###4       |  34% cudatoolkit-11.7.0   | 831.6 MB  | ###4       |  35% cudatoolkit-11.7.0   | 831.6 MB  | ###5       |  35% cudatoolkit-11.7.0   | 831.6 MB  | ###6       |  36% cudatoolkit-11.7.0   | 831.6 MB  | ###6       |  37% cudatoolkit-11.7.0   | 831.6 MB  | ###7       |
+0:   37% cudatoolkit-11.7.0   | 831.6 MB  | ###8       |  38% cudatoolkit-11.7.0   | 831.6 MB  | ###8       |  39% cudatoolkit-11.7.0   | 831.6 MB  | ###9       |  39% cudatoolkit-11.7.0   | 831.6 MB  | ####       |  40% cudatoolkit-11.7.0   | 831.6 MB  | ####       |  41% cudatoolkit-11.7.0   | 831.6 MB  | ####1      |  41% cudatoolkit-11.7.0   | 831.6 MB  | ####2      |  42% cudatoolkit-11.7.0   | 831.6 MB  | ####2      |  43% cudatoolkit-11.7.0   | 831.6 MB  | ####3      |  44% cudatoolkit-11.7.0   | 831.6 MB  | ####4      |  44% cudatoolkit-11.7.0   | 831.6 MB  | ####5      |  45% cudatoolkit-11.7.0   | 831.6 MB  | ####5      |  46% cudatoolkit-11.7.0   | 831.6 MB  | ####6      |  47% cudatoolkit-11.7.0   | 831.6 MB  | ####7      |  47% cudatoolkit-11.7.0   | 831.6 MB  | ####8      |  48% cudatoolkit-11.7.0   | 831.6 MB  | ####8      |  49% cudatoolkit-11.7.0   | 831.6 MB  | ####9      |  49% cudatoolkit-11.7.0   | 831.6 MB  | #####      |  50% cudatoolkit-11.7.0   | 831.6 MB  | #####     
+0:  |  51% cudatoolkit-11.7.0   | 831.6 MB  | #####1     |  51% cudatoolkit-11.7.0   | 831.6 MB  | #####1     |  52% cudatoolkit-11.7.0   | 831.6 MB  | #####2     |  53% cudatoolkit-11.7.0   | 831.6 MB  | #####3     |  53% cudatoolkit-11.7.0   | 831.6 MB  | #####3     |  54% cudatoolkit-11.7.0   | 831.6 MB  | #####4     |  54% cudatoolkit-11.7.0   | 831.6 MB  | #####4     |  55% cudatoolkit-11.7.0   | 831.6 MB  | #####5     |  56% cudatoolkit-11.7.0   | 831.6 MB  | #####6     |  56% cudatoolkit-11.7.0   | 831.6 MB  | #####6     |  57% cudatoolkit-11.7.0   | 831.6 MB  | #####7     |  57% cudatoolkit-11.7.0   | 831.6 MB  | #####8     |  58% cudatoolkit-11.7.0   | 831.6 MB  | #####8     |  59% cudatoolkit-11.7.0   | 831.6 MB  | #####9     |  59% cudatoolkit-11.7.0   | 831.6 MB  | #####9     |  60% cudatoolkit-11.7.0   | 831.6 MB  | ######     |  60% cudatoolkit-11.7.0   | 831.6 MB  | ######1    |  61% cudatoolkit-11.7.0   | 831.6 MB  | ######1    |  62% cudatoolkit-11.7.0   | 831.6 MB  | ######2 
+0:    |  62% cudatoolkit-11.7.0   | 831.6 MB  | ######2    |  63% cudatoolkit-11.7.0   | 831.6 MB  | ######3    |  63% cudatoolkit-11.7.0   | 831.6 MB  | ######3    |  64% cudatoolkit-11.7.0   | 831.6 MB  | ######4    |  64% cudatoolkit-11.7.0   | 831.6 MB  | ######4    |  65% cudatoolkit-11.7.0   | 831.6 MB  | ######5    |  65% cudatoolkit-11.7.0   | 831.6 MB  | ######6    |  66% cudatoolkit-11.7.0   | 831.6 MB  | ######6    |  67% cudatoolkit-11.7.0   | 831.6 MB  | ######7    |  67% cudatoolkit-11.7.0   | 831.6 MB  | ######7    |  68% cudatoolkit-11.7.0   | 831.6 MB  | ######8    |  68% cudatoolkit-11.7.0   | 831.6 MB  | ######9    |  69% cudatoolkit-11.7.0   | 831.6 MB  | ######9    |  70% cudatoolkit-11.7.0   | 831.6 MB  | #######    |  70% cudatoolkit-11.7.0   | 831.6 MB  | #######    |  71% cudatoolkit-11.7.0   | 831.6 MB  | #######1   |  71% cudatoolkit-11.7.0   | 831.6 MB  | #######1   |  71% cudatoolkit-11.7.0   | 831.6 MB  | #######1   |  72% cudatoolkit-11.7.0   | 831.6 MB  | ######
+0: #2   |  72% cudatoolkit-11.7.0   | 831.6 MB  | #######3   |  73% cudatoolkit-11.7.0   | 831.6 MB  | #######3   |  74% cudatoolkit-11.7.0   | 831.6 MB  | #######4   |  74% cudatoolkit-11.7.0   | 831.6 MB  | #######5   |  75% cudatoolkit-11.7.0   | 831.6 MB  | #######5   |  76% cudatoolkit-11.7.0   | 831.6 MB  | #######6   |  76% cudatoolkit-11.7.0   | 831.6 MB  | #######6   |  77% cudatoolkit-11.7.0   | 831.6 MB  | #######7   |  77% cudatoolkit-11.7.0   | 831.6 MB  | #######7   |  78% cudatoolkit-11.7.0   | 831.6 MB  | #######8   |  78% cudatoolkit-11.7.0   | 831.6 MB  | #######8   |  79% cudatoolkit-11.7.0   | 831.6 MB  | #######9   |  79% cudatoolkit-11.7.0   | 831.6 MB  | #######9   |  80% cudatoolkit-11.7.0   | 831.6 MB  | ########   |  81% cudatoolkit-11.7.0   | 831.6 MB  | ########1  |  81% cudatoolkit-11.7.0   | 831.6 MB  | ########1  |  82% cudatoolkit-11.7.0   | 831.6 MB  | ########2  |  82% cudatoolkit-11.7.0   | 831.6 MB  | ########2  |  83% cudatoolkit-11.7.0   | 831.6 MB  | ####
+0: ####3  |  83% cudatoolkit-11.7.0   | 831.6 MB  | ########3  |  84% cudatoolkit-11.7.0   | 831.6 MB  | ########4  |  85% cudatoolkit-11.7.0   | 831.6 MB  | ########5  |  85% cudatoolkit-11.7.0   | 831.6 MB  | ########5  |  86% cudatoolkit-11.7.0   | 831.6 MB  | ########6  |  87% cudatoolkit-11.7.0   | 831.6 MB  | ########7  |  87% cudatoolkit-11.7.0   | 831.6 MB  | ########7  |  88% cudatoolkit-11.7.0   | 831.6 MB  | ########8  |  88% cudatoolkit-11.7.0   | 831.6 MB  | ########9  |  89% cudatoolkit-11.7.0   | 831.6 MB  | ########9  |  90% cudatoolkit-11.7.0   | 831.6 MB  | #########  |  90% cudatoolkit-11.7.0   | 831.6 MB  | #########  |  91% cudatoolkit-11.7.0   | 831.6 MB  | #########1 |  92% cudatoolkit-11.7.0   | 831.6 MB  | #########2 |  92% cudatoolkit-11.7.0   | 831.6 MB  | #########2 |  93% cudatoolkit-11.7.0   | 831.6 MB  | #########3 |  94% cudatoolkit-11.7.0   | 831.6 MB  | #########4 |  94% cudatoolkit-11.7.0   | 831.6 MB  | #########5 |  95% cudatoolkit-11.7.0   | 831.6 MB  | ##
+0: #######5 |  96% cudatoolkit-11.7.0   | 831.6 MB  | #########6 |  96% cudatoolkit-11.7.0   | 831.6 MB  | #########7 |  97% cudatoolkit-11.7.0   | 831.6 MB  | #########7 |  98% cudatoolkit-11.7.0   | 831.6 MB  | #########8 |  99% cudatoolkit-11.7.0   | 831.6 MB  | #########9 |  99% cudatoolkit-11.7.0   | 831.6 MB  | #########9 | 100% cudatoolkit-11.7.0   | 831.6 MB  | ########## | 100% 
+0: Preparing transaction: ...working... done
+0: Verifying transaction: ...working... done
+0: Executing transaction: ...working... By downloading and using the CUDA Toolkit conda packages, you accept the terms and conditions of the CUDA End User License Agreement (EULA): https://docs.nvidia.com/cuda/eula/index.html
+0: 
+0: done
+0: 
+0: The environment is inconsistent, please check the package plan carefully
+0: The following packages are causing the inconsistency:
+0: 
+0:   - conda-forge/noarch::traitlets==5.1.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::wasabi==0.9.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::py-lief==0.11.5=py38h709712a_1
+0:   - conda-forge/noarch::smart_open==5.2.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::typer==0.4.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::setuptools==59.5.0=py38h578d9bd_0
+0:   - conda-forge/noarch::executing==0.8.3=pyhd8ed1ab_0
+0:   - conda-forge/noarch::idna==3.3=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::pycosat==0.6.3=py38h0a891b7_1010
+0:   - conda-forge/linux-64::llvmlite==0.36.0=py38h4630a5e_0
+0:   - conda-forge/linux-64::pysocks==1.7.1=py38h578d9bd_5
+0:   - conda-forge/noarch::typing-extensions==4.1.1=hd8ed1ab_0
+0:   - conda-forge/linux-64::murmurhash==1.0.6=py38hfa26641_3
+0:   - conda-forge/noarch::six==1.16.0=pyh6c4a22f_0
+0:   - conda-forge/linux-64::pyyaml==6.0=py38h0a891b7_4
+0:   - conda-forge/linux-64::conda-build==3.21.8=py38h578d9bd_0
+0:   - conda-forge/linux-64::cython-blis==0.7.7=py38h71d37f0_1
+0:   - conda-forge/linux-64::chardet==4.0.0=py38h578d9bd_3
+0:   - conda-forge/linux-64::psutil==5.9.0=py38h0a891b7_1
+0:   - conda-forge/linux-64::ipython==8.2.0=py38h578d9bd_0
+0:   - conda-forge/linux-64::numba==0.53.1=py38h8b71fd7_1
+0:   - conda-forge/noarch::backports==1.0=py_2
+0:   - conda-forge/noarch::soupsieve==2.3.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::brotlipy==0.7.0=py38h0a891b7_1004
+0:   - conda-forge/noarch::jinja2==3.1.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::charset-normalizer==2.0.12=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::click==8.0.4=py38h578d9bd_0
+0:   - conda-forge/linux-64::cffi==1.15.0=py38h3931269_0
+0:   - conda-forge/noarch::dataclasses==0.8=pyhc8e2a94_3
+0:   - conda-forge/noarch::decorator==5.1.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::pathy==0.6.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::cymem==2.0.6=py38hfa26641_3
+0:   - conda-forge/noarch::pexpect==4.8.0=pyh9f0ad1d_2
+0:   - conda-forge/noarch::beautifulsoup4==4.11.1=pyha770c72_0
+0:   - conda-forge/noarch::langcodes==3.3.0=pyhd8ed1ab_0
+0:   - conda-forge/noarch::backports.functools_lru_cache==1.6.4=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::sqlite==3.37.1=h4ff8645_0
+0:   - conda-forge/noarch::pytz==2022.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::matplotlib-inline==0.1.3=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::preshed==3.0.6=py38hfa26641_2
+0:   - conda-forge/noarch::spacy-loggers==1.0.2=pyhd8ed1ab_0
+0:   - conda-forge/noarch::pyparsing==3.0.8=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::numpy==1.22.3=py38h1d589f8_2
+0:   - conda-forge/linux-64::conda-package-handling==1.8.1=py38h0a891b7_1
+0:   - conda-forge/linux-64::cryptography==36.0.2=py38h2b5fc30_1
+0:   - conda-forge/noarch::pygments==2.11.2=pyhd8ed1ab_0
+0:   - conda-forge/noarch::stack_data==0.2.0=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::python_abi==3.8=2_cp38
+0:   - conda-forge/noarch::asttokens==2.0.5=pyhd8ed1ab_0
+0:   - conda-forge/noarch::pyopenssl==22.0.0=pyhd8ed1ab_0
+0:   - conda-forge/noarch::backcall==0.2.0=pyh9f0ad1d_0
+0:   - conda-forge/noarch::wcwidth==0.2.5=pyh9f0ad1d_2
+0:   - conda-forge/linux-64::scipy==1.6.3=py38h7b17777_0
+0:   - conda-forge/noarch::parso==0.8.3=pyhd8ed1ab_0
+0:   - conda-forge/noarch::typing_extensions==4.1.1=pyha770c72_0
+0:   - conda-forge/noarch::pip==21.2.4=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::ruamel_yaml==0.15.80=py38h497a2fe_1006
+0:   - conda-forge/noarch::wheel==0.37.1=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::python==3.8.13=h582c2e5_0_cpython
+0:   - conda-forge/noarch::pickleshare==0.7.5=py_1003
+0:   - conda-forge/linux-64::markupsafe==2.1.1=py38h0a891b7_1
+0:   - conda-forge/noarch::spacy-legacy==3.0.9=pyhd8ed1ab_0
+0:   - conda-forge/noarch::tqdm==4.63.0=pyhd8ed1ab_0
+0:   - conda-forge/noarch::ptyprocess==0.7.0=pyhd3deb0d_0
+0:   - conda-forge/noarch::prompt-toolkit==3.0.29=pyha770c72_0
+0:   - conda-forge/linux-64::mock==4.0.3=py38h578d9bd_3
+0:   - conda-forge/linux-64::python-libarchive-c==4.0=py38h578d9bd_1
+0:   - conda-forge/noarch::urllib3==1.26.9=pyhd8ed1ab_0
+0:   - conda-forge/noarch::pycparser==2.21=pyhd8ed1ab_0
+0:   - conda-forge/noarch::requests==2.27.1=pyhd8ed1ab_0
+0:   - conda-forge/noarch::glob2==0.7=py_0
+0:   - conda-forge/noarch::shellingham==1.4.0=pyh44b312d_0
+0:   - conda-forge/linux-64::jedi==0.18.1=py38h578d9bd_1
+0:   - conda-forge/linux-64::srsly==2.4.3=py38hfa26641_1
+0:   - conda-forge/linux-64::catalogue==2.0.6=py38h578d9bd_2
+0:   - conda-forge/linux-64::conda==4.12.0=py38h578d9bd_0
+0:   - conda-forge/linux-64::certifi==2021.10.8=py38h578d9bd_2
+0:   - conda-forge/noarch::pure_eval==0.2.2=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::thinc==8.0.15=py38h514daf8_0
+0:   - conda-forge/noarch::filelock==3.6.0=pyhd8ed1ab_0
+0:   - conda-forge/linux-64::pydantic==1.8.2=py38h497a2fe_2
+0:   - conda-forge/noarch::pkginfo==1.8.2=pyhd8ed1ab_0
+0:   - conda-forge/noarch::packaging==21.3=pyhd8ed1ab_0
+0:   - conda-forge/noarch::colorama==0.4.4=pyh9f0ad1d_0
+0:   - conda-forge/linux-64::spacy==3.2.4=py38h514daf8_0
+0:   - conda-forge/linux-64::readline==8.1=h46c0cb4_0
+0: 
+0: 
+0: ==> WARNING: A newer version of conda exists. <==
+0:   current version: 4.12.0
+0:   latest version: 4.13.0
+0: 
+0: Please update conda by running
+0: 
+0:     $ conda update -n base conda
+0: 
+0: 
+0: Traceback (most recent call last):
+0:   File "/opt/conda/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+0:     return _run_code(code, main_globals, None,
+0:   File "/opt/conda/lib/python3.8/runpy.py", line 87, in _run_code
+0:     exec(code, run_globals)
+0:   File "/home/lmcafee/src/megatrons/megatron-lm-boxin/lawrence/sandbox/test_cluster_multinode.py", line 10, in <module>
+0:     from lawrence.utils import Timer
+0:   File "/home/lmcafee/src/megatrons/megatron-lm-boxin/lawrence/utils/__init__.py", line 5, in <module>
+0:     import h5py
+0: ModuleNotFoundError: No module named 'h5py'

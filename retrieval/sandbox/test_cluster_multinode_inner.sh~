@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# ~~~~~~~~ debug ~~~~~~~~
+# ngpus=$(nvidia-smi --list-gpus | wc -l)
+# echo "... ngpus = $ngpus ..."
+# exit 0
+
+# ~~~~~~~~ batch mode ~~~~~~~~
+if [ "0" -eq "1" ]; then
+
+    if [ "$#" -ne 1 ]; then
+        echo "illegal num args, $#."
+        exit 1
+    fi
+    cmd=$1
+
+# ~~~~~~~~ interactive mode ~~~~~~~~
+else
+
+    ncenters=1e3 # *1e4
+    ntrain=1e5 # *1e6
+    cmd="python -m lawrence.sandbox.test_cluster_multinode \
+                --ncenters ${ncenters} \
+                --ntrain ${ntrain} \
+                "
+
+fi
+
+# ~~~~~~~~ packages ~~~~~~~~
+if [ "0" -eq "1" ]; then
+    pip install h5py
+    conda install -c conda-forge -y faiss-gpu
+fi
+
+# ~~~~~~~~ eval ~~~~~~~~
+eval $cmd
+
+# eof

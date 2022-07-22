@@ -1,0 +1,5 @@
+# lawrence mcafee
+
+from .opq import OPQ
+
+# eof

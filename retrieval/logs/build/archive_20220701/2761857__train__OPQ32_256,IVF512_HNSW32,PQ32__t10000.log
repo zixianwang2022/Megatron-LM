@@ -1,0 +1,17 @@
+3: pyxis: importing docker image ...
+7: /workspace
+7: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin
+3: /workspace
+3: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin
+4: /workspace
+4: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin
+6: /workspace
+6: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin
+5: /workspace
+5: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin
+1: /workspace
+1: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin
+0: /workspace
+2: /workspace
+0: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin
+2: /bin/dash: 1: cd: can't cd to /home/lmcafee/src/megatrons/megatron-lm-boxin

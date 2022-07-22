@@ -1,0 +1,10 @@
+0: pyxis: importing docker image ...
+1: pyxis: importing docker image ...
+0: debug: SLURM_CPUS_ON_NODE = 96.
+0: debug: SLURM_CPUS_PER_TASK = .
+0: debug: SLURM_JOB_ID = 271112.
+0: debug: ngpus = 8.
+1: debug: SLURM_CPUS_ON_NODE = 96.
+1: debug: SLURM_CPUS_PER_TASK = .
+1: debug: SLURM_JOB_ID = 271112.
+1: debug: ngpus = 8.

@@ -1,0 +1,114 @@
+# lawrence mcafee
+
+# ~~~~~~~~ import ~~~~~~~~
+# import faiss
+import numpy as np
+import os
+
+from lutil import pax
+
+from lawrence.index import Index
+import lawrence.utils as utils
+
+from .pq import PQIndex
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# class PQsStage(Index):
+class PQsIndex(Index):
+
+    def __init__(self, args, d, stage_str):
+        super().__init__(args, d)
+    
+        # pax({"stage_str": stage_str})
+
+        assert stage_str.startswith("PQ")
+        self.m = int(stage_str.replace("PQ", ""))
+
+        # pax({"args": self.args})
+
+        self.pqs = [ PQIndex(args, d, self.m) for _ in range(args.nlist) ]
+
+    def dout(self):
+        return self.m
+
+    def verbose(self, v):
+        [ pq.verbose(v) for pq in self.pqs ]
+
+    def train(self, input_data_path, dir_path, timer):
+
+        input_data_map = utils.load_data(input_data_path)
+        input_data = input_data_map["data"]
+        centroid_ids = input_data_map["centroid_ids"]
+
+        # empty_index_path = self.get_empty_index_path(dir_path)
+        # output_data_path = self.get_output_data_path(dir_path)
+
+        # pax({
+        #     "empty_index_path" : empty_index_path,
+        #     "input_data_path" : input_data_path,
+        #     "output_data_path" : output_data_path,
+        # })
+
+        # sub_output_data_paths = []
+        for centroid_id in range(self.args.nlist):
+
+            # timer.push(str(centroid_id))
+            timer.push("pq")
+
+            print(">> train pq %d / %d." % (centroid_id, self.args.nlist))
+            # time.sleep(1) # ... adds 4M seconds for full run
+
+            sub_dir_path = utils.make_sub_dir(dir_path, str(centroid_id))
+
+            sub_input_data_path = os.path.join(sub_dir_path, "input.hdf5")
+            if not os.path.isfile(sub_input_data_path):
+
+                timer.push("slice") # 'sub-data'
+
+                timer.push("get")
+                indexes = np.where(centroid_ids == centroid_id)
+                sub_input_data = input_data[indexes[0]]
+                # sub_data_map_0 = {"data": sub_data_0}
+                timer.pop()
+
+                timer.push("save")
+                utils.save_data({"data": sub_input_data}, sub_input_data_path)
+                timer.pop()
+
+                timer.pop()
+
+            timer.push("train")
+            # sub_output_data_path = self.pqs[centroid_id].train(
+            self.pqs[centroid_id].train(
+                sub_input_data_path,
+                sub_dir_path,
+                timer,
+            )
+            # sub_output_data_paths.append(sub_output_data_path)
+            timer.pop()
+
+            timer.pop()
+
+            # timer.print()
+        
+        # pax({"sub_output_data_paths": sub_output_data_paths})
+
+        # return sub_output_data_paths
+        return None
+
+    def add(self, data_map_0):
+
+        data = data_map_0["data"]
+        centroid_ids = data_map_0["centroid_ids"]
+
+        for centroid_id in range(self.args.nlist):
+
+            print(">> add pq %d / %d." % (centroid_id, self.args.nlist))
+
+            indexes = np.where(centroid_ids == centroid_id)
+            sub_data_0 = data[indexes[0]]
+            sub_data_map_0 = {"data": sub_data_0}
+
+            self.pqs[centroid_id].add(sub_data_map_0)
+
+# eof

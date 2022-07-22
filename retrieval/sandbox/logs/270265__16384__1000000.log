@@ -1,0 +1,4 @@
+0: pyxis: importing docker image ...
+0: /workspace
+0: /home/lmcafee/src/megatrons/megatron-lm-boxin
+0: lawrence/sandbox/test_cluster_multinode_inner.sh: line 4: echo... ngpus = 4 ...: command not found
