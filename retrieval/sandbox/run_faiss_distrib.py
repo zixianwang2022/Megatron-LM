@@ -191,7 +191,7 @@ def run_faiss_distrib_client(args, data, timer):
         [ node_keys[0], *node_keys ],
         connect_options = {"known_hosts" : None},
         # remote_python = "ls -alh",
-        remote_python = "bash src/megatrons/megatron-lm-boxin/lawrence/sandbox/login_container.sh",
+        remote_python = "bash src/megatrons/megatron-lm-retrieval-index-add/retrieval/sandbox/login_container.sh",
     )
     client = Client(cluster)
 

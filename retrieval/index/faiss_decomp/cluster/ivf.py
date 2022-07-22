@@ -7,9 +7,9 @@ import os
 
 from lutil import pax
 
-import lawrence.utils as utils
+import retrieval.utils as utils
 
-from lawrence.index import Index
+from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class IVFIndex(Index):

@@ -2,20 +2,27 @@
 
 # ~~~~~~~~ import ~~~~~~~~
 import argparse
+from datetime import timedelta
 import faiss
 import json
+import os
 import socket
+import torch
 
 from lutil import pax
 
-from lawrence.data import (
+# >>>
+# pax({"pythonpath": os.environ["PYTHONPATH"]})
+# <<<
+
+from retrieval.data import (
     clean_data,
     get_all_data_paths,
     get_train_add_data_paths,
 )
-from lawrence.index.factory import IndexFactory
-from lawrence.utils import Timer
-from lawrence.utils.get_index_paths import get_index_str, get_index_dirname
+from retrieval.index.factory import IndexFactory
+from retrieval.utils import Timer
+from retrieval.utils.get_index_paths import get_index_str, get_index_dirname
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def run_train_pipeline(args, timer):
@@ -141,6 +148,7 @@ if __name__ == "__main__":
                         choices = [ 0, 1 ])
     # parser.add_argument("--profile-stage-keys", default = None)
     parser.add_argument("--profile-stage-stop", default = None)
+    parser.add_argument("--local_rank", type = int, default = None)
     args = parser.parse_args()
 
     args.index_str = get_index_str(args)
@@ -160,10 +168,25 @@ if __name__ == "__main__":
     else:
         raise Exception("specialize for hostname '%s'." % hostname)
 
+
+    args.rank = int(os.getenv('RANK', '0'))
+    args.world_size = int(os.getenv("WORLD_SIZE", '1'))
+    assert torch.cuda.is_available(), "index requires cuda."
+    torch.distributed.init_process_group(
+        backend = "nccl",
+        world_size = args.world_size,
+        rank = args.rank,
+        timeout = timedelta(minutes = 10),
+    )
+
+    torch.distributed.barrier()
+
     # pax({
     #     "hostname" : hostname,
     #     "args" : args,
     #     "ngpus" : faiss.get_num_gpus(),
+    #     "device_count" : torch.cuda.device_count(),
+    #     "rank" : torch.distributed.get_rank(),
     # })
 
     # ~~~~~~~~ pipeline ~~~~~~~~

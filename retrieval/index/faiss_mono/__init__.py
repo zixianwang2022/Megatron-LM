@@ -5,7 +5,7 @@ import faiss
 
 from lutil import pax
 
-from lawrence.index import Index
+from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class FaissMonoIndex(Index):

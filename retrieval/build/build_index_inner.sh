@@ -12,11 +12,12 @@ if [ "0" -eq "1" ]; then
    cmd=$1
 
 else
+
     # >>>>>>>>>>>>>>>>>>>>>>>
     # [x] profile_stage_stop="data"
-    # profile_stage_stop="opq"
+    profile_stage_stop="opq"
     # profile_stage_stop="ivf"
-    profile_stage_stop="pqs"
+    # profile_stage_stop="pqs"
     # profile_stage_stop="[ignore]"
 
     # task="clean-data"
@@ -44,22 +45,46 @@ else
     index_ty=faiss-decomp
     # index_str="OPQ32_256,IVF${ncluster}_HNSW${hnsw},PQ32"
 
-    # --index-str ${index_str} \
-    cmd="python -m lawrence.build.build_index \
-                --task ${task} \
-                --data-ty ${data_ty} \
-                --ntrain ${ntrain} \
-                --nadd ${nadd} \
-                --ncluster ${ncluster} \
-                --hnsw-dim ${hnsw} \
-                --ivf-dim ${ivf_dim} \
-                --pq-dim ${pq_dim} \
-                --index-ty ${index_ty} \
-                --profile-stage-stop ${profile_stage_stop} \
-                --profile-single-encoder 0 \
-    "
-    # cmd="ls -alh"
-    # <<<<<<<<<<<<<<<<<<<<<<<
+    if [ "0" -eq "1" ]; then
+
+	# --index-str ${index_str} \
+        cmd="python -m lawrence.build.build_index \
+                    --task ${task} \
+                    --data-ty ${data_ty} \
+                    --ntrain ${ntrain} \
+                    --nadd ${nadd} \
+                    --ncluster ${ncluster} \
+                    --hnsw-dim ${hnsw} \
+                    --ivf-dim ${ivf_dim} \
+                    --pq-dim ${pq_dim} \
+                    --index-ty ${index_ty} \
+                    --profile-stage-stop ${profile_stage_stop} \
+                    --profile-single-encoder 0 \
+    		    "
+	# cmd="ls -alh"
+
+    else
+	PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
+	cmd="python -m torch.distributed.launch \
+    		    --nproc_per_node 8 \
+		    --nnodes 1 \
+                    --node_rank 0 \
+                    --master_addr localhost \
+                    --master_port 6000 \
+		    ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
+                    --task ${task} \
+                    --data-ty ${data_ty} \
+                    --ntrain ${ntrain} \
+                    --nadd ${nadd} \
+                    --ncluster ${ncluster} \
+                    --hnsw-dim ${hnsw} \
+                    --ivf-dim ${ivf_dim} \
+                    --pq-dim ${pq_dim} \
+                    --index-ty ${index_ty} \
+                    --profile-stage-stop ${profile_stage_stop} \
+                    --profile-single-encoder 0 \
+    		    "
+    fi
 
 fi
 

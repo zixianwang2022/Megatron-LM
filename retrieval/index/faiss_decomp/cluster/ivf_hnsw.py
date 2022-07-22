@@ -3,8 +3,8 @@
 # ~~~~~~~~ import ~~~~~~~~
 from lutil import pax
 
-from lawrence.index import Index
-import lawrence.utils as utils
+from retrieval.index import Index
+import retrieval.utils as utils
 
 from .hnsw import HNSWIndex
 from .ivf import IVFIndex

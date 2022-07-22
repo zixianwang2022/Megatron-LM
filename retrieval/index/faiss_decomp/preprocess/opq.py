@@ -8,9 +8,9 @@ import os
 
 from lutil import pax
 
-from lawrence import utils
-# from lawrence.data import load_data
-from lawrence.index import Index
+from retrieval import utils
+# from retrieval.data import load_data
+from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class OPQIndex(Index):

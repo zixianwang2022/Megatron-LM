@@ -10,8 +10,8 @@ import os
 
 from lutil import pax
 
-from lawrence import utils
-from lawrence.index import Index
+from retrieval import utils
+from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # class PQStage(Index):

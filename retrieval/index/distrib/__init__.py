@@ -1,7 +1,7 @@
 # lawrence mcafee
 
 # ~~~~~~~~ import ~~~~~~~~
-from lawrence.index import Index
+from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class DistribIndex(Index):

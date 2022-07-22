@@ -1,15 +1,8 @@
 # lawrence mcafee
 
 # ~~~~~~~~ import ~~~~~~~~
-# import faiss
-# import h5py
-# import os
-
-# from lutil import pax
-
-# from lawrence.data import load_data
-from lawrence.index import Index
-from lawrence import utils
+from retrieval.index import Index
+from retrieval import utils
 
 from .cluster import IVFHNSWIndex
 from .encode import PQsIndex

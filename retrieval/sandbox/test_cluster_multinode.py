@@ -7,7 +7,7 @@ import numpy as np
 
 from lutil import pax
 
-from lawrence.utils import Timer
+from retrieval.utils import Timer
 
 from .run_faiss_distrib import run_faiss_distrib
 
