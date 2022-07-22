@@ -4,8 +4,9 @@
 import faiss
 import numpy as np
 import os
+import torch
 
-from lutil import pax
+from lutil import pax, print_rank, print_seq
 
 import retrieval.utils as utils
 
@@ -27,6 +28,7 @@ class IVFIndex(Index):
 
     @classmethod
     def c_cpu_to_gpu(cls, ivf):
+        raise Exception("use 'current_device' only.")
         clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(ivf.d))
         ivf.clustering_index = clustering_index
 
@@ -68,78 +70,7 @@ class IVFIndex(Index):
         faiss.write_index(ivf, empty_index_path)
         timer.pop()
 
-    # def _forward(
-    #         self,
-    #         input_data_paths,
-    #         dir_path,
-    #         timer,
-    #         task,
-    # ):
-
-    #     empty_index_path = self.get_empty_index_path(dir_path)
-    #     # output_data_path = self.get_output_data_path(dir_path, "train")
-
-    #     all_output_data_paths, missing_output_data_path_map = \
-    #         self.get_missing_output_data_path_map(dir_path, task)
-
-    #     # pax({
-    #     #     "input_data_paths" : input_data_paths,
-    #     #     "all_output_data_paths" : all_output_data_paths,
-    #     #     "missing_output_data_path_map" : missing_output_data_path_map,
-    #     # })
-
-    #     if not missing_output_data_path_map:
-    #         return all_output_data_paths
-
-    #     timer.push("load-data")
-    #     inp = utils.load_data(input_data_paths, timer)["data"]
-    #     timer.pop()
-
-    #     timer.push("init")
-    #     ivf = faiss.read_index(empty_index_path)
-    #     self.c_verbose(ivf, True)
-    #     self.c_cpu_to_gpu(ivf)
-    #     timer.pop()
-
-    #     timer.push("forward-batches")
-    #     for batch_index, ((i0, i1), output_data_path) in \
-    #         enumerate(missing_output_data_path_map.items()):
-
-    #         sub_inp = inp[i0:i1]
-    #         ntrain = self.args.ntrain
-    #         print("foward batch [%d:%d] / %d." % (i0, i1, ntrain), flush = True)
-
-    #         # pax({"sub_inp": sub_inp})
-
-    #         timer.push("forward-batch")
-
-    #         timer.push("search")
-    #         sub_dists, sub_centroid_ids = ivf.quantizer.search(sub_inp, 1)
-    #         timer.pop()
-
-    #         # pax({"sub_centroid_ids": sub_centroid_ids})
-
-    #         timer.push("save-data")
-    #         sub_output_data_map = {
-    #             "data" : sub_inp,
-    #             "centroid_ids" : sub_centroid_ids,
-    #         }
-    #         if batch_index == 0:
-    #             timer.push("centroids")
-    #             centroids = ivf.quantizer.reconstruct_n(0, self.nlist)
-    #             sub_output_data_map["centroids"] = centroids
-    #             timer.pop()
-    #         utils.save_data(sub_output_data_map, output_data_path)
-    #         timer.pop()
-
-    #         timer.pop()
-
-    #     timer.pop()
-
-    #     # pax({ ... })
-
-    #     return all_output_data_paths
-    def _forward(
+    def _forward_centroids(
             self,
             input_data_paths,
             dir_path,
@@ -173,13 +104,19 @@ class IVFIndex(Index):
 
         timer = args[-1]
 
-        timer.push("train")
-        self._train(*args)
-        timer.pop()
+        torch.distributed.barrier()
 
-        timer.push("forward")
-        output_data_paths = self._forward(*args, "train")
-        timer.pop()
+        if torch.distributed.get_rank() == 0:
+
+            timer.push("train")
+            self._train(*args)
+            timer.pop()
+
+            timer.push("forward")
+            output_data_paths = self._forward_centroids(*args, "train")
+            timer.pop()
+
+        torch.distributed.barrier()
 
         # pax({"output_data_paths": output_data_paths})
 
@@ -373,11 +310,11 @@ class IVFIndex(Index):
             # })
 
             timer.push("forward-batch")
-            print("foward batch %d / %d. [ %d vecs ]" % (
+            print_rank("foward batch %d / %d. [ %d vecs ]" % (
                 output_index,
                 len(missing_output_data_path_map),
                 len(inp),
-            ), flush = True)
+            )) # , flush = True)
 
             timer.push("residual")
             # >>>

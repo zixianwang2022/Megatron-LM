@@ -15,10 +15,10 @@ else
 
     # >>>>>>>>>>>>>>>>>>>>>>>
     # [x] profile_stage_stop="data"
-    profile_stage_stop="opq"
+    # profile_stage_stop="opq"
     # profile_stage_stop="ivf"
-    # profile_stage_stop="pqs"
-    # profile_stage_stop="[ignore]"
+    profile_stage_stop="pqs"
+    # [x] profile_stage_stop="[ignore]"
 
     # task="clean-data"
     # task="split-data"

@@ -4,7 +4,7 @@
 from collections import defaultdict
 import time
 
-from lutil import pax
+from lutil import pax, print_rank
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Timer:
@@ -28,12 +28,12 @@ class Timer:
         #     m["time"] / m["count"],
         #     m["count"],
         # ), flush = True)
-        print("timer | '%s' ... [%d] single %.3f, total %.3f." % (
+        print_rank(0, "timer | '%s' ... [%d] single %.3f, total %.3f." % (
             p,
             m["count"],
             m["single"],
             m["total"],
-        ), flush = True)
+        )) # , flush = True)
 
     def get_total_time(self):
         return sum(
