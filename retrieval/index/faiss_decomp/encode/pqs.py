@@ -95,42 +95,42 @@ class PQsIndex(Index):
         # print_seq([ index_path ])
         return index_path
 
-    def write_partial_index(self, dir_path, pq, new_metas, timer):
+    # def write_partial_index(self, dir_path, pq, new_metas, timer):
 
-        # print_seq(new_metas)
+    #     # print_seq(new_metas)
 
-        # Batch, index paths.
-        meta_path, index_path, partial_exists = self.get_partial_paths(dir_path)
+    #     # Batch, index paths.
+    #     meta_path, index_path, partial_exists = self.get_partial_paths(dir_path)
 
-        # Existing, new batch ids.
-        if partial_exists:
-            raise Exception("existing batch ids.")
-            with open(meta_path, "r") as f:
-                existing_metas = json.load(f)
-            pax({"existing_metas": existing_metas})
-            os.remove(meta_path)
-            os.remove(index_path)
-        else:
-            existing_metas = []
+    #     # Existing, new batch ids.
+    #     if partial_exists:
+    #         raise Exception("existing batch ids.")
+    #         with open(meta_path, "r") as f:
+    #             existing_metas = json.load(f)
+    #         pax({"existing_metas": existing_metas})
+    #         os.remove(meta_path)
+    #         os.remove(index_path)
+    #     else:
+    #         existing_metas = []
 
-        # batch_ids = existing_batch_ids | new_batch_ids
-        # new_metas = [ {batch_id, vec_range} for m in new_metas ] # copy subset
-        existing_batch_ids = set(m["batch_id"] for m in existing_metas)
-        new_batch_ids = set(m["batch_id"] for m in new_metas)
-        assert not (existing_batch_ids & new_batch_ids), "no batch overlap."
+    #     # batch_ids = existing_batch_ids | new_batch_ids
+    #     # new_metas = [ {batch_id, vec_range} for m in new_metas ] # copy subset
+    #     existing_batch_ids = set(m["batch_id"] for m in existing_metas)
+    #     new_batch_ids = set(m["batch_id"] for m in new_metas)
+    #     assert not (existing_batch_ids & new_batch_ids), "no batch overlap."
 
-        # print_seq(list(new_batch_ids))
+    #     # print_seq(list(new_batch_ids))
 
-        # Write index, batch ids.
-        faiss.write_index(pq, index_path)
-        with open(meta_path, "w") as f:
-            json.dump(list(new_metas), f, indent = 4)
+    #     # Write index, batch ids.
+    #     faiss.write_index(pq, index_path)
+    #     with open(meta_path, "w") as f:
+    #         json.dump(list(new_metas), f, indent = 4)
 
-        # Debug.
-        # print_seq(added_items)
-        # print_seq([ batch_id_path, index_path ])
-        # print_seq([ existing_batch_ids, new_batch_ids ])
-        print_seq([ existing_metas, new_metas ])
+    #     # Debug.
+    #     # print_seq(added_items)
+    #     # print_seq([ batch_id_path, index_path ])
+    #     # print_seq([ existing_batch_ids, new_batch_ids ])
+    #     print_seq([ existing_metas, new_metas ])
 
     # def get_partial_path_pairs(self, dir_path):
 
@@ -277,7 +277,7 @@ class PQsIndex(Index):
             ))
 
             timer.push("init")
-            _pq = faiss.read_index(empty_index_path)
+            pq = faiss.read_index(empty_index_path)
             # pq = faiss.IndexIVFPQ(
             #     faiss.IndexFlat(self.args.ivf_dim),
             #     self.args.ivf_dim,
@@ -285,16 +285,16 @@ class PQsIndex(Index):
             #     self.args.pq_dim,
             #     self.args.pq_nbits,
             # )
-            pax(0, {
-                "_pq" : _pq,
-                # "pq" : pq,
-            })
+            # pax(0, {
+            #     "_pq" : _pq,
+            #     # "pq" : pq,
+            # })
             self.c_verbose(pq, True)
             timer.pop()
 
             timer.push("add")
-            # pq.add_with_ids(input_data, np.arange(*meta["vec_range"]))
-            pq.add(input_data)
+            pq.add_with_ids(input_data, np.arange(*meta["vec_range"]))
+            # pq.add(input_data)
             timer.pop()
 
             timer.push("write-partial")
@@ -312,23 +312,21 @@ class PQsIndex(Index):
 
         # timer.pop()
 
-    def merge_partial_indexes(self, dir_path, timer):
+    def merge_partial_indexes(self, input_data_paths, dir_path, timer):
         '''Merge partial indexes.
 
         Only run this method on rank 0.
         '''
 
-        raise Exception("ready to merge?")
-
         assert torch.distributed.get_rank() == 0
 
-        # Init full index.
+        # Index paths.
         empty_index_path = self.get_empty_index_path(dir_path)
         full_index_path = self.get_empty_index_path(dir_path)
-        full_index_pq = faiss.read_index(empty_index_path)
+        partial_index_paths = self.get_existing_partial_index_paths(dir_path)
 
-        # >>>
-        # pax({"args": self.args})
+        # Full index. (set full's PQ from empty's PQ)
+        empty_index = faiss.read_index(empty_index_path)
         full_index = faiss.IndexIVFPQ(
             faiss.IndexFlat(self.args.ivf_dim),
             self.args.ivf_dim,
@@ -336,38 +334,51 @@ class PQsIndex(Index):
             self.args.pq_dim,
             self.args.pq_nbits,
         )
+        full_index.pq = empty_index.pq
         
-        # full_index.invlists.add_entries()
-        pax({
-            "full_index" : full_index,
-            "full_index / invlists" : full_index.invlists,
-            "full_index / pq" : full_index.pq,
-            "full_index_pq" : full_index_pq,
-        })
-        # <<<
-
-        # Partial index paths.
-        partial_index_paths = self.get_existing_partial_index_paths(dir_path)
+        # Add partial indexes.
         for partial_index, partial_index_path in enumerate(partial_index_paths):
 
+            # Verify
+            partial_batch_id =int(partial_index_path.split("/")[-1].split("_")[1])
+            assert partial_index == partial_batch_id, "sanity check."
+
+            partial_cluster_id_data_path = \
+                input_data_paths[partial_index]["centroid_ids"]
+            f = h5py.File(partial_cluster_id_data_path, "r")
+            partial_cluster_ids = np.copy(f["centroid_ids"])
+            f.close()
+
+            pax({
+                "partial_index_path" : partial_index_path,
+                "partial_batch_id" : partial_batch_id,
+                "partial_cluster_id_data_path" : partial_cluster_id_data_path,
+                "partial_cluster_ids" : partial_cluster_ids,
+            })
+
             partial_index = faiss.read_index(partial_index_path)
-            partial_codes = np.reshape(
-                faiss.vector_to_array(partial_index.codes),
-                (partial_index.ntotal, -1),
-            )
+            partial_list_size = len(partial_cluster_ids)
+            partial_ids = partial_index.invlists.get_ids(0)
+            partial_codes = partial_index.invlists.get_codes(0)
+
+            # partial_codes = np.reshape(
+            #     faiss.vector_to_array(partial_index.codes),
+            #     (partial_index.ntotal, -1),
+            # )
             # partial_index.copy_subset_to()
             # full_index.add_entries()
             # full_index.add_codes()
-            full_index.add_core()
+            # full_index.add_core()
+            full_index.invlists.add_entries()
             # for i in range(32):
             #     full_index.codes.push_back(partial_index.codes.at(i))
 
             pax({
-                "partial_index / codes" : partial_codes,
+                # "partial_index / codes" : partial_codes,
                 "full_index" : full_index,
                 "partial_index" : partial_index,
-                "full_index / codes / size" : full_index.codes.size(),
-                "partial_index / codes / size" : partial_index.codes.size(),
+                # "full_index / codes / size" : full_index.codes.size(),
+                # "partial_index / codes / size" : partial_index.codes.size(),
             })
 
             id_map = partial_index.id_map
@@ -405,7 +416,7 @@ class PQsIndex(Index):
 
         if torch.distributed.get_rank() == 0:
             timer.push("merge-partials")
-            self.merge_partial_indexes(dir_path, timer)
+            self.merge_partial_indexes(input_data_paths, dir_path, timer)
             timer.pop()
 
         torch.distributed.barrier() # unnecessary?
