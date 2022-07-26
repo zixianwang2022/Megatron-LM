@@ -167,7 +167,7 @@ class OPQIndex(Index):
         torch.distributed.barrier()
 
         # pax({"output_data_paths": output_data_paths})
-        print_seq(output_data_paths)
+        # print_seq(output_data_paths)
 
         return output_data_paths
 

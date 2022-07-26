@@ -70,6 +70,9 @@ class IVFIndex(Index):
         faiss.write_index(ivf, empty_index_path)
         timer.pop()
 
+    def get_centroid_data_path(self, dir_path):
+        return self.get_output_data_path(dir_path, "train", "centroids")
+
     def _forward_centroids(
             self,
             input_data_paths,
@@ -79,7 +82,7 @@ class IVFIndex(Index):
     ):
 
         empty_index_path = self.get_empty_index_path(dir_path)
-        output_data_path = self.get_output_data_path(dir_path,"train","centroids")
+        output_data_path = self.get_centroid_data_path(dir_path)
 
         if not os.path.isfile(output_data_path):
 
@@ -100,27 +103,33 @@ class IVFIndex(Index):
 
         return [ output_data_path ]
 
-    def train(self, *args):
+    def train(self, input_data_paths, dir_path, timer):
 
-        timer = args[-1]
+        # timer = args[-1]
 
         torch.distributed.barrier()
 
         if torch.distributed.get_rank() == 0:
 
             timer.push("train")
-            self._train(*args)
+            self._train(input_data_paths, dir_path, timer)
             timer.pop()
 
             timer.push("forward")
-            output_data_paths = self._forward_centroids(*args, "train")
+            output_data_paths = self._forward_centroids(
+                input_data_paths,
+                dir_path,
+                timer,
+                "train",
+            )
             timer.pop()
 
         torch.distributed.barrier()
 
         # pax({"output_data_paths": output_data_paths})
 
-        return output_data_paths
+        # return output_data_paths
+        return [ self.get_centroid_data_path(dir_path) ]
 
     # def compute_residuals(
     #         self,
