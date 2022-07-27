@@ -49,7 +49,7 @@ class PQsIndex(Index):
             pq = faiss.IndexPQ(self.din(), self.m, self.nbits)
             self.c_verbose(pq, True)
         else:
-            pq = faiss.IndexIVFPQ(
+            pq = faiss.IndexIVFPQ( # ... more verbose than PQ
                 faiss.IndexFlat(self.args.ivf_dim),
                 self.args.ivf_dim,
                 1, # self.args.ncluster,
@@ -267,35 +267,97 @@ class PQsIndex(Index):
 
             timer.push("load-data")
             input_data_path = meta["input_path"]["residuals"]
-            input_data = utils.load_data([input_data_path], timer)["residuals"]
+            input_data = utils \
+                .load_data([input_data_path], timer)["residuals"] \
+                .astype("f4")
+            cluster_id_path = meta["input_path"]["centroid_ids"]
+            cluster_ids = utils \
+                .load_data([cluster_id_path],timer)["centroid_ids"] \
+                .astype("i8")
             timer.pop()
+
+            # timer.push("alloc-c++")
+            nvecs = len(input_data)
+            codes = np.empty((nvecs, self.m), dtype = "uint8")
+            # input_data_cpp = faiss.Float32Vector()
+            # cluster_ids_cpp = faiss.Int64Vector()
+            # codes_cpp = faiss.UInt8Vector()
+            # faiss.copy_array_to_vector(input_data.reshape(-1), input_data_cpp)
+            # faiss.copy_array_to_vector(cluster_ids.reshape(-1), cluster_ids_cpp)
+            # faiss.copy_array_to_vector(codes.reshape(-1), codes_cpp)
+            # timer.pop()
+
+            # pax(0, {
+            #     "input_data" : input_data,
+            #     "cluster_ids" : cluster_ids,
+            #     "cluster_ids / ctypes / data" : cluster_ids.ctypes.data,
+            #     # "input_data_cpp" : input_data_cpp,
+            #     # "cluster_ids_cpp" : cluster_ids_cpp,
+            #     # "codes_cpp" : codes_cpp,
+            # })
 
             print_rank("pqs / add,  batch %d / %d. [ %d vecs ]" % (
                 meta_index,
                 len(missing_input_data_metas),
-                len(input_data),
+                nvecs, # len(input_data),
             ))
 
             timer.push("init")
-            pq = faiss.read_index(empty_index_path)
-            # pq = faiss.IndexIVFPQ(
-            #     faiss.IndexFlat(self.args.ivf_dim),
-            #     self.args.ivf_dim,
-            #     1, # self.args.ncluster,
-            #     self.args.pq_dim,
-            #     self.args.pq_nbits,
-            # )
-            # pax(0, {
-            #     "_pq" : _pq,
-            #     # "pq" : pq,
-            # })
-            self.c_verbose(pq, True)
+            _index = faiss.read_index(empty_index_path)
+            index = faiss.IndexIVFPQ(
+                faiss.IndexFlat(self.args.ivf_dim),
+                self.args.ivf_dim,
+                self.args.ncluster,
+                self.args.pq_dim,
+                self.args.pq_nbits,
+            )
+            index.pq = _index.pq
+            index.is_trained = True
+            # pax({"index": index})
+            self.c_verbose(index, True)
             timer.pop()
 
+            # >>>
+            index.add_c(
+                n = 10,
+                x = faiss.swig_ptr(np.ascontiguousarray(input_data[:10])),
+            )
+            pax(0, {"index": index})
+            print_seq("hi.")
+            # <<<
+
             timer.push("add")
-            pq.add_with_ids(input_data, np.arange(*meta["vec_range"]))
             # pq.add(input_data)
+            # pq.add_with_ids(input_data, np.arange(*meta["vec_range"]))
+            # index.encode_vectors(input_data, cluster_ids)
+            try:
+                index.encode_vectors(
+                    # nvecs,
+                    np.int64(nvecs),
+                    # np.array([nvecs]).astype("i8"),
+                    input_data, # .ctypes.data,
+                    cluster_ids, # .ctypes.data,
+                    codes.ctypes, # .data,
+                    # False,
+                )
+                # index.encode_vectors(
+                #     nvecs,
+                #     input_data_cpp, # .data(),
+                #     cluster_ids_cpp, # .data(),
+                #     codes_cpp, # .data(),
+                # )
+            except:
+                pax(0, {
+                    "nvecs" : nvecs,
+                    "input_data" : str(input_data.dtype),
+                    "cluster_ids" : str(cluster_ids.dtype),
+                    "codes" : str(codes.dtype),
+                })
             timer.pop()
+
+            pax(0, {"index": index})
+
+            raise Exception("vectors encoded.")
 
             timer.push("write-partial")
             # partial_meta_path, partial_index_path = self.get_partial_index_paths(
@@ -349,17 +411,23 @@ class PQsIndex(Index):
             partial_cluster_ids = np.copy(f["centroid_ids"])
             f.close()
 
+            partial_index = faiss.read_index(partial_index_path)
+            partial_list_size = len(partial_cluster_ids)
+            partial_ids = partial_index.invlists.get_ids(0)
+            partial_codes = partial_index.invlists.get_codes(0)
+
+            full_index.add_core()
+
             pax({
                 "partial_index_path" : partial_index_path,
                 "partial_batch_id" : partial_batch_id,
                 "partial_cluster_id_data_path" : partial_cluster_id_data_path,
                 "partial_cluster_ids" : partial_cluster_ids,
+                "partial_index" : partial_index,
+                "partial_list_size" : partial_list_size,
+                "partial_ids" : partial_ids,
+                "partial_codes" : partial_codes,
             })
-
-            partial_index = faiss.read_index(partial_index_path)
-            partial_list_size = len(partial_cluster_ids)
-            partial_ids = partial_index.invlists.get_ids(0)
-            partial_codes = partial_index.invlists.get_codes(0)
 
             # partial_codes = np.reshape(
             #     faiss.vector_to_array(partial_index.codes),
