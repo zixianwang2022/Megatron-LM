@@ -15,6 +15,9 @@ from lutil import pax, print_rank, print_seq
 from retrieval.index import Index
 import retrieval.utils as utils
 
+def my_swig_ptr(x):
+    return faiss.swig_ptr(np.ascontiguousarray(x))
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class PQsIndex(Index):
 
@@ -95,74 +98,6 @@ class PQsIndex(Index):
         # print_seq([ index_path ])
         return index_path
 
-    # def write_partial_index(self, dir_path, pq, new_metas, timer):
-
-    #     # print_seq(new_metas)
-
-    #     # Batch, index paths.
-    #     meta_path, index_path, partial_exists = self.get_partial_paths(dir_path)
-
-    #     # Existing, new batch ids.
-    #     if partial_exists:
-    #         raise Exception("existing batch ids.")
-    #         with open(meta_path, "r") as f:
-    #             existing_metas = json.load(f)
-    #         pax({"existing_metas": existing_metas})
-    #         os.remove(meta_path)
-    #         os.remove(index_path)
-    #     else:
-    #         existing_metas = []
-
-    #     # batch_ids = existing_batch_ids | new_batch_ids
-    #     # new_metas = [ {batch_id, vec_range} for m in new_metas ] # copy subset
-    #     existing_batch_ids = set(m["batch_id"] for m in existing_metas)
-    #     new_batch_ids = set(m["batch_id"] for m in new_metas)
-    #     assert not (existing_batch_ids & new_batch_ids), "no batch overlap."
-
-    #     # print_seq(list(new_batch_ids))
-
-    #     # Write index, batch ids.
-    #     faiss.write_index(pq, index_path)
-    #     with open(meta_path, "w") as f:
-    #         json.dump(list(new_metas), f, indent = 4)
-
-    #     # Debug.
-    #     # print_seq(added_items)
-    #     # print_seq([ batch_id_path, index_path ])
-    #     # print_seq([ existing_batch_ids, new_batch_ids ])
-    #     print_seq([ existing_metas, new_metas ])
-
-    # def get_partial_path_pairs(self, dir_path):
-
-    #     paths = os.listdir(dir_path)
-    #     paths = [ p for p in paths if p.startswith("partial") ]
-    #     assert len(paths) % 2 == 0 # even count
-
-    #     # >>> tmp
-    #     if not paths:
-    #         return []
-    #     # <<<
-
-    #     pair_map = defaultdict(dict)
-    #     for path in paths:
-    #         tokens = re.split("_|\.", path)
-    #         prefix = "_".join(tokens[:2])
-    #         path = os.path.join(dir_path, path)
-    #         if path.endswith("json"):
-    #             pair_map[prefix]["meta"] = path
-    #         elif path.endswith("faissindex"):
-    #             pair_map[prefix]["index"] = path
-    #         # pax({"tokens": tokens, "prefix": prefix})
-
-    #     for pair in pair_map.items():
-    #         assert len(pair) == 2
-
-    #     # pax({
-    #     #     "paths" : paths,
-    #     #     "pair_map" : pair_map,
-    #     # })
-
-    #     return pair_map
     def get_existing_partial_index_paths(self, dir_path):
         paths = os.listdir(dir_path)
         paths = [
@@ -269,37 +204,22 @@ class PQsIndex(Index):
             input_data_path = meta["input_path"]["residuals"]
             input_data = utils \
                 .load_data([input_data_path], timer)["residuals"] \
-                .astype("f4")
+                .astype("f4") # f4, float32, float, np.float32
             cluster_id_path = meta["input_path"]["centroid_ids"]
             cluster_ids = utils \
                 .load_data([cluster_id_path],timer)["centroid_ids"] \
-                .astype("i8")
+                .astype("i8") # "i8")
             timer.pop()
 
             # timer.push("alloc-c++")
             nvecs = len(input_data)
-            codes = np.empty((nvecs, self.m), dtype = "uint8")
-            # input_data_cpp = faiss.Float32Vector()
-            # cluster_ids_cpp = faiss.Int64Vector()
-            # codes_cpp = faiss.UInt8Vector()
-            # faiss.copy_array_to_vector(input_data.reshape(-1), input_data_cpp)
-            # faiss.copy_array_to_vector(cluster_ids.reshape(-1), cluster_ids_cpp)
-            # faiss.copy_array_to_vector(codes.reshape(-1), codes_cpp)
-            # timer.pop()
-
-            # pax(0, {
-            #     "input_data" : input_data,
-            #     "cluster_ids" : cluster_ids,
-            #     "cluster_ids / ctypes / data" : cluster_ids.ctypes.data,
-            #     # "input_data_cpp" : input_data_cpp,
-            #     # "cluster_ids_cpp" : cluster_ids_cpp,
-            #     # "codes_cpp" : codes_cpp,
-            # })
+            # codes = np.empty((nvecs, self.m), dtype = "uint8")
+            # codes = np.zeros((nvecs, self.m), dtype = "uint8")
 
             print_rank("pqs / add,  batch %d / %d. [ %d vecs ]" % (
                 meta_index,
                 len(missing_input_data_metas),
-                nvecs, # len(input_data),
+                nvecs,
             ))
 
             timer.push("init")
@@ -313,46 +233,71 @@ class PQsIndex(Index):
             )
             index.pq = _index.pq
             index.is_trained = True
-            # pax({"index": index})
+            # index.clustering_index = faiss.IndexFlat(self.args.ivf_dim)
+            # >>>
+            index2 = faiss.read_index("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF262144_HNSW32,PQ32__t3000000__a20000000/ivf/ivf/empty.faissindex")
+            pax(0, {"index": index, "index2": index2})
+            # <<<
             self.c_verbose(index, True)
             timer.pop()
 
             # >>>
-            index.add_c(
-                n = 10,
-                x = faiss.swig_ptr(np.ascontiguousarray(input_data[:10])),
+            n = 10
+
+            input_data = input_data[:n] # .reshape(-1)
+            cluster_ids = cluster_ids[:n] # .reshape(-1)
+            # codes = codes[:n] # .reshape(-1)
+
+            # pax(0, {
+            #     "input_data" : str(input_data.dtype),
+            #     "cluster_ids" : str(cluster_ids.dtype),
+            #     "codes" : str(codes.dtype),
+            #     "input_data / swig_ptr" : my_swig_ptr(input_data),
+            #     "cluster_ids / swig_ptr" : my_swig_ptr(cluster_ids),
+            #     "codes / swig_ptr" : my_swig_ptr(codes),
+            # })
+
+            # index.add_c(n = 10, x = my_swig_ptr(input_data[:10]))
+            # index.encode_vectors(
+            #     n = n,
+            #     x = my_swig_ptr(input_data),
+            #     list_nos = my_swig_ptr(cluster_ids),
+            #     codes = my_swig_ptr(codes),
+            # )
+            # index.encode_vectors(
+            #     n = n,
+            #     x = my_swig_ptr(input_data),
+            #     list_nos = my_swig_ptr(cluster_ids),
+            #     codes = my_swig_ptr(codes),
+            # )
+            index.add_core(
+                n = n,
+                x = my_swig_ptr(input_data),
+                xids = my_swig_ptr(np.arange(n, dtype = "i8")),
+                precomputed_idx = my_swig_ptr(cluster_ids),
             )
             pax(0, {"index": index})
-            print_seq("hi.")
             # <<<
 
             timer.push("add")
             # pq.add(input_data)
             # pq.add_with_ids(input_data, np.arange(*meta["vec_range"]))
             # index.encode_vectors(input_data, cluster_ids)
-            try:
-                index.encode_vectors(
-                    # nvecs,
-                    np.int64(nvecs),
-                    # np.array([nvecs]).astype("i8"),
-                    input_data, # .ctypes.data,
-                    cluster_ids, # .ctypes.data,
-                    codes.ctypes, # .data,
-                    # False,
-                )
-                # index.encode_vectors(
-                #     nvecs,
-                #     input_data_cpp, # .data(),
-                #     cluster_ids_cpp, # .data(),
-                #     codes_cpp, # .data(),
-                # )
-            except:
-                pax(0, {
-                    "nvecs" : nvecs,
-                    "input_data" : str(input_data.dtype),
-                    "cluster_ids" : str(cluster_ids.dtype),
-                    "codes" : str(codes.dtype),
-                })
+            # pax(0, {"index": index})
+            # try:
+            index.encode_vectors(
+                nvecs,
+                my_swig_ptr(input_data),
+                my_swig_ptr(cluster_ids),
+                my_swig_ptr(codes),
+            )
+            # except:
+            #     pax(0, {
+            #         "nvecs" : nvecs,
+            #         "input_data" : str(input_data.dtype),
+            #         "cluster_ids" : str(cluster_ids.dtype),
+            #         "codes" : str(codes.dtype),
+            #     })
             timer.pop()
 
             pax(0, {"index": index})
