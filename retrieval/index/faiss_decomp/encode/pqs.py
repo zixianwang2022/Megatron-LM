@@ -222,8 +222,14 @@ class PQsIndex(Index):
                 nvecs,
             ))
 
+            # >>>
+            # self.args.ncluster = int(2**18) # 262144 ... ?
+            # self.args.ncluster = int(2**17) # 131072 ... bad
+            # self.args.ncluster = int(2**15) # 32768 ... bad
+            # <<<
+
             timer.push("init")
-            _index = faiss.read_index(empty_index_path)
+            # _index = faiss.read_index(empty_index_path)
             index = faiss.IndexIVFPQ(
                 faiss.IndexFlat(self.args.ivf_dim),
                 self.args.ivf_dim,
@@ -231,15 +237,45 @@ class PQsIndex(Index):
                 self.args.pq_dim,
                 self.args.pq_nbits,
             )
-            index.pq = _index.pq
-            index.is_trained = True
+            # >>>
+            if 0:
+                index.train(input_data[:self.args.ncluster])
+                # index.train_c(n = 10000, x = my_swig_ptr(input_data[:10000])) # self.args.ncluster])
+            elif 0:
+                print(">>> train_q1. <<<")
+                index.train_q1(n = self.args.ncluster, x = my_swig_ptr(input_data[:self.args.ncluster]), verbose = True, metric_type = faiss.METRIC_L2)
+                # print(">>> train_residual. <<<")
+                # index.train_residual(n = self.args.ncluster, x = my_swig_ptr(input_data[:self.args.ncluster]))
+                print(">>> train / is_trained. <<<")
+                index.is_trained = True
+                print(">>> train / end. <<<")
+            elif 1:
+                index.by_residual = False
+                index.is_trained = True
+
+            # pax(0, {
+            #     "index" : index,
+            #     "quantizer" : index.quantizer, # map vecs -> invlists
+            #     "nlist" : index.nlist, # number of possible key values
+            #     "quantizer_trains_alone" : index.quantizer_trains_alone,
+            #     "own_fields" : index.own_fields, # owns quantizer? default = false
+            #     "cp" : index.cp, # clustering params,
+            #     "clustering_index" : index.clustering_index,
+            # })
+
+            # <<<
+            # index.pq = _index.pq
+            # index.is_trained = True
             # index.clustering_index = faiss.IndexFlat(self.args.ivf_dim)
             # >>>
-            index2 = faiss.read_index("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF262144_HNSW32,PQ32__t3000000__a20000000/ivf/ivf/empty.faissindex")
-            pax(0, {"index": index, "index2": index2})
+            # index2 = faiss.read_index("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF262144_HNSW32,PQ32__t3000000__a20000000/ivf/ivf/empty.faissindex")
+            # pax(0, {"index": index, "index2": index2})
             # <<<
             self.c_verbose(index, True)
             timer.pop()
+
+            # index.use_precomputed_table = 0
+            # pax(0, {"index": index})
 
             # >>>
             n = 10
