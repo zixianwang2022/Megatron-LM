@@ -129,9 +129,9 @@ if __name__ == "__main__":
     parser.add_argument("--ntrain", "-t", type = int, required = True)
     parser.add_argument("--nadd", "-a", type = int, required = True)
     parser.add_argument("--ncluster", type = int, required = True)
-    parser.add_argument("--hnsw-dim", type = int, required = True)
+    parser.add_argument("--hnsw-m", type = int, required = True) # hnsw-dim
     parser.add_argument("--ivf-dim", type = int, required = True)
-    parser.add_argument("--pq-dim", type = int, required = True)
+    parser.add_argument("--pq-m", type = int, required = True) # pq-dim
     parser.add_argument("--pq-nbits", type = int, default = 8)
     # parser.add_argument("--batch-size", type = int, default = int(1e6))
     parser.add_argument("--data-ty", required = True,

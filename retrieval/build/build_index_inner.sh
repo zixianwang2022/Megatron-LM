@@ -17,13 +17,15 @@ else
     # [x] profile_stage_stop="data"
     # profile_stage_stop="opq"
     # profile_stage_stop="ivf"
-    profile_stage_stop="pqs"
+    # profile_stage_stop="pqs"
     # [x] profile_stage_stop="[ignore]"
+    # profile_stage_stop="preprocess"
+    profile_stage_stop="cluster"
 
     # task="clean-data"
     # task="split-data"
-    # task=train
-    task=add
+    task=train
+    # task=add
 
     # ntrain=2048 ncluster=64 hnsw=4
     # ntrain=131072 ncluster=128 hnsw=32
@@ -54,9 +56,9 @@ else
                     --ntrain ${ntrain} \
                     --nadd ${nadd} \
                     --ncluster ${ncluster} \
-                    --hnsw-dim ${hnsw} \
+                    --hnsw-m ${hnsw} \
                     --ivf-dim ${ivf_dim} \
-                    --pq-dim ${pq_dim} \
+                    --pq-m ${pq_dim} \
                     --index-ty ${index_ty} \
                     --profile-stage-stop ${profile_stage_stop} \
                     --profile-single-encoder 0 \
@@ -77,9 +79,9 @@ else
                     --ntrain ${ntrain} \
                     --nadd ${nadd} \
                     --ncluster ${ncluster} \
-                    --hnsw-dim ${hnsw} \
+                    --hnsw-m ${hnsw} \
                     --ivf-dim ${ivf_dim} \
-                    --pq-dim ${pq_dim} \
+                    --pq-m ${pq_dim} \
                     --index-ty ${index_ty} \
                     --profile-stage-stop ${profile_stage_stop} \
                     --profile-single-encoder 0 \

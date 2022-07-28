@@ -14,13 +14,15 @@ import retrieval.utils as utils
 # class HNSWStage(Index):
 class HNSWIndex(Index):
 
-    def __init__(self, args, d, m):
-        super().__init__(args, d)
-        self.m = m
-        # self.hnsw = faiss.IndexHNSWFlat(d, m)
+    # def __init__(self, args, d, m):
+    #     super().__init__(args, d)
+    #     self.m = m
+    #     # self.hnsw = faiss.IndexHNSWFlat(d, m)
+    # def __init__(self, args):
+    #     super().__init__(args, args.ivf_dim, args.ivf_dim)
 
-    def dout(self):
-        return self.din()
+    # def dout(self):
+    #     return self.din()
 
     # def verbose(self, v):
     #     self.c_verbose(self.hnsw, v)

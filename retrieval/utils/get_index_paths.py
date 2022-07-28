@@ -60,11 +60,11 @@ from . import mkdir
 #     # })
 def get_index_str(args):
     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
-        args.pq_dim,
+        args.pq_m,
         args.ivf_dim,
         args.ncluster,
-        args.hnsw_dim,
-        args.pq_dim,
+        args.hnsw_m,
+        args.pq_m,
     )
 
 def get_index_dirname(args):

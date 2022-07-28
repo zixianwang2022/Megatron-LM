@@ -16,18 +16,20 @@ from retrieval.index import Index
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class OPQIndex(Index):
 
-    def __init__(self, args, d, stage_str):
-        super().__init__(args, d)
+    # def __init__(self, args, d, stage_str):
+    #     super().__init__(args, d)
     
-        tokens = stage_str.split("_")
-        assert len(tokens) == 2
-        assert tokens[0].startswith("OPQ") # redundant
+    #     tokens = stage_str.split("_")
+    #     assert len(tokens) == 2
+    #     assert tokens[0].startswith("OPQ") # redundant
 
-        self.m = int(tokens[0].replace("OPQ", ""))
-        self._dout = int(tokens[1])
+    #     self.m = int(tokens[0].replace("OPQ", ""))
+    #     self._dout = int(tokens[1])
+    # def __init__(self, args):
+    #     super().__init__(args, args.nfeats, args.ivf_dim)
 
-    def dout(self):
-        return self._dout
+    # def dout(self):
+    #     return self._dout
 
     def _train(
             self,
@@ -35,6 +37,8 @@ class OPQIndex(Index):
             dir_path,
             timer,
     ):
+
+        assert torch.distributed.get_rank() == 0
 
         empty_index_path = self.get_empty_index_path(dir_path)
 
@@ -56,9 +60,19 @@ class OPQIndex(Index):
         # opq = faiss.OPQMatrix(d = d, M = self.m)
         # opq = faiss.PCAMatrix(d_in = d, d_out = self._dout)
         # opq = faiss.index_factory(d, stage_str)
+        # opq = faiss.IndexPreTransform(
+        #     faiss.OPQMatrix(d = self.din(), M = self.m, d2 = self.dout()),
+        #     faiss.IndexFlatL2(self._dout),
+        # )
+        din = self.args.nfeats
+        dout = self.args.ivf_dim
         opq = faiss.IndexPreTransform(
-            faiss.OPQMatrix(d = self.din(), M = self.m, d2 = self.dout()),
-            faiss.IndexFlatL2(self._dout),
+            faiss.OPQMatrix(
+                d = self.args.nfeats,
+                M = self.args.pq_m,
+                d2 = self.args.ivf_dim,
+            ),
+            faiss.IndexFlatL2(self.args.ivf_dim),
         )
         self.c_verbose(opq, True)
         timer.pop()

@@ -13,14 +13,17 @@ import retrieval.utils as utils
 from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-class IVFIndex(Index):
+# class IVFIndex(Index):
+class IVFPQIndex(Index):
 
-    def __init__(self, args, d, nlist):
-        super().__init__(args, d)
-        self.nlist = nlist
+    # def __init__(self, args, d, nlist):
+    #     super().__init__(args, d)
+    #     self.nlist = nlist
+    def __init__(self, args):
+        super().__init__(args, args.ivf_dim, None)
 
-    def dout(self):
-        return self.din()
+    # def dout(self):
+    #     return self.din()
 
     # def verbose(self, v):
     #     self.c_verbose(self.ivf, v)
@@ -39,6 +42,8 @@ class IVFIndex(Index):
             timer,
     ):
 
+        assert torch.distributed.get_rank() == 0
+
         empty_index_path = self.get_empty_index_path(dir_path)
 
         if os.path.isfile(empty_index_path):
@@ -51,6 +56,7 @@ class IVFIndex(Index):
         # pax({"inp": str(inp.shape)})
 
         timer.push("init")
+        raise Excetion("ivfflat -> ivfpq.")
         ivf = faiss.IndexIVFFlat(
             faiss.IndexFlatL2(self.din()),
             self.din(),
