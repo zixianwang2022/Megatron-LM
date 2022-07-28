@@ -19,13 +19,14 @@ else
     # profile_stage_stop="ivf"
     # profile_stage_stop="pqs"
     # [x] profile_stage_stop="[ignore]"
+
     # profile_stage_stop="preprocess"
     profile_stage_stop="cluster"
 
     # task="clean-data"
     # task="split-data"
-    task=train
-    # task=add
+    # task=train
+    task=add
 
     # ntrain=2048 ncluster=64 hnsw=4
     # ntrain=131072 ncluster=128 hnsw=32

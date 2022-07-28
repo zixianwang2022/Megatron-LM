@@ -5,8 +5,9 @@ import glob
 import h5py
 import numpy as np
 import socket
+import torch
 
-from lutil import pax
+from lutil import pax, print_rank, print_seq
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # def get_data_paths(args, is_clean):
@@ -63,7 +64,8 @@ def get_all_data_paths(args, is_clean):
         if args.data_ty == "wiki":
             feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/wiki/*.feat.hdf5")
         elif args.data_ty == "corpus":
-            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/*.feat.hdf5")
+            # feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/*.feat.hdf5")
+            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus%s" % ("-dirty/*.feat.hdf5" if not is_clean else "-clean/*.hdf5"))
         else:
             raise Exception("specialize for '%s'." % args.data_ty)
 
@@ -95,6 +97,8 @@ def get_train_add_data_paths(args, timer):
 
     all_paths = get_all_data_paths(args, True)
 
+    # print_seq(all_paths)
+
     ntrain = None; train_paths = None
     nadd = None; add_paths = None
     ntotal = 0
@@ -118,7 +122,7 @@ def get_train_add_data_paths(args, timer):
     if ntrain is None or nadd is None:
         raise Exception("not even data paths?")
 
-    # pax({
+    # pax(0, {
     #     "all_paths" : all_paths,
     #     "ntrain" : ntrain,
     #     "nadd" : nadd,
@@ -188,9 +192,11 @@ def get_train_add_data_paths(args, timer):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 import os
 
-def clean_data(args, timer):
+def _clean_data(args, timer):
 
-    raise Exception("clean again?")
+    # raise Exception("clean again?")
+
+    assert torch.distributed.get_rank() == 0
 
     # >>>
     if 0:
@@ -249,7 +255,7 @@ def clean_data(args, timer):
     dirty_paths = get_all_data_paths(args, False)
     clean_paths = get_all_data_paths(args, True)
 
-    # pax({
+    # pax(0, {
     #     "dirty_paths" : dirty_paths,
     #     "clean_paths" : clean_paths,
     # })
@@ -314,5 +320,16 @@ def clean_data(args, timer):
         d0 = 0
 
     save_batch(len(dirty_paths) - 1, d1)
+
+def clean_data(args, timer):
+
+    torch.distributed.barrier()
+
+    if torch.distributed.get_rank() == 0:
+        _clean_data(args, timer)
+
+    torch.distributed.barrier()
+
+    exit(0)
 
 # eof

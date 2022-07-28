@@ -35,6 +35,8 @@ class HNSWIndex(Index):
             timer,
     ):
 
+        assert torch.distributed.get_rank() == 0
+
         empty_index_path = self.get_empty_index_path(dir_path)
 
         if os.path.isfile(empty_index_path):
@@ -47,7 +49,7 @@ class HNSWIndex(Index):
         # pax({"centroids": centroids})
 
         timer.push("init")
-        hnsw = faiss.IndexHNSWFlat(self.din(), self.m)
+        hnsw = faiss.IndexHNSWFlat(self.args.ivf_dim, self.args.hnsw_m)
         self.c_verbose(hnsw, True)
         timer.pop()
 
