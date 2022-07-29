@@ -408,9 +408,16 @@ class IVFPQIndex(Index):
         world_size = torch.distributed.get_world_size()
         num_batches = len(input_data_paths)
 
-        # batch_id_offset = rank * 2**row + world_size * 2**row
+        batch_str_len = int(np.ceil(np.log(num_batches) / np.log(10)))
+        zf = lambda b : str(b).zfill(batch_str_len)
+
+        # First batch id.
         batch_id_0 = 2**row * (rank + col * world_size)
 
+        if batch_id_0 >= num_batches:
+            return None
+
+        # Other batch ids.
         if row == 0:
             batch_id_1 = batch_id_2 = batch_id_3 = batch_id_0
         else:
@@ -420,50 +427,45 @@ class IVFPQIndex(Index):
             batch_id_2 = batch_id_1 + 1
             batch_id_3 = batch_id_2 + batch_half_range - 1
 
-        sbatch = int(np.ceil(np.log(num_batches) / np.log(10)))
-        zf = lambda b : str(b).zfill(sbatch)
-        range_map = {
-            "input0" : (batch_id_0, batch_id_1),
-            "input1" : (batch_id_2, batch_id_3),
-            "output" : (batch_id_0, batch_id_3),
-        }
-        path_map = {
-            k : os.path.join(
-                dir_path,
-                "partial_%s-%s.faissindex" % tuple([zf(b) for b in bs]),
-            )
-            for k, bs in range_map.items()
-        }
-
-        path_map["batch_ids"] = [ batch_id_0, batch_id_1, batch_id_2, batch_id_3 ]
-        path_map["num_batches"] = num_batches
-        if row == 0:
-            if batch_id_0 >= num_batches:
+        # Batch ranges.
+        def get_batch_range(b0, b1):
+            if b1 >= num_batches:
+                b1 = num_batches - 1
+            if b0 >= num_batches:
                 return None
-            del path_map["input0"]
-            del path_map["input1"]
-            # try:
-            path_map["input"] = input_data_paths[batch_id_0]
-            # except:
-            #     pax({
-            #         "path_map" : path_map,
-            #         "rank" : rank,
-            #         "row" : row,
-            #         "col" : col,
-            #     })
+            return b0, b1
 
-        # print_seq("r %d, c %d ... %d, %d, %d, %d." % (
-        #     row,
-        #     col,
-        #     batch_id_0,
-        #     batch_id_1,
-        #     batch_id_2,
-        #     batch_id_3,
-        # ))
-        # print_seq(list(path_map.items()))
+        def batch_range_to_index_path(_row, _range):
+            if _range is None:
+                return None
+            else:
+                return os.path.join(
+                    dir_path,
+                    "partial_r%d_%s-%s.faissindex" % (
+                        _row,
+                        *[zf(b) for b in _range],
+                    ),
+                )
 
-        # print_seq([ index_path ])
-        # return index_path
+        input_ranges = [
+            get_batch_range(batch_id_0, batch_id_1),
+            get_batch_range(batch_id_2, batch_id_3),
+        ]
+        output_range = get_batch_range(batch_id_0, batch_id_3)
+
+        # Path map.
+        path_map = {
+            "batch_id" : batch_id_0,
+            "num_batches" : num_batches,
+            "output_index_path" : batch_range_to_index_path(row, output_range),
+        }
+        if row == 0:
+            path_map["input_data_path"] = input_data_paths[batch_id_0]
+        else:
+            path_map["input_index_paths"] = \
+                [batch_range_to_index_path(row-1, r) for r in input_batch_ranges]
+
+        # Return.
         return path_map
 
     # def add_partial(self, input_data_paths, dir_path, timer, row, col):
@@ -476,13 +478,12 @@ class IVFPQIndex(Index):
         # <<<
 
         empty_index_path = self.get_empty_index_path(dir_path)
-        partial_index_path = partial_index_path_map["output"]
-        input_data_path_item = partial_index_path_map["input"]
+        partial_index_path = partial_index_path_map["output_index_path"]
+        input_data_path_item = partial_index_path_map["input_data_path"]
 
         # print_seq(list(partial_index_path_map.items()))
 
         if os.path.isfile(partial_index_path):
-            # raise Exception("init partial exists.")
             return
 
         timer.push("load-data")
@@ -504,9 +505,8 @@ class IVFPQIndex(Index):
         # })
 
         nvecs = len(input_data)
-        print_rank("ivfpq / add / partial,  batch %d:%d / %d. [ %d vecs ]" % (
-            partial_index_path_map["batch_ids"][0],
-            partial_index_path_map["batch_ids"][-1],
+        print_rank("ivfpq / add / partial,  batch %d / %d. [ %d vecs ]" % (
+            partial_index_path_map["batch_id"],
             partial_index_path_map["num_batches"],
             nvecs,
         ))
@@ -532,7 +532,6 @@ class IVFPQIndex(Index):
         # pax(0, {"index": index})
 
         timer.push("write-partial")
-        # partial_index_path = self.get_partial_index_path(dir_path, meta)
         faiss.write_index(index, partial_index_path)
         timer.pop()
 
@@ -547,13 +546,8 @@ class IVFPQIndex(Index):
         num_rows = int(np.ceil(np.log(num_batches) / np.log(2)))
         
         for row in range(num_rows):
+
             num_cols = int(np.ceil(num_batches / world_size / 2**row))
-
-            # >>>
-            # print_rank(0, "num_cols = %d." % num_cols)
-            # continue
-            # <<<
-
             # for col in range(rank, num_batches, world_size * int(2**row)):
             for col in range(num_cols):
 
@@ -561,7 +555,6 @@ class IVFPQIndex(Index):
                 partial_index_path_map = self.get_partial_index_path_map(
                     input_data_paths,
                     dir_path,
-                    # len(input_data_paths),
                     row,
                     col,
                 )
@@ -570,25 +563,21 @@ class IVFPQIndex(Index):
                 if partial_index_path_map is None:
                     continue
 
-                # pax(0, {"partial_index_path_map": partial_index_path_map})
-
-                # print_rank(0, "add %d, %d." % (row, col))
+                # Initialize/merge partial indexes.
                 if row == 0:
-                    #self.add_partial(input_data_paths, dir_path, timer, row, col)
                     self.init_partial(partial_index_path_map, dir_path, timer)
                 else:
                     self.merge_partial(partial_index_path_map, dir_path, timer)
 
-            torch.distributed.barrier()
+            torch.distributed.barrier() # prevent inter-row race condition.
 
-            print_seq("finished row %d, all cols." % row)
+            if row == 1:
+                print_seq("finished row %d." % row)
 
         pax(0, {
             "num_batches" : num_batches,
             "num_rows" : num_rows,
         })
-
-        torch.distributed.barrier() # unnecessary?
 
         torch.distributed.barrier() # unnecessary?
 
