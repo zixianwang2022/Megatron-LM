@@ -36,7 +36,8 @@ else
     # ntrain=50000000 nadd=200000000 ncluster=4194304 hnsw=32
     # ntrain=300000000 ncluster=4194304 hnsw=32
     # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
-    ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
+    # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
+    ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
 
     pq_dim=32
     ivf_dim=256
@@ -96,6 +97,7 @@ if [ "0" -eq "1" ]; then
     conda install -c conda-forge -y faiss-gpu
 fi
 
+unset NCCL_DEBUG
 echo "CMD = $cmd"
 eval $cmd
 exit 0
