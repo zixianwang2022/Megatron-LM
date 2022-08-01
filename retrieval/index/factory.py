@@ -29,9 +29,13 @@ class IndexFactory:
     #     index_ty = cls.get_index_ty(index_ty)
     #     index = index_ty(args, d, index_str, timer)
     #     return index
-    def get_index(cls, args, timer):
+    # def get_index(cls, args, timer):
+    #     index_ty = cls.get_index_ty(args.index_ty)
+    #     index = index_ty(args, timer)
+    #     return index
+    def get_index(cls, args):
         index_ty = cls.get_index_ty(args.index_ty)
-        index = index_ty(args, timer)
+        index = index_ty(args)
         return index
 
 # eof

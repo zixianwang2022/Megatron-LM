@@ -42,7 +42,7 @@ def run_train_pipeline(args, timer):
 
     # ~~~~~~~~ init index ~~~~~~~~
     timer.push("init")
-    index = IndexFactory.get_index(args, timer)
+    index = IndexFactory.get_index(args) # , timer)
     # pax({"index": index})
     timer.pop()
 
@@ -77,7 +77,7 @@ def run_add_pipeline(args, timer):
 
     # ~~~~~~~~ load index ~~~~~~~~
     timer.push("init")
-    index = IndexFactory.get_index(args, timer)
+    index = IndexFactory.get_index(args) # , timer)
     timer.pop()
 
     # ~~~~~~~~ add index ~~~~~~~~
