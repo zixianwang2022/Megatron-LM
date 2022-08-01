@@ -15,18 +15,18 @@ else
 
     # >>>>>>>>>>>>>>>>>>>>>>>
     # [x] profile_stage_stop="data"
-    # profile_stage_stop="opq"
+    profile_stage_stop="opq"
     # profile_stage_stop="ivf"
     # profile_stage_stop="pqs"
     # [x] profile_stage_stop="[ignore]"
 
-    # profile_stage_stop="preprocess"
-    profile_stage_stop="cluster"
+    profile_stage_stop="preprocess"
+    # profile_stage_stop="cluster"
 
     # task="clean-data"
     # task="split-data"
-    # task=train
-    task=add
+    task=train
+    # task=add
 
     # ntrain=2048 ncluster=64 hnsw=4
     # ntrain=131072 ncluster=128 hnsw=32
@@ -45,8 +45,8 @@ else
     # data_ty=wiki
     data_ty=corpus
 
-    # index_ty=faiss-mono
-    index_ty=faiss-decomp
+    index_ty=faiss-mono
+    # index_ty=faiss-decomp
     # index_str="OPQ32_256,IVF${ncluster}_HNSW${hnsw},PQ32"
 
     if [ "0" -eq "1" ]; then
