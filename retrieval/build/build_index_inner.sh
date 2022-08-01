@@ -15,7 +15,7 @@ else
 
     # >>>>>>>>>>>>>>>>>>>>>>>
     # [x] profile_stage_stop="data"
-    profile_stage_stop="opq"
+    # profile_stage_stop="opq"
     # profile_stage_stop="ivf"
     # profile_stage_stop="pqs"
     # [x] profile_stage_stop="[ignore]"
@@ -25,8 +25,8 @@ else
 
     # task="clean-data"
     # task="split-data"
-    task=train
-    # task=add
+    # task=train
+    task=add
 
     # ntrain=2048 ncluster=64 hnsw=4
     # ntrain=131072 ncluster=128 hnsw=32
@@ -37,7 +37,8 @@ else
     # ntrain=300000000 ncluster=4194304 hnsw=32
     # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
     # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
-    ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
+    # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
+    ntrain=2500000 nadd=10000000 ncluster=262144 hnsw=32
 
     pq_dim=32
     ivf_dim=256

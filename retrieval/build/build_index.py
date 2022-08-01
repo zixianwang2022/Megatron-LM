@@ -178,7 +178,8 @@ if __name__ == "__main__":
         backend = "nccl",
         world_size = args.world_size,
         rank = args.rank,
-        timeout = timedelta(minutes = 10),
+        # timeout = timedelta(minutes = 10),
+        timeout = timedelta(days = 1),
     )
 
     torch.distributed.barrier()
@@ -212,53 +213,27 @@ if __name__ == "__main__":
     timer.pop()
 
     # ~~~~~~~~ stats ~~~~~~~~
-    # print("train %s ... time %.1f; [ load %.1f, init %.1f, train %.1f, add %.1f ] ... %s." % (
-    # print("t %d, c %d ... time %.1f; [ %s ] ... %s." % (
-    # print("L-RESULT : %s, %s, %s, %d ... time %.1f; [ %s ] ... %s." % (
-    #     # train_data.shape,
-    #     args.task,
-    #     args.data_ty,
-    #     args.index_ty,
-    #     args.ntrain,
-    #     # args.ncluster,
-    #     # load_feat_time,
-    #     # init_index_time,
-    #     # train_index_time,
-    #     # add_index_time,
-    #     sum(time_map.values()),
-    #     ", ".join("%s %.1f" % (k, v) for k, v in time_map.items()),
-    #     args.index_str,
-    # ), flush = True)
-    print("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
-    print(json.dumps(vars(args), indent = 4), flush = True)
-    print("~~~~~~~~ [ TIMER OBJ ] ~~~~~~~~")
-    print(json.dumps(timer.time_map, indent = 4), flush = True)
-    print("~~~~~~~~~~~~~~~~")
-    print("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
-    print("[ TIMER STR ] = %s" % json.dumps(timer.time_map), flush = True)
-    print("~~~~~~~~~~~~~~~~")
-    timer.print()
-    print("~~~~~~~~~~~~~~~~")
-    # timer.print() # 4)
-    # pax({"args": args})
-    # print("L-RESULT : %s, %s, %s, %d ... %s ... %s." % (
-    #     args.task,
-    #     args.data_ty,
-    #     args.index_ty,
-    #     args.ntrain,
-    #     timer.get_root_str(),
-    #     args.index_str,
-    # ), flush = True)
-    # print("L-RESULT : %s, %s, %s, %d, '%s' ... time %.3f ... [ %s ]." % (
-    print("L-RESULT : %s, %s, %s, %d, '%s' ... %s ... [ %s ]." % (
-        args.task,
-        args.data_ty,
-        args.index_ty,
-        args.ntrain,
-        args.profile_stage_stop,
-        # timer.get_total_time(),
-        timer.get_child_str(args.task),
-        args.index_str,
-    ), flush = True)
+    torch.distributed.barrier()
+    if torch.distributed.get_rank() == 0:
+        print("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
+        print(json.dumps(vars(args), indent = 4), flush = True)
+        print("~~~~~~~~ [ TIMER OBJ ] ~~~~~~~~")
+        print(json.dumps(timer.time_map, indent = 4), flush = True)
+        print("~~~~~~~~~~~~~~~~")
+        print("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
+        print("[ TIMER STR ] = %s" % json.dumps(timer.time_map), flush = True)
+        print("~~~~~~~~~~~~~~~~")
+        timer.print()
+        print("~~~~~~~~~~~~~~~~")
+        print("L-RESULT : %s, %s, %s, %d, '%s' ... %s ... [ %s ]." % (
+            args.task,
+            args.data_ty,
+            args.index_ty,
+            args.ntrain,
+            args.profile_stage_stop,
+            timer.get_child_str(args.task),
+            args.index_str,
+        ), flush = True)
+    torch.distributed.barrier()
 
 # eof
