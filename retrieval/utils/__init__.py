@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import os
 
-from lutil import pax
+from lutil import pax, print_rank, print_seq
 
 from .timer import Timer
 
@@ -84,7 +84,7 @@ def load_data(paths, timer):
     timer.pop()
     
     for pi, p in enumerate(paths):
-        print("load path %d / %d ... '%s'." % (pi, len(paths), p), flush = True)
+        print_rank("load path %d / %d ... '%s'." % (pi, len(paths), p))
         timer.push("load")
         f = h5py.File(p, "r")
         for k in f.keys():

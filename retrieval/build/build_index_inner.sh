@@ -19,8 +19,9 @@ else
     # profile_stage_stop="ivf"
     # profile_stage_stop="pqs"
     # [x] profile_stage_stop="[ignore]"
-    # profile_stage_stop="preprocess"
-    profile_stage_stop="cluster"
+
+    profile_stage_stop="preprocess"
+    # profile_stage_stop="cluster"
 
     # task="clean-data"
     # task="split-data"
@@ -35,7 +36,9 @@ else
     # ntrain=50000000 nadd=200000000 ncluster=4194304 hnsw=32
     # ntrain=300000000 ncluster=4194304 hnsw=32
     # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
-    ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
+    # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
+    # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
+    ntrain=2500000 nadd=10000000 ncluster=262144 hnsw=32
 
     pq_dim=32
     ivf_dim=256
@@ -90,11 +93,12 @@ else
 
 fi
 
-if [ "0" -eq "1" ]; then
+if [ "1" -eq "1" ]; then
     pip install h5py
     conda install -c conda-forge -y faiss-gpu
 fi
 
+unset NCCL_DEBUG
 echo "CMD = $cmd"
 eval $cmd
 exit 0
