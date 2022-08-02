@@ -25,8 +25,8 @@ else
 
     # task="clean-data"
     # task="split-data"
-    # task=train
-    task=add
+    task=train
+    # task=add
 
     # ntrain=2048 ncluster=64 hnsw=4
     # ntrain=131072 ncluster=128 hnsw=32
@@ -46,8 +46,8 @@ else
     # data_ty=wiki
     data_ty=corpus
 
-    index_ty=faiss-mono
-    # index_ty=faiss-decomp
+    # index_ty=faiss-mono
+    index_ty=faiss-decomp
     # index_str="OPQ32_256,IVF${ncluster}_HNSW${hnsw},PQ32"
 
     if [ "0" -eq "1" ]; then
@@ -93,7 +93,7 @@ else
 
 fi
 
-if [ "0" -eq "1" ]; then
+if [ "1" -eq "1" ]; then
     pip install h5py
     conda install -c conda-forge -y faiss-gpu
 fi
