@@ -225,11 +225,12 @@ if __name__ == "__main__":
         print("~~~~~~~~~~~~~~~~")
         timer.print()
         print("~~~~~~~~~~~~~~~~")
-        print("L-RESULT : %s, %s, %s, %d, '%s' ... %s ... [ %s ]." % (
+        print("L-RESULT : %s, %s, %s, %d, %d, '%s' ... %s ... [ %s ]." % (
             args.task,
             args.data_ty,
             args.index_ty,
             args.ntrain,
+            args.nadd,
             args.profile_stage_stop,
             timer.get_child_str(args.task),
             args.index_str,

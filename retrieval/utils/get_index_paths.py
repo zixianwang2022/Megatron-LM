@@ -2,6 +2,7 @@
 
 # ~~~~~~~~ import ~~~~~~~~
 import os
+import torch
 
 from lutil import pax
 
@@ -76,10 +77,11 @@ def get_index_dirname(args):
         args.base_dir,
         "index",
         "%s-%s" % (args.index_ty, args.data_ty),
-        "%s__t%d__a%d" % (
+        "%s__t%d__a%d__w%d" % (
             index_str,
             args.ntrain,
             args.nadd,
+            torch.distributed.get_world_size(),
         ),
     )
 

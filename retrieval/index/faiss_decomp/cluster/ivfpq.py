@@ -161,6 +161,8 @@ class IVFPQIndex(Index):
     # add
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def get_num_rows(self, num_batches):
+        return int(np.ceil(np.log(num_batches) / np.log(2))) + 1
     def get_num_cols(self, num_batches, row):
         world_size = torch.distributed.get_world_size()
         return int(np.ceil(num_batches / world_size / 2**row))
@@ -362,7 +364,7 @@ class IVFPQIndex(Index):
             nvecs,
         ))
 
-        timer.push("init")
+        timer.push("read")
         index = faiss.read_index(empty_index_path)
         # self.c_verbose(index, True) # with batch_size 1M ... too fast/verbose
         # self.c_verbose(index.quantizer, True)
@@ -382,7 +384,7 @@ class IVFPQIndex(Index):
 
         # pax(0, {"index": index})
 
-        timer.push("write-partial")
+        timer.push("write")
         faiss.write_index(index, partial_index_path)
         timer.pop()
 
@@ -419,8 +421,10 @@ class IVFPQIndex(Index):
                 # if input_index_path is None:
                 #     pax({"partial_index_path_map": partial_index_path_map})
 
+                timer.push("read")
                 input_index = faiss.read_index(input_index_path)
                 input_invlists = input_index.invlists
+                timer.pop()
 
                 print_rank("ivfpq / add / merge, input %d / %d. [ +%d -> %d ]" % (
                     input_iter,
@@ -429,6 +433,7 @@ class IVFPQIndex(Index):
                     input_index.ntotal + output_index.ntotal,
                 ))
 
+                timer.push("add")
                 for list_id in range(input_invlists.nlist):
                     output_invlists.add_entries(
                         list_id,
@@ -436,6 +441,7 @@ class IVFPQIndex(Index):
                         input_invlists.get_ids(list_id),
                         input_invlists.get_codes(list_id),
                     )
+                timer.pop()
 
                 output_index.ntotal += input_index.ntotal
 
@@ -451,17 +457,19 @@ class IVFPQIndex(Index):
             #     "output_index" : output_index,
             # })
 
-            timer.push("write-output")
+            timer.push("write")
             faiss.write_index(output_index, output_index_path)
             timer.pop()
 
         # Delete input indexes.
         # raise Exception("delete input files.")
         if len(input_index_paths) >= 2:
+            timer.push("delete")
             # for path in enumerate(input_index_paths):
             for path in input_index_paths:
                 # delete_this_flipping_file(input_index_path)
                 os.remove(path)
+            timer.pop()
 
     # def add(self, input_data_paths, dir_path, timer):
 
@@ -532,15 +540,11 @@ class IVFPQIndex(Index):
     def add(self, input_data_paths, dir_path, timer):
 
         # Num batches & rows.
-        # rank = torch.distributed.get_rank()
-        world_size = torch.distributed.get_world_size()
         num_batches = len(input_data_paths)
         # num_batches = 47000 # ... ~15.52 rows
-        num_rows = int(np.ceil(np.log(num_batches) / np.log(2))) + 1
+        num_rows = self.get_num_rows(num_batches)
 
         # Missing index paths.
-        # missing_index_grid = \
-        #     self.get_missing_index_grid(input_data_paths, dir_path, timer)
         missing_index_paths = self.get_missing_index_paths(
             input_data_paths,
             dir_path,
@@ -553,18 +557,16 @@ class IVFPQIndex(Index):
         # print_seq(missing_index_paths)
 
         # Iterate rows
-        # for row in range(num_rows - 1, -1, -1):
         for row in range(num_rows):
 
-            # raise Exception("got missing index paths?")
-
-            timer.push("row %d of %d" % (row, num_rows))
+            # timer.push("row %d of %d" % (row, num_rows))
+            timer.push("row-%d" % row)
 
             num_cols = self.get_num_cols(num_batches, row)
             # for col in range(rank, num_batches, world_size * int(2**row)):
             for col in range(num_cols):
 
-                timer.push("col")
+                # timer.push("col")
 
                 print_rank(0, "r %d / %d, c %d / %d." % (
                     row,
@@ -597,7 +599,7 @@ class IVFPQIndex(Index):
                     self.merge_partial(partial_index_path_map, dir_path, timer)
                     timer.pop()
 
-                timer.pop()
+                # timer.pop()
 
             torch.distributed.barrier() # prevent inter-row race condition.
 
@@ -608,13 +610,13 @@ class IVFPQIndex(Index):
             #     print_seq("finished row %d." % row)
             # <<<
 
-        pax(0, {
-            "num_batches" : num_batches,
-            "num_rows" : num_rows,
-        })
+        # pax(0, {
+        #     "num_batches" : num_batches,
+        #     "num_rows" : num_rows,
+        # })
 
         torch.distributed.barrier() # unnecessary?
 
-        exit(0)
+        # exit(0)
 
 # eof

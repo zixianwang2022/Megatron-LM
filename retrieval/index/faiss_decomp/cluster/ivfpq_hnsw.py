@@ -142,7 +142,7 @@ class IVFPQHNSWIndex(Index):
         #     "residual_output_data_paths" : residual_output_data_paths,
         # })
         # print_seq(residual_output_data_paths)
-        print_seq(ivfpq_output_data_paths)
+        # print_seq(ivfpq_output_data_paths)
 
         # return hnsw_output_data_paths
         # return residual_output_data_paths

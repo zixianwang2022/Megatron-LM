@@ -10,7 +10,8 @@ from .preprocess import OPQIndex
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class FaissDecompIndex(Index):
 
-    def __init__(self, args, timer): # remove timer arg?
+    # def __init__(self, args, timer): # remove timer arg?
+    def __init__(self, args): # remove timer arg?
 
         super().__init__(args)
 

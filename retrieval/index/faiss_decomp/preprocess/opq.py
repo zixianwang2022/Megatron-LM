@@ -16,21 +16,6 @@ from retrieval.index import Index
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class OPQIndex(Index):
 
-    # def __init__(self, args, d, stage_str):
-    #     super().__init__(args, d)
-    
-    #     tokens = stage_str.split("_")
-    #     assert len(tokens) == 2
-    #     assert tokens[0].startswith("OPQ") # redundant
-
-    #     self.m = int(tokens[0].replace("OPQ", ""))
-    #     self._dout = int(tokens[1])
-    # def __init__(self, args):
-    #     super().__init__(args, args.nfeats, args.ivf_dim)
-
-    # def dout(self):
-    #     return self._dout
-
     def _train(
             self,
             input_data_paths,
