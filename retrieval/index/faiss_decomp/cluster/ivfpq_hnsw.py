@@ -60,6 +60,7 @@ class IVFPQHNSWIndex(Index):
         #     "input_data_paths" : input_data_paths,
         #     "ivf_output_data_paths" : ivf_output_data_paths,
         # })
+        print_seq(ivfpq_output_data_paths)
 
         timer.push("hnsw")
         hnsw_output_data_paths = self.hnsw.train(
