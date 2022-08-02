@@ -21,8 +21,8 @@ from retrieval.data import (
     get_train_add_data_paths,
 )
 from retrieval.index.factory import IndexFactory
+from retrieval.index.utils import get_index_dirname, get_index_str
 from retrieval.utils import Timer
-from retrieval.utils.get_index_paths import get_index_str, get_index_dirname
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def run_train_pipeline(args, timer):

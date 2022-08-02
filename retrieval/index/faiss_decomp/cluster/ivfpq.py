@@ -10,8 +10,7 @@ import torch
 
 from lutil import pax, print_rank, print_seq
 
-import retrieval.utils as utils
-
+from retrieval.data import load_data, save_data
 from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -21,19 +20,6 @@ def my_swig_ptr(x):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # class IVFIndex(Index):
 class IVFPQIndex(Index):
-
-    # def __init__(self, args, d, nlist):
-    #     super().__init__(args, d)
-    #     self.nlist = nlist
-    # def __init__(self, args):
-    #     super().__init__(args, args.ivf_dim, None)
-
-    # def dout(self):
-    #     return self.din()
-
-    # def verbose(self, v):
-    #     self.c_verbose(self.ivf, v)
-    #     # self.c_verbose(self.quantizer, v)
 
     @classmethod
     def c_cpu_to_gpu(cls, index):
@@ -60,17 +46,12 @@ class IVFPQIndex(Index):
             return
 
         timer.push("load-data")
-        inp = utils.load_data(input_data_paths, timer)["data"]
+        inp = load_data(input_data_paths, timer)["data"]
         timer.pop()
 
         # pax({"inp": str(inp.shape)})
 
         timer.push("init")
-        # ivf = faiss.IndexIVFFlat(
-        #     faiss.IndexFlatL2(self.din()),
-        #     self.din(),
-        #     self.nlist,
-        # )
         index = faiss.IndexIVFPQ(
             faiss.IndexFlat(self.args.ivf_dim),
             self.args.ivf_dim,
@@ -122,7 +103,7 @@ class IVFPQIndex(Index):
 
             timer.push("save-data")
             centroids = index.quantizer.reconstruct_n(0, self.args.ncluster)
-            utils.save_data({"centroids": centroids}, output_data_path)
+            save_data({"centroids": centroids}, output_data_path)
             timer.pop()
 
         # pax({ ... })
@@ -130,8 +111,6 @@ class IVFPQIndex(Index):
         return [ output_data_path ]
 
     def train(self, input_data_paths, dir_path, timer):
-
-        # timer = args[-1]
 
         torch.distributed.barrier()
 

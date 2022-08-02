@@ -10,7 +10,7 @@ from lutil import pax, print_rank, print_seq
 
 from retrieval import utils
 from retrieval.index import Index
-from retrieval.utils.get_index_paths import get_index_str
+from retrieval.index.utils import get_index_str
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def barrier():

@@ -6,8 +6,7 @@ import torch
 
 from lutil import pax
 
-# from .mkdir import mkdir
-from . import mkdir
+from retrieval.utils import mkdir
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # def get_index_paths(args):

@@ -10,23 +10,8 @@ from lutil import pax, print_seq
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Index:
 
-    # def __init__(self, args, di):
-    #     self.args = args
-    #     self._di = di
-    # def __init__(self, args, din, dout):
-    #     self.args = args
-    #     self._din = din
-    #     self._dout = dout
     def __init__(self, args):
         self.args = args
-
-    # def __str__(self):
-    #     return "dim %d,%d" % (self.din(), self.dout())
-
-    # def din(self):
-    #     return self._din
-    # def dout(self):
-    #     return self._dout
 
     @classmethod
     def c_verbose(cls, index, v):
@@ -42,7 +27,11 @@ class Index:
         return os.path.join(dirname, "full.faissindex")
     @classmethod
     def get_output_data_path(cls, dirname, task, suffix):
-        return os.path.join(dirname, "%s_output_%s.hdf5" % (task, suffix))
+        return os.path.join(dirname, "%s_output%s_%s.hdf5" % (
+            task,
+            ? ? ?
+            suffix,
+        ))
 
     def get_missing_output_data_path_map(self, input_paths, dir_path, task):
 

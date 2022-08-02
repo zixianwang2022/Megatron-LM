@@ -9,8 +9,8 @@ import torch
 
 from lutil import pax, print_rank, print_seq
 
-from retrieval import utils
-# from retrieval.data import load_data
+# from retrieval import utils
+from retrieval.data import load_data, save_data
 from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -31,12 +31,7 @@ class OPQIndex(Index):
             return
 
         timer.push("load-data")
-        # inp = load_data(self.args)
-        inp = utils.load_data(input_data_paths, timer)["data"]
-        # pax({
-        #     "input_data_paths" : input_data_paths,
-        #     "inp" : str(inp.shape),
-        # })
+        inp = load_data(input_data_paths, timer)["data"]
         timer.pop()
 
         timer.push("init")
@@ -108,7 +103,7 @@ class OPQIndex(Index):
 
             timer.push("load-data")
             input_data_path = input_data_paths[input_index]
-            inp = utils.load_data([ input_data_path ], timer)["data"]
+            inp = load_data([ input_data_path ], timer)["data"]
             timer.pop()
 
             # pax({"inp": str(inp.shape)})
@@ -135,7 +130,7 @@ class OPQIndex(Index):
             # })
 
             timer.push("save-data")
-            utils.save_data({"data": out}, output_data_path)
+            save_data({"data": out}, output_data_path)
             timer.pop()
 
             timer.pop()

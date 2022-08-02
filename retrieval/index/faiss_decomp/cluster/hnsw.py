@@ -7,25 +7,12 @@ import torch
 
 from lutil import pax, print_rank, print_seq
 
+from retrieval.data import load_data, save_data
 from retrieval.index import Index
-import retrieval.utils as utils
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # class HNSWStage(Index):
 class HNSWIndex(Index):
-
-    # def __init__(self, args, d, m):
-    #     super().__init__(args, d)
-    #     self.m = m
-    #     # self.hnsw = faiss.IndexHNSWFlat(d, m)
-    # def __init__(self, args):
-    #     super().__init__(args, args.ivf_dim, args.ivf_dim)
-
-    # def dout(self):
-    #     return self.din()
-
-    # def verbose(self, v):
-    #     self.c_verbose(self.hnsw, v)
 
     def _train(
             self,
@@ -43,7 +30,7 @@ class HNSWIndex(Index):
             return
 
         timer.push("load-data")
-        centroids = utils.load_data(centroid_data_paths, timer)["centroids"]
+        centroids = load_data(centroid_data_paths, timer)["centroids"]
         timer.pop()
 
         # pax({"centroids": centroids})
@@ -106,7 +93,7 @@ class HNSWIndex(Index):
 
             timer.push("load-data")
             input_data_path = input_data_paths[input_index]
-            inp = utils.load_data([ input_data_path ], timer)["data"]
+            inp = load_data([ input_data_path ], timer)["data"]
             timer.pop()
 
             print_rank("foward batch %d / %d. [ %d vecs ]" % (
@@ -124,7 +111,7 @@ class HNSWIndex(Index):
             # pax({"centroid_ids": centroid_ids})
 
             timer.push("save-data")
-            utils.save_data({
+            save_data({
                 "centroid_ids" : centroid_ids,
             }, output_data_path)
             timer.pop()
