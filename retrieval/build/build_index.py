@@ -49,10 +49,11 @@ def remove_add_outputs(args, timer):
         if n.startswith("add")
     ]
 
-    pax(0, {
-        "args" : args,
-        "add_paths" : add_paths,
-    })
+    # if add_paths:
+    #     pax(0, {
+    #         "args" : args,
+    #         "add_paths" : add_paths,
+    #     })
 
     for p in add_paths:
         if os.path.isdir(p):
@@ -185,12 +186,15 @@ if __name__ == "__main__":
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
     assert torch.cuda.is_available(), "index requires cuda."
     torch.distributed.init_process_group(
-        backend = "nccl",
+        # backend = "nccl",
+        backend = "gloo",
         world_size = args.world_size,
         rank = args.rank,
         # timeout = timedelta(minutes = 10),
         timeout = timedelta(days = 1),
     )
+
+    # pax(0, {"args": args})
 
     # ~~~~~~~~ data paths, size ~~~~~~~~
     (
