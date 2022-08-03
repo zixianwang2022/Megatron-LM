@@ -67,7 +67,8 @@ def get_index_str(args):
         args.pq_m,
     )
 
-def get_index_dirname(args):
+# def get_index_dirname(args):
+def get_index_dir_path(args):
 
     # ~~~~~~~~ save paths ~~~~~~~~
     index_str = get_index_str(args)

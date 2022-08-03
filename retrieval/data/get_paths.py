@@ -93,7 +93,8 @@ def get_all_data_paths(args, is_clean):
     return feat_paths
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def get_train_add_data_paths(args, timer):
+# def get_train_add_data_paths(args, timer):
+def get_train_add_data_paths(args):
 
     all_paths = get_all_data_paths(args, True)
 

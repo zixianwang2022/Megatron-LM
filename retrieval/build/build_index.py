@@ -6,10 +6,11 @@ from datetime import timedelta
 import faiss
 import json
 import os
+import shutil
 import socket
 import torch
 
-from lutil import pax
+from lutil import pax, print_rank, print_seq
 
 # >>>
 # pax({"pythonpath": os.environ["PYTHONPATH"]})
@@ -21,35 +22,57 @@ from retrieval.data import (
     get_train_add_data_paths,
 )
 from retrieval.index.factory import IndexFactory
-from retrieval.index.utils import get_index_dirname, get_index_str
+from retrieval.index.utils import get_index_dir_path, get_index_str
 from retrieval.utils import Timer
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def remove_add_outputs(args, timer):
+
+    # assert torch.distributed.get_rank() == 0
+    if torch.distributed.get_rank() != 0:
+        return
+
+    # sub_paths = [
+    #     os.path.join(args.index_dir_path, d)
+    #     for d in os.listdir(args.index_dir_path)
+    # ]
+    # add_dir_paths = [
+    #     os.path.join(args.index_dir_path, d)
+    #     for _, ds, _ in os.walk(args.index_dir_path)
+    #     for d in ds
+    #     if os.path.basename(d).startswith("add_output")
+    # ]
+    add_paths = [
+        os.path.join(args.index_dir_path, r, n)
+        for r, ds, fs in os.walk(args.index_dir_path)
+        for n in [ *ds, *fs ]
+        if n.startswith("add")
+    ]
+
+    pax(0, {
+        "args" : args,
+        "add_paths" : add_paths,
+    })
+
+    for p in add_paths:
+        if os.path.isdir(p):
+            shutil.rmtree(p)
+        elif os.path.isfile(p):
+            os.remove(p)
+        else:
+            raise Exception("specialize for this monster, '%s'." % p)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def run_train_pipeline(args, timer):
 
-    # ~~~~~~~~ setup ~~~~~~~~
-    # data_paths = get_data_paths(args, True)
-    ntrain, nadd, train_paths, _ = get_train_add_data_paths(args, timer)
-    args.ntrain = ntrain
-    args.nadd = nadd
-    args.index_dirname = get_index_dirname(args)
-
-    # pax({
-    #     "train_paths" : train_paths,
-    #     "ntrain" : ntrain,
-    #     "args" : args,
-    # })
-
     # ~~~~~~~~ init index ~~~~~~~~
     timer.push("init")
     index = IndexFactory.get_index(args) # , timer)
-    # pax({"index": index})
     timer.pop()
 
     # ~~~~~~~~ train index ~~~~~~~~
     # timer.push("train")
-    # index.train(args.data_paths, args.index_dirname, timer)
-    index.train(train_paths, args.index_dirname, timer)
+    index.train(args.train_paths, args.index_dir_path, timer)
     # timer.pop()
 
     # ~~~~~~~~ debug ~~~~~~~~
@@ -61,20 +84,6 @@ def run_train_pipeline(args, timer):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def run_add_pipeline(args, timer):
 
-    # ~~~~~~~~ setup ~~~~~~~~
-    # data_paths = get_data_paths(args)
-    # data_paths, _ = get_train_add_data_paths(args, timer)
-    ntrain, nadd, _, add_paths = get_train_add_data_paths(args, timer)
-    args.ntrain = ntrain
-    args.nadd = nadd
-    args.index_dirname = get_index_dirname(args)
-
-    # pax({
-    #     "add_paths" : add_paths,
-    #     "nadd" : nadd,
-    #     "args" : args,
-    # })
-
     # ~~~~~~~~ load index ~~~~~~~~
     timer.push("init")
     index = IndexFactory.get_index(args) # , timer)
@@ -82,7 +91,7 @@ def run_add_pipeline(args, timer):
 
     # ~~~~~~~~ add index ~~~~~~~~
     # timer.push("add")
-    index.add(add_paths, args.index_dirname, timer)
+    index.add(args.add_paths, args.index_dir_path, timer)
     # timer.pop()
 
     # ~~~~~~~~ debug ~~~~~~~~
@@ -119,13 +128,14 @@ if __name__ == "__main__":
 
     # ~~~~~~~~ user args ~~~~~~~~
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", required = True, choices = [
-        "clean-data",
-        "split-data",
-        "train",
-        "add",
-        "query",
-    ])
+    # parser.add_argument("--task", required = True, choices = [
+    #     "clean-data",
+    #     "split-data",
+    #     "train",
+    #     "add",
+    #     "query",
+    # ])
+    parser.add_argument("--tasks", required = True)
     parser.add_argument("--nfeats", "-f", type = int, default = 1024)
     parser.add_argument("--ntrain", "-t", type = int, required = True)
     parser.add_argument("--nadd", "-a", type = int, required = True)
@@ -146,15 +156,16 @@ if __name__ == "__main__":
     # parser.add_argument("--profile-single-encoder",
     #                     default = False,
     #                     action = "store_true")
-    parser.add_argument("--profile-single-encoder", type = int, required = True,
-                        choices = [ 0, 1 ])
+    # parser.add_argument("--profile-single-encoder", type = int, required = True,
+    #                     choices = [ 0, 1 ])
     # parser.add_argument("--profile-stage-keys", default = None)
     parser.add_argument("--profile-stage-stop", default = None)
     parser.add_argument("--local_rank", type = int, default = None)
     args = parser.parse_args()
 
     args.index_str = get_index_str(args)
-    args.profile_single_encoder = bool(args.profile_single_encoder)
+    # args.profile_single_encoder = bool(args.profile_single_encoder)
+    args.tasks = args.tasks.split(",")
 
     # import os
     # pax({"hostname": os.environ["HOSTNAME_ORIG"]})
@@ -170,7 +181,6 @@ if __name__ == "__main__":
     else:
         raise Exception("specialize for hostname '%s'." % hostname)
 
-
     args.rank = int(os.getenv('RANK', '0'))
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
     assert torch.cuda.is_available(), "index requires cuda."
@@ -181,6 +191,16 @@ if __name__ == "__main__":
         # timeout = timedelta(minutes = 10),
         timeout = timedelta(days = 1),
     )
+
+    # ~~~~~~~~ data paths, size ~~~~~~~~
+    (
+        args.ntrain,
+        args.nadd,
+        args.train_paths,
+        args.add_paths,
+    ) = get_train_add_data_paths(args) # , timer)
+    args.index_dir_path = get_index_dir_path(args)
+    # pax(0, {"args": args})
 
     torch.distributed.barrier()
 
@@ -194,23 +214,31 @@ if __name__ == "__main__":
 
     # ~~~~~~~~ pipeline ~~~~~~~~
     timer = Timer()
-    timer.push(args.task)
 
-    if args.task == "clean-data":
-        clean_data(args, timer)
-    elif args.task == "split-data":
-        split_feat_files(args, timer)
-    elif args.task == "train":
-        run_train_pipeline(args, timer)
-    elif args.task == "add":
-        run_add_pipeline(args, timer)
-    elif args.task == "query":
-        raise Exception("hi.")
-        run_query_pipeline(args, timer)
-    else:
-        raise Exception("specialize for task '%s'." % args.task)
+    # print_seq("tasks = %s." % str(args.tasks))
+    for task in args.tasks:
 
-    timer.pop()
+        torch.distributed.barrier()
+
+        timer.push(task)
+
+        if task == "clean-data":
+            clean_data(args, timer)
+        elif task == "split-data":
+            split_feat_files(args, timer)
+        elif task == "remove-add-outputs":
+            remove_add_outputs(args, timer)
+        elif task == "train":
+            run_train_pipeline(args, timer)
+        elif task == "add":
+            run_add_pipeline(args, timer)
+        elif task == "query":
+            raise Exception("hi.")
+            run_query_pipeline(args, timer)
+        else:
+            raise Exception("specialize for task '%s'." % task)
+
+        timer.pop()
 
     # ~~~~~~~~ stats ~~~~~~~~
     torch.distributed.barrier()
@@ -226,13 +254,13 @@ if __name__ == "__main__":
         timer.print()
         print("~~~~~~~~~~~~~~~~")
         print("L-RESULT : %s, %s, %s, %d, %d, '%s' ... %s ... [ %s ]." % (
-            args.task,
+            args.tasks[-1],
             args.data_ty,
             args.index_ty,
             args.ntrain,
             args.nadd,
             args.profile_stage_stop,
-            timer.get_child_str(args.task),
+            timer.get_child_str(args.tasks[-1]),
             args.index_str,
         ), flush = True)
     torch.distributed.barrier()

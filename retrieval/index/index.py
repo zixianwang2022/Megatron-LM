@@ -7,6 +7,8 @@ import torch
 
 from lutil import pax, print_seq
 
+from retrieval import utils
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Index:
 
@@ -20,18 +22,20 @@ class Index:
         # index.verbose = True # ... maybe?
 
     @classmethod
-    def get_empty_index_path(cls, dirname):
-        return os.path.join(dirname, "empty.faissindex")
+    def get_empty_index_path(cls, dir_path):
+        return os.path.join(dir_path, "empty.faissindex")
     @classmethod
-    def get_full_index_path(cls, dirname):
-        return os.path.join(dirname, "full.faissindex")
+    def get_full_index_path(cls, dir_path):
+        return os.path.join(dir_path, "full.faissindex")
     @classmethod
-    def get_output_data_path(cls, dirname, task, suffix):
-        return os.path.join(dirname, "%s_output%s_%s.hdf5" % (
-            task,
-            ? ? ?
-            suffix,
-        ))
+    def get_output_data_path(cls, dir_path, task, suffix):
+        return os.path.join(dir_path, "%s_output%s_%s.hdf5" % (task, suffix))
+    @classmethod
+    def get_output_data_path(cls, dir_path, task, suffix):
+        # sub_dir_name = "%s_output_w%d"%(task,torch.distributed.get_world_size())
+        sub_dir_name = "%s_output" % task
+        utils.make_sub_dir(dir_path, sub_dir_name)
+        return os.path.join(dir_path, sub_dir_name, "%s.hdf5" % suffix)
 
     def get_missing_output_data_path_map(self, input_paths, dir_path, task):
 

@@ -320,13 +320,10 @@ class IVFPQIndex(Index):
 
         timer.push("load-data")
         input_data_path = input_data_path_item["data"]
-        input_data = utils \
-            .load_data([input_data_path], timer)["data"] \
-            .astype("f4") # f4, float32, float, np.float32
+        input_data = load_data([input_data_path], timer)["data"].astype("f4")
         cluster_id_path = input_data_path_item["centroid_ids"]
-        cluster_ids = utils \
-            .load_data([cluster_id_path],timer)["centroid_ids"] \
-            .astype("i8") # "i8")
+        cluster_ids = \
+            load_data([cluster_id_path], timer)["centroid_ids"].astype("i8")
         timer.pop()
 
         # pax(0, {
