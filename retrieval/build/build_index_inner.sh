@@ -78,7 +78,7 @@ else
 
     else
 	PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
-	NPROC=16 # *8
+	NPROC=64 # *8
 	cmd="python -m torch.distributed.launch \
     		    --nproc_per_node ${NPROC} \
 		    --nnodes 1 \
@@ -102,7 +102,7 @@ else
 
 fi
 
-if [ "0" -eq "1" ]; then
+if [ "1" -eq "1" ]; then
     pip install h5py
     conda install -c conda-forge -y faiss-gpu
 fi
