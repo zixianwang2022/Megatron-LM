@@ -18,6 +18,7 @@ from lutil import pax, print_rank, print_seq
 
 from retrieval.data import (
     clean_data,
+    gen_rand_data,
     get_all_data_paths,
     get_train_add_data_paths,
 )
@@ -197,16 +198,17 @@ if __name__ == "__main__":
     # pax(0, {"args": args})
 
     # ~~~~~~~~ data paths, size ~~~~~~~~
-    (
-        args.ntrain,
-        args.nadd,
-        args.train_paths,
-        args.add_paths,
-    ) = get_train_add_data_paths(args) # , timer)
-    args.index_dir_path = get_index_dir_path(args)
-    # pax(0, {"args": args})
+    if "gen-rand-data" not in args.tasks:
+        (
+            args.ntrain,
+            args.nadd,
+            args.train_paths,
+            args.add_paths,
+        ) = get_train_add_data_paths(args) # , timer)
+        args.index_dir_path = get_index_dir_path(args)
+        # pax(0, {"args": args})
 
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
 
     # pax({
     #     "hostname" : hostname,
@@ -230,6 +232,8 @@ if __name__ == "__main__":
             clean_data(args, timer)
         elif task == "split-data":
             split_feat_files(args, timer)
+        elif task == "gen-rand-data":
+            gen_rand_data(args, timer)
         elif task == "remove-add-outputs":
             remove_add_outputs(args, timer)
         elif task == "train":
@@ -243,6 +247,8 @@ if __name__ == "__main__":
             raise Exception("specialize for task '%s'." % task)
 
         timer.pop()
+
+    torch.distributed.barrier()
 
     # ~~~~~~~~ stats ~~~~~~~~
     torch.distributed.barrier()

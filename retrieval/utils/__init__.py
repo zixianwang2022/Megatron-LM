@@ -16,6 +16,7 @@ def mkdir(path):
         os.mkdir(path)
     except FileExistsError as e:
         pass
+    return path
 
 def make_sub_dir(top_path, sub_name):
     sub_path = os.path.join(top_path, sub_name)

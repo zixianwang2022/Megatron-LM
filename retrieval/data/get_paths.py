@@ -7,38 +7,41 @@ import h5py
 import socket
 # import torch
 
-# from lutil import pax, print_rank, print_seq
+from lutil import pax, print_rank, print_seq
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # def get_data_paths(args, is_clean):
-def get_all_data_paths(args, is_clean):
+def get_all_data_paths(args, is_clean = True):
 
     hostname = socket.gethostname()
     # pax({"hostname": hostname})
 
     # ~~~~~~~~ feat paths [ hdf5 ] ~~~~~~~~
     if hostname.startswith("luna-"):
+        # if args.data_ty == "rand":
+        #     raise Exception("update 'rand' for batch data loading; no 'ntrain'.")
+        #     if 0:
+        #         return np.random.rand(args.ntrain, 1024).astype("f4")
+        #     else:
+        #         from sklearn.datasets import make_blobs
+        #         data, labels, centers = make_blobs(
+        #             n_samples = args.ntrain,
+        #             n_features = 1024,
+        #             centers = 32,
+        #             return_centers = True,
+        #         )
+        #         pax({
+        #             "data" : data,
+        #             "labels" : labels,
+        #             "centers" : centers,
+        #         })
+        #         return data
         if args.data_ty == "rand":
-            raise Exception("update 'rand' for batch data loading; no 'ntrain'.")
-            if 0:
-                return np.random.rand(args.ntrain, 1024).astype("f4")
-            else:
-                from sklearn.datasets import make_blobs
-                data, labels, centers = make_blobs(
-                    n_samples = args.ntrain,
-                    n_features = 1024,
-                    centers = 32,
-                    return_centers = True,
-                )
-                pax({
-                    "data" : data,
-                    "labels" : labels,
-                    "centers" : centers,
-                })
-                return data
+            feat_paths = glob.glob("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/data/%s/*.hdf5" % args.data_ty)
+            pax(0, {"feat_paths": feat_paths})
         elif args.data_ty == "corpus":
             # feat_paths = glob.glob("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/sampled_pretraining/*.feat.hdf5")
-            feat_paths = glob.glob("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/corpus-%s.hdf5" % ("clean/*" if is_clean else "dirty/*.feat"))
+            feat_paths = glob.glob("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/data/corpus-%s.hdf5" % ("clean/*" if is_clean else "dirty/*.feat"))
         else:
             raise Exception("specialize for '%s'." % args.data_ty)
 
