@@ -148,7 +148,7 @@ if __name__ == "__main__":
     parser.add_argument("--pq-nbits", type = int, default = 8)
     # parser.add_argument("--batch-size", type = int, default = int(1e6))
     parser.add_argument("--data-ty", required = True,
-                        choices = [ "rand", "wiki", "corpus" ])
+                        choices = [ "corpus", "wiki", "rand-1m", "rand-100k" ])
     parser.add_argument("--index-ty", required = True,
                         # choices = [ "faiss-mono", "faiss-dist" ])
                         # choices = [ "faiss-mono", "faiss-decomp", "cuml" ])
@@ -195,8 +195,6 @@ if __name__ == "__main__":
         timeout = timedelta(days = 1),
     )
 
-    # pax(0, {"args": args})
-
     # ~~~~~~~~ data paths, size ~~~~~~~~
     if "gen-rand-data" not in args.tasks:
         (
@@ -209,6 +207,8 @@ if __name__ == "__main__":
         # pax(0, {"args": args})
 
     # torch.distributed.barrier()
+
+    # pax(0, {"args": args})
 
     # pax({
     #     "hostname" : hostname,

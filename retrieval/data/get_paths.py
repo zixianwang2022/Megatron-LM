@@ -65,10 +65,12 @@ def get_all_data_paths(args, is_clean = True):
 
     elif hostname.startswith("ip-"):
         if args.data_ty == "wiki":
-            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/wiki/*.feat.hdf5")
+            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/wiki/*.feat.hdf5")
         elif args.data_ty == "corpus":
             # feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/*.feat.hdf5")
-            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus%s" % ("-dirty/*.feat.hdf5" if not is_clean else "-clean/*.hdf5"))
+            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/corpus%s" % ("-dirty/*.feat.hdf5" if not is_clean else "-clean/*.hdf5"))
+        elif args.data_ty == "rand-100k":
+            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/rand-100k/*.hdf5")
         else:
             raise Exception("specialize for '%s'." % args.data_ty)
 
@@ -84,10 +86,10 @@ def get_all_data_paths(args, is_clean = True):
         n = 0
         for i, p in enumerate(feat_paths):
             if i % 20 == 0:
-                print("counting feat path %d / %d." % (i, len(feat_paths)))
+                print_rank(0, "counting feat path %d / %d." % (i, len(feat_paths)))
             f = h5py.File(p, "r")
-            n += len(f["feat"])
-        pax({
+            n += len(f["data"]) # feat"])
+        pax(0, {
             "feat_paths" : feat_paths,
             "n" : n,
         })
