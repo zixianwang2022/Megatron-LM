@@ -79,13 +79,21 @@ def gen_rand_data(args, timer):
                 num_batches,
             ))
 
-            data = np.random.rand(batch_size, args.nfeats).astype("f4")
+            # pax({"args": args, "batch_size": batch_size})
 
+            # try:
+            data = np.random.rand(batch_size, args.nfeats).astype("f4")
+            # except Exception as e:
+            #     raise Exception("hi.")
+            
+            # pax({"data": str(data.shape)})
+
+            # print_rank("write file.")
             f = h5py.File(path, "w")
             f.create_dataset("data", data = data)
             f.close()
 
-            # raise Exception("worked?")
+            raise Exception("worked?")
 
     # pax({"args": args})
     print_seq("goodbye.")
