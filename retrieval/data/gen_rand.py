@@ -13,7 +13,7 @@ from retrieval import utils
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def gen_rand_data(args, timer):
 
-    print_seq("gen more data?")
+    # print_seq("gen more data?")
 
     # if torch.distributed.get_rank() != 0:
     #     return
@@ -28,8 +28,8 @@ def gen_rand_data(args, timer):
     # existing_
     nvecs = int(1e9)
     for key, batch_size in [
-            # ("1m", int(1e6)),
-            ("100k", int(1e5)),
+            ("1m", int(1e6)),
+            # ("100k", int(1e5)),
     ]:
 
         # base_path = os.path.join(args.base_dir, "rand-%s" % key)
@@ -45,9 +45,15 @@ def gen_rand_data(args, timer):
         num_batches = int(nvecs / batch_size)
         # for batch_index in range(num_batches): # single process
         # for batch_index in range(0, num_batches, world_size):
+        # for batch_index in range(
+        #         0 * 1000 + rank, # ... 100k
+        #         1 * 1000,
+        #         world_size,
+        # ):
+        group_id = 0
         for batch_index in range(
-                2 * 1000 + rank,
-                3 * 1000,
+                group_id * 100 + rank, # ... 1m
+                (group_id + 1) * 100,
                 world_size,
         ):
 

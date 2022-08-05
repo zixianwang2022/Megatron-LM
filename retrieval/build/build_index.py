@@ -67,6 +67,8 @@ def remove_add_outputs(args, timer):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def run_train_pipeline(args, timer):
 
+    assert torch.cuda.is_available(), "index requires cuda."
+
     # ~~~~~~~~ init index ~~~~~~~~
     timer.push("init")
     index = IndexFactory.get_index(args) # , timer)
@@ -176,7 +178,7 @@ if __name__ == "__main__":
     # hostname = os.environ["HOSTNAME_ORIG"]
     if hostname.startswith("luna-"):
         args.base_dir = "/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval"
-    elif hostname.startswith("rno"):
+    elif hostname.startswith("rno") or hostname.startswith("dracocpu"):
         args.base_dir = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval"
     elif hostname.startswith("ip-"):
         args.base_dir = "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval"
@@ -185,7 +187,7 @@ if __name__ == "__main__":
 
     args.rank = int(os.getenv('RANK', '0'))
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
-    assert torch.cuda.is_available(), "index requires cuda."
+    # assert torch.cuda.is_available(), "index requires cuda."
     torch.distributed.init_process_group(
         # backend = "nccl",
         backend = "gloo",

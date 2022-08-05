@@ -27,11 +27,11 @@ else
 
     # task="clean-data"
     # task="split-data"
-    # tasks="gen-rand-data"
+    tasks="gen-rand-data"
     # task=train
     # tasks=add
     # tasks="remove-add-outputs,train"
-    tasks="remove-add-outputs,add"
+    # tasks="remove-add-outputs,add"
     # tasks="remove-add-outputs"
 
     # ntrain=2048 ncluster=64 hnsw=4
@@ -54,8 +54,8 @@ else
 
     # data_ty=corpus
     # data_ty=wiki
-    # data_ty=rand-1m
-    data_ty=rand-100k
+    data_ty=rand-1m
+    # data_ty=rand-100k
 
     # index_ty=faiss-mono
     index_ty=faiss-decomp
@@ -81,7 +81,7 @@ else
 
     else
 	PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
-	NPROC=8 # *8
+	NPROC=4 # 16 # *8
 	cmd="python -m torch.distributed.launch \
     		    --nproc_per_node ${NPROC} \
 		    --nnodes 1 \
@@ -105,7 +105,7 @@ else
 
 fi
 
-if [ "0" -eq "1" ]; then
+if [ "1" -eq "1" ]; then
     pip install h5py
     conda install -c conda-forge -y faiss-gpu
 fi
