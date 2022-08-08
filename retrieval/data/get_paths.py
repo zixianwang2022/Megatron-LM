@@ -52,14 +52,16 @@ def get_all_data_paths(args, is_clean = True):
         # feat_paths = glob.glob(args.base_dir + "/v2/data0/*feat.hdf5")
         if args.data_ty == "wiki":
             # feat_paths = glob.glob(args.base_dir + "/v2/data1/feat/*feat.hdf5") # matches banned doc_ids
-            feat_paths = glob.glob(args.base_dir + "wiki/feat-%s/*feat.hdf5" % data_state) # matches banned doc_ids
+            feat_paths = glob.glob(args.base_dir + "/data/wiki/feat-%s/*feat.hdf5" % data_state) # matches banned doc_ids
         elif args.data_ty == "corpus":
             # feat_paths = glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/pretrain*feat.hdf5")
             if not is_clean:
                 feat_paths = glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/sampled_pretraining/*.feat.hdf5")
             else:
-                feat_paths = glob.glob(args.base_dir+"/corpus-clean/*.hdf5")
+                feat_paths = glob.glob(args.base_dir+"/data/corpus-clean/*.hdf5")
             # feat_paths = glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/../boxinw/processed_data/chunks/sampled_pretraining/*.feat.hdf5")
+        elif args.data_ty.startswith("rand-"):
+            feat_paths = glob.glob(args.base_dir + "/data/%s/*.hdf5" % args.data_ty)
         else:
             raise Exception("specialize for '%s'." % args.data_ty)
 
