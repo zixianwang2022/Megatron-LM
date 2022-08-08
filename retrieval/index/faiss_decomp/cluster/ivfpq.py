@@ -600,6 +600,9 @@ class IVFPQIndex(Index):
     @classmethod
     def time_merge_partials(cls, args, timer):
     
+        from retrieval.utils import Timer
+        timer = Timer()
+
         get_cluster_ids = lambda n : np.random.randint(
             args.ncluster,
             size = (n, 1),
@@ -609,7 +612,7 @@ class IVFPQIndex(Index):
         # Num batches & rows.
         # ntrain = int(10e6)
         batch_size = int(1e6)
-        num_batches = 10
+        num_batches = 8192 # 1024 # 10
         num_rows = cls.get_num_rows(num_batches)
 
         # torch.distributed.barrier() # prevent race condition for missing paths
@@ -626,7 +629,7 @@ class IVFPQIndex(Index):
         # Iterate rows
         for row in range(num_rows):
 
-            # timer.push("row-%d" % row)
+            timer.push("row-%d" % row)
 
             num_cols = cls.get_num_cols(num_batches, row)
 
@@ -648,30 +651,28 @@ class IVFPQIndex(Index):
 
             # Initialize/merge partial indexes.
             if row == 0:
-                # timer.push("init-partial")
+                timer.push("init-partial")
 
-                # timer.push("cluster-ids")
-                cluster_ids = get_cluster_ids(len(data))
-                # timer.pop()
-
-                # timer.push("read")
+                timer.push("read")
                 index = faiss.read_index(empty_index_path)
                 # self.c_verbose(index, True) # too much verbosity, with batch 1M
                 # self.c_verbose(index.quantizer, True)
-                # timer.pop()
+                timer.pop()
 
-                # timer.push("add-core")
+                timer.push("cluster-ids")
+                cluster_ids = get_cluster_ids(len(data))
+                timer.pop()
+
+                timer.push("add-core")
                 index.add_core(
                     n = len(data),
                     x = my_swig_ptr(data),
                     xids = my_swig_ptr(np.arange(len(data), dtype = "i8")),
                     precomputed_idx = my_swig_ptr(cluster_ids),
                 )
-                # timer.pop()
+                timer.pop()
 
-                # timer.pop()
-
-                # pax({"index": index})
+                timer.pop()
 
             else:
                 # timer.push("merge-partial")
@@ -684,18 +685,20 @@ class IVFPQIndex(Index):
                 #     })
 
                 # Output index.
-                # timer.push("read-output")
-                output_index = faiss.read_index(empty_index_path)
+                timer.push("read-output")
+                # output_index = faiss.read_index(empty_index_path)
+                output_index = faiss.read_index(input_index_path)
                 output_invlists = output_index.invlists
-                # timer.pop()
+                timer.pop()
 
                 # Merge input indexes.
-                for input_iter in range(2):
+                # for input_iter in range(2):
+                for input_iter in range(1): # output initialized w/ first input
 
-                    # timer.push("read-input")
+                    timer.push("read-input")
                     input_index = faiss.read_index(input_index_path)
                     input_invlists = input_index.invlists
-                    # timer.pop()
+                    timer.pop()
 
                     # # timer.push("cluster-ids")
                     # cluster_ids = get_cluster_ids(input_index.ntotal)
@@ -707,7 +710,7 @@ class IVFPQIndex(Index):
                         input_index.ntotal + output_index.ntotal,
                     ))
 
-                    # timer.push("add")
+                    timer.push("add-entry")
                     id_start = output_index.ntotal
                     for list_id in range(input_invlists.nlist):
                         input_list_size = input_invlists.list_size(list_id)
@@ -731,7 +734,7 @@ class IVFPQIndex(Index):
                             input_invlists.get_codes(list_id),
                         )
                         id_start += input_list_size
-                    # timer.pop()
+                    timer.pop()
 
                     # output_index.ntotal += input_index.ntotal
                     output_index.ntotal = id_start
@@ -754,14 +757,17 @@ class IVFPQIndex(Index):
                 # })
                 # timer.pop()
 
-            # timer.push("write")
+            timer.push("write")
             faiss.write_index(index, output_index_path)
-            # timer.pop()
+            timer.pop()
 
             # exit(0)
 
             input_index_path = output_index_path
 
-            # timer.pop()
+            timer.pop()
+
+        timer.print()
+        exit(0)
 
 # eof
