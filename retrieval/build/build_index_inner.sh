@@ -109,7 +109,7 @@ else
 
 fi
 
-if [ "1" -eq "1" ]; then
+if [ "0" -eq "1" ]; then
     pip install h5py
     conda install -c conda-forge -y faiss-gpu
 fi
