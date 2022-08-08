@@ -198,7 +198,8 @@ if __name__ == "__main__":
     )
 
     # ~~~~~~~~ data paths, size ~~~~~~~~
-    if "gen-rand-data" not in args.tasks:
+    # if "gen-rand-data" not in args.tasks:
+    if "train" in args.tasks or "add" in args.tasks:
         (
             args.ntrain,
             args.nadd,
@@ -238,6 +239,11 @@ if __name__ == "__main__":
             gen_rand_data(args, timer)
         elif task == "remove-add-outputs":
             remove_add_outputs(args, timer)
+        elif task == "time-merge-partials":
+            from retrieval.index.faiss_decomp.cluster.ivfpq import IVFPQIndex
+            if torch.distributed.get_rank() == 0:
+                IVFPQIndex.time_merge_partials(args, timer)
+            torch.distributed.barrier()
         elif task == "train":
             run_train_pipeline(args, timer)
         elif task == "add":

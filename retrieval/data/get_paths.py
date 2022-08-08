@@ -71,8 +71,10 @@ def get_all_data_paths(args, is_clean = True):
         elif args.data_ty == "corpus":
             # feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/*.feat.hdf5")
             feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/corpus%s" % ("-dirty/*.feat.hdf5" if not is_clean else "-clean/*.hdf5"))
-        elif args.data_ty == "rand-100k":
-            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/rand-100k/*.hdf5")
+        # elif args.data_ty == "rand-100k":
+        #     feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/rand-100k/*.hdf5")
+        elif args.data_ty.startswith("rand-"):
+            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/%s/*.hdf5" % args.data_ty)
         else:
             raise Exception("specialize for '%s'." % args.data_ty)
 
