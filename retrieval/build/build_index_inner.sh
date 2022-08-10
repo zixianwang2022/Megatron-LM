@@ -2,121 +2,134 @@
 
 set -u
 
-# DIR=$(readlink -f `pwd`)
-# echo $DIR
+# >>>
+# echo "SLURM_JOB_NUM_NODES = $SLURM_JOB_NUM_NODES"
+# echo "NPROCS = $NPROCS"
+# exit 0
+# <<<
+
+DIR=$(readlink -f `pwd`)
+# source $SHARE_SOURCE/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index_cmd.sh
+source $DIR/retrieval/build/build_index_cmd.sh
+
+# echo "DIR = '$DIR'."
+# echo "BUILD_INDEX_CMD = '$BUILD_INDEX_CMD'."
 # exit
 
-if [ "0" -eq "1" ]; then
-   if [ "$#" -ne 1 ]; then
-       echo "illegal num args, $#."
-       exit 1
-   fi
-   cmd=$1
+# if [ "0" -eq "1" ]; then
+#    if [ "$#" -ne 1 ]; then
+#        echo "illegal num args, $#."
+#        exit 1
+#    fi
+#    cmd=$1
 
-else
+# else
 
-    NPROC=1 # *8
+#     NPROC=1 # *8
 
-    # >>>>>>>>>>>>>>>>>>>>>>>
-    # [x] profile_stage_stop="data"
-    # profile_stage_stop="opq"
-    # profile_stage_stop="ivf"
-    # profile_stage_stop="pqs"
-    # [x] profile_stage_stop="[ignore]"
+#     # >>>>>>>>>>>>>>>>>>>>>>>
+#     # [x] profile_stage_stop="data"
+#     # profile_stage_stop="opq"
+#     # profile_stage_stop="ivf"
+#     # profile_stage_stop="pqs"
+#     # [x] profile_stage_stop="[ignore]"
     
-    # profile_stage_stop="preprocess"
-    profile_stage_stop="cluster"
+#     # profile_stage_stop="preprocess"
+#     profile_stage_stop="cluster"
 
-    # task="clean-data"
-    # task="split-data"
-    # tasks="gen-rand-data"
-    # task=train
-    # tasks=add
-    # tasks="remove-add-outputs,train"
-    # * tasks="remove-add-outputs,add"
-    # tasks="remove-add-outputs"
-    tasks="time-merge-partials"
+#     # task="clean-data"
+#     # task="split-data"
+#     tasks="gen-rand-data"
+#     # task=train
+#     # tasks=add
+#     # tasks="remove-add-outputs,train"
+#     # * tasks="remove-add-outputs,add"
+#     # tasks="remove-add-outputs"
+#     # tasks="time-merge-partials"
 
-    # ntrain=2048 ncluster=64 hnsw=4
-    # ntrain=131072 ncluster=128 hnsw=32
-    # ntrain=5000000 ncluster=100000 hnsw=32
-    # ntrain=15000000 ncluster=500000 hnsw=32
-    # ntrain=20000000 ncluster=4194304 hnsw=32
-    # ntrain=50000000 nadd=200000000 ncluster=4194304 hnsw=32
-    # ntrain=300000000 ncluster=4194304 hnsw=32
-    # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
-    # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
-    # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
-    # ntrain=2500000 nadd=10000000 ncluster=262144 hnsw=32
-    # ntrain=500000 nadd=10000000 ncluster=262144 hnsw=32
-    # ntrain=10000000 nadd=20000000 ncluster=1048576 hnsw=32
-    # ntrain=3000000 nadd=100000000 ncluster=1048576 hnsw=32
-    ntrain=3000000 nadd=$((NPROC*1000000)) ncluster=1048576 hnsw=32
+#     # ntrain=2048 ncluster=64 hnsw=4
+#     # ntrain=131072 ncluster=128 hnsw=32
+#     # ntrain=5000000 ncluster=100000 hnsw=32
+#     # ntrain=15000000 ncluster=500000 hnsw=32
+#     # ntrain=20000000 ncluster=4194304 hnsw=32
+#     # ntrain=50000000 nadd=200000000 ncluster=4194304 hnsw=32
+#     # ntrain=300000000 ncluster=4194304 hnsw=32
+#     # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
+#     # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
+#     # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
+#     # ntrain=2500000 nadd=10000000 ncluster=262144 hnsw=32
+#     # ntrain=500000 nadd=10000000 ncluster=262144 hnsw=32
+#     # ntrain=10000000 nadd=20000000 ncluster=1048576 hnsw=32
+#     # ntrain=3000000 nadd=100000000 ncluster=1048576 hnsw=32
+#     ntrain=3000000 nadd=$((NPROC*1000000)) ncluster=1048576 hnsw=32
 
-    pq_dim=32
-    ivf_dim=256
+#     pq_dim=32
+#     ivf_dim=256
 
-    # data_ty=corpus
-    # data_ty=wiki
-    data_ty=rand-1m
-    # data_ty=rand-100k
+#     # data_ty=corpus
+#     # data_ty=wiki
+#     data_ty=rand-1m
+#     # data_ty=rand-100k
 
-    # index_ty=faiss-mono
-    index_ty=faiss-decomp
-    # index_str="OPQ32_256,IVF${ncluster}_HNSW${hnsw},PQ32"
+#     # index_ty=faiss-mono
+#     index_ty=faiss-decomp
+#     # index_str="OPQ32_256,IVF${ncluster}_HNSW${hnsw},PQ32"
 
-    if [ "0" -eq "1" ]; then
+#     if [ "0" -eq "1" ]; then
 
-	# --index-str ${index_str} \
-        cmd="python -m lawrence.build.build_index \
-                    --task ${task} \
-                    --data-ty ${data_ty} \
-                    --ntrain ${ntrain} \
-                    --nadd ${nadd} \
-                    --ncluster ${ncluster} \
-                    --hnsw-m ${hnsw} \
-                    --ivf-dim ${ivf_dim} \
-                    --pq-m ${pq_dim} \
-                    --index-ty ${index_ty} \
-                    --profile-stage-stop ${profile_stage_stop} \
-                    --profile-single-encoder 0 \
-    		    "
-	# cmd="ls -alh"
+# 	# --index-str ${index_str} \
+#         cmd="python -m lawrence.build.build_index \
+#                     --task ${task} \
+#                     --data-ty ${data_ty} \
+#                     --ntrain ${ntrain} \
+#                     --nadd ${nadd} \
+#                     --ncluster ${ncluster} \
+#                     --hnsw-m ${hnsw} \
+#                     --ivf-dim ${ivf_dim} \
+#                     --pq-m ${pq_dim} \
+#                     --index-ty ${index_ty} \
+#                     --profile-stage-stop ${profile_stage_stop} \
+#                     --profile-single-encoder 0 \
+#     		    "
+# 	# cmd="ls -alh"
 
-    else
-	PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
-	# NPROC=8 # *8
-	cmd="python -m torch.distributed.launch \
-    		    --nproc_per_node ${NPROC} \
-		    --nnodes 1 \
-                    --node_rank 0 \
-                    --master_addr localhost \
-                    --master_port 6000 \
-		    ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
-                    --tasks ${tasks} \
-                    --data-ty ${data_ty} \
-                    --ntrain ${ntrain} \
-                    --nadd ${nadd} \
-                    --ncluster ${ncluster} \
-                    --hnsw-m ${hnsw} \
-                    --ivf-dim ${ivf_dim} \
-                    --pq-m ${pq_dim} \
-                    --index-ty ${index_ty} \
-                    --profile-stage-stop ${profile_stage_stop} \
-    		    "
-        # --profile-single-encoder 0 \
-    fi
+#     else
+# 	PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
+# 	# NPROC=8 # *8
+# 	cmd="python -m torch.distributed.launch \
+#     		    --nproc_per_node ${NPROC} \
+# 		    --nnodes 1 \
+#                     --node_rank 0 \
+#                     --master_addr localhost \
+#                     --master_port 6000 \
+# 		    ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
+#                     --tasks ${tasks} \
+#                     --data-ty ${data_ty} \
+#                     --ntrain ${ntrain} \
+#                     --nadd ${nadd} \
+#                     --ncluster ${ncluster} \
+#                     --hnsw-m ${hnsw} \
+#                     --ivf-dim ${ivf_dim} \
+#                     --pq-m ${pq_dim} \
+#                     --index-ty ${index_ty} \
+#                     --profile-stage-stop ${profile_stage_stop} \
+#     		    "
+#         # --profile-single-encoder 0 \
+#     fi
 
-fi
+# fi
 
-if [ "0" -eq "1" ]; then
+if [ "1" -eq "1" ]; then
     pip install h5py
     conda install -c conda-forge -y faiss-gpu
 fi
 
 unset NCCL_DEBUG
-echo "CMD = $cmd"
-eval $cmd
+# echo "CMD = $cmd"
+# eval $cmd
+echo "DIR = '$DIR'."
+echo "BUILD_INDEX_CMD = '$BUILD_INDEX_CMD'."
+eval $BUILD_INDEX_CMD
 exit 0
 
 # eof

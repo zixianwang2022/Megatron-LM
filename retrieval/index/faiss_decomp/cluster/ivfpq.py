@@ -618,7 +618,7 @@ class IVFPQIndex(Index):
         # torch.distributed.barrier() # prevent race condition for missing paths
 
         empty_index_path = "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-rand-100k/OPQ32_256,IVF1048576_HNSW32,PQ32__t3000000/cluster/ivfpq/empty.faissindex"
-        input_index_path = empty_index_path
+        # input_index_path = empty_index_path
         # index = faiss.read_index(index_path)
 
         # data = np.random.rand(batch_size, args.nfeats).astype("f4")
@@ -627,7 +627,7 @@ class IVFPQIndex(Index):
         # pax({"data": data})
 
         # Iterate rows
-        for row in range(num_rows):
+        for row in range(10, num_rows):
 
             timer.push("row-%d" % row)
 
@@ -644,6 +644,10 @@ class IVFPQIndex(Index):
             #     "num_cols" : num_cols,
             # })
 
+            input_index_path = os.path.join(
+                "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/tmp",
+                "index-r%03d.faissindex" % (row - 1),
+            )
             output_index_path = os.path.join(
                 "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/tmp",
                 "index-r%03d.faissindex" % row,
@@ -763,7 +767,7 @@ class IVFPQIndex(Index):
 
             # exit(0)
 
-            input_index_path = output_index_path
+            # input_index_path = output_index_path
 
             timer.pop()
 

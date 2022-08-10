@@ -197,6 +197,12 @@ if __name__ == "__main__":
         timeout = timedelta(days = 1),
     )
 
+    # >>>
+    print(">>>> i am rannnnnnnk %d. <<<<" % torch.distributed.get_rank())
+    torch.distributed.barrier()
+    exit(0)
+    # <<<
+
     # ~~~~~~~~ data paths, size ~~~~~~~~
     # if "gen-rand-data" not in args.tasks:
     if "train" in args.tasks or "add" in args.tasks:
@@ -211,7 +217,12 @@ if __name__ == "__main__":
 
     # torch.distributed.barrier()
 
-    # pax(0, {"args": args})
+    # pax(0, {
+    #     "args" : args,
+    #     "omp / nthreads" : os.environ.get("OMP_NUM_THREADS", None),
+    #     "faiss / nthreads" : faiss.omp_get_max_threads(),
+    # })
+    print_seq("i am rank.")
 
     # pax({
     #     "hostname" : hostname,

@@ -53,7 +53,7 @@ def gen_rand_data(args, timer):
         group_id = 0
         for batch_index in range(
                 group_id * 100 + rank, # ... 1m
-                (group_id + 10) * 100          + 10,
+                (group_id + 1) * 100, #          + 10,
                 world_size,
         ):
 

@@ -16,7 +16,12 @@
 # done
 
 # ~~~~~~~~ wiki ~~~~~~~~
-rsync -avP --append-verify --inplace draco-rno-dc-0001:/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/v2/data1/pretraining_corpus.chunks.hdf5 /mnt/fsx-outputs-chipdesign/lmcafee/retrieval/wiki/
+rsync -avP --append-verify --inplace draco-rno-dc-0001:/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/rand-1m/* /mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/rand-1m/
+
+
+
+
+# rsync -avP --append-verify --inplace draco-rno-dc-0001:/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/v2/data1/pretraining_corpus.chunks.hdf5 /mnt/fsx-outputs-chipdesign/lmcafee/retrieval/wiki/
 # rsync -avP --append-verify --inplace draco-rno-dc-0001:/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/v2/data1/wiki.train.h5py_start_0_end_2037248_ns_2037248_sl2048_seed_1234_with_offset.doc_ids.pkl /mnt/fsx-outputs-chipdesign/lmcafee/retrieval/wiki/
 
 # for i in {00..15}; do
