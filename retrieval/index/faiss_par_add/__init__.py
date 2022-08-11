@@ -1,16 +1,14 @@
 # lawrence mcafee
 
 # ~~~~~~~~ import ~~~~~~~~
-# import faiss
-# import h5py
+import faiss
 import numpy as np
 import os
-# import re
 import torch
 
 from lutil import pax, print_rank, print_seq
 
-# from retrieval.data import load_data, save_data
+from retrieval.data import load_data
 from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -194,31 +192,25 @@ class FaissParallelAddIndex(Index):
 
         empty_index_path = self.get_empty_index_path(dir_path)
         partial_index_path = partial_index_path_map["output_index_path"]
-        input_data_path_item = partial_index_path_map["input_data_path"]
+        input_data_path = partial_index_path_map["input_data_path"]
 
         # print_seq([
         #     empty_index_path,
         #     partial_index_path,
+        #     input_data_path,
         # ])
+        # pax(0, {"input_data_path": input_data_path})
 
         if os.path.isfile(partial_index_path):
             return
 
-        pax(0, {"input_data_path_item": input_data_path_item})
-
         timer.push("load-data")
-        input_data_path = input_data_path_item["data"]
         input_data = load_data([input_data_path], timer)["data"].astype("f4")
-        cluster_id_path = input_data_path_item["centroid_ids"]
-        cluster_ids = \
-            load_data([cluster_id_path], timer)["centroid_ids"].astype("i8")
         timer.pop()
 
         # pax(0, {
         #     "input_data" : input_data,
-        #     "cluster_ids" : cluster_ids,
         #     "input_data_path" : input_data_path,
-        #     "cluster_id_path" : cluster_id_path,
         # })
 
         nvecs = len(input_data)
@@ -235,16 +227,17 @@ class FaissParallelAddIndex(Index):
         timer.pop()
 
         # pax(0, {"index": index})
-        print_seq("index = %s." % index)
+        # print_seq("index = %s." % index)
 
         timer.push("add")
-        index.add_core(
-            n = nvecs,
-            x = my_swig_ptr(input_data),
-            # xids = my_swig_ptr(np.arange(*meta["vec_range"], dtype = "i8")),
-            xids = my_swig_ptr(np.arange(nvecs, dtype = "i8")),
-            precomputed_idx = my_swig_ptr(cluster_ids),
-        )
+        # index.add_core(
+        #     n = nvecs,
+        #     x = my_swig_ptr(input_data),
+        #     # xids = my_swig_ptr(np.arange(*meta["vec_range"], dtype = "i8")),
+        #     xids = my_swig_ptr(np.arange(nvecs, dtype = "i8")),
+        #     precomputed_idx = my_swig_ptr(cluster_ids),
+        # )
+        index.add(input_data)
         timer.pop()
 
         # pax(0, {"index": index})
@@ -264,11 +257,11 @@ class FaissParallelAddIndex(Index):
         output_index_path = partial_index_path_map["output_index_path"]
         input_index_paths = partial_index_path_map["input_index_paths"]
 
-        print_seq([
-            empty_index_path,
-            *input_index_paths,
-            output_index_path,
-        ])
+        # print_seq([
+        #     empty_index_path,
+        #     *input_index_paths,
+        #     output_index_path,
+        # ])
 
         if not os.path.isfile(output_index_path):
 
@@ -327,12 +320,9 @@ class FaissParallelAddIndex(Index):
             timer.pop()
 
         # Delete input indexes.
-        # raise Exception("delete input files.")
         if len(input_index_paths) >= 2:
             timer.push("delete")
-            # for path in enumerate(input_index_paths):
             for path in input_index_paths:
-                # delete_this_flipping_file(input_index_path)
                 os.remove(path)
             timer.pop()
 
@@ -403,12 +393,13 @@ class FaissParallelAddIndex(Index):
                 # timer.pop()
 
             torch.distributed.barrier() # prevent inter-row race condition.
+            # exit(0)
 
             timer.pop()
 
             # >>>
-            # if row == 7:
-            #     print_seq("finished row %d." % row)
+            if row == 1:
+                print_seq("finished row %d." % row)
             # <<<
 
         # pax(0, {
