@@ -71,7 +71,10 @@ def run_train_pipeline(args, timer):
 
     # ~~~~~~~~ init index ~~~~~~~~
     timer.push("init")
-    index = IndexFactory.get_index(args) # , timer)
+    # index = IndexFactory.get_index(args) # , timer)
+    from retrieval.index.faiss_mono import FaissMonoIndex
+    index = FaissMonoIndex(args)
+    # pax({"index": index})
     timer.pop()
 
     # ~~~~~~~~ train index ~~~~~~~~
@@ -155,7 +158,8 @@ if __name__ == "__main__":
                         # choices = [ "faiss-mono", "faiss-dist" ])
                         # choices = [ "faiss-mono", "faiss-decomp", "cuml" ])
                         # choices = [ "faiss-mono", "faiss-decomp", "distrib" ])
-                        choices = [ "faiss-mono", "faiss-decomp", "cuann" ])
+                        # choices = [ "faiss-mono", "faiss-decomp", "cuann" ])
+                        choices = [ "faiss-mono", "faiss-par-add" ])
     # parser.add_argument("--index-str", "-i", required = True)
     # parser.add_argument("--profile-single-encoder",
     #                     default = False,
@@ -198,9 +202,9 @@ if __name__ == "__main__":
     )
 
     # >>>
-    print(">>>> i am rannnnnnnk %d. <<<<" % torch.distributed.get_rank())
-    torch.distributed.barrier()
-    exit(0)
+    # print(">>>> i am rannnnnnnk %d. <<<<" % torch.distributed.get_rank())
+    # torch.distributed.barrier()
+    # exit(0)
     # <<<
 
     # ~~~~~~~~ data paths, size ~~~~~~~~
@@ -213,6 +217,8 @@ if __name__ == "__main__":
             args.add_paths,
         ) = get_train_add_data_paths(args) # , timer)
         args.index_dir_path = get_index_dir_path(args)
+        args.index_empty_path = \
+            os.path.join(args.index_dir_path, "empty.faissindex")
         # pax(0, {"args": args})
 
     # torch.distributed.barrier()
@@ -222,7 +228,7 @@ if __name__ == "__main__":
     #     "omp / nthreads" : os.environ.get("OMP_NUM_THREADS", None),
     #     "faiss / nthreads" : faiss.omp_get_max_threads(),
     # })
-    print_seq("i am rank.")
+    # print_seq("i am rank.")
 
     # pax({
     #     "hostname" : hostname,

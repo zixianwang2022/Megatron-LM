@@ -45,6 +45,8 @@ class IVFPQHNSWIndex(Index):
 
     def train(self, input_data_paths, dir_path, timer):
 
+        raise Exception("train mono instead.")
+
         ivfpq_dir_path = utils.make_sub_dir(dir_path, "ivfpq")
         hnsw_dir_path = utils.make_sub_dir(dir_path, "hnsw")
 

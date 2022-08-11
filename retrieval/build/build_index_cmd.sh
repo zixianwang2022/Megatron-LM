@@ -2,25 +2,17 @@
 
 set -u
 
-# NPROC=16 # *8
-
 # >>>>>>>>>>>>>>>>>>>>>>>
-# [x] profile_stage_stop="data"
-# profile_stage_stop="opq"
-# profile_stage_stop="ivf"
-# profile_stage_stop="pqs"
-# [x] profile_stage_stop="[ignore]"
-
 # profile_stage_stop="preprocess"
 profile_stage_stop="cluster"
 
-# task="clean-data"
-# task="split-data"
+# tasks="clean-data"
+# tasks="split-data"
 # tasks="gen-rand-data"
-# task=train
-# tasks=add
-# tasks="remove-add-outputs,train"
-tasks="remove-add-outputs,add"
+# tasks=train
+tasks=add
+# tasks="remove-train-outputs,train"
+# tasks="remove-add-outputs,add"
 # tasks="remove-add-outputs"
 # tasks="time-merge-partials"
 
@@ -34,41 +26,47 @@ tasks="remove-add-outputs,add"
 # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
 # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
 # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
-# ntrain=2500000 nadd=10000000 ncluster=262144 hnsw=32
+ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
 # ntrain=500000 nadd=10000000 ncluster=262144 hnsw=32
 # ntrain=10000000 nadd=20000000 ncluster=1048576 hnsw=32
 # ntrain=3000000 nadd=100000000 ncluster=1048576 hnsw=32
-ntrain=3000000 nadd=$(($NPROCS*1000000)) ncluster=1048576 hnsw=32
+# ntrain=3000000 nadd=$(($NPROCS*1000000)) ncluster=1048576 hnsw=32
+# ntrain=100000000 nadd=$(($NPROCS*1000000)) ncluster=4194304 hnsw=32
 
 pq_dim=32
 ivf_dim=256
 
-# data_ty=corpus
+data_ty=corpus
 # data_ty=wiki
-data_ty=rand-1m
+# data_ty=rand-1m
 # data_ty=rand-100k
 
 # index_ty=faiss-mono
-index_ty=faiss-decomp
+# index_ty=faiss-decomp
+index_ty=faiss-par-add
 # index_str="OPQ32_256,IVF${ncluster}_HNSW${hnsw},PQ32"
 
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
 
-pip install python-hostlist
+if [ "0" -eq "1" ]; then
+    pip install python-hostlist
 
-NODE_RANK=$((SLURM_NODEID * NPROCS))
-# NODE_RANK=0
-# HOSTNAMES=$(scontrol show hostnames SLURM_JOB_NODELIST)
-HOSTNAMES=$(hostlist --expand $SLURM_JOB_NODELIST)
-HOSTNAME_ARR=($HOSTNAMES)
-MASTER_ADDR=${HOSTNAME_ARR[0]}
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-echo "SLURM_NODEID = $SLURM_NODEID; NPROCS = $NPROCS; NODE_RANK = $NODE_RANK."
-echo "SLURM_JOB_NODELIST = $SLURM_JOB_NODELIST."
-echo "HOSTNAMES = $HOSTNAMES."
-# echo "MASTER = ${HOSTNAME_ARR[0]}."
-echo "MASTER_ADDR = $MASTER_ADDR."
-echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    NODE_RANK=$((SLURM_NODEID * NPROCS))
+    # NODE_RANK=0
+    # HOSTNAMES=$(scontrol show hostnames SLURM_JOB_NODELIST)
+    HOSTNAMES=$(hostlist --expand $SLURM_JOB_NODELIST)
+    HOSTNAME_ARR=($HOSTNAMES)
+    MASTER_ADDR=${HOSTNAME_ARR[0]}
+    echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    echo "SLURM_NODEID = $SLURM_NODEID; NPROCS = $NPROCS; NODE_RANK = $NODE_RANK."
+    echo "SLURM_JOB_NODELIST = $SLURM_JOB_NODELIST."
+    echo "HOSTNAMES = $HOSTNAMES."
+    # echo "MASTER = ${HOSTNAME_ARR[0]}."
+    echo "MASTER_ADDR = $MASTER_ADDR."
+    echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+else
+    MASTER_ADDR=localhost
+fi
 
 #     --profile-single-encoder 0 \
 #     --nnodes $SLURM_JOB_NUM_NODES \

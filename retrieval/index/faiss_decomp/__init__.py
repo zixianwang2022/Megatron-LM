@@ -1,6 +1,12 @@
 # lawrence mcafee
 
 # ~~~~~~~~ import ~~~~~~~~
+import faiss
+import os
+import torch
+
+from lutil import pax, print_rank, print_seq
+
 from retrieval.index import Index
 from retrieval import utils
 
@@ -44,6 +50,7 @@ class FaissDecompIndex(Index):
         return active_stage_map
 
     def train(self, input_data_paths, dir_path, timer):
+        raise Exception("train monolithic; add decomp.")
         active_stage_map = self.get_active_stage_map()
         data_paths = input_data_paths
         for key, stage in active_stage_map.items():
@@ -52,7 +59,50 @@ class FaissDecompIndex(Index):
             data_paths = stage.train(data_paths, sub_dir_path, timer)
             timer.pop()
 
+    # def split_index(self):
+
+    #     assert torch.distributed.get_rank() == 0
+
+    #     mono_index = faiss.read_index(os.path.join(
+    #         self.args.index_dir_path,
+    #         "empty.faissindex",
+    #     ))
+
+    #     # pre_index = faiss.IndexPreTransform(mono_index.index)
+    #     # pre_index.chain = mono_index.chain
+    #     # pre_index.index = None
+
+    #     # faiss.write_index(pre_index, os.path.join(
+    #     #     self.args.index_dir_path,
+    #     #     "preprocess",
+    #     #     "empty.faissindex",
+    #     # ))
+
+    #     cluster_index = faiss.extract_index_ivf(mono_index)
+
+    #     pax({
+    #         "args" : self.args,
+    #         "mono_index" : mono_index,
+    #         # "chain" : mono_index.chain,
+    #         # "chain / size" : mono_index.chain.size(),
+    #         # "pre_index" : pre_index,
+    #         # "pre_index / size" : pre_index.chain.size(),
+    #         "cluster_index" : cluster_index,
+    #     })
+
+    # def merge_index(self):
+    #     faiss.write_index(mono_index, mono_path)
+
     def add(self, input_data_paths, dir_path, timer):
+
+        # >>>
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     self.split_index()
+        # torch.distributed.barrier()
+        # raise Exception("split?")
+        # <<<
+
         active_stage_map = self.get_active_stage_map()
         data_paths = input_data_paths
         for key, stage in active_stage_map.items():
@@ -60,5 +110,15 @@ class FaissDecompIndex(Index):
             sub_dir_path = utils.make_sub_dir(dir_path, key)
             data_paths = stage.add(data_paths, sub_dir_path, timer)
             timer.pop()
+
+            # raise Exception("preprocess / add.")
+
+        # >>>
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     self.merge_index()
+        # torch.distributed.barrier()
+        # raise Exception("merge?")
+        # <<<
 
 # eof

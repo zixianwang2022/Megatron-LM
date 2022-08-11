@@ -1,16 +1,16 @@
 # lawrence mcafee
 
 # ~~~~~~~~ import ~~~~~~~~
-import faiss
-import h5py
+# import faiss
+# import h5py
 import numpy as np
 import os
-import re
+# import re
 import torch
 
 from lutil import pax, print_rank, print_seq
 
-from retrieval.data import load_data, save_data
+# from retrieval.data import load_data, save_data
 from retrieval.index import Index
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -18,129 +18,8 @@ def my_swig_ptr(x):
     return faiss.swig_ptr(np.ascontiguousarray(x))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# class IVFIndex(Index):
-class IVFPQIndex(Index):
-
-    @classmethod
-    def c_cpu_to_gpu(cls, index):
-        # raise Exception("use 'current_device' only.")
-        clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index.d))
-        index.clustering_index = clustering_index
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # train
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def _train(
-            self,
-            input_data_paths,
-            dir_path,
-            timer,
-    ):
-
-        assert torch.distributed.get_rank() == 0
-
-        empty_index_path = self.get_empty_index_path(dir_path)
-
-        if os.path.isfile(empty_index_path):
-            return
-
-        timer.push("load-data")
-        inp = load_data(input_data_paths, timer)["data"]
-        timer.pop()
-
-        # pax({"inp": str(inp.shape)})
-
-        timer.push("init")
-        index = faiss.IndexIVFPQ(
-            faiss.IndexFlat(self.args.ivf_dim),
-            self.args.ivf_dim,
-            self.args.ncluster,
-            self.args.pq_m,
-            self.args.pq_nbits,
-        )
-        self.c_verbose(index, True)
-        self.c_verbose(index.quantizer, True)
-        self.c_cpu_to_gpu(index)
-        self.c_verbose(index.clustering_index, True)
-        timer.pop()
-
-        # pax({"index": index})
-
-        timer.push("train")
-        index.train(inp)
-        timer.pop()
-
-        timer.push("save")
-        faiss.write_index(index, empty_index_path)
-        timer.pop()
-
-    def get_centroid_data_path(self, dir_path):
-        return self.get_output_data_path(dir_path, "train", "centroids")
-
-    def _forward_centroids(
-            self,
-            input_data_paths,
-            dir_path,
-            timer,
-            task,
-    ):
-
-        assert torch.distributed.get_rank() == 0
-
-        empty_index_path = self.get_empty_index_path(dir_path)
-        output_data_path = self.get_centroid_data_path(dir_path)
-
-        if not os.path.isfile(output_data_path):
-
-            timer.push("init")
-            index = faiss.read_index(empty_index_path)
-            self.c_verbose(index, True)
-            self.c_verbose(index.quantizer, True)
-            # self.c_cpu_to_gpu(index) # ... unnecessary for centroid reconstruct
-            # self.c_verbose(index.clustering_index, True) # ... only after gpu
-            timer.pop()
-
-            timer.push("save-data")
-            centroids = index.quantizer.reconstruct_n(0, self.args.ncluster)
-            save_data({"centroids": centroids}, output_data_path)
-            timer.pop()
-
-        # pax({ ... })
-
-        return [ output_data_path ]
-
-    def train(self, input_data_paths, dir_path, timer):
-
-        raise Exception("train mono instead.")
-
-        torch.distributed.barrier()
-
-        if torch.distributed.get_rank() == 0:
-
-            timer.push("train")
-            self._train(input_data_paths, dir_path, timer)
-            timer.pop()
-
-            timer.push("forward")
-            output_data_paths = self._forward_centroids(
-                input_data_paths,
-                dir_path,
-                timer,
-                "train",
-            )
-            timer.pop()
-
-        torch.distributed.barrier()
-
-        # pax({"output_data_paths": output_data_paths})
-
-        # return output_data_paths
-        return [ self.get_centroid_data_path(dir_path) ]
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # add
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# class ParallelAddIndex(Index):
+class FaissParallelAddIndex(Index):
 
     @classmethod
     def get_num_rows(cls, num_batches):
@@ -317,10 +196,15 @@ class IVFPQIndex(Index):
         partial_index_path = partial_index_path_map["output_index_path"]
         input_data_path_item = partial_index_path_map["input_data_path"]
 
-        # print_seq(list(partial_index_path_map.items()))
+        # print_seq([
+        #     empty_index_path,
+        #     partial_index_path,
+        # ])
 
         if os.path.isfile(partial_index_path):
             return
+
+        pax(0, {"input_data_path_item": input_data_path_item})
 
         timer.push("load-data")
         input_data_path = input_data_path_item["data"]
@@ -351,6 +235,7 @@ class IVFPQIndex(Index):
         timer.pop()
 
         # pax(0, {"index": index})
+        print_seq("index = %s." % index)
 
         timer.push("add")
         index.add_core(
@@ -379,11 +264,11 @@ class IVFPQIndex(Index):
         output_index_path = partial_index_path_map["output_index_path"]
         input_index_paths = partial_index_path_map["input_index_paths"]
 
-        # print_seq([
-        #     empty_index_path,
-        #     *input_index_paths,
-        #     output_index_path,
-        # ])
+        print_seq([
+            empty_index_path,
+            *input_index_paths,
+            output_index_path,
+        ])
 
         if not os.path.isfile(output_index_path):
 
@@ -451,72 +336,6 @@ class IVFPQIndex(Index):
                 os.remove(path)
             timer.pop()
 
-    # def add(self, input_data_paths, dir_path, timer):
-
-    #     rank = torch.distributed.get_rank()
-    #     world_size = torch.distributed.get_world_size()
-    #     num_batches = len(input_data_paths)
-    #     # num_batches = 47000 # ... ~15.52 rows
-    #     num_rows = int(np.ceil(np.log(num_batches) / np.log(2))) + 1
-        
-    #     for row in range(num_rows):
-
-    #         timer.push("row %d of %d" % (row, num_rows))
-
-    #         num_cols = int(np.ceil(num_batches / world_size / 2**row))
-    #         # for col in range(rank, num_batches, world_size * int(2**row)):
-    #         for col in range(num_cols):
-
-    #             timer.push("col")
-
-    #             print_rank(0, "r %d / %d, c %d / %d." % (
-    #                 row,
-    #                 num_rows,
-    #                 col,
-    #                 num_cols,
-    #             ))
-
-    #             # Input/output index paths.
-    #             partial_index_path_map = self.get_partial_index_path_map(
-    #                 input_data_paths,
-    #                 dir_path,
-    #                 row,
-    #                 col,
-    #             )
-
-    #             # Handle edge cases.
-    #             if partial_index_path_map is None:
-    #                 continue
-
-    #             # Initialize/merge partial indexes.
-    #             if row == 0:
-    #                 timer.push("init-partial")
-    #                 self.init_partial(partial_index_path_map, dir_path, timer)
-    #                 timer.pop()
-    #             else:
-    #                 timer.push("merge-partial")
-    #                 self.merge_partial(partial_index_path_map, dir_path, timer)
-    #                 timer.pop()
-
-    #             timer.pop()
-
-    #         torch.distributed.barrier() # prevent inter-row race condition.
-
-    #         timer.pop()
-
-    #         # >>>
-    #         # if row == 7:
-    #         #     print_seq("finished row %d." % row)
-    #         # <<<
-
-    #     pax(0, {
-    #         "num_batches" : num_batches,
-    #         "num_rows" : num_rows,
-    #     })
-
-    #     torch.distributed.barrier() # unnecessary?
-
-    #     exit(0)
     def add(self, input_data_paths, dir_path, timer):
 
         # Num batches & rows.
@@ -568,6 +387,8 @@ class IVFPQIndex(Index):
                    partial_index_path_map["output_index_path"] not in \
                    missing_index_paths:
                     continue
+
+                # pax(0, {"partial_index_path_map": partial_index_path_map})
 
                 # Initialize/merge partial indexes.
                 if row == 0:
@@ -627,6 +448,7 @@ class IVFPQIndex(Index):
         data = np.random.rand(batch_size, args.ivf_dim).astype("f4")
 
         # pax({"data": data})
+        print_seq("empty_index_path = %s." % empty_index_path)
 
         # Iterate rows
         for row in range(10, num_rows):

@@ -8,6 +8,7 @@
 from .distrib import DistribIndex
 from .faiss_decomp import FaissDecompIndex
 from .faiss_mono import FaissMonoIndex
+from .faiss_par_add import FaissParallelAddIndex
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class IndexFactory:
@@ -17,6 +18,7 @@ class IndexFactory:
         return {
             "faiss-mono" : FaissMonoIndex,
             "faiss-decomp" : FaissDecompIndex,
+            "faiss-par-add" : FaissParallelAddIndex,
             "distrib" : DistribIndex,
         }[index_ty]
 

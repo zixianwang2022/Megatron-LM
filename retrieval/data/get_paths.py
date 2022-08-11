@@ -45,7 +45,7 @@ def get_all_data_paths(args, is_clean = True):
         else:
             raise Exception("specialize for '%s'." % args.data_ty)
 
-    elif hostname.startswith("rno"):
+    elif hostname.startswith("rno") or "dracocpu" in hostname:
         # feat_paths = glob.glob(args.base_dir + "/enwiki-feat-16/*.hdf5")
         # feat_paths = glob.glob(args.base_dir + "/enwiki-feat-16-split/*.hdf5")
         # feat_paths = glob.glob(args.base_dir + "/enwiki-feat-1024/0000.hdf5")

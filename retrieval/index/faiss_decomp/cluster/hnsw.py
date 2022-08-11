@@ -126,6 +126,8 @@ class HNSWIndex(Index):
 
     def train(self, *args):
 
+        raise Exception("train mono instead.")
+
         timer = args[-1]
 
         torch.distributed.barrier()

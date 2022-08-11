@@ -8,7 +8,8 @@ import torch
 
 from lutil import pax, print_rank, print_seq
 
-from retrieval import utils
+# from retrieval import utils
+from retrieval.data import load_data
 from retrieval.index import Index
 from retrieval.index.utils import get_index_str
 
@@ -113,7 +114,7 @@ class FaissMonoIndex(Index):
         # print_seq(index_str)
 
         timer.push("load-data")
-        inp = utils.load_data(input_data_paths, timer)["data"]
+        inp = load_data(input_data_paths, timer)["data"]
         timer.pop()
 
         # pax({
