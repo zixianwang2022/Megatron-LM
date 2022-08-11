@@ -252,8 +252,12 @@ class FaissParallelAddIndex(Index):
     def merge_partial(self, partial_index_path_map, dir_path, timer):
         '''Merge partial indexes.'''
 
+        # Extract inverted lists from full index.
+        def get_invlists(index):
+            return faiss.extract_index_ivf(index).invlists
+
         # Index paths.
-        empty_index_path = self.get_empty_index_path(dir_path)
+        # empty_index_path = self.get_empty_index_path(dir_path)
         output_index_path = partial_index_path_map["output_index_path"]
         input_index_paths = partial_index_path_map["input_index_paths"]
 
@@ -268,21 +272,31 @@ class FaissParallelAddIndex(Index):
             assert len(input_index_paths) >= 2, \
                 "if singular input index, path should already exist."
 
-            # Output index.
-            output_index = faiss.read_index(empty_index_path)
-            output_invlists = output_index.invlists
+            # Init output index.
+            timer.push("read/init-output")
+            # output_index = faiss.read_index(empty_index_path)
+            # output_invlists = output_index.invlists
+            output_index = faiss.read_index(input_index_paths[0])
+            output_invlists = get_invlists(output_index)
+            timer.pop()
 
             # Merge input indexes.
-            for input_iter, input_index_path in enumerate(input_index_paths):
+            # for input_iter, input_index_path in enumerate(input_index_paths):
+            for input_iter in range(1, len(input_index_paths)):
 
-                assert input_index_path is not None, "edge case."
-                # if input_index_path is None:
-                #     pax({"partial_index_path_map": partial_index_path_map})
+                input_index_path = input_index_paths[input_iter]
+                assert input_index_path is not None, "missing input index."
 
-                timer.push("read")
+                timer.push("read-input")
                 input_index = faiss.read_index(input_index_path)
-                input_invlists = input_index.invlists
+                # input_invlists = input_index.invlists
+                input_invlists = get_invlists(input_index)
                 timer.pop()
+
+                # pax(0, {
+                #     "output_invlists" : output_invlists,
+                #     "input_invlists" : input_invlists,
+                # })
 
                 print_rank("ivfpq / add / merge, input %d / %d. [ +%d -> %d ]" % (
                     input_iter,
@@ -398,8 +412,8 @@ class FaissParallelAddIndex(Index):
             timer.pop()
 
             # >>>
-            if row == 1:
-                print_seq("finished row %d." % row)
+            # if row == 3:
+            #     print_seq("finished row %d." % row)
             # <<<
 
         # pax(0, {
