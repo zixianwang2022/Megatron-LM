@@ -24,9 +24,12 @@ class Index:
     @classmethod
     def get_empty_index_path(cls, dir_path):
         return os.path.join(dir_path, "empty.faissindex")
+    # @classmethod
+    # def get_full_index_path(cls, dir_path):
+    #     return os.path.join(dir_path, "full.faissindex")
     @classmethod
-    def get_full_index_path(cls, dir_path):
-        return os.path.join(dir_path, "full.faissindex")
+    def get_added_index_path(cls, dir_path):
+        return os.path.join(dir_path, "added.faissindex")
     @classmethod
     def get_output_data_path(cls, dir_path, task, suffix):
         return os.path.join(dir_path, "%s_output%s_%s.hdf5" % (task, suffix))

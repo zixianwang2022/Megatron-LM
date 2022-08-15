@@ -168,7 +168,7 @@ class FaissMonoIndex(Index):
             return
 
         timer.push("load-data")
-        inp = utils.load_data(input_data_paths, timer)["data"]
+        inp = load_data(input_data_paths, timer)["data"]
         timer.pop()
 
         # pax({
@@ -222,7 +222,7 @@ class FaissMonoIndex(Index):
             ))
 
             timer.push("load-data")
-            inp = utils.load_data([ input_data_path ], timer)["data"]
+            inp = load_data([ input_data_path ], timer)["data"]
             timer.pop()
 
             # >>>

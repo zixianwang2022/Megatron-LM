@@ -98,7 +98,7 @@ def run_add_pipeline(args, timer):
 
     # ~~~~~~~~ add index ~~~~~~~~
     # timer.push("add")
-    index.add(args.add_paths, args.index_dir_path, timer)
+    output_index_path = index.add(args.add_paths, args.index_dir_path, timer)
     # timer.pop()
 
     # ~~~~~~~~ debug ~~~~~~~~
@@ -106,6 +106,22 @@ def run_add_pipeline(args, timer):
 
     # ~~~~~~~~ return ~~~~~~~~
     # return timer
+    return output_index_path
+
+def verify_index(args, timer):
+
+    timer.push("add-base-index")
+    from retrieval.index.faiss_mono import FaissMonoIndex
+    index = FaissMonoIndex(args)
+    base_index_path = index.add(args.add_paths, args.index_dir_path, timer)
+    timer.pop()
+
+    timer.push("add-test-index")
+    test_index_path = run_add_pipeline(args, timer)
+    timer.pop()
+
+    print_seq([ base_index_path, test_index_path ])
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
@@ -209,7 +225,7 @@ if __name__ == "__main__":
 
     # ~~~~~~~~ data paths, size ~~~~~~~~
     # if "gen-rand-data" not in args.tasks:
-    if "train" in args.tasks or "add" in args.tasks:
+    if "train" in args.tasks or "add" in args.tasks or "verify" in args.tasks:
         (
             args.ntrain,
             args.nadd,
@@ -261,6 +277,8 @@ if __name__ == "__main__":
             if torch.distributed.get_rank() == 0:
                 IVFPQIndex.time_merge_partials(args, timer)
             torch.distributed.barrier()
+        elif task == "verify":
+            verify_index(args, timer)
         elif task == "train":
             run_train_pipeline(args, timer)
         elif task == "add":

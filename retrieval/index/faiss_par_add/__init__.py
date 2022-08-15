@@ -423,7 +423,22 @@ class FaissParallelAddIndex(Index):
 
         torch.distributed.barrier() # unnecessary?
 
-        # exit(0)
+        index_path_map = self.get_partial_index_path_map(
+            input_data_paths,
+            dir_path,
+            row = num_rows - 1,
+            col = 0,
+            rank = 0,
+        )
+        output_index_path = index_path_map["output_index_path"]
+
+        # pax(3, {
+        #     "index_path_map" : index_path_map,
+        #     "output_index_path" : output_index_path,
+        # })
+        # print_seq(output_index_path)
+
+        return output_index_path
 
     @classmethod
     def time_merge_partials(cls, args, timer):

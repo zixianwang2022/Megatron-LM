@@ -10,11 +10,13 @@ profile_stage_stop="cluster"
 # tasks="split-data"
 # tasks="gen-rand-data"
 # tasks=train
-tasks=add
+# tasks=add
 # tasks="remove-train-outputs,train"
 # tasks="remove-add-outputs,add"
 # tasks="remove-add-outputs"
 # tasks="time-merge-partials"
+# tasks="remove-add-outputs,verify" # "verify-index"
+tasks="verify"
 
 # ntrain=2048 ncluster=64 hnsw=4
 # ntrain=131072 ncluster=128 hnsw=32
@@ -26,7 +28,8 @@ tasks=add
 # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
 # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
 # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
-ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
+# ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
+ntrain=2500000 nadd=$(($NPROCS*1000000)) ncluster=262144 hnsw=32
 # ntrain=500000 nadd=10000000 ncluster=262144 hnsw=32
 # ntrain=10000000 nadd=20000000 ncluster=1048576 hnsw=32
 # ntrain=3000000 nadd=100000000 ncluster=1048576 hnsw=32
