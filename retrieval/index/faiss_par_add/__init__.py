@@ -1,6 +1,20 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
+"""Parallel version of Faiss's index.add()."""
+
 import faiss
 import numpy as np
 import os
@@ -11,12 +25,9 @@ from lutil import pax, print_rank, print_seq
 from retrieval.data import load_data
 from retrieval.index import Index
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def my_swig_ptr(x):
     return faiss.swig_ptr(np.ascontiguousarray(x))
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# class ParallelAddIndex(Index):
 class FaissParallelAddIndex(Index):
 
     @classmethod
@@ -74,13 +85,7 @@ class FaissParallelAddIndex(Index):
             else:
                 return os.path.join(
                     dir_path,
-                    # "partial_r%d_%s-%s.faissindex" % (
-                    #     _row,
-                    #     *[zf(b) for b in _range],
-                    # ),
-                    # "partial_%s_%s-%s.faissindex" % (
                     "added_%s_%s-%s.faissindex" % (
-                        # _row, # ... using row id disallows cross-row sharing
                         zf(_range[-1] - _range[0] + 1),
                         *[zf(b) for b in _range],
                     ),
@@ -130,11 +135,7 @@ class FaissParallelAddIndex(Index):
         num_batches = len(input_data_paths)
 
         missing_index_paths = set()
-        # missing_index_path_grid = []
         for row in range(num_rows - 1, -1, -1):
-
-            # missing_index_path_row = []
-            # missing_index_path_grid.append(missing_index_path_row)
 
             num_cols = self.get_num_cols(num_batches, row)
             for col in range(num_cols):
@@ -154,11 +155,6 @@ class FaissParallelAddIndex(Index):
                     if path_map is None:
                         continue
 
-                    # print_rank(0, "r %d / %d, c %d / %d." % (
-                    #     row, num_rows, col, num_cols))
-
-                    # pax(0, {"path_map": path_map})
-
                     output_path = path_map["output_index_path"]
                     input_paths = path_map.get("input_index_paths", [])
 
@@ -170,48 +166,29 @@ class FaissParallelAddIndex(Index):
                             [ p for p in input_paths if not os.path.isfile(p) ]
                         missing_index_paths.update(missing_input_paths)
 
-        # >>>
-        # print_rank(0, ">>> get_missing_index_paths(). <<<")
-        # print_seq(list(missing_index_paths))
-        # torch.distributed.barrier()
-        # exit(0)
-        # <<<
-
         return missing_index_paths
 
-    # def add_partial(self, input_data_paths, dir_path, timer, row, col):
-    # def add_partial(self, partial_index_path_map, timer):
-    # def init_partial(self, partial_index_path_map, dir_path, timer):
-    # def init_partial_index(self, partial_index_path_map, dir_path, timer):
-    def init_partial(self, partial_index_path_map, dir_path, timer):
+    def encode_partial(self, partial_index_path_map, dir_path, timer):
+        """Encode partial indexes (embarrassingly parallel).
 
-        # >>>
-        # row = 2; col = 2
-        # row = 3; col = 1
-        # <<<
+        Encode the partial indexes, generally in batches of 1M vectors each.
+        For each batch, the empty/trained index is loaded, and index.add() is
+        called on each batch of data.
+        """
 
+        # Index & data paths.
         empty_index_path = self.get_empty_index_path(dir_path)
         partial_index_path = partial_index_path_map["output_index_path"]
         input_data_path = partial_index_path_map["input_data_path"]
 
-        # print_seq([
-        #     empty_index_path,
-        #     partial_index_path,
-        #     input_data_path,
-        # ])
-        # pax(0, {"input_data_path": input_data_path})
-
+        # If partial index exists, return.
         if os.path.isfile(partial_index_path):
             return
 
+        # Load data batch.
         timer.push("load-data")
         input_data = load_data([input_data_path], timer)["data"].astype("f4")
         timer.pop()
-
-        # pax(0, {
-        #     "input_data" : input_data,
-        #     "input_data_path" : input_data_path,
-        # })
 
         nvecs = len(input_data)
         print_rank("ivfpq / add / partial,  batch %d / %d. [ %d vecs ]" % (
@@ -226,46 +203,27 @@ class FaissParallelAddIndex(Index):
         # self.c_verbose(index.quantizer, True)
         timer.pop()
 
-        # pax(0, {"index": index})
-        # print_seq("index = %s." % index)
-
         timer.push("add")
-        # index.add_core(
-        #     n = nvecs,
-        #     x = my_swig_ptr(input_data),
-        #     # xids = my_swig_ptr(np.arange(*meta["vec_range"], dtype = "i8")),
-        #     xids = my_swig_ptr(np.arange(nvecs, dtype = "i8")),
-        #     precomputed_idx = my_swig_ptr(cluster_ids),
-        # )
         index.add(input_data)
         timer.pop()
-
-        # pax(0, {"index": index})
 
         timer.push("write")
         faiss.write_index(index, partial_index_path)
         timer.pop()
 
-        # print_seq("index written.")
-
-    # def merge_partial_indexes(self, partial_index_path_map, dir_path, timer):
     def merge_partial(self, partial_index_path_map, dir_path, timer):
-        '''Merge partial indexes.'''
+        '''Merge partial indexes.
+
+        Pairwise merging
+        '''
 
         # Extract inverted lists from full index.
         def get_invlists(index):
             return faiss.extract_index_ivf(index).invlists
 
         # Index paths.
-        # empty_index_path = self.get_empty_index_path(dir_path)
         output_index_path = partial_index_path_map["output_index_path"]
         input_index_paths = partial_index_path_map["input_index_paths"]
-
-        # print_seq([
-        #     empty_index_path,
-        #     *input_index_paths,
-        #     output_index_path,
-        # ])
 
         if not os.path.isfile(output_index_path):
 
@@ -274,14 +232,11 @@ class FaissParallelAddIndex(Index):
 
             # Init output index.
             timer.push("read/init-output")
-            # output_index = faiss.read_index(empty_index_path)
-            # output_invlists = output_index.invlists
             output_index = faiss.read_index(input_index_paths[0])
             output_invlists = get_invlists(output_index)
             timer.pop()
 
             # Merge input indexes.
-            # for input_iter, input_index_path in enumerate(input_index_paths):
             for input_iter in range(1, len(input_index_paths)):
 
                 input_index_path = input_index_paths[input_iter]
@@ -289,14 +244,8 @@ class FaissParallelAddIndex(Index):
 
                 timer.push("read-input")
                 input_index = faiss.read_index(input_index_path)
-                # input_invlists = input_index.invlists
                 input_invlists = get_invlists(input_index)
                 timer.pop()
-
-                # pax(0, {
-                #     "output_invlists" : output_invlists,
-                #     "input_invlists" : input_invlists,
-                # })
 
                 print_rank("ivfpq / add / merge, input %d / %d. [ +%d -> %d ]" % (
                     input_iter,
@@ -306,28 +255,17 @@ class FaissParallelAddIndex(Index):
                 ))
 
                 timer.push("add")
-                for list_id in range(input_invlists.nlist):
-                    output_invlists.add_entries(
-                        list_id,
-                        input_invlists.list_size(list_id),
-                        input_invlists.get_ids(list_id),
-                        input_invlists.get_codes(list_id),
-                    )
+                # for list_id in range(input_invlists.nlist):
+                #     output_invlists.add_entries(
+                #         list_id,
+                #         input_invlists.list_size(list_id),
+                #         input_invlists.get_ids(list_id),
+                #         input_invlists.get_codes(list_id),
+                #     )
+                output_invlists.merge_from(input_invlists, output_index.ntotal)
                 timer.pop()
 
                 output_index.ntotal += input_index.ntotal
-
-                # pax({
-                #     "input_index" : input_index,
-                #     "output_index" : output_index,
-                #     "input_invlists" : input_invlists,
-                #     "output_invlists" : output_invlists,
-                # })
-
-            # pax({
-            #     "input_index" : input_index,
-            #     "output_index" : output_index,
-            # })
 
             timer.push("write")
             faiss.write_index(output_index, output_index_path)
@@ -341,11 +279,20 @@ class FaissParallelAddIndex(Index):
             timer.pop()
 
     def add(self, input_data_paths, dir_path, timer):
+        """Add vectors to index, in parallel.
+
+        Two stage process:
+        1. Encode partial indexes (i.e., starting with empty index, encode
+           batches of 1M samples per partial index).
+        2. Merge partial indexes.
+           - This is a pairwise hierarchical merge.
+           - We iterate log2(num_batches) 'rows' of merge.
+           - Ranks move in lock-step across each row (i.e., 'cols')
+        """
 
         # Num batches & rows.
         num_batches = len(input_data_paths)
-        # num_batches = 47000 # ... ~15.52 rows
-        num_rows = self.get_num_rows(num_batches)
+        num_rows = self.get_num_rows(num_batches) # e.g., 47B -> ~15.52 rows
 
         # Missing index paths.
         missing_index_paths = self.get_missing_index_paths(
@@ -355,21 +302,19 @@ class FaissParallelAddIndex(Index):
             num_rows,
         )
 
-        torch.distributed.barrier() # prevent race condition for missing paths
+        # Prevent race condition for missing paths. [ necessary? ]
+        torch.distributed.barrier()
 
-        # print_seq(missing_index_paths)
-
-        # Iterate rows
+        # Iterate merge rows.
         for row in range(num_rows):
 
-            # timer.push("row %d of %d" % (row, num_rows))
             timer.push("row-%d" % row)
 
+            # Get number of columns for this merge row.
             num_cols = self.get_num_cols(num_batches, row)
-            # for col in range(rank, num_batches, world_size * int(2**row)):
-            for col in range(num_cols):
 
-                # timer.push("col")
+            # Iterate merge columns.
+            for col in range(num_cols):
 
                 print_rank(0, "r %d / %d, c %d / %d." % (
                     row,
@@ -392,37 +337,25 @@ class FaissParallelAddIndex(Index):
                    missing_index_paths:
                     continue
 
-                # pax(0, {"partial_index_path_map": partial_index_path_map})
-
                 # Initialize/merge partial indexes.
                 if row == 0:
                     timer.push("init-partial")
-                    self.init_partial(partial_index_path_map, dir_path, timer)
+                    self.encode_partial(partial_index_path_map, dir_path, timer)
                     timer.pop()
                 else:
                     timer.push("merge-partial")
                     self.merge_partial(partial_index_path_map, dir_path, timer)
                     timer.pop()
 
-                # timer.pop()
-
-            torch.distributed.barrier() # prevent inter-row race condition.
-            # exit(0)
+            # Prevent inter-row race condition.
+            torch.distributed.barrier()
 
             timer.pop()
 
-            # >>>
-            # if row == 3:
-            #     print_seq("finished row %d." % row)
-            # <<<
+        # Final barrier. [ necessary? ]
+        torch.distributed.barrier()
 
-        # pax(0, {
-        #     "num_batches" : num_batches,
-        #     "num_rows" : num_rows,
-        # })
-
-        torch.distributed.barrier() # unnecessary?
-
+        # Get output index path, for return.
         index_path_map = self.get_partial_index_path_map(
             input_data_paths,
             dir_path,
@@ -432,16 +365,11 @@ class FaissParallelAddIndex(Index):
         )
         output_index_path = index_path_map["output_index_path"]
 
-        # pax(3, {
-        #     "index_path_map" : index_path_map,
-        #     "output_index_path" : output_index_path,
-        # })
-        # print_seq(output_index_path)
-
         return output_index_path
 
     @classmethod
     def time_merge_partials(cls, args, timer):
+        """Timining model for merging partial indexes."""
     
         from retrieval.utils import Timer
         timer = Timer()
@@ -453,21 +381,15 @@ class FaissParallelAddIndex(Index):
         )
 
         # Num batches & rows.
-        # ntrain = int(10e6)
         batch_size = int(1e6)
         num_batches = 8192 # 1024 # 10
         num_rows = cls.get_num_rows(num_batches)
 
-        # torch.distributed.barrier() # prevent race condition for missing paths
-
+        raise Exception("switch to IVF4194304.")
         empty_index_path = "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-rand-100k/OPQ32_256,IVF1048576_HNSW32,PQ32__t3000000/cluster/ivfpq/empty.faissindex"
-        # input_index_path = empty_index_path
-        # index = faiss.read_index(index_path)
 
-        # data = np.random.rand(batch_size, args.nfeats).astype("f4")
         data = np.random.rand(batch_size, args.ivf_dim).astype("f4")
 
-        # pax({"data": data})
         print_seq("empty_index_path = %s." % empty_index_path)
 
         # Iterate rows
@@ -482,11 +404,6 @@ class FaissParallelAddIndex(Index):
                 num_rows,
                 num_cols,
             ))
-
-            # pax({
-            #     "num_rows" : num_rows,
-            #     "num_cols" : num_cols,
-            # })
 
             input_index_path = os.path.join(
                 "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/tmp",
@@ -523,24 +440,14 @@ class FaissParallelAddIndex(Index):
                 timer.pop()
 
             else:
-                # timer.push("merge-partial")
-                # self.merge_partial(partial_index_path_map, dir_path, timer)
-
-                # if row == 2:
-                #     pax({
-                #         "input_index_path" : input_index_path,
-                #         "output_index_path" : output_index_path,
-                #     })
 
                 # Output index.
                 timer.push("read-output")
-                # output_index = faiss.read_index(empty_index_path)
                 output_index = faiss.read_index(input_index_path)
                 output_invlists = output_index.invlists
                 timer.pop()
 
                 # Merge input indexes.
-                # for input_iter in range(2):
                 for input_iter in range(1): # output initialized w/ first input
 
                     timer.push("read-input")

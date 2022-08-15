@@ -119,7 +119,7 @@ class FaissMonoIndex(Index):
 
         # pax({
         #     "inp / shape" : str(inp.shape),
-        #     "full_index_path" : full_index_path,
+        #     "added_index_path" : added_index_path,
         # })
 
         timer.push("init")
@@ -162,9 +162,9 @@ class FaissMonoIndex(Index):
         assert torch.distributed.get_rank() == 0
 
         empty_index_path = self.get_empty_index_path(dir_path)
-        full_index_path = self.get_full_index_path(dir_path)
+        added_index_path = self.get_added_index_path(dir_path)
 
-        if os.path.isfile(full_index_path):
+        if os.path.isfile(added_index_path):
             return
 
         timer.push("load-data")
@@ -173,7 +173,7 @@ class FaissMonoIndex(Index):
 
         # pax({
         #     "inp / shape" : str(inp.shape),
-        #     "full_index_path" : full_index_path,
+        #     "added_index_path" : added_index_path,
         # })
 
         timer.push("init")
@@ -197,7 +197,7 @@ class FaissMonoIndex(Index):
         timer.pop()
 
         timer.push("save")
-        faiss.write_index(index, full_index_path)
+        faiss.write_index(index, added_index_path)
         timer.pop()
 
     def _add_mini_batch(self, input_data_paths, dir_path, timer):
@@ -205,9 +205,9 @@ class FaissMonoIndex(Index):
         assert torch.distributed.get_rank() == 0
 
         empty_index_path = self.get_empty_index_path(dir_path)
-        full_index_path = self.get_full_index_path(dir_path)
+        added_index_path = self.get_added_index_path(dir_path)
 
-        if os.path.isfile(full_index_path):
+        if os.path.isfile(added_index_path):
             return
 
         timer.push("init")
@@ -241,7 +241,7 @@ class FaissMonoIndex(Index):
             timer.pop()
 
         timer.push("save")
-        faiss.write_index(index, full_index_path)
+        faiss.write_index(index, added_index_path)
         timer.pop()
 
     def add(self, input_data_paths, dir_path, timer):
@@ -255,5 +255,7 @@ class FaissMonoIndex(Index):
             timer.pop()
 
         barrier()
+
+        return self.get_added_index_path(dir_path)
 
 # eof

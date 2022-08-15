@@ -5,6 +5,7 @@ import argparse
 from datetime import timedelta
 import faiss
 import json
+import numpy as np
 import os
 import shutil
 import socket
@@ -108,17 +109,88 @@ def run_add_pipeline(args, timer):
     # return timer
     return output_index_path
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def verify_index(args, timer):
 
-    timer.push("add-base-index")
+    timer.push("add-base")
     from retrieval.index.faiss_mono import FaissMonoIndex
     index = FaissMonoIndex(args)
     base_index_path = index.add(args.add_paths, args.index_dir_path, timer)
     timer.pop()
 
-    timer.push("add-test-index")
+    raise Exception("add base.")
+
+    timer.push("add-test")
     test_index_path = run_add_pipeline(args, timer)
     timer.pop()
+
+    raise Exception("add test.")
+
+    torch.distributed.barrier()
+
+    if torch.distributed.get_rank() == 0:
+
+        timer.push("read")
+        base_index = faiss.read_index(base_index_path)
+        test_index = faiss.read_index(test_index_path)
+        base_invlists = faiss.extract_index_ivf(base_index).invlists
+        test_invlists = faiss.extract_index_ivf(test_index).invlists
+        timer.pop()
+
+        assert base_index.ntotal == test_index.ntotal
+
+        timer.push("add")
+        for list_id in range(args.ncluster):
+
+            if list_id % 1000 == 0:
+                print("verify list %d / %d." % (list_id, args.ncluster))
+
+            # pax({"args": args})
+
+            base_list_size = base_invlists.list_size(list_id)
+            base_ids = np.empty((base_list_size,), dtype = "i8")
+            base_codes = np.empty((base_list_size, args.pq_m), dtype = "uint8")
+            test_list_size = test_invlists.list_size(list_id)
+            test_ids = np.empty((test_list_size,), dtype = "i8")
+            test_codes = np.empty((test_list_size, args.pq_m), dtype = "uint8")
+
+            assert base_list_size == test_list_size
+
+            base_id_ptr = base_invlists.get_ids(list_id)
+            base_code_ptr = base_invlists.get_codes(list_id)
+            test_id_ptr = test_invlists.get_ids(list_id)
+            test_code_ptr = test_invlists.get_codes(list_id)
+            faiss.memcpy(faiss.swig_ptr(base_ids), base_id_ptr, base_ids.nbytes)
+            faiss.memcpy(faiss.swig_ptr(base_codes), base_code_ptr, base_codes.nbytes)
+            faiss.memcpy(faiss.swig_ptr(test_ids), test_id_ptr, test_ids.nbytes)
+            faiss.memcpy(faiss.swig_ptr(test_codes), test_code_ptr, test_codes.nbytes)
+            base_invlists.release_ids(list_id, base_id_ptr)
+            base_invlists.release_codes(list_id, base_code_ptr)
+            test_invlists.release_ids(list_id, test_id_ptr)
+            test_invlists.release_codes(list_id, test_code_ptr)
+
+            assert np.array_equal(base_ids, test_ids)
+            assert np.array_equal(base_codes, test_codes)
+
+            # pax({
+            #     "base_list_size" : base_list_size,
+            #     "test_list_size" : test_list_size,
+            #     "base_ids" : base_ids,
+            #     "test_ids" : test_ids,
+            #     "base_codes" : base_codes,
+            #     "test_codes" : test_codes,
+            #     "ids / equal" : np.array_equal(base_ids, test_ids),
+            #     "codes / equal" : np.array_equal(base_codes, test_codes),
+            # })
+
+        timer.pop()
+
+        pax({
+            "base_invlists" : base_invlists,
+            "test_invlists" : test_invlists,
+        })
+
+    torch.distributed.barrier()
 
     print_seq([ base_index_path, test_index_path ])
 
@@ -128,36 +200,8 @@ if __name__ == "__main__":
 
     print("hi, index.", flush = True)
 
-    # >>>
-    # d = 128
-    # # d = 1024 # *
-    # import numpy as np
-    # data = np.random.rand(1000, d).astype("f4")
-    # index = faiss.index_factory(d, "OPQ32_256,IVF100,PQ32")
-    # # index = faiss.index_factory(d, "IVF100,PQ32")
-    # index.verbose = True
-    # try:
-    #     index.chain.at(0).verbose = True
-    # except:
-    #     pass
-    # # index.index.verbose = True
-    # index.train(data)
-    # pax({
-    #     "index" : index,
-    #     # "index / index" : index.index,
-    #     # "index / chain / 0" : index.chain.at(0),
-    # })
-    # <<<
-
-    # ~~~~~~~~ user args ~~~~~~~~
+    # Arg parser.
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--task", required = True, choices = [
-    #     "clean-data",
-    #     "split-data",
-    #     "train",
-    #     "add",
-    #     "query",
-    # ])
     parser.add_argument("--tasks", required = True)
     parser.add_argument("--nfeats", "-f", type = int, default = 1024)
     parser.add_argument("--ntrain", "-t", type = int, required = True)
@@ -167,33 +211,18 @@ if __name__ == "__main__":
     parser.add_argument("--ivf-dim", type = int, required = True)
     parser.add_argument("--pq-m", type = int, required = True) # pq-dim
     parser.add_argument("--pq-nbits", type = int, default = 8)
-    # parser.add_argument("--batch-size", type = int, default = int(1e6))
     parser.add_argument("--data-ty", required = True,
                         choices = [ "corpus", "wiki", "rand-1m", "rand-100k" ])
     parser.add_argument("--index-ty", required = True,
-                        # choices = [ "faiss-mono", "faiss-dist" ])
-                        # choices = [ "faiss-mono", "faiss-decomp", "cuml" ])
-                        # choices = [ "faiss-mono", "faiss-decomp", "distrib" ])
-                        # choices = [ "faiss-mono", "faiss-decomp", "cuann" ])
                         choices = [ "faiss-mono", "faiss-par-add" ])
-    # parser.add_argument("--index-str", "-i", required = True)
-    # parser.add_argument("--profile-single-encoder",
-    #                     default = False,
-    #                     action = "store_true")
-    # parser.add_argument("--profile-single-encoder", type = int, required = True,
-    #                     choices = [ 0, 1 ])
-    # parser.add_argument("--profile-stage-keys", default = None)
     parser.add_argument("--profile-stage-stop", default = None)
     parser.add_argument("--local_rank", type = int, default = None)
     args = parser.parse_args()
 
     args.index_str = get_index_str(args)
-    # args.profile_single_encoder = bool(args.profile_single_encoder)
     args.tasks = args.tasks.split(",")
 
-    # import os
-    # pax({"hostname": os.environ["HOSTNAME_ORIG"]})
-    
+    # Input data directory. [ ... MOVE TO ARGS ... ]
     hostname = socket.gethostname()
     # hostname = os.environ["HOSTNAME_ORIG"]
     if hostname.startswith("luna-"):
@@ -205,6 +234,7 @@ if __name__ == "__main__":
     else:
         raise Exception("specialize for hostname '%s'." % hostname)
 
+    # Torch distributed initialization.
     args.rank = int(os.getenv('RANK', '0'))
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
     # assert torch.cuda.is_available(), "index requires cuda."
@@ -217,47 +247,21 @@ if __name__ == "__main__":
         timeout = timedelta(days = 1),
     )
 
-    # >>>
-    # print(">>>> i am rannnnnnnk %d. <<<<" % torch.distributed.get_rank())
-    # torch.distributed.barrier()
-    # exit(0)
-    # <<<
-
-    # ~~~~~~~~ data paths, size ~~~~~~~~
-    # if "gen-rand-data" not in args.tasks:
+    # Get input data batch paths, for training/adding/verifying.
     if "train" in args.tasks or "add" in args.tasks or "verify" in args.tasks:
         (
             args.ntrain,
             args.nadd,
             args.train_paths,
             args.add_paths,
-        ) = get_train_add_data_paths(args) # , timer)
+        ) = get_train_add_data_paths(args)
         args.index_dir_path = get_index_dir_path(args)
         args.index_empty_path = \
             os.path.join(args.index_dir_path, "empty.faissindex")
-        # pax(0, {"args": args})
 
-    # torch.distributed.barrier()
-
-    # pax(0, {
-    #     "args" : args,
-    #     "omp / nthreads" : os.environ.get("OMP_NUM_THREADS", None),
-    #     "faiss / nthreads" : faiss.omp_get_max_threads(),
-    # })
-    # print_seq("i am rank.")
-
-    # pax({
-    #     "hostname" : hostname,
-    #     "args" : args,
-    #     "ngpus" : faiss.get_num_gpus(),
-    #     "device_count" : torch.cuda.device_count(),
-    #     "rank" : torch.distributed.get_rank(),
-    # })
-
-    # ~~~~~~~~ pipeline ~~~~~~~~
+    # Select task to run.
     timer = Timer()
 
-    # print_seq("tasks = %s." % str(args.tasks))
     for task in args.tasks:
 
         torch.distributed.barrier()
