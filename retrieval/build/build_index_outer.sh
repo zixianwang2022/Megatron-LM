@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch --nodes=2 --gres=gpu:8 -A gpu_adlr_nlp -t 1:00:00 --exclusive --nv-meta=ml-model:language-modeling --job-name=adlr-nlp-dev:retrieval --export=NPROCS=4
+#SBATCH -p batch_dgx2h_m2 --nodes=2 --gres=gpu:8 -A gpu_adlr_nlp -t 0:30:00 --exclusive --nv-meta=ml-model:language-modeling --job-name=adlr-nlp-dev:retrieval --export=NPROCS=4 --ntasks-per-node=4
 
 # --ntasks-per-node=4
 NNODES=2
@@ -22,7 +22,8 @@ mkdir -p $LOG_DIR
 run_cmd="pwd && cd $SHARE_SOURCE/megatrons/megatron-lm-retrieval-index-add && pwd && bash retrieval/build/build_index_inner.sh"
 
 if [[ $HOSTNAME == *"rno"* ]]; then
-    IMAGE=nvcr.io#nvidia/pytorch:22.04-py3
+    # IMAGE=nvcr.io#nvidia/pytorch:22.04-py3
+    IMAGE=gitlab-master.nvidia.com/adlr/megatron-lm/boxinw/faissgpu
     CONTAINER_MOUNTS="/home/lmcafee/src:/home/lmcafee/src,/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee:/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee,/gpfs/fs1/projects/gpu_adlr/datasets/boxinw:/gpfs/fs1/projects/gpu_adlr/datasets/boxinw"
 
 elif [[ $HOSTNAME == *"luna-"* ]]; then

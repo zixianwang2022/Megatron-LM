@@ -239,7 +239,7 @@ if __name__ == "__main__":
                         choices = [ "corpus", "wiki", "rand-1m", "rand-100k" ])
     parser.add_argument("--index-ty", required = True,
                         choices = [ "faiss-mono", "faiss-par-add" ])
-    parser.add_argument("--profile-stage-stop", default = None)
+    # parser.add_argument("--profile-stage-stop", default = None)
     parser.add_argument("--local_rank", type = int, default = None)
     args = parser.parse_args()
 
@@ -261,6 +261,13 @@ if __name__ == "__main__":
     # Torch distributed initialization.
     args.rank = int(os.getenv('RANK', '0'))
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
+    print(">>> i'm rank %d / %d. [ %s:%s ] <<<" % (
+        args.rank,
+        args.world_size,
+        os.getenv("MASTER_ADDR", "--"),
+        os.getenv("MASTER_PORT", "--"),
+    ), flush = True)
+
     # assert torch.cuda.is_available(), "index requires cuda."
     torch.distributed.init_process_group(
         # backend = "nccl",
@@ -270,6 +277,10 @@ if __name__ == "__main__":
         # timeout = timedelta(minutes = 10),
         timeout = timedelta(days = 1),
     )
+
+    print(">>> post torch init. <<<")
+
+    print_seq("i am rank.")
 
     # Get input data batch paths, for training/adding/verifying.
     if "train" in args.tasks or "add" in args.tasks or "verify" in args.tasks:
