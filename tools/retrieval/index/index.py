@@ -1,15 +1,24 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 import faiss
 import os
 import torch
 
-from lutil import pax, print_seq
+from tools.retrieval import utils
 
-from retrieval import utils
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Index:
 
     def __init__(self, args):
@@ -18,15 +27,12 @@ class Index:
     @classmethod
     def c_verbose(cls, index, v):
         assert isinstance(v, bool)
-        faiss.ParameterSpace().set_index_parameter(index, "verbose", v) # 1)
+        faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
         # index.verbose = True # ... maybe?
 
     @classmethod
     def get_empty_index_path(cls, dir_path):
         return os.path.join(dir_path, "empty.faissindex")
-    # @classmethod
-    # def get_full_index_path(cls, dir_path):
-    #     return os.path.join(dir_path, "full.faissindex")
     @classmethod
     def get_added_index_path(cls, input_data_paths, dir_path):
         return os.path.join(dir_path, "added.faissindex")
@@ -35,7 +41,6 @@ class Index:
         return os.path.join(dir_path, "%s_output%s_%s.hdf5" % (task, suffix))
     @classmethod
     def get_output_data_path(cls, dir_path, task, suffix):
-        # sub_dir_name = "%s_output_w%d"%(task,torch.distributed.get_world_size())
         sub_dir_name = "%s_output" % task
         utils.make_sub_dir(dir_path, sub_dir_name)
         return os.path.join(dir_path, sub_dir_name, "%s.hdf5" % suffix)

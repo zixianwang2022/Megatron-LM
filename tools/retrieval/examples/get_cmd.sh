@@ -5,7 +5,7 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=4
+NPROCS=1 # 4
 # >>>
 
 # >>>>>>>>>>>>>>>>>>>>>>>
@@ -37,7 +37,8 @@ tasks="verify-nbrs"
 # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
 # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
 # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
-ntrain=2500000 nadd=$(($NPROCS*1000000)) ncluster=262144 hnsw=32
+# ntrain=2500000 nadd=$(($NPROCS*1000000)) ncluster=262144 hnsw=32
+ntrain=2500000 nadd=4000000 ncluster=262144 hnsw=32
 # ntrain=500000 nadd=10000000 ncluster=262144 hnsw=32
 # ntrain=10000000 nadd=20000000 ncluster=1048576 hnsw=32
 # ntrain=3000000 nadd=100000000 ncluster=1048576 hnsw=32
@@ -52,14 +53,16 @@ data_ty=corpus
 # data_ty=rand-1m
 # data_ty=rand-100k
 
-# index_ty=faiss-mono
+# index_ty=faiss-base
 # index_ty=faiss-decomp
 index_ty=faiss-par-add
 
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
 
+# BUILD_INDEX_CMD=" \
+#     ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
 BUILD_INDEX_CMD=" \
-    ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
+    ./tools/retrieval/main.py \
     --tasks ${tasks} \
     --data-ty ${data_ty} \
     --ntrain ${ntrain} \

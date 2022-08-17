@@ -1,6 +1,18 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 from datetime import timedelta
 import faiss
 import os
@@ -8,97 +20,13 @@ import torch
 
 from lutil import pax, print_rank, print_seq
 
-# from retrieval import utils
-from retrieval.data import load_data
-from retrieval.index import Index
-from retrieval.index.utils import get_index_str
+# from tools.retrieval import utils
+from tools.retrieval.data import load_data
+from tools.retrieval.index import Index
+from tools.retrieval.index.utils import get_index_str
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def barrier():
-    # torch.distributed.monitored_barrier(timeout = timedelta(days = 1))
-    torch.distributed.barrier()
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # class FaissMonoIndex(Index):
-
-#     def __init__(self, args, d, index_str):
-#         super().__init__(args, d)
-#         self.index = faiss.index_factory(self.din(), index_str)
-        
-#         # pax({
-#         #     "index" : self.index,
-#         #     "index / m" : self.index.m,
-#         #     "ivf" : faiss.extract_index_ivf(self.index),
-#         # })
-#     # def init(self):
-#     #     self.index = faiss.index_factory(self.nfeats, self.index_str)
-#     #     self.verbose(1)
-
-#     def load(self, path):
-#         self.index = faiss.read_index(path)
-#         # self.verbose(1)
-    
-#     def verbose(self, v):
-#         self.c_verbose(self.index, v)
-
-#     def to_gpu(self):
-
-#         # ~~~~~~~~ move ~~~~~~~~
-#         index_ivf = faiss.extract_index_ivf(self.index)
-#         clustering_index = \
-#             faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-#         index_ivf.clustering_index = clustering_index
-
-#         # ~~~~~~~~ debug ~~~~~~~~
-#         # pax({"index": index})
-
-#         # ~~~~~~~~ return ~~~~~~~~
-#         # return index
-
-#     # def train(self, data):
-#     #     self.index.train(data)
-#     def train(self, data, dirname, timer):
-
-#         path = os.path.join(dirname, "empty.faissindex")
-#         if os.path.isfile(path):
-#             raise Exception("already trained.")
-#             return
-
-#         timer.push("train")
-#         self.index.train(data)
-#         timer.pop()
-
-#         timer.push("save")
-#         faiss.write_index(self.index, path)
-#         timer.pop()
-
-#     def add(self, data):
-#         self.index.add(data)
-
-#     # def save(self, path):
-#     #     faiss.write_index(self.index, path)
-class FaissMonoIndex(Index):
-
-    # def load(self, path):
-    #     self.index = faiss.read_index(path)
-    #     # self.verbose(1)
-    
-    # def verbose(self, v):
-    #     self.c_verbose(self.index, v)
-
-    # def to_gpu(self):
-
-    #     # ~~~~~~~~ move ~~~~~~~~
-    #     index_ivf = faiss.extract_index_ivf(self.index)
-    #     clustering_index = \
-    #         faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-    #     index_ivf.clustering_index = clustering_index
-
-    #     # ~~~~~~~~ debug ~~~~~~~~
-    #     # pax({"index": index})
-
-    #     # ~~~~~~~~ return ~~~~~~~~
-    #     # return index
+class FaissBaseIndex(Index):
 
     def _train(self, input_data_paths, dir_path, timer):
 
@@ -148,59 +76,14 @@ class FaissMonoIndex(Index):
 
     def train(self, input_data_paths, dir_path, timer):
 
-        barrier()
-
         if torch.distributed.get_rank() == 0:
             timer.push("train")
             self._train(input_data_paths, dir_path, timer)
             timer.pop()
 
-        barrier()
+        torch.distributed.barrier()
 
-    def _add_full_batch(self, input_data_paths, dir_path, timer):
-
-        assert torch.distributed.get_rank() == 0
-
-        empty_index_path = self.get_empty_index_path(dir_path)
-        added_index_path = self.get_added_index_path(dir_path)
-
-        if os.path.isfile(added_index_path):
-            return
-
-        timer.push("load-data")
-        inp = load_data(input_data_paths, timer)["data"]
-        timer.pop()
-
-        # pax({
-        #     "inp / shape" : str(inp.shape),
-        #     "added_index_path" : added_index_path,
-        # })
-
-        timer.push("init")
-        index = faiss.read_index(empty_index_path)
-        # pax(0, {"index": index})
-        timer.pop()
-
-        # >>>
-        index_ivf = faiss.extract_index_ivf(index)
-        # clustering_index = \
-        #     faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-        # index_ivf.clustering_index = clustering_index
-        self.c_verbose(index, True)
-        self.c_verbose(index_ivf, True)
-        self.c_verbose(index_ivf.quantizer, True)
-        # self.c_verbose(index_ivf.clustering_index, True)
-        # <<<
-
-        timer.push("add")
-        index.add(inp)
-        timer.pop()
-
-        timer.push("save")
-        faiss.write_index(index, added_index_path)
-        timer.pop()
-
-    def _add_mini_batch(self, input_data_paths, dir_path, timer):
+    def _add(self, input_data_paths, dir_path, timer):
 
         assert torch.distributed.get_rank() == 0
 
@@ -246,16 +129,11 @@ class FaissMonoIndex(Index):
 
     def add(self, input_data_paths, dir_path, timer):
 
-        barrier()
-
         if torch.distributed.get_rank() == 0:
             timer.push("add")
-            # self._add_full_batch(input_data_paths, dir_path, timer)
-            self._add_mini_batch(input_data_paths, dir_path, timer)
+            self._add(input_data_paths, dir_path, timer)
             timer.pop()
 
-        barrier()
+        torch.distributed.barrier()
 
         return self.get_added_index_path(dir_path)
-
-# eof
