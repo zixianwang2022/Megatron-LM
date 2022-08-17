@@ -28,7 +28,7 @@ class Index:
     # def get_full_index_path(cls, dir_path):
     #     return os.path.join(dir_path, "full.faissindex")
     @classmethod
-    def get_added_index_path(cls, dir_path):
+    def get_added_index_path(cls, input_data_paths, dir_path):
         return os.path.join(dir_path, "added.faissindex")
     @classmethod
     def get_output_data_path(cls, dir_path, task, suffix):

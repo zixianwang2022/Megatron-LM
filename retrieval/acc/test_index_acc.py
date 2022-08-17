@@ -7,6 +7,7 @@ import h5py
 import json
 import numpy as np
 import os
+import torch
 
 from lutil import pax
 
@@ -317,29 +318,37 @@ def get_acc_map(base_path, nnbrs, index_path):
     # ~~~~~~~~ return ~~~~~~~~
     return acc_map
 
-def vis_acc(base_path, nnbrs):
+# def vis_acc(base_path, nnbrs):
+#     index_paths = [
+#         "OPQ64_128,IVF4194304_HNSW32,PQ64__t65191936",
+#         "OPQ64_256,IVF4194304_HNSW32,PQ64__t65191936",
+#         "OPQ64_512,IVF4194304_HNSW32,PQ64__t65191936",
 
-    index_paths = [
-        "OPQ64_128,IVF4194304_HNSW32,PQ64__t65191936",
-        "OPQ64_256,IVF4194304_HNSW32,PQ64__t65191936",
-        "OPQ64_512,IVF4194304_HNSW32,PQ64__t65191936",
+#         "OPQ32_128,IVF4194304_HNSW32,PQ32__t65191936",
+#         "OPQ32_256,IVF4194304_HNSW32,PQ32__t65191936",
+#         "OPQ32_512,IVF4194304_HNSW32,PQ32__t65191936",
 
-        "OPQ32_128,IVF4194304_HNSW32,PQ32__t65191936",
-        "OPQ32_256,IVF4194304_HNSW32,PQ32__t65191936",
-        "OPQ32_512,IVF4194304_HNSW32,PQ32__t65191936",
+#         "OPQ16_128,IVF4194304_HNSW32,PQ16__t65191936",
+#         "OPQ16_256,IVF4194304_HNSW32,PQ16__t65191936",
+#         "OPQ16_512,IVF4194304_HNSW32,PQ16__t65191936",
+#     ]
+def vis_acc(index_paths, nnbrs):
 
-        "OPQ16_128,IVF4194304_HNSW32,PQ16__t65191936",
-        "OPQ16_256,IVF4194304_HNSW32,PQ16__t65191936",
-        "OPQ16_512,IVF4194304_HNSW32,PQ16__t65191936",
-    ]
+    assert torch.distributed.get_rank() == 0
+
+    pax({
+        "index_paths" : index_paths,
+        "nnbrs" : nnbrs,
+    })
 
     # ~~~~~~~~ acc map ~~~~~~~~
     acc_map = {}
     for k, index_path in enumerate(index_paths):
         print("index %d / %d ... '%s'." % (k, len(index_paths), index_path))
-        acc_map[index_path] = get_acc_map(base_path, nnbrs, index_path)
+        # acc_map[index_path] = get_acc_map(base_path, nnbrs, index_path)
+        acc_map[index_path] = get_acc_map(index_path, nnbrs)
 
-    # pax({"acc_map": acc_map})
+    pax({"acc_map": acc_map})
 
     # ~~~~~~~~ vert map ~~~~~~~~
     vert_map = {}

@@ -2,6 +2,12 @@
 
 set -u
 
+# echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
+# NPROCS=$SLURM_TASKS_PER_NODE
+# >>>
+NPROCS=4
+# >>>
+
 # >>>>>>>>>>>>>>>>>>>>>>>
 # profile_stage_stop="preprocess"
 profile_stage_stop="cluster"
@@ -12,11 +18,13 @@ profile_stage_stop="cluster"
 # tasks=train
 # tasks=add
 # tasks="remove-train-outputs,train"
-tasks="remove-add-outputs,add"
+# tasks="remove-add-outputs,add"
 # tasks="remove-add-outputs"
 # tasks="time-merge-partials"
 # tasks="remove-add-outputs,verify" # "verify-index"
-# tasks="verify"
+tasks="verify-codes"
+# tasks="verify-nbrs"
+# tasks="query-acc"
 
 # ntrain=2048 ncluster=64 hnsw=4
 # ntrain=131072 ncluster=128 hnsw=32
@@ -51,7 +59,6 @@ index_ty=faiss-par-add
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
 
 BUILD_INDEX_CMD=" \
-python -u \
     ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
     --tasks ${tasks} \
     --data-ty ${data_ty} \
@@ -62,6 +69,20 @@ python -u \
     --ivf-dim ${ivf_dim} \
     --pq-m ${pq_dim} \
     --index-ty ${index_ty} \
+    --profile-stage-stop ${profile_stage_stop} \
 "
+if [ "0" -eq "1" ]; then
+    BUILD_INDEX_CMD="python -u $BUILD_INDEX_CMD"
+else
+    BUILD_INDEX_CMD=" \
+    python -m torch.distributed.launch \
+        --nproc_per_node ${NPROCS} \
+        --nnodes 1 \
+        --node_rank ${NODE_RANK} \
+        --master_addr ${MASTER_ADDR} \
+        --master_port 6000 \
+        $BUILD_INDEX_CMD \
+    "
+fi
 
 # eof

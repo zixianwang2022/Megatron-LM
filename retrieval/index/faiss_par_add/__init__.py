@@ -47,7 +47,6 @@ class FaissParallelAddIndex(Index):
             rank = None,
     ):
 
-        # rank = torch.distributed.get_rank()
         rank = torch.distributed.get_rank() if rank is None else rank
         world_size = torch.distributed.get_world_size()
         num_batches = len(input_data_paths)
@@ -111,10 +110,6 @@ class FaissParallelAddIndex(Index):
                 [batch_range_to_index_path(row-1, r) for r in input_batch_ranges]
             input_index_paths = [ p for p in input_index_paths if p is not None ]
 
-            # print_seq(input_index_paths)
-            # if len(input_index_paths) < 2:
-            #     pax({"input_index_paths": input_index_paths})
-
             if not input_index_paths:
                 return None
 
@@ -167,6 +162,17 @@ class FaissParallelAddIndex(Index):
                         missing_index_paths.update(missing_input_paths)
 
         return missing_index_paths
+
+    def get_added_index_path(self, input_data_paths, dir_path):
+        num_rows = self.get_num_rows(len(input_data_paths))
+        index_path_map = self.get_partial_index_path_map(
+            input_data_paths,
+            dir_path,
+            row = num_rows - 1,
+            col = 0,
+            rank = 0,
+        )
+        return index_path_map["output_index_path"]
 
     def encode_partial(self, partial_index_path_map, dir_path, timer):
         """Encode partial indexes (embarrassingly parallel).
@@ -255,6 +261,8 @@ class FaissParallelAddIndex(Index):
                 ))
 
                 timer.push("add")
+
+                # Old way.
                 # for list_id in range(input_invlists.nlist):
                 #     output_invlists.add_entries(
                 #         list_id,
@@ -262,7 +270,10 @@ class FaissParallelAddIndex(Index):
                 #         input_invlists.get_ids(list_id),
                 #         input_invlists.get_codes(list_id),
                 #     )
+
+                # New way.
                 output_invlists.merge_from(input_invlists, output_index.ntotal)
+
                 timer.pop()
 
                 output_index.ntotal += input_index.ntotal
@@ -356,14 +367,7 @@ class FaissParallelAddIndex(Index):
         torch.distributed.barrier()
 
         # Get output index path, for return.
-        index_path_map = self.get_partial_index_path_map(
-            input_data_paths,
-            dir_path,
-            row = num_rows - 1,
-            col = 0,
-            rank = 0,
-        )
-        output_index_path = index_path_map["output_index_path"]
+        output_index_path = self.get_added_index_path(input_data_paths, dir_path)
 
         return output_index_path
 
@@ -481,12 +485,16 @@ class FaissParallelAddIndex(Index):
                             id_start + input_list_size,
                             dtype = "i8",
                         ))
-                        output_invlists.add_entries(
-                            list_id,
-                            input_list_size,
-                            # input_invlists.get_ids(list_id),
-                            ids,
-                            input_invlists.get_codes(list_id),
+                        # output_invlists.add_entries(
+                        #     list_id,
+                        #     input_list_size,
+                        #     # input_invlists.get_ids(list_id),
+                        #     ids,
+                        #     input_invlists.get_codes(list_id),
+                        # )
+                        output_invlists.merge_from(
+                            input_invlists,
+                            output_index.ntotal,
                         )
                         id_start += input_list_size
                     timer.pop()

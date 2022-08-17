@@ -1,8 +1,9 @@
 #!/bin/bash
 
-#SBATCH -p batch_dgx2h_m2 --nodes=2 --gres=gpu:8 -A gpu_adlr_nlp -t 0:30:00 --exclusive --nv-meta=ml-model:language-modeling --job-name=adlr-nlp-dev:retrieval --export=NPROCS=4 --ntasks-per-node=4
+#SBATCH -p batch_dgx2h_m2 --nodes=2 --gres=gpu:8 -A gpu_adlr_nlp -t 0:30:00 --exclusive --nv-meta=ml-model:language-modeling --job-name=adlr-nlp-dev:retrieval --ntasks-per-node=4
 
 # --ntasks-per-node=4
+# --export=NPROCS=4 
 NNODES=2
 NPROCS=4
 

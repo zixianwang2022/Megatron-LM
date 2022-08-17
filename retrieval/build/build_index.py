@@ -110,21 +110,41 @@ def run_add_pipeline(args, timer):
     return output_index_path
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def verify_index(args, timer):
+# def verify_index(args, timer):
+def verify_codes(args, timer):
 
-    timer.push("add-base")
-    from retrieval.index.faiss_mono import FaissMonoIndex
-    index = FaissMonoIndex(args)
-    base_index_path = index.add(args.add_paths, args.index_dir_path, timer)
-    timer.pop()
+    # timer.push("add-base")
+    # from retrieval.index.faiss_mono import FaissMonoIndex
+    # base_index = FaissMonoIndex(args)
+    # base_index_path = base_index.add(args.add_paths, args.index_dir_path, timer)
+    # timer.pop()
 
-    timer.push("add-test")
-    test_index_path = run_add_pipeline(args, timer)
-    timer.pop()
+    # timer.push("add-test")
+    # test_index_path = run_add_pipeline(args, timer)
+    # timer.pop()
 
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
 
     if torch.distributed.get_rank() == 0:
+
+        timer.push("get-index-paths")
+        from retrieval.index.faiss_mono import FaissMonoIndex
+        base_index = FaissMonoIndex(args)
+        test_index = IndexFactory.get_index(args)
+        base_index_path = base_index.get_added_index_path(
+            args.add_paths,
+            args.index_dir_path,
+        )
+        test_index_path = test_index.get_added_index_path(
+            args.add_paths,
+            args.index_dir_path,
+        )
+        timer.pop()
+
+        # pax({
+        #     "base_index_path" : base_index_path,
+        #     "test_index_path" : test_index_path,
+        # })
 
         # Read indexes.
         timer.push("read")
@@ -217,7 +237,47 @@ def verify_index(args, timer):
     # Final sync. [ unnecessary ]
     torch.distributed.barrier()
 
-    print_seq([ base_index_path, test_index_path ])
+    # print_seq([ base_index_path, test_index_path ])
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def run_query_acc_pipeline(args, timer):
+
+    if torch.distributed.get_rank() == 0:
+
+        from retrieval.acc.test_index_acc import vis_acc
+        from retrieval.index.faiss_mono import FaissMonoIndex
+
+        timer.push("get-index-paths")
+        base_index = FaissMonoIndex(args)
+        test_index = IndexFactory.get_index(args)
+        base_index_path = base_index.get_added_index_path(
+            args.train_paths,
+            args.index_dir_path,
+        )
+        test_index_path = test_index.get_added_index_path(
+            args.train_paths,
+            args.index_dir_path,
+        )
+        index_paths = [
+            base_index_path,
+            test_index_path,
+        ]
+        timer.pop()
+
+        pax({
+            "base_index" : base_index,
+            "test_index" : test_index,
+            "base_index_path" : base_index_path,
+            "test_index_path" : test_index_path,
+            "index_paths" : index_paths,
+        })
+
+        timer.push("vis-acc")
+        nnbrs = [ 1, 2, 5, 10 ]
+        vis_acc(index_paths, nnbrs)
+        timer.pop()
+
+    torch.distributed.barrier()
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
@@ -239,7 +299,7 @@ if __name__ == "__main__":
                         choices = [ "corpus", "wiki", "rand-1m", "rand-100k" ])
     parser.add_argument("--index-ty", required = True,
                         choices = [ "faiss-mono", "faiss-par-add" ])
-    # parser.add_argument("--profile-stage-stop", default = None)
+    parser.add_argument("--profile-stage-stop", default = None)
     parser.add_argument("--local_rank", type = int, default = None)
     args = parser.parse_args()
 
@@ -261,14 +321,13 @@ if __name__ == "__main__":
     # Torch distributed initialization.
     args.rank = int(os.getenv('RANK', '0'))
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
-    print(">>> i'm rank %d / %d. [ %s:%s ] <<<" % (
-        args.rank,
-        args.world_size,
-        os.getenv("MASTER_ADDR", "--"),
-        os.getenv("MASTER_PORT", "--"),
-    ), flush = True)
+    # print(">>> i'm rank %d / %d. [ %s:%s ] <<<" % (
+    #     args.rank,
+    #     args.world_size,
+    #     os.getenv("MASTER_ADDR", "--"),
+    #     os.getenv("MASTER_PORT", "--"),
+    # ), flush = True)
 
-    # assert torch.cuda.is_available(), "index requires cuda."
     torch.distributed.init_process_group(
         # backend = "nccl",
         backend = "gloo",
@@ -278,21 +337,21 @@ if __name__ == "__main__":
         timeout = timedelta(days = 1),
     )
 
-    print(">>> post torch init. <<<")
-
-    print_seq("i am rank.")
+    # print(">>> post torch init. <<<")
+    # print_seq("i am rank.")
 
     # Get input data batch paths, for training/adding/verifying.
-    if "train" in args.tasks or "add" in args.tasks or "verify" in args.tasks:
-        (
-            args.ntrain,
-            args.nadd,
-            args.train_paths,
-            args.add_paths,
-        ) = get_train_add_data_paths(args)
-        args.index_dir_path = get_index_dir_path(args)
-        args.index_empty_path = \
-            os.path.join(args.index_dir_path, "empty.faissindex")
+    # if "train" in args.tasks or "add" in args.tasks or "verify" in args.tasks:
+    # if any([ k in args.tasks for k in ["train", "add", "verify", "query-acc"] ]):
+    (
+        args.ntrain,
+        args.nadd,
+        args.train_paths,
+        args.add_paths,
+    ) = get_train_add_data_paths(args)
+    args.index_dir_path = get_index_dir_path(args)
+    args.index_empty_path = \
+        os.path.join(args.index_dir_path, "empty.faissindex")
 
     # Select task to run.
     timer = Timer()
@@ -316,8 +375,8 @@ if __name__ == "__main__":
             if torch.distributed.get_rank() == 0:
                 IVFPQIndex.time_merge_partials(args, timer)
             torch.distributed.barrier()
-        elif task == "verify":
-            verify_index(args, timer)
+        elif task == "verify-codes":
+            verify_codes(args, timer)
         elif task == "train":
             run_train_pipeline(args, timer)
         elif task == "add":
@@ -325,6 +384,8 @@ if __name__ == "__main__":
         elif task == "query":
             raise Exception("hi.")
             run_query_pipeline(args, timer)
+        elif task == "query-acc":
+            run_query_acc_pipeline(args, timer)
         else:
             raise Exception("specialize for task '%s'." % task)
 
