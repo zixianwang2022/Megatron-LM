@@ -1,9 +1,0 @@
-#!/bin/bash
-
-for i in {004..009}; do
-
-    scp /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/sampled_pretraining/sampled_pretraining_corpus.chunks.hdf5.0${i}.feat.hdf5 selene-login:/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/sampled_pretraining/
-
-done
-
-# eof

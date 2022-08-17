@@ -1,734 +1,0 @@
-0: pyxis: importing docker image ...
-0: /workspace
-0: /home/lmcafee/src/megatrons/megatron-lm-boxin
-0: Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
-0: Collecting h5py
-0:   Downloading h5py-3.7.0-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (4.5 MB)
-0: Requirement already satisfied: numpy>=1.14.5 in /opt/conda/lib/python3.8/site-packages (from h5py) (1.22.3)
-0: Installing collected packages: h5py
-0: Successfully installed h5py-3.7.0
-0: WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
-0: Collecting package metadata (current_repodata.json): ...working... done
-0: Solving environment: ...working... done
-0: 
-0: ## Package Plan ##
-0: 
-0:   environment location: /opt/conda
-0: 
-0:   added / updated specs:
-0:     - faiss-gpu
-0: 
-0: 
-0: The following packages will be downloaded:
-0: 
-0:     package                    |            build
-0:     ---------------------------|-----------------
-0:     ca-certificates-2022.6.15  |       ha878542_0         149 KB  conda-forge
-0:     cudatoolkit-11.7.0         |      hd8887f6_10       831.6 MB  conda-forge
-0:     faiss-1.7.2                |py38cuda112h5d0fea0_0_cuda         2.6 MB  conda-forge
-0:     faiss-gpu-1.7.2            |       h788eb59_0          14 KB  conda-forge
-0:     libfaiss-1.7.2             |cuda112hc9ed507_0_cuda        97.2 MB  conda-forge
-0:     libfaiss-avx2-1.7.2        |cuda112h1234567_0_cuda        97.2 MB  conda-forge
-0:     libgcc-ng-12.1.0           |      h8d9b700_16         940 KB  conda-forge
-0:     openssl-1.1.1q             |       h166bdaf_0         2.1 MB  conda-forge
-0:     readline-8.1.2             |       h0f457ee_0         291 KB  conda-forge
-0:     ------------------------------------------------------------
-0:                                            Total:        1.01 GB
-0: 
-0: The following NEW packages will be INSTALLED:
-0: 
-0:   cudatoolkit        conda-forge/linux-64::cudatoolkit-11.7.0-hd8887f6_10
-0:   faiss              conda-forge/linux-64::faiss-1.7.2-py38cuda112h5d0fea0_0_cuda
-0:   faiss-gpu          conda-forge/linux-64::faiss-gpu-1.7.2-h788eb59_0
-0:   libfaiss           conda-forge/linux-64::libfaiss-1.7.2-cuda112hc9ed507_0_cuda
-0:   libfaiss-avx2      conda-forge/linux-64::libfaiss-avx2-1.7.2-cuda112h1234567_0_cuda
-0: 
-0: The following packages will be REMOVED:
-0: 
-0:   libgomp-11.2.0-h1d223b6_14
-0: 
-0: The following packages will be UPDATED:
-0: 
-0:   ca-certificates                      2021.10.8-ha878542_0 --> 2022.6.15-ha878542_0
-0:   libgcc-ng                              11.2.0-h1d223b6_14 --> 12.1.0-h8d9b700_16
-0:   openssl                                 1.1.1n-h166bdaf_0 --> 1.1.1q-h166bdaf_0
-0:   readline                                   8.1-h46c0cb4_0 --> 8.1.2-h0f457ee_0
-0: 
-0: 
-0: 
-0: Downloading and Extracting Packages
-0: libgcc-ng-12.1.0     | 940 KB    |            |   0% libgcc-ng-12.1.0     | 940 KB    | 1          |   2% libgcc-ng-12.1.0     | 940 KB    | ###9       |  39% libgcc-ng-12.1.0     | 940 KB    | ########## | 100% libgcc-ng-12.1.0     | 940 KB    | ########## | 100% 
-0: libfaiss-avx2-1.7.2  | 97.2 MB   |            |   0% libfaiss-avx2-1.7.2  | 97.2 MB   |            |   0% libfaiss-avx2-1.7.2  | 97.2 MB   | 3          |   4% libfaiss-avx2-1.7.2  | 97.2 MB   | 9          |  10% libfaiss-avx2-1.7.2  | 97.2 MB   | #4         |  14% libfaiss-avx2-1.7.2  | 97.2 MB   | ##         |  21% libfaiss-avx2-1.7.2  | 97.2 MB   | ##5        |  26% libfaiss-avx2-1.7.2  | 97.2 MB   | ###1       |  32% libfaiss-avx2-1.7.2  | 97.2 MB   | ###6       |  37% libfaiss-avx2-1.7.2  | 97.2 MB   | ####1      |  41% libfaiss-avx2-1.7.2  | 97.2 MB   | ####7      |  47% libfaiss-avx2-1.7.2  | 97.2 MB   | #####3     |  53% libfaiss-avx2-1.7.2  | 97.2 MB   | #####8     |  58% libfaiss-avx2-1.7.2  | 97.2 MB   | ######2    |  63% libfaiss-avx2-1.7.2  | 97.2 MB   | ######8    |  68% libfaiss-avx2-1.7.2  | 97.2 MB   | #######4   |  75% libfaiss-avx2-1.7.2  | 97.2 MB   | ########   |  81% libfaiss-avx2-1.7.2  | 97.2 MB   | ########6  |  87% libfaiss-avx2-1.7.2  | 97.2 MB   | #########2 |  92
-0: % libfaiss-avx2-1.7.2  | 97.2 MB   | #########8 |  98% libfaiss-avx2-1.7.2  | 97.2 MB   | ########## | 100% 
-0: openssl-1.1.1q       | 2.1 MB    |            |   0% openssl-1.1.1q       | 2.1 MB    | ########## | 100% openssl-1.1.1q       | 2.1 MB    | ########## | 100% 
-0: faiss-gpu-1.7.2      | 14 KB     |            |   0% faiss-gpu-1.7.2      | 14 KB     | ########## | 100% faiss-gpu-1.7.2      | 14 KB     | ########## | 100% 
-0: faiss-1.7.2          | 2.6 MB    |            |   0% faiss-1.7.2          | 2.6 MB    | ####3      |  43% faiss-1.7.2          | 2.6 MB    | ########## | 100% faiss-1.7.2          | 2.6 MB    | ########## | 100% 
-0: readline-8.1.2       | 291 KB    |            |   0% readline-8.1.2       | 291 KB    | 5          |   5% readline-8.1.2       | 291 KB    | ########## | 100% 
-0: libfaiss-1.7.2       | 97.2 MB   |            |   0% libfaiss-1.7.2       | 97.2 MB   | 1          |   2% libfaiss-1.7.2       | 97.2 MB   | 6          |   6% libfaiss-1.7.2       | 97.2 MB   | 8          |   9% libfaiss-1.7.2       | 97.2 MB   | #2         |  13% libfaiss-1.7.2       | 97.2 MB   | #5         |  16% libfaiss-1.7.2       | 97.2 MB   | ##         |  21% libfaiss-1.7.2       | 97.2 MB   | ##5        |  26% libfaiss-1.7.2       | 97.2 MB   | ###1       |  31% libfaiss-1.7.2       | 97.2 MB   | ###6       |  37% libfaiss-1.7.2       | 97.2 MB   | ####2      |  42% libfaiss-1.7.2       | 97.2 MB   | ####7      |  47% libfaiss-1.7.2       | 97.2 MB   | #####1     |  51% libfaiss-1.7.2       | 97.2 MB   | #####6     |  56% libfaiss-1.7.2       | 97.2 MB   | ######     |  60% libfaiss-1.7.2       | 97.2 MB   | ######4    |  64% libfaiss-1.7.2       | 97.2 MB   | ######8    |  69% libfaiss-1.7.2       | 97.2 MB   | #######2   |  73% libfaiss-1.7.2       | 97.2 MB   | #######6   |  77
-0: % libfaiss-1.7.2       | 97.2 MB   | ########   |  80% libfaiss-1.7.2       | 97.2 MB   | ########3  |  83% libfaiss-1.7.2       | 97.2 MB   | ########7  |  87% libfaiss-1.7.2       | 97.2 MB   | #########2 |  93% libfaiss-1.7.2       | 97.2 MB   | #########6 |  97% libfaiss-1.7.2       | 97.2 MB   | ########## | 100% 
-0: ca-certificates-2022 | 149 KB    |            |   0% ca-certificates-2022 | 149 KB    | ########## | 100% 
-0: cudatoolkit-11.7.0   | 831.6 MB  |            |   0% cudatoolkit-11.7.0   | 831.6 MB  |            |   0% cudatoolkit-11.7.0   | 831.6 MB  |            |   1% cudatoolkit-11.7.0   | 831.6 MB  | 1          |   2% cudatoolkit-11.7.0   | 831.6 MB  | 2          |   2% cudatoolkit-11.7.0   | 831.6 MB  | 2          |   3% cudatoolkit-11.7.0   | 831.6 MB  | 3          |   3% cudatoolkit-11.7.0   | 831.6 MB  | 3          |   4% cudatoolkit-11.7.0   | 831.6 MB  | 4          |   5% cudatoolkit-11.7.0   | 831.6 MB  | 5          |   5% cudatoolkit-11.7.0   | 831.6 MB  | 5          |   6% cudatoolkit-11.7.0   | 831.6 MB  | 6          |   7% cudatoolkit-11.7.0   | 831.6 MB  | 7          |   7% cudatoolkit-11.7.0   | 831.6 MB  | 8          |   8% cudatoolkit-11.7.0   | 831.6 MB  | 8          |   9% cudatoolkit-11.7.0   | 831.6 MB  | 9          |  10% cudatoolkit-11.7.0   | 831.6 MB  | #          |  10% cudatoolkit-11.7.0   | 831.6 MB  | #          |  11% cudatoolkit-11.7.0   | 831.6 MB  | #1         |  12
-0: % cudatoolkit-11.7.0   | 831.6 MB  | #2         |  12% cudatoolkit-11.7.0   | 831.6 MB  | #3         |  13% cudatoolkit-11.7.0   | 831.6 MB  | #3         |  14% cudatoolkit-11.7.0   | 831.6 MB  | #4         |  14% cudatoolkit-11.7.0   | 831.6 MB  | #5         |  15% cudatoolkit-11.7.0   | 831.6 MB  | #5         |  16% cudatoolkit-11.7.0   | 831.6 MB  | #6         |  16% cudatoolkit-11.7.0   | 831.6 MB  | #7         |  17% cudatoolkit-11.7.0   | 831.6 MB  | #7         |  18% cudatoolkit-11.7.0   | 831.6 MB  | #8         |  18% cudatoolkit-11.7.0   | 831.6 MB  | #9         |  19% cudatoolkit-11.7.0   | 831.6 MB  | #9         |  20% cudatoolkit-11.7.0   | 831.6 MB  | ##         |  21% cudatoolkit-11.7.0   | 831.6 MB  | ##1        |  21% cudatoolkit-11.7.0   | 831.6 MB  | ##1        |  22% cudatoolkit-11.7.0   | 831.6 MB  | ##2        |  22% cudatoolkit-11.7.0   | 831.6 MB  | ##3        |  23% cudatoolkit-11.7.0   | 831.6 MB  | ##3        |  24% cudatoolkit-11.7.0   | 831.6 MB  | ##4        |  
-0: 24% cudatoolkit-11.7.0   | 831.6 MB  | ##5        |  25% cudatoolkit-11.7.0   | 831.6 MB  | ##5        |  26% cudatoolkit-11.7.0   | 831.6 MB  | ##6        |  26% cudatoolkit-11.7.0   | 831.6 MB  | ##6        |  27% cudatoolkit-11.7.0   | 831.6 MB  | ##7        |  28% cudatoolkit-11.7.0   | 831.6 MB  | ##8        |  28% cudatoolkit-11.7.0   | 831.6 MB  | ##9        |  29% cudatoolkit-11.7.0   | 831.6 MB  | ##9        |  30% cudatoolkit-11.7.0   | 831.6 MB  | ###        |  30% cudatoolkit-11.7.0   | 831.6 MB  | ###1       |  31% cudatoolkit-11.7.0   | 831.6 MB  | ###1       |  32% cudatoolkit-11.7.0   | 831.6 MB  | ###2       |  33% cudatoolkit-11.7.0   | 831.6 MB  | ###3       |  33% cudatoolkit-11.7.0   | 831.6 MB  | ###3       |  34% cudatoolkit-11.7.0   | 831.6 MB  | ###4       |  35% cudatoolkit-11.7.0   | 831.6 MB  | ###5       |  35% cudatoolkit-11.7.0   | 831.6 MB  | ###6       |  36% cudatoolkit-11.7.0   | 831.6 MB  | ###6       |  37% cudatoolkit-11.7.0   | 831.6 MB  | ###7       |
-0:   37% cudatoolkit-11.7.0   | 831.6 MB  | ###8       |  38% cudatoolkit-11.7.0   | 831.6 MB  | ###8       |  39% cudatoolkit-11.7.0   | 831.6 MB  | ###9       |  39% cudatoolkit-11.7.0   | 831.6 MB  | ###9       |  40% cudatoolkit-11.7.0   | 831.6 MB  | ####       |  41% cudatoolkit-11.7.0   | 831.6 MB  | ####1      |  41% cudatoolkit-11.7.0   | 831.6 MB  | ####1      |  42% cudatoolkit-11.7.0   | 831.6 MB  | ####2      |  42% cudatoolkit-11.7.0   | 831.6 MB  | ####3      |  43% cudatoolkit-11.7.0   | 831.6 MB  | ####3      |  44% cudatoolkit-11.7.0   | 831.6 MB  | ####4      |  45% cudatoolkit-11.7.0   | 831.6 MB  | ####5      |  45% cudatoolkit-11.7.0   | 831.6 MB  | ####6      |  46% cudatoolkit-11.7.0   | 831.6 MB  | ####6      |  47% cudatoolkit-11.7.0   | 831.6 MB  | ####7      |  47% cudatoolkit-11.7.0   | 831.6 MB  | ####7      |  48% cudatoolkit-11.7.0   | 831.6 MB  | ####8      |  49% cudatoolkit-11.7.0   | 831.6 MB  | ####9      |  49% cudatoolkit-11.7.0   | 831.6 MB  | ####9     
-0:  |  50% cudatoolkit-11.7.0   | 831.6 MB  | #####      |  51% cudatoolkit-11.7.0   | 831.6 MB  | #####1     |  51% cudatoolkit-11.7.0   | 831.6 MB  | #####2     |  52% cudatoolkit-11.7.0   | 831.6 MB  | #####2     |  53% cudatoolkit-11.7.0   | 831.6 MB  | #####3     |  53% cudatoolkit-11.7.0   | 831.6 MB  | #####3     |  54% cudatoolkit-11.7.0   | 831.6 MB  | #####4     |  55% cudatoolkit-11.7.0   | 831.6 MB  | #####5     |  55% cudatoolkit-11.7.0   | 831.6 MB  | #####5     |  56% cudatoolkit-11.7.0   | 831.6 MB  | #####6     |  57% cudatoolkit-11.7.0   | 831.6 MB  | #####7     |  57% cudatoolkit-11.7.0   | 831.6 MB  | #####7     |  58% cudatoolkit-11.7.0   | 831.6 MB  | #####8     |  59% cudatoolkit-11.7.0   | 831.6 MB  | #####9     |  59% cudatoolkit-11.7.0   | 831.6 MB  | #####9     |  60% cudatoolkit-11.7.0   | 831.6 MB  | ######     |  60% cudatoolkit-11.7.0   | 831.6 MB  | ######1    |  61% cudatoolkit-11.7.0   | 831.6 MB  | ######1    |  62% cudatoolkit-11.7.0   | 831.6 MB  | ######2 
-0:    |  62% cudatoolkit-11.7.0   | 831.6 MB  | ######2    |  63% cudatoolkit-11.7.0   | 831.6 MB  | ######3    |  64% cudatoolkit-11.7.0   | 831.6 MB  | ######4    |  64% cudatoolkit-11.7.0   | 831.6 MB  | ######4    |  65% cudatoolkit-11.7.0   | 831.6 MB  | ######5    |  66% cudatoolkit-11.7.0   | 831.6 MB  | ######6    |  66% cudatoolkit-11.7.0   | 831.6 MB  | ######6    |  67% cudatoolkit-11.7.0   | 831.6 MB  | ######7    |  68% cudatoolkit-11.7.0   | 831.6 MB  | ######8    |  68% cudatoolkit-11.7.0   | 831.6 MB  | ######8    |  69% cudatoolkit-11.7.0   | 831.6 MB  | ######9    |  70% cudatoolkit-11.7.0   | 831.6 MB  | #######    |  70% cudatoolkit-11.7.0   | 831.6 MB  | #######    |  71% cudatoolkit-11.7.0   | 831.6 MB  | #######1   |  71% cudatoolkit-11.7.0   | 831.6 MB  | #######2   |  72% cudatoolkit-11.7.0   | 831.6 MB  | #######2   |  73% cudatoolkit-11.7.0   | 831.6 MB  | #######3   |  73% cudatoolkit-11.7.0   | 831.6 MB  | #######3   |  74% cudatoolkit-11.7.0   | 831.6 MB  | ######
-0: #4   |  74% cudatoolkit-11.7.0   | 831.6 MB  | #######5   |  75% cudatoolkit-11.7.0   | 831.6 MB  | #######5   |  76% cudatoolkit-11.7.0   | 831.6 MB  | #######6   |  76% cudatoolkit-11.7.0   | 831.6 MB  | #######7   |  77% cudatoolkit-11.7.0   | 831.6 MB  | #######7   |  78% cudatoolkit-11.7.0   | 831.6 MB  | #######8   |  79% cudatoolkit-11.7.0   | 831.6 MB  | #######9   |  79% cudatoolkit-11.7.0   | 831.6 MB  | #######9   |  80% cudatoolkit-11.7.0   | 831.6 MB  | ########   |  81% cudatoolkit-11.7.0   | 831.6 MB  | ########1  |  81% cudatoolkit-11.7.0   | 831.6 MB  | ########2  |  82% cudatoolkit-11.7.0   | 831.6 MB  | ########2  |  83% cudatoolkit-11.7.0   | 831.6 MB  | ########3  |  83% cudatoolkit-11.7.0   | 831.6 MB  | ########4  |  84% cudatoolkit-11.7.0   | 831.6 MB  | ########4  |  85% cudatoolkit-11.7.0   | 831.6 MB  | ########5  |  86% cudatoolkit-11.7.0   | 831.6 MB  | ########6  |  86% cudatoolkit-11.7.0   | 831.6 MB  | ########6  |  87% cudatoolkit-11.7.0   | 831.6 MB  | ####
-0: ####7  |  87% cudatoolkit-11.7.0   | 831.6 MB  | ########8  |  88% cudatoolkit-11.7.0   | 831.6 MB  | ########8  |  89% cudatoolkit-11.7.0   | 831.6 MB  | ########9  |  89% cudatoolkit-11.7.0   | 831.6 MB  | ########9  |  90% cudatoolkit-11.7.0   | 831.6 MB  | #########  |  91% cudatoolkit-11.7.0   | 831.6 MB  | #########1 |  91% cudatoolkit-11.7.0   | 831.6 MB  | #########1 |  92% cudatoolkit-11.7.0   | 831.6 MB  | #########2 |  93% cudatoolkit-11.7.0   | 831.6 MB  | #########3 |  93% cudatoolkit-11.7.0   | 831.6 MB  | #########3 |  94% cudatoolkit-11.7.0   | 831.6 MB  | #########4 |  94% cudatoolkit-11.7.0   | 831.6 MB  | #########4 |  95% cudatoolkit-11.7.0   | 831.6 MB  | #########5 |  96% cudatoolkit-11.7.0   | 831.6 MB  | #########6 |  96% cudatoolkit-11.7.0   | 831.6 MB  | #########6 |  97% cudatoolkit-11.7.0   | 831.6 MB  | #########7 |  98% cudatoolkit-11.7.0   | 831.6 MB  | #########8 |  98% cudatoolkit-11.7.0   | 831.6 MB  | #########9 |  99% cudatoolkit-11.7.0   | 831.6 MB  | ##
-0: #######9 | 100% cudatoolkit-11.7.0   | 831.6 MB  | ########## | 100% 
-0: Preparing transaction: ...working... done
-0: Verifying transaction: ...working... done
-0: Executing transaction: ...working... By downloading and using the CUDA Toolkit conda packages, you accept the terms and conditions of the CUDA End User License Agreement (EULA): https://docs.nvidia.com/cuda/eula/index.html
-0: 
-0: done
-0: 
-0: The environment is inconsistent, please check the package plan carefully
-0: The following packages are causing the inconsistency:
-0: 
-0:   - conda-forge/linux-64::catalogue==2.0.6=py38h578d9bd_2
-0:   - conda-forge/noarch::langcodes==3.3.0=pyhd8ed1ab_0
-0:   - conda-forge/noarch::wheel==0.37.1=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::numpy==1.22.3=py38h1d589f8_2
-0:   - conda-forge/linux-64::conda-build==3.21.8=py38h578d9bd_0
-0:   - conda-forge/noarch::backcall==0.2.0=pyh9f0ad1d_0
-0:   - conda-forge/noarch::typer==0.4.1=pyhd8ed1ab_0
-0:   - conda-forge/noarch::backports.functools_lru_cache==1.6.4=pyhd8ed1ab_0
-0:   - conda-forge/noarch::filelock==3.6.0=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::sqlite==3.37.1=h4ff8645_0
-0:   - conda-forge/noarch::requests==2.27.1=pyhd8ed1ab_0
-0:   - conda-forge/noarch::pycparser==2.21=pyhd8ed1ab_0
-0:   - conda-forge/noarch::tqdm==4.63.0=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::preshed==3.0.6=py38hfa26641_2
-0:   - conda-forge/noarch::pyopenssl==22.0.0=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::mock==4.0.3=py38h578d9bd_3
-0:   - conda-forge/noarch::packaging==21.3=pyhd8ed1ab_0
-0:   - conda-forge/noarch::charset-normalizer==2.0.12=pyhd8ed1ab_0
-0:   - conda-forge/noarch::pyparsing==3.0.8=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::murmurhash==1.0.6=py38hfa26641_3
-0:   - conda-forge/noarch::pip==21.2.4=pyhd8ed1ab_0
-0:   - conda-forge/noarch::beautifulsoup4==4.11.1=pyha770c72_0
-0:   - conda-forge/linux-64::numba==0.53.1=py38h8b71fd7_1
-0:   - conda-forge/linux-64::jedi==0.18.1=py38h578d9bd_1
-0:   - conda-forge/linux-64::srsly==2.4.3=py38hfa26641_1
-0:   - conda-forge/noarch::urllib3==1.26.9=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::llvmlite==0.36.0=py38h4630a5e_0
-0:   - conda-forge/noarch::stack_data==0.2.0=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::certifi==2021.10.8=py38h578d9bd_2
-0:   - conda-forge/linux-64::scipy==1.6.3=py38h7b17777_0
-0:   - conda-forge/linux-64::brotlipy==0.7.0=py38h0a891b7_1004
-0:   - conda-forge/linux-64::cffi==1.15.0=py38h3931269_0
-0:   - conda-forge/linux-64::cryptography==36.0.2=py38h2b5fc30_1
-0:   - conda-forge/linux-64::py-lief==0.11.5=py38h709712a_1
-0:   - conda-forge/noarch::pytz==2022.1=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::click==8.0.4=py38h578d9bd_0
-0:   - conda-forge/noarch::idna==3.3=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::chardet==4.0.0=py38h578d9bd_3
-0:   - conda-forge/noarch::smart_open==5.2.1=pyhd8ed1ab_0
-0:   - conda-forge/noarch::parso==0.8.3=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::pyyaml==6.0=py38h0a891b7_4
-0:   - conda-forge/noarch::matplotlib-inline==0.1.3=pyhd8ed1ab_0
-0:   - conda-forge/noarch::backports==1.0=py_2
-0:   - conda-forge/noarch::pickleshare==0.7.5=py_1003
-0:   - conda-forge/noarch::typing_extensions==4.1.1=pyha770c72_0
-0:   - conda-forge/noarch::six==1.16.0=pyh6c4a22f_0
-0:   - conda-forge/noarch::shellingham==1.4.0=pyh44b312d_0
-0:   - conda-forge/noarch::dataclasses==0.8=pyhc8e2a94_3
-0:   - conda-forge/noarch::wcwidth==0.2.5=pyh9f0ad1d_2
-0:   - conda-forge/linux-64::python_abi==3.8=2_cp38
-0:   - conda-forge/linux-64::pysocks==1.7.1=py38h578d9bd_5
-0:   - conda-forge/linux-64::spacy==3.2.4=py38h514daf8_0
-0:   - conda-forge/linux-64::thinc==8.0.15=py38h514daf8_0
-0:   - conda-forge/linux-64::cymem==2.0.6=py38hfa26641_3
-0:   - conda-forge/noarch::wasabi==0.9.1=pyhd8ed1ab_0
-0:   - conda-forge/noarch::jinja2==3.1.1=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::psutil==5.9.0=py38h0a891b7_1
-0:   - conda-forge/linux-64::pydantic==1.8.2=py38h497a2fe_2
-0:   - conda-forge/noarch::colorama==0.4.4=pyh9f0ad1d_0
-0:   - conda-forge/noarch::soupsieve==2.3.1=pyhd8ed1ab_0
-0:   - conda-forge/noarch::spacy-loggers==1.0.2=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::markupsafe==2.1.1=py38h0a891b7_1
-0:   - conda-forge/linux-64::python-libarchive-c==4.0=py38h578d9bd_1
-0:   - conda-forge/linux-64::conda-package-handling==1.8.1=py38h0a891b7_1
-0:   - conda-forge/linux-64::ipython==8.2.0=py38h578d9bd_0
-0:   - conda-forge/noarch::pexpect==4.8.0=pyh9f0ad1d_2
-0:   - conda-forge/linux-64::ruamel_yaml==0.15.80=py38h497a2fe_1006
-0:   - conda-forge/noarch::pathy==0.6.1=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::cython-blis==0.7.7=py38h71d37f0_1
-0:   - conda-forge/noarch::decorator==5.1.1=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::python==3.8.13=h582c2e5_0_cpython
-0:   - conda-forge/noarch::pure_eval==0.2.2=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::readline==8.1=h46c0cb4_0
-0:   - conda-forge/noarch::traitlets==5.1.1=pyhd8ed1ab_0
-0:   - conda-forge/noarch::glob2==0.7=py_0
-0:   - conda-forge/noarch::asttokens==2.0.5=pyhd8ed1ab_0
-0:   - conda-forge/noarch::typing-extensions==4.1.1=hd8ed1ab_0
-0:   - conda-forge/noarch::ptyprocess==0.7.0=pyhd3deb0d_0
-0:   - conda-forge/noarch::prompt-toolkit==3.0.29=pyha770c72_0
-0:   - conda-forge/linux-64::conda==4.12.0=py38h578d9bd_0
-0:   - conda-forge/noarch::spacy-legacy==3.0.9=pyhd8ed1ab_0
-0:   - conda-forge/noarch::pkginfo==1.8.2=pyhd8ed1ab_0
-0:   - conda-forge/noarch::pygments==2.11.2=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::pycosat==0.6.3=py38h0a891b7_1010
-0:   - conda-forge/noarch::executing==0.8.3=pyhd8ed1ab_0
-0:   - conda-forge/linux-64::setuptools==59.5.0=py38h578d9bd_0
-0: 
-0: 
-0: ==> WARNING: A newer version of conda exists. <==
-0:   current version: 4.12.0
-0:   latest version: 4.13.0
-0: 
-0: Please update conda by running
-0: 
-0:     $ conda update -n base conda
-0: 
-0: 
-0: CMD = python -m lawrence.build.build_index             --task train             --data-ty corpus             --ntrain 50000000             --index-ty faiss-decomp             --index-str OPQ32_256,IVF4194304_HNSW32,PQ32             --profile-stage-stop pqs             --profile-single-encoder 
-0: hi, index.
-0: timer | 'train/init' ... [1] single 0.000, total 0.000.
-0: timer | 'train/opq/train' ... [1] single 0.003, total 0.003.
-0: timer | 'train/opq/forward' ... [1] single 0.049, total 0.049.
-0: timer | 'train/opq' ... [1] single 0.053, total 0.053.
-0: timer | 'train/ivf/ivf/train' ... [1] single 0.001, total 0.001.
-0: timer | 'train/ivf/ivf/forward' ... [1] single 0.001, total 0.001.
-0: timer | 'train/ivf/ivf' ... [1] single 0.002, total 0.002.
-0: timer | 'train/ivf/hnsw/train' ... [1] single 0.002, total 0.002.
-0: timer | 'train/ivf/hnsw/forward' ... [1] single 0.040, total 0.040.
-0: timer | 'train/ivf/hnsw' ... [1] single 0.042, total 0.042.
-0: timer | 'train/ivf' ... [1] single 0.046, total 0.046.
-0: timer | 'train/pqs/load-data/shape' ... [1] single 0.230, total 0.230.
-0: timer | 'train/pqs/load-data/alloc' ... [1] single 0.000, total 0.000.
-0: load path 0 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_0.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [1] single 3.088, total 3.088.
-0: load path 1 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_1.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [2] single 2.699, total 5.398.
-0: load path 2 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_2.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [3] single 2.969, total 8.907.
-0: load path 3 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_3.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [4] single 2.922, total 11.688.
-0: load path 4 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_4.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [5] single 2.811, total 14.053.
-0: load path 5 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_5.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [6] single 2.853, total 17.120.
-0: load path 6 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_6.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [7] single 2.897, total 20.282.
-0: load path 7 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_7.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [8] single 2.884, total 23.076.
-0: load path 8 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_8.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [9] single 2.844, total 25.599.
-0: load path 9 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_9.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [10] single 2.828, total 28.277.
-0: load path 10 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_10.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [11] single 2.834, total 31.174.
-0: load path 11 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_11.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [12] single 2.860, total 34.321.
-0: load path 12 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_12.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [13] single 2.879, total 37.425.
-0: load path 13 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_13.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [14] single 2.900, total 40.606.
-0: load path 14 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_14.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [15] single 2.955, total 44.320.
-0: load path 15 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_15.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [16] single 2.942, total 47.067.
-0: load path 16 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_16.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [17] single 2.912, total 49.501.
-0: load path 17 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_17.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [18] single 2.927, total 52.679.
-0: load path 18 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_18.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [19] single 2.940, total 55.862.
-0: load path 19 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_19.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [20] single 2.943, total 58.855.
-0: load path 20 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_20.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [21] single 2.913, total 61.167.
-0: load path 21 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_21.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [22] single 2.927, total 64.394.
-0: load path 22 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_22.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [23] single 2.907, total 66.850.
-0: load path 23 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_23.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [24] single 2.909, total 69.824.
-0: load path 24 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_24.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [25] single 2.922, total 73.062.
-0: load path 25 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_25.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [26] single 2.895, total 75.261.
-0: load path 26 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_26.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [27] single 2.876, total 77.661.
-0: load path 27 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_27.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [28] single 2.880, total 80.645.
-0: load path 28 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_28.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [29] single 2.881, total 83.552.
-0: load path 29 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_29.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [30] single 2.874, total 86.219.
-0: load path 30 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_30.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [31] single 2.856, total 88.542.
-0: load path 31 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_31.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [32] single 2.865, total 91.672.
-0: load path 32 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_32.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [33] single 2.848, total 93.986.
-0: load path 33 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_33.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [34] single 2.857, total 97.128.
-0: load path 34 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_34.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [35] single 2.866, total 100.306.
-0: load path 35 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_35.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [36] single 2.871, total 103.339.
-0: load path 36 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_36.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [37] single 2.877, total 106.460.
-0: load path 37 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_37.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [38] single 2.879, total 109.398.
-0: load path 38 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_38.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [39] single 2.883, total 112.447.
-0: load path 39 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_39.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [40] single 2.885, total 115.388.
-0: load path 40 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_40.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [41] single 2.890, total 118.489.
-0: load path 41 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_41.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [42] single 2.886, total 121.213.
-0: load path 42 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_42.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [43] single 2.874, total 123.564.
-0: load path 43 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_43.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [44] single 2.876, total 126.561.
-0: load path 44 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_44.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [45] single 2.874, total 129.319.
-0: load path 45 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_45.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [46] single 2.876, total 132.288.
-0: load path 46 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_46.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [47] single 2.881, total 135.393.
-0: load path 47 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_47.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [48] single 2.866, total 137.570.
-0: load path 48 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_48.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [49] single 2.872, total 140.705.
-0: load path 49 / 50 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/ivf/hnsw/train_output_49.hdf5'.
-0: timer | 'train/pqs/load-data/load' ... [50] single 2.888, total 144.400.
-0: timer | 'train/pqs/load-data' ... [1] single 144.634, total 144.634.
-0: >> train pq 0 / 4194304.
-0: timer | 'train/pqs/pq/slice-data/get' ... [1] single 0.155, total 0.155.
-0: timer | 'train/pqs/pq/slice-data/save' ... [1] single 0.005, total 0.005.
-0: timer | 'train/pqs/pq/slice-data' ... [1] single 0.161, total 0.161.
-0: timer | 'train/pqs/pq/train/train/load-data/shape' ... [1] single 0.001, total 0.001.
-0: timer | 'train/pqs/pq/train/train/load-data/alloc' ... [1] single 0.000, total 0.000.
-0: load path 0 / 1 ... '/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000/pqs/0/train_input.hdf5'.
-0: timer | 'train/pqs/pq/train/train/load-data/load' ... [1] single 0.002, total 0.002.
-0: timer | 'train/pqs/pq/train/train/load-data' ... [1] single 0.003, total 0.003.
-0: timer | 'train/pqs/pq/train/train/repeat-data' ... [1] single 0.000, total 0.000.
-0: timer | 'train/pqs/pq/train/train/init' ... [1] single 0.000, total 0.000.
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: timer | 'train/pqs/pq/train/train/train' ... [1] single 0.000, total 0.000.
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: WARNING clustering 256 points to 256 centroids: please provide at least 9984 training points
-0: timer | 'train/pqs/pq/train/train/save' ... [1] single 0.003, total 0.003.
-0: timer | 'train/pqs/pq/train/train' ... [1] single 0.006, total 0.006.
-0: timer | 'train/pqs/pq/train' ... [1] single 0.007, total 0.007.
-0: timer | 'train/pqs/pq' ... [1] single 0.169, total 0.169.
-0: timer | 'train/pqs' ... [1] single 144.910, total 144.910.
-0: timer | 'train' ... [1] single 145.017, total 145.017.
-0: ~~~~~~~~ [ ARG OBJ ] ~~~~~~~~
-0: {
-0:     "task": "train",
-0:     "ntrain": 50000000,
-0:     "nfeats": 1024,
-0:     "batch_size": 1000000,
-0:     "data_ty": "corpus",
-0:     "index_ty": "faiss-decomp",
-0:     "index_str": "OPQ32_256,IVF4194304_HNSW32,PQ32",
-0:     "profile_single_encoder": true,
-0:     "profile_stage_stop": "pqs",
-0:     "base_dir": "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval",
-0:     "data_paths": [
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0000.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0001.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0002.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0003.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0004.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0005.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0006.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0007.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0008.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0009.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0010.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0020.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0021.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0022.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0023.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0024.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0025.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0026.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0027.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0028.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0029.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0030.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0031.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0032.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0033.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0034.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0035.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0036.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0037.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0038.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0039.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0040.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0041.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0042.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0043.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0044.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0045.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0046.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0047.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0048.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0049.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0050.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0051.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0052.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0053.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0054.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0055.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0056.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0057.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0058.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0059.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0060.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0061.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0062.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0063.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0064.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0065.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0066.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0067.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0068.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0069.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0070.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0071.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0072.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0073.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0074.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0075.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0076.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0077.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0078.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0079.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0080.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0081.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0082.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0083.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0084.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0085.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0086.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0087.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0088.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0089.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0090.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0091.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0092.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0093.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0094.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0095.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0096.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0097.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0098.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0099.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0100.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0101.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0102.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0103.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0104.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0105.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0106.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0107.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0108.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0109.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0110.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0111.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0112.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0113.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0114.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0115.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0116.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0117.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0118.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0119.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0120.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0121.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0122.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0123.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0124.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0125.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0126.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0127.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0128.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0129.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0130.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0131.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0132.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0133.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0134.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0135.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0136.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0137.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0138.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0139.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0140.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0141.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0142.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0143.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0144.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0145.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0146.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0147.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0148.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0149.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0150.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0151.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0152.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0153.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0154.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0155.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0156.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0157.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0158.feat.hdf5",
-0:         "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0159.feat.hdf5"
-0:     ],
-0:     "index_dirname": "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000",
-0:     "nlist": 4194304
-0: }
-0: ~~~~~~~~ [ TIMER OBJ ] ~~~~~~~~
-0: {
-0:     "train/init": {
-0:         "total": 9.274482727050781e-05,
-0:         "count": 1,
-0:         "single": 9.274482727050781e-05
-0:     },
-0:     "train/opq/train": {
-0:         "total": 0.002717256546020508,
-0:         "count": 1,
-0:         "single": 0.002717256546020508
-0:     },
-0:     "train/opq/forward": {
-0:         "total": 0.04873037338256836,
-0:         "count": 1,
-0:         "single": 0.04873037338256836
-0:     },
-0:     "train/opq": {
-0:         "total": 0.052644968032836914,
-0:         "count": 1,
-0:         "single": 0.052644968032836914
-0:     },
-0:     "train/ivf/ivf/train": {
-0:         "total": 0.0012505054473876953,
-0:         "count": 1,
-0:         "single": 0.0012505054473876953
-0:     },
-0:     "train/ivf/ivf/forward": {
-0:         "total": 0.0009360313415527344,
-0:         "count": 1,
-0:         "single": 0.0009360313415527344
-0:     },
-0:     "train/ivf/ivf": {
-0:         "total": 0.0022115707397460938,
-0:         "count": 1,
-0:         "single": 0.0022115707397460938
-0:     },
-0:     "train/ivf/hnsw/train": {
-0:         "total": 0.0018301010131835938,
-0:         "count": 1,
-0:         "single": 0.0018301010131835938
-0:     },
-0:     "train/ivf/hnsw/forward": {
-0:         "total": 0.040044546127319336,
-0:         "count": 1,
-0:         "single": 0.040044546127319336
-0:     },
-0:     "train/ivf/hnsw": {
-0:         "total": 0.04191279411315918,
-0:         "count": 1,
-0:         "single": 0.04191279411315918
-0:     },
-0:     "train/ivf": {
-0:         "total": 0.0460357666015625,
-0:         "count": 1,
-0:         "single": 0.0460357666015625
-0:     },
-0:     "train/pqs/load-data/shape": {
-0:         "total": 0.23027467727661133,
-0:         "count": 1,
-0:         "single": 0.23027467727661133
-0:     },
-0:     "train/pqs/load-data/alloc": {
-0:         "total": 8.058547973632812e-05,
-0:         "count": 1,
-0:         "single": 8.058547973632812e-05
-0:     },
-0:     "train/pqs/load-data/load": {
-0:         "total": 144.3998441696167,
-0:         "count": 50,
-0:         "single": 2.887996883392334
-0:     },
-0:     "train/pqs/load-data": {
-0:         "total": 144.63361597061157,
-0:         "count": 1,
-0:         "single": 144.63361597061157
-0:     },
-0:     "train/pqs/pq/slice-data/get": {
-0:         "total": 0.154921293258667,
-0:         "count": 1,
-0:         "single": 0.154921293258667
-0:     },
-0:     "train/pqs/pq/slice-data/save": {
-0:         "total": 0.005215167999267578,
-0:         "count": 1,
-0:         "single": 0.005215167999267578
-0:     },
-0:     "train/pqs/pq/slice-data": {
-0:         "total": 0.16098999977111816,
-0:         "count": 1,
-0:         "single": 0.16098999977111816
-0:     },
-0:     "train/pqs/pq/train/train/load-data/shape": {
-0:         "total": 0.0011906623840332031,
-0:         "count": 1,
-0:         "single": 0.0011906623840332031
-0:     },
-0:     "train/pqs/pq/train/train/load-data/alloc": {
-0:         "total": 2.5033950805664062e-05,
-0:         "count": 1,
-0:         "single": 2.5033950805664062e-05
-0:     },
-0:     "train/pqs/pq/train/train/load-data/load": {
-0:         "total": 0.0015964508056640625,
-0:         "count": 1,
-0:         "single": 0.0015964508056640625
-0:     },
-0:     "train/pqs/pq/train/train/load-data": {
-0:         "total": 0.002869844436645508,
-0:         "count": 1,
-0:         "single": 0.002869844436645508
-0:     },
-0:     "train/pqs/pq/train/train/repeat-data": {
-0:         "total": 0.0002498626708984375,
-0:         "count": 1,
-0:         "single": 0.0002498626708984375
-0:     },
-0:     "train/pqs/pq/train/train/init": {
-0:         "total": 0.0004093647003173828,
-0:         "count": 1,
-0:         "single": 0.0004093647003173828
-0:     },
-0:     "train/pqs/pq/train/train/train": {
-0:         "total": 0.00025153160095214844,
-0:         "count": 1,
-0:         "single": 0.00025153160095214844
-0:     },
-0:     "train/pqs/pq/train/train/save": {
-0:         "total": 0.002542734146118164,
-0:         "count": 1,
-0:         "single": 0.002542734146118164
-0:     },
-0:     "train/pqs/pq/train/train": {
-0:         "total": 0.006361484527587891,
-0:         "count": 1,
-0:         "single": 0.006361484527587891
-0:     },
-0:     "train/pqs/pq/train": {
-0:         "total": 0.006669282913208008,
-0:         "count": 1,
-0:         "single": 0.006669282913208008
-0:     },
-0:     "train/pqs/pq": {
-0:         "total": 0.16895055770874023,
-0:         "count": 1,
-0:         "single": 0.16895055770874023
-0:     },
-0:     "train/pqs": {
-0:         "total": 144.90979051589966,
-0:         "count": 1,
-0:         "single": 144.90979051589966
-0:     },
-0:     "train": {
-0:         "total": 145.01721930503845,
-0:         "count": 1,
-0:         "single": 145.01721930503845
-0:     }
-0: }
-0: ~~~~~~~~~~~~~~~~
-0: [ ARG STR ] = {"task": "train", "ntrain": 50000000, "nfeats": 1024, "batch_size": 1000000, "data_ty": "corpus", "index_ty": "faiss-decomp", "index_str": "OPQ32_256,IVF4194304_HNSW32,PQ32", "profile_single_encoder": true, "profile_stage_stop": "pqs", "base_dir": "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval", "data_paths": ["/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0000.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0001.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0002.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0003.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0004.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0005.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/r
-0: etrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0006.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0007.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0008.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0009.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0010.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0020.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0021.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0022.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0023.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretrainin
-0: g_corpus.chunks.hdf5.0024.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0025.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0026.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0027.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0028.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0029.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0030.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0031.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0032.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0033.feat.hdf
-0: 5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0034.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0035.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0036.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0037.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0038.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0039.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0040.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0041.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0042.feat.hdf5", "/mnt/fsx-outputs-chipdesign/l
-0: mcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0043.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0044.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0045.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0046.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0047.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0048.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0049.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0050.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0051.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pr
-0: etraining_corpus.chunks.hdf5.0052.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0053.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0054.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0055.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0056.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0057.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0058.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0059.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0060.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0061.
-0: feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0062.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0063.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0064.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0065.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0066.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0067.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0068.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0069.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0070.feat.hdf5", "/mnt/fsx-outputs-chip
-0: design/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0071.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0072.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0073.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0074.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0075.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0076.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0077.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0078.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0079.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sa
-0: mpled_pretraining_corpus.chunks.hdf5.0080.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0081.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0082.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0083.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0084.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0085.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0086.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0087.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0088.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hd
-0: f5.0089.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0090.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0091.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0092.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0093.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0094.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0095.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0096.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0097.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0098.feat.hdf5", "/mnt/fsx-outp
-0: uts-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0099.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0100.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0101.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0102.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0103.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0104.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0105.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0106.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0107.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/c
-0: orpus/sampled_pretraining_corpus.chunks.hdf5.0108.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0109.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0110.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0111.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0112.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0113.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0114.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0115.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0116.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.c
-0: hunks.hdf5.0117.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0118.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0119.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0120.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0121.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0122.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0123.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0124.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0125.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0126.feat.hdf5", "/mnt/
-0: fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0127.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0128.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0129.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0130.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0131.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0132.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0133.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0134.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0135.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/ret
-0: rieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0136.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0137.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0138.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0139.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0140.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0141.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0142.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0143.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0144.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_
-0: corpus.chunks.hdf5.0145.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0146.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0147.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0148.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0149.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0150.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0151.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0152.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0153.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0154.feat.hdf5"
-0: , "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0155.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0156.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0157.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0158.feat.hdf5", "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/sampled_pretraining_corpus.chunks.hdf5.0159.feat.hdf5"], "index_dirname": "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/index/faiss-decomp-corpus/OPQ32_256,IVF4194304_HNSW32,PQ32__t50000000", "nlist": 4194304}
-0: [ TIMER STR ] = {"train/init": {"total": 9.274482727050781e-05, "count": 1, "single": 9.274482727050781e-05}, "train/opq/train": {"total": 0.002717256546020508, "count": 1, "single": 0.002717256546020508}, "train/opq/forward": {"total": 0.04873037338256836, "count": 1, "single": 0.04873037338256836}, "train/opq": {"total": 0.052644968032836914, "count": 1, "single": 0.052644968032836914}, "train/ivf/ivf/train": {"total": 0.0012505054473876953, "count": 1, "single": 0.0012505054473876953}, "train/ivf/ivf/forward": {"total": 0.0009360313415527344, "count": 1, "single": 0.0009360313415527344}, "train/ivf/ivf": {"total": 0.0022115707397460938, "count": 1, "single": 0.0022115707397460938}, "train/ivf/hnsw/train": {"total": 0.0018301010131835938, "count": 1, "single": 0.0018301010131835938}, "train/ivf/hnsw/forward": {"total": 0.040044546127319336, "count": 1, "single": 0.040044546127319336}, "train/ivf/hnsw": {"total": 0.04191279411315918, "count": 1, "single": 0.04191279411315918}, "train/ivf": {"total": 0.046035
-0: 7666015625, "count": 1, "single": 0.0460357666015625}, "train/pqs/load-data/shape": {"total": 0.23027467727661133, "count": 1, "single": 0.23027467727661133}, "train/pqs/load-data/alloc": {"total": 8.058547973632812e-05, "count": 1, "single": 8.058547973632812e-05}, "train/pqs/load-data/load": {"total": 144.3998441696167, "count": 50, "single": 2.887996883392334}, "train/pqs/load-data": {"total": 144.63361597061157, "count": 1, "single": 144.63361597061157}, "train/pqs/pq/slice-data/get": {"total": 0.154921293258667, "count": 1, "single": 0.154921293258667}, "train/pqs/pq/slice-data/save": {"total": 0.005215167999267578, "count": 1, "single": 0.005215167999267578}, "train/pqs/pq/slice-data": {"total": 0.16098999977111816, "count": 1, "single": 0.16098999977111816}, "train/pqs/pq/train/train/load-data/shape": {"total": 0.0011906623840332031, "count": 1, "single": 0.0011906623840332031}, "train/pqs/pq/train/train/load-data/alloc": {"total": 2.5033950805664062e-05, "count": 1, "single": 2.5033950805664062e-05}, 
-0: "train/pqs/pq/train/train/load-data/load": {"total": 0.0015964508056640625, "count": 1, "single": 0.0015964508056640625}, "train/pqs/pq/train/train/load-data": {"total": 0.002869844436645508, "count": 1, "single": 0.002869844436645508}, "train/pqs/pq/train/train/repeat-data": {"total": 0.0002498626708984375, "count": 1, "single": 0.0002498626708984375}, "train/pqs/pq/train/train/init": {"total": 0.0004093647003173828, "count": 1, "single": 0.0004093647003173828}, "train/pqs/pq/train/train/train": {"total": 0.00025153160095214844, "count": 1, "single": 0.00025153160095214844}, "train/pqs/pq/train/train/save": {"total": 0.002542734146118164, "count": 1, "single": 0.002542734146118164}, "train/pqs/pq/train/train": {"total": 0.006361484527587891, "count": 1, "single": 0.006361484527587891}, "train/pqs/pq/train": {"total": 0.006669282913208008, "count": 1, "single": 0.006669282913208008}, "train/pqs/pq": {"total": 0.16895055770874023, "count": 1, "single": 0.16895055770874023}, "train/pqs": {"total": 144.909790515
-0: 89966, "count": 1, "single": 144.90979051589966}, "train": {"total": 145.01721930503845, "count": 1, "single": 145.01721930503845}}
-0: ~~~~~~~~~~~~~~~~
-0: ~~~~~~~~~~~~~~~~~~~~~
-0: train/init                               : 0.000.
-0: train/opq/train                          : 0.003.
-0: train/opq/forward                        : 0.049.
-0: train/opq                                : 0.053.
-0: train/ivf/ivf/train                      : 0.001.
-0: train/ivf/ivf/forward                    : 0.001.
-0: train/ivf/ivf                            : 0.002.
-0: train/ivf/hnsw/train                     : 0.002.
-0: train/ivf/hnsw/forward                   : 0.040.
-0: train/ivf/hnsw                           : 0.042.
-0: train/ivf                                : 0.046.
-0: train/pqs/load-data/shape                : 0.230.
-0: train/pqs/load-data/alloc                : 0.000.
-0: train/pqs/load-data/load                 : 144.400 [ 50, 2.888 ].
-0: train/pqs/load-data                      : 144.634.
-0: train/pqs/pq/slice-data/get              : 0.155.
-0: train/pqs/pq/slice-data/save             : 0.005.
-0: train/pqs/pq/slice-data                  : 0.161.
-0: train/pqs/pq/train/train/load-data/shape : 0.001.
-0: train/pqs/pq/train/train/load-data/alloc : 0.000.
-0: train/pqs/pq/train/train/load-data/load  : 0.002.
-0: train/pqs/pq/train/train/load-data       : 0.003.
-0: train/pqs/pq/train/train/repeat-data     : 0.000.
-0: train/pqs/pq/train/train/init            : 0.000.
-0: train/pqs/pq/train/train/train           : 0.000.
-0: train/pqs/pq/train/train/save            : 0.003.
-0: train/pqs/pq/train/train                 : 0.006.
-0: train/pqs/pq/train                       : 0.007.
-0: train/pqs/pq                             : 0.169.
-0: train/pqs                                : 144.910.
-0: train                                    : 145.017.
-0: ~~~~~~~~~~~~~~~~~~~~~
-0: ~~~~~~~~~~~~~~~~
-0: L-RESULT : train, corpus, faiss-decomp, 50000000, 'pqs' ... 145.0 [ init 0.0, opq 0.1, ivf 0.0, pqs 144.9 ] ... [ OPQ32_256,IVF4194304_HNSW32,PQ32 ].
