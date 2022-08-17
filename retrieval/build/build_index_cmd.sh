@@ -22,8 +22,8 @@ profile_stage_stop="cluster"
 # tasks="remove-add-outputs"
 # tasks="time-merge-partials"
 # tasks="remove-add-outputs,verify" # "verify-index"
-tasks="verify-codes"
-# tasks="verify-nbrs"
+# tasks="verify-codes"
+tasks="verify-nbrs"
 # tasks="query-acc"
 
 # ntrain=2048 ncluster=64 hnsw=4
