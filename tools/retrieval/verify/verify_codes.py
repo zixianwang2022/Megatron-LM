@@ -17,8 +17,8 @@ import faiss
 import numpy as np
 import torch
 
-from tools.retrieval.add import add_to_index
-from tools.retrieval.index import FaissBaseIndex
+# from tools.retrieval.add import add_to_index
+from tools.retrieval.index import FaissBaseIndex, IndexFactory
 
 # >>>
 from lutil import pax
@@ -32,7 +32,9 @@ def verify_codes(args, timer):
     timer.pop()
 
     timer.push("add-test")
-    test_index_path = add_to_index(args, timer)
+    test_index = IndexFactory.get_index(args)
+    test_index_path = test_index.add(args.add_paths, args.index_dir_path, timer)
+    # test_index_path = add_to_index(args, timer)
     timer.pop()
 
     torch.distributed.barrier()
@@ -102,7 +104,7 @@ def verify_codes(args, timer):
     for list_id in range(args.ncluster):
 
         if list_id % 100000 == 0:
-            print("verify list %d / %d." % (list_id, args.ncluster))
+            print("verify list %d / %d." % (list_id, args.ncluster), flush = True)
 
         # Get list size, ids, codes.
         base_list_size = base_invlists.list_size(list_id)
@@ -140,6 +142,8 @@ def verify_codes(args, timer):
         #     "ids / equal" : np.array_equal(base_ids, test_ids),
         #     "codes / equal" : np.array_equal(base_codes, test_codes),
         # })
+
+    print("verified %d codes." % base_index.ntotal)
 
     timer.pop()
 

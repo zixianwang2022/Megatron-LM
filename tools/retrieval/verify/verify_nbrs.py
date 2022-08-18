@@ -13,25 +13,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
+import h5py
+import os
+import torch
+
+from tools.retrieval.index import FaissBaseIndex, IndexFactory
+
+# >>>
+from lutil import pax
+# <<<
+
 def verify_nbrs(args, timer):
 
-    import glob
-    import h5py
+    timer.push("add-base")
+    base_index = FaissBaseIndex(args)
+    base_index_path = base_index.add(args.add_paths, args.index_dir_path, timer)
+    timer.pop()
+
+    timer.push("add-test")
+    test_index = IndexFactory.get_index(args)
+    test_index_path = test_index.add(args.add_paths, args.index_dir_path, timer)
+    timer.pop()
+
+    torch.distributed.barrier()
 
     if torch.distributed.get_rank() != 0:
         return
 
+    # >>>
+    # pax({
+    #     "base_index_path" : base_index_path,
+    #     "test_index_path" : test_index_path,
+    # })
+    # <<<
+
     timer.push("get-index-paths")
-    from retrieval.index.faiss_mono import FaissMonoIndex
-    base_index = FaissMonoIndex(args)
-    test_index = IndexFactory.get_index(args)
-    indexes = [
-        base_index,
-        test_index,
-    ]
+    # base_index = FaissBaseIndex(args)
+    # test_index = IndexFactory.get_index(args)
+    # indexes = [
+    #     base_index,
+    #     test_index,
+    # ]
+    # index_paths = [
+    #     i.get_added_index_path(args.add_paths, args.index_dir_path)
+    #     for i in indexes
+    # ]
     index_paths = [
-        i.get_added_index_path(args.add_paths, args.index_dir_path)
-        for i in indexes
+        base_index_path,
+        test_index_path,
     ]
     index_names = [
         os.path.splitext(os.path.basename(p))[0]
@@ -74,6 +104,7 @@ def verify_nbrs(args, timer):
         assert nbrs_equal
         num_rows_checked += len(base_nbrs)
 
+        # >>>
         # pax({
         #     "base_nbr_path" : base_nbr_path,
         #     "test_nbr_path" : test_nbr_path,
@@ -83,11 +114,17 @@ def verify_nbrs(args, timer):
         #     "test_nbrs / shape" : str(test_nbrs.shape),
         #     "nbrs_equal" : nbrs_equal,
         # })
+        # <<<
 
-    pax({
-        "indexes" : indexes,
-        "index_paths" : index_paths,
-        "index_names" : index_names,
-        "nbr_paths" : nbr_paths,
-        "num_rows_checked" : num_rows_checked,
-    })
+    assert num_rows_checked > 0, \
+        "run 'query_index.sh/.py first; then run this script."
+
+    # >>>
+    # pax({
+    #     # "indexes" : indexes,
+    #     "index_paths" : index_paths,
+    #     "index_names" : index_names,
+    #     "nbr_paths" : nbr_paths,
+    #     "num_rows_checked" : num_rows_checked,
+    # })
+    # <<<
