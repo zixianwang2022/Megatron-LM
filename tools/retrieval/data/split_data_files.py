@@ -1,9 +1,18 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def split_feat_files():
 def split_data_files():
 
     raise Exception("split again?")
@@ -14,11 +23,6 @@ def split_data_files():
     input_paths = glob.glob(os.path.join(input_dir, "Wikipedia*.feat.hdf5"))
 
     batch_size = int(1e5)
-
-    # pax({
-    #     "input_paths" : input_paths,
-    #     "batch_size" : batch_size,
-    # })
 
     # ~~~~~~~~ load feats ~~~~~~~~
     for input_index, input_path in enumerate(input_paths):
@@ -49,5 +53,3 @@ def split_data_files():
             foutput.close()
 
     raise Exception("split.")
-
-# eof

@@ -65,8 +65,6 @@ class Index:
 
         torch.distributed.barrier()
 
-        # print_seq(list(missing_output_path_map.values()))
-
         return all_output_paths, missing_output_path_map
 
     def train(self, *args):
@@ -74,5 +72,3 @@ class Index:
 
     def add(self, *args):
         raise Exception("implement 'add()' for <%s>." % type(self).__name__)
-
-# eof

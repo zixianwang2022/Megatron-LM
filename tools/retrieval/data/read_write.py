@@ -1,75 +1,26 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 from collections import defaultdict
 import h5py
 import numpy as np
 import os
 
-from lutil import pax, print_rank, print_seq
+from tools.retrieval.utils import print_rank
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def load_train_data(ntrain):
-# def load_train_data(args):
-# def load_data(args):
-# def load_data(args, data_paths):
-# def load_data(args):
-
-#     pax({"args": args})
-
-#     # ~~~~~~~~ load feats ~~~~~~~~
-#     train_data = np.zeros((args.ntrain, args.nfeats), 'float32')
-#     nloaded = 0
-#     feat_paths = args.data_paths
-#     for i, feat_path in enumerate(feat_paths):
-
-#         f = h5py.File(feat_path, "r")
-#         if 1:
-#             d = np.copy(f["feat"])
-#             i0 = nloaded
-#             i1 = min(len(train_data), i0 + len(d))
-#             d = d[:i1-i0]
-#             if np.isnan(d).any():
-#                 np.nan_to_num(d, copy = False, nan = 0.0)
-#             try:
-#                 train_data[i0:i1] = d
-#             except:
-#                 pax({
-#                     "nloaded" : nloaded,
-#                     "train_data" : str(train_data.shape),
-#                     "d" : str(d.shape),
-#                 })
-#         else:
-#             train_datas.append(f["feat"])
-#         f.close()
-
-#         nloaded += len(d)
-
-#         print(
-#             "load feat path %d / %d ... vecs %d." % (i, len(feat_paths), nloaded),
-#             flush = True,
-#         )
-
-#         if nloaded >= args.ntrain:
-#             break
-
-#     args.ntrain = min(args.ntrain, nloaded)
-#     train_data = train_data[:args.ntrain]
-
-#     # pax({
-#     #     # "train_datas" : [ a.shape for a in train_datas ],
-#     #     "train_data / shape" : str(train_data.shape),
-#     #     "train_data / dtype" : str(train_data.dtype),
-#     #     "args" : args,
-#     # })
-
-#     return train_data
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def save_data(data_map, dir_path, file_name):
 def save_data(data_map, *args):
-
-    # pax({"data_map": data_map})
 
     if len(args) == 1:
         path = args[0]
@@ -88,29 +39,6 @@ def save_data(data_map, *args):
 
     return path
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def load_data(paths):
-
-#     # pax({"paths": paths})
-#     count_map = defaultdict(lambda : 0)
-#     for p in paths:
-#         f = h5py.File(p, "r")
-#         for k in f.keys():
-#             count_map[k] += len(f[k])
-#         f.close()
-
-#     pax({
-#         "paths" : paths,
-#         "count_map" : count_map,
-#     })
-
-#     f = h5py.File(path, "r")
-#     data_map = { k : np.copy(f[k]) for k in f.keys() }
-#     f.close()
-
-#     # pax({"data_map": data_map})
-
-#     return data_map
 def load_data(paths, timer):
 
     timer.push("shape")
@@ -140,13 +68,4 @@ def load_data(paths, timer):
         f.close()
         timer.pop()
 
-    # pax({
-    #     "paths" : paths,
-    #     "shape_map" : shape_map,
-    #     "data_map" : { k : str(d.shape) for k, d in data_map.items() },
-    #     "start_map" : start_map,
-    # })
-
     return data_map
-
-# eof

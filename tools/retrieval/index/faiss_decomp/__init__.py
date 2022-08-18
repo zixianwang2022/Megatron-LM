@@ -17,10 +17,6 @@ import faiss
 import os
 import torch
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
 from tools.retrieval.index.index import Index
 from tools.retrieval import utils
 

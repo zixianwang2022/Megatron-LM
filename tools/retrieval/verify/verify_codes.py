@@ -20,10 +20,6 @@ import torch
 # from tools.retrieval.add import add_to_index
 from tools.retrieval.index import FaissBaseIndex, IndexFactory
 
-# >>>
-from lutil import pax
-# <<<
-
 def verify_codes(args, timer):
 
     timer.push("add-base")
@@ -55,13 +51,6 @@ def verify_codes(args, timer):
     # )
     # timer.pop()
 
-    # >>>
-    # pax({
-    #     "base_index_path" : base_index_path,
-    #     "test_index_path" : test_index_path,
-    # })
-    # <<<
-
     # Read indexes.
     timer.push("read")
     base_index = faiss.read_index(base_index_path)
@@ -78,18 +67,6 @@ def verify_codes(args, timer):
     # test_np = faiss.serialize_index(test_index)
     # # base_invlist_np = faiss.serialize_index(base_invlists)
     # # test_invlist_np = faiss.serialize_index(test_invlists)
-
-    # pax({
-    #     "base_np" : str(base_np),
-    #     "test_np" : str(test_np),
-    #     "base_np / hash" : hash(base_np.tobytes()),
-    #     "test_np / hash" : hash(test_np.tobytes()),
-    #     # "base_invlist_np" : str(base_invlist_np),
-    #     # "test_invlist_np" : str(test_invlist_np),
-    #     # "base_invlist_np / hash" : hash(base_invlist_np.tobytes()),
-    #     # "test_invlist_np / hash" : hash(test_invlist_np.tobytes()),
-    #     "equal" : np.array_equal(base_np, test_np),
-    # })
 
     ############################################
     # Test #2: Compare each list's ids/codes.
@@ -132,27 +109,9 @@ def verify_codes(args, timer):
         assert np.array_equal(base_ids, test_ids)
         assert np.array_equal(base_codes, test_codes)
 
-        # pax({
-        #     "base_list_size" : base_list_size,
-        #     "test_list_size" : test_list_size,
-        #     "base_ids" : base_ids,
-        #     "test_ids" : test_ids,
-        #     "base_codes" : base_codes,
-        #     "test_codes" : test_codes,
-        #     "ids / equal" : np.array_equal(base_ids, test_ids),
-        #     "codes / equal" : np.array_equal(base_codes, test_codes),
-        # })
-
     print("verified %d codes." % base_index.ntotal)
 
     timer.pop()
 
-    # pax({
-    #     "base_invlists" : base_invlists,
-    #     "test_invlists" : test_invlists,
-    # })
-
     # Final sync. [ unnecessary ]
     # torch.distributed.barrier()
-
-    # print_seq([ base_index_path, test_index_path ])

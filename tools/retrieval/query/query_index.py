@@ -22,15 +22,10 @@ import multiprocessing
 import numpy as np
 import os
 import psutil
-# import sys
 import time
 from tqdm import tqdm
 
-from lutil import pax, print_rank, print_seq
-from retrieval.utils import Timer
-
-# sys.path.append("/home/boxinw-src/megatron-lm/megatron")
-# sys.path.append("/home/boxinw-src/megatron-lm/")
+from tools.retrieval.utils import Timer
 
 timer = Timer()
 
@@ -110,15 +105,6 @@ ParameterSpace().set_index_parameter(index, "nprobe", args.nprobe)
 print("efSearch", args.efsearch)
 print("nprobe", args.nprobe)
 
-# pax({
-#     "args" : args,
-#     "process" : process,
-#     "ngpus" : ngpus,
-#     "index" : index,
-#     "doc_ids / len" : len(doc_ids),
-#     "document_ids / len" : len(document_ids),
-# })
-
 # for data_start in range(args.split):
 #     args.start = data_start
 for data_start in range(args.start, args.split):
@@ -144,8 +130,6 @@ for data_start in range(args.start, args.split):
 
     print("features dim:", features.shape)
 
-    # pax({"features": features})
-
     ## query
     # print("Searching kNN...")
     timer.push("search")
@@ -156,8 +140,6 @@ for data_start in range(args.start, args.split):
     # end = time.time()
     # print("time cost:", end - start)
     timer.pop()
-
-    # pax({"I": I})
 
     neighbors = np.zeros((len(data), args.target_k), 'uint64')
 
@@ -223,5 +205,3 @@ for data_start in range(args.start, args.split):
     # <<<
 
 timer.print()
-
-# eof

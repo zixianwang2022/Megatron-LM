@@ -1,28 +1,24 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 import os
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def _clean_data(args, timer):
+def clean_data(args, timer):
 
-    # raise Exception("clean again?")
-
-    assert torch.distributed.get_rank() == 0
-
-    # >>>
-    if 0:
-        # filename = "0038__0010-01500000.hdf5"
-        filename = "0039__0010-02500000.hdf5"
-        f = h5py.File(os.path.join(args.base_dir, "corpus-clean", filename))
-        # pax({
-        #     "data": f["data"],
-        #     "keys" : list(f.keys()),
-        # })
-        d = np.copy(f["data"])
-        f.close()
-        pax({"filename": filename, "d": str(d.shape)})
-    # <<<
+    if torch.distributed.get_rank() != 0:
+        return
 
     batch_size = int(1e6)
     batch = np.zeros((batch_size, args.nfeats), "f4")
@@ -39,7 +35,6 @@ def _clean_data(args, timer):
         filename = "%04d__%04d-%08d.hdf5" % (num_batches, dirty_index, d1)
         clean_path = os.path.join(args.base_dir, "corpus-clean", filename)
         print("saving '%s'. [ %d samples ]" % (filename, b0))
-        # pax({"clean_path": clean_path})
         f = h5py.File(clean_path, "w")
         f.create_dataset("data", data = batch[:b0])
         f.close()
@@ -52,13 +47,10 @@ def _clean_data(args, timer):
         # <<<
 
     def get_dirty_start_index(clean_path):
-        # >>>
         f = h5py.File(clean_path, "r")
         shape = f["data"].shape
         f.close()
         assert shape[0] > 0 and shape[1] == 1024
-        # pax({"shape": shape})
-        # <<<
         return [
             int(a)
             for a in clean_path.split("__")[1].split(".")[0].split("-")
@@ -66,11 +58,6 @@ def _clean_data(args, timer):
 
     dirty_paths = get_all_data_paths(args, False)
     clean_paths = get_all_data_paths(args, True)
-
-    # pax(0, {
-    #     "dirty_paths" : dirty_paths,
-    #     "clean_paths" : clean_paths,
-    # })
 
     if 1:
         if not clean_paths:
@@ -86,15 +73,6 @@ def _clean_data(args, timer):
             "corpus-clean",
             "0038__0010-01500000.hdf5",
         ))
-
-    # pax({
-    #     "args" : args,
-    #     "dirty_paths" : dirty_paths,
-    #     "clean_paths" : clean_paths,
-    #     "num_batches" : num_batches,
-    #     "dirty_start_index" : dirty_start_index,
-    #     "d0" : d0,
-    # })
 
     # for i, dirty_path in enumerate(dirty_paths):
     for dirty_index in range(dirty_start_index, len(dirty_paths)):
@@ -122,27 +100,7 @@ def _clean_data(args, timer):
                 save_batch(dirty_index, d1)
             elif b0 > batch_size:
                 raise Exception("something's wrong.")
-            # else:
-            #     pax({
-            #         "b0" : b0,
-            #         "d0" : d0,
-            #         "d1" : d1,
-            #     })
             d0 = d1
         d0 = 0
 
     save_batch(len(dirty_paths) - 1, d1)
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def clean_data(args, timer):
-
-    torch.distributed.barrier()
-
-    if torch.distributed.get_rank() == 0:
-        _clean_data(args, timer)
-
-    torch.distributed.barrier()
-
-    exit(0)
-
-# eof

@@ -18,23 +18,17 @@ import faiss
 import os
 import torch
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
-# from tools.retrieval import utils
 from tools.retrieval.data import load_data
 from tools.retrieval.index.index import Index
-# from tools.retrieval.index.utils import get_index_str
+from tools.retrieval.utils import print_rank
 
-# class FaissMonoIndex(Index):
 class FaissBaseIndex(Index):
 
     def _train(self, input_data_paths, dir_path, timer):
 
         assert torch.distributed.get_rank() == 0
 
-        # index_str = get_index_str(self.args)
+        index_str = get_index_str(self.args)
         empty_index_path = self.get_empty_index_path(dir_path)
 
         # Index already exists? -> return.

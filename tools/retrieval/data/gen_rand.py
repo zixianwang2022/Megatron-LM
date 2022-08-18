@@ -18,25 +18,12 @@ import numpy as np
 import os
 import torch
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
 from tools.retrieval import utils
 
 def gen_rand_data(args, timer):
 
-    # print_seq("gen more data?")
-
-    # if torch.distributed.get_rank() != 0:
-    #     return
-
-    # batch_str_len = int(np.ceil(np.log(num_batches) / np.log(10))) + 1
-    # zf = lambda b : str(b).zfill(batch_str_len)
-
     rank = torch.distributed.get_rank()
     world_size = torch.distributed.get_world_size()
-    # print_seq("rank %d of %d." % (rank, world_size))
 
     # existing_
     nvecs = int(1e9)
@@ -52,8 +39,6 @@ def gen_rand_data(args, timer):
             "data",
             "rand-%s" % key,
         ))
-
-        # pax({"base_path": base_path})
 
         num_batches = int(nvecs / batch_size)
         # for batch_index in range(num_batches): # single process
@@ -76,7 +61,6 @@ def gen_rand_data(args, timer):
                 try:
                     f = h5py.File(path, "r")
                     shape = f["data"].shape
-                    # pax(0, {"shape": shape})
                     continue
                 except:
                     # raise Exception("delete '%s'." % os.path.basename(path))
@@ -86,27 +70,14 @@ def gen_rand_data(args, timer):
                 # raise Exception("file exists.")
                 # continue
 
-            print_rank("create rand-%s, batch %d / %d." % (
+            utils.print_rank("create rand-%s, batch %d / %d." % (
                 key,
                 batch_index,
                 num_batches,
             ))
 
-            # pax({"args": args, "batch_size": batch_size})
-
-            # try:
             data = np.random.rand(batch_size, args.nfeats).astype("f4")
-            # except Exception as e:
-            #     raise Exception("hi.")
-            
-            # pax({"data": str(data.shape)})
 
-            # print_rank("write file.")
             f = h5py.File(path, "w")
             f.create_dataset("data", data = data)
             f.close()
-
-            raise Exception("worked?")
-
-    # pax({"args": args})
-    print_seq("goodbye.")

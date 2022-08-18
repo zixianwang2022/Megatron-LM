@@ -13,6 +13,6 @@ Example tasks (use with --tasks):
 - [no] Bert embeddings ('embed')
 - [yes] Train ('train')
 - [yes] Add ('add', 'remove-add-outputs')
-- [needs cleanup] Query ('query', 'plot-acc')
+- [needs cleanup] Query ('query', 'plot-acc', 'query-flat-nns')
 - [yes] Verify ('verify-codes', 'verify-nbrs')
   - note: 'verify-nbrs' currently requires 'query_index.py' to be manually run first

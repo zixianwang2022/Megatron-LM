@@ -13,10 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
 from tools.retrieval.index.index import Index
 import tools.retrieval.utils as utils
 
@@ -45,12 +41,6 @@ class IVFPQHNSWIndex(Index):
         )
         timer.pop()
 
-        # pax({
-        #     "input_data_paths" : input_data_paths,
-        #     "ivf_output_data_paths" : ivf_output_data_paths,
-        # })
-        # print_seq(ivfpq_output_data_paths)
-
         timer.push("hnsw")
         hnsw_output_data_paths = self.hnsw.train(
             input_data_paths,
@@ -60,33 +50,7 @@ class IVFPQHNSWIndex(Index):
         )
         timer.pop()
 
-        # pax(0, {
-        #     "hnsw_output_data_paths" : hnsw_output_data_paths,
-        #     "hnsw_output_data_paths / 0" : hnsw_output_data_paths[0],
-        # })
-        # print_seq(hnsw_output_data_paths)
-
-        # timer.push("residual")
-        # residual_output_data_paths = self.ivfpq.compute_residuals(
-        #     # input_data_paths, # 'hnsw_output_data_paths' now has dicts
-        #     hnsw_output_data_paths,
-        #     ivfpq_dir_path,
-        #     timer,
-        #     "train",
-        # )
-        # timer.pop()
-
-        # pax({
-        #     "input_data_paths" : input_data_paths,
-        #     "ivf_output_data_paths" : ivf_output_data_paths,
-        #     "hnsw_output_data_paths" : hnsw_output_data_paths,
-        #     "residual_output_data_paths" : residual_output_data_paths,
-        #     "residual_output_data_paths / 0" : residual_output_data_paths[0],
-        # })
-
-        # return ivf_output_data_paths
         return hnsw_output_data_paths
-        # return residual_output_data_paths
 
     def add(self, input_data_paths, dir_path, timer):
 
@@ -101,21 +65,6 @@ class IVFPQHNSWIndex(Index):
         )
         timer.pop()
 
-        # pax(0, {
-        #     "hnsw_output_data_paths" : hnsw_output_data_paths,
-        #     "hnsw_output_data_paths / 0" : hnsw_output_data_paths[0],
-        # })
-
-        # timer.push("residual")
-        # residual_output_data_paths = self.ivf.compute_residuals(
-        #     # input_data_paths,
-        #     hnsw_output_data_paths,
-        #     ivf_dir_path,
-        #     timer,
-        #     "add",
-        # )
-        # timer.pop()
-
         timer.push("ivfpq")
         ivfpq_output_data_paths = self.ivfpq.add(
             hnsw_output_data_paths,
@@ -125,14 +74,4 @@ class IVFPQHNSWIndex(Index):
         )
         timer.pop()
 
-        # pax({
-        #     "input_data_paths" : input_data_paths,
-        #     "hnsw_output_data_paths" : hnsw_output_data_paths,
-        #     "residual_output_data_paths" : residual_output_data_paths,
-        # })
-        # print_seq(residual_output_data_paths)
-        # print_seq(ivfpq_output_data_paths)
-
-        # return hnsw_output_data_paths
-        # return residual_output_data_paths
         return ivfpq_output_data_paths

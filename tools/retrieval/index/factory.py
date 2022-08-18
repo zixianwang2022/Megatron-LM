@@ -1,11 +1,22 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 from .faiss_base import FaissBaseIndex
 from .faiss_decomp import FaissDecompIndex
 from .faiss_par_add import FaissParallelAddIndex
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class IndexFactory:
 
     @classmethod
@@ -21,5 +32,3 @@ class IndexFactory:
         index_ty = cls.get_index_ty(args.index_ty)
         index = index_ty(args)
         return index
-
-# eof

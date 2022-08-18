@@ -114,6 +114,8 @@ if __name__ == "__main__":
             split_data_files(args, timer)
         elif task == "gen-rand-data":
             gen_rand_data(args, timer)
+        elif task == "embed":
+            raise Exception("integrate bert script.")
         elif task == "train":
             train_index(args, timer)
         elif task == "add":

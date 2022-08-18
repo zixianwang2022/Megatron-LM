@@ -1,6 +1,18 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 import argparse
 from collections import defaultdict
 import h5py
@@ -9,74 +21,43 @@ import numpy as np
 import os
 import torch
 
-from lutil import pax
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def load_nbr_map(base_path, index_path):
 def count_nvecs(base_path, index_path):
 
-    # ~~~~~~~~ nbr paths ~~~~~~~~
+    # Neighbor paths.
     nbr_paths = [
         p
         for p in os.listdir(os.path.join(base_path, index_path))
         if p.endswith(".hdf5")
     ]
-    nbr_paths.sort() # ... unnecessary
+    nbr_paths.sort() # ... necessary?
 
-    # ~~~~~~~~ nvecs ~~~~~~~~
+    # Vector count.
     nvecs = 0
     for nbr_path_index, nbr_path in enumerate(nbr_paths):
         f = h5py.File(os.path.join(base_path, index_path, nbr_path), "r")
-        # nbrs = np.array(f["neighbors"])
-        # pax({
-        #     "f" : f,
-        #     "f / keys" : list(f.keys()),
-        #     "nbrs" : nbrs,
-        # })
         nvecs += len(f["neighbors"])
-        # print("nbr path %d / %d ... nvecs %d." % (
-        #     nbr_path_index,
-        #     len(nbr_paths),
-        #     nvecs,
-        # ))
         f.close()
 
-    # ~~~~~~~~ debug ~~~~~~~~
-    # pax({
-    #     "nbr_paths" : nbr_paths,
-    #     "nvecs" : nvecs,
-    # })
-
-    # ~~~~~~~~ return ~~~~~~~~
     return nvecs
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def find_missing_nbr_paths(base_path, index_path_0, index_path_1):
 
-    # ~~~~~~~~ nbr paths ~~~~~~~~
+    # Neighbor paths.
     nbr_paths = [
         p
         for p in os.listdir(os.path.join(base_path, index_path_0))
         if p.endswith(".hdf5")
     ]
-    nbr_paths.sort() # ... unnecessary
+    nbr_paths.sort() # ... necessary?
 
-    # ~~~~~~~~ nvecs ~~~~~~~~
+    # Missing paths.
     missing_nbr_paths = []
     for nbr_path_index, nbr_path in enumerate(nbr_paths):
         if not os.path.exists(os.path.join(base_path, index_path_1, nbr_path)):
             missing_nbr_paths.append(nbr_path)
 
-    # ~~~~~~~~ debug ~~~~~~~~
-    pax({"missing_nbr_paths": missing_nbr_paths})
-
-    # ~~~~~~~~ return ~~~~~~~~
-    # ?
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # def intersect1d_padded(x):
 #     x, y = np.split(x, 2)
-#     # pax({"x": x.shape, "y": y.shape})
 #     # padded_intersection = -1 * np.ones(x.shape, dtype=np.int)
 #     # intersection = np.intersect1d(x, y)
 #     # padded_intersection[:intersection.shape[0]] = intersection
@@ -84,7 +65,6 @@ def find_missing_nbr_paths(base_path, index_path_0, index_path_1):
 #     return len(np.intersect1d(x, y))
 
 def rowwise_intersection(a, b):
-    # pax({"a": a.shape, "b": b.shape})
     return np.apply_along_axis(
         # intersect1d_padded,
         lambda a : len(np.intersect1d(*np.split(a, 2))),
@@ -149,7 +129,6 @@ def rowwise_intersection(a, b):
 #         #         nbrs_0 = nbr_grid_0[r][:nnbr]
 #         #         nbrs_1 = nbr_grid_1[r][:nnbr]
 #         #         overlap_map[nnbr].append(len(np.intersect1d(nbrs_0, nbrs_1)))
-#         #         # pax({"overlap_map": overlap_map})
 #         #     # <<<
 #         # +++
 #         overlap_map = defaultdict(list)
@@ -164,7 +143,6 @@ def rowwise_intersection(a, b):
 #                 nbr_grid_1[:, :nnbr],
 #             )
 #             overlap_map[nnbr].extend(overlaps)
-#             # pax({"result": result})
 #         # <<<
 #         f0.close()
 #         f1.close()
@@ -177,23 +155,6 @@ def rowwise_intersection(a, b):
 #                 "acc" : acc_map,
 #             }) + "\n")
 
-#         # >>>
-#         # pax({"overlap_map": overlap_map})
-#         # if nbr_path_index == 1:
-#         #     break
-#         # <<<
-
-#     # ~~~~~~~~ debug ~~~~~~~~
-#     pax({
-#         # "nbr_paths" : nbr_paths,
-#         "overlap_map" : overlap_map,
-#         "acc_map" : {k : np.mean(v) / k for k, v in overlap_map.items()},
-#     })
-
-#     # ~~~~~~~~ return ~~~~~~~~
-#     # ?
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # def load_acc_map(base_path, index_path):
 
 #     # ~~~~~~~~ parse jsonl ~~~~~~~~
@@ -203,7 +164,6 @@ def rowwise_intersection(a, b):
 #     with open(acc_path) as f:
 #         for line in f.read().splitlines():
 #             entry = json.loads(line)
-#             # pax({"entry": entry})
 #             for n, acc in entry["acc"].items():
 #                 acc_map[int(n)].append(acc * entry["count"])
 #                 count_map[int(n)] += entry["count"]
@@ -211,13 +171,6 @@ def rowwise_intersection(a, b):
 #     # ~~~~~~~~ normalize accs ~~~~~~~~
 #     acc_map = { k : sum(v) / count_map[k] for k, v in acc_map.items() }
 
-#     # ~~~~~~~~ debug ~~~~~~~~
-#     # pax({
-#     #     # "count_map" : count_map,
-#     #     "acc_map" : acc_map,
-#     # })
-
-#     # ~~~~~~~~ return ~~~~~~~~
 #     return acc_map
 
 # # def vis_acc(base_path, index_path):
@@ -245,22 +198,10 @@ def rowwise_intersection(a, b):
 #     matplotlib.use("Agg")
 #     import matplotlib.pyplot as plt
 #     for i, vs in vert_map.items():
-#         # pax({"vs": vs})
 #         # x, y = zip(*vs)
-#         # pax({"x": x, "y": y})
 #         plt.plot(*zip(*vs), label = i)
 #     plt.legend()
 #     plt.savefig("accs.png")
-
-#     # ~~~~~~~~ debug ~~~~~~~~
-#     pax({
-#         "index_paths" : index_paths,
-#         "acc_map" : acc_map,
-#         "vert_map" : vert_map,
-#     })
-
-#     # ~~~~~~~~ return ~~~~~~~~
-#     # ?
 
 # def compare_nbrs(base_path, index_path, nnbrs):
 def get_acc_map(base_path, nnbrs, index_path):
@@ -307,15 +248,6 @@ def get_acc_map(base_path, nnbrs, index_path):
         )
         acc_map[nnbr] = np.mean(overlaps) / nnbr
 
-    # ~~~~~~~~ debug ~~~~~~~~
-    # pax({
-    #     # "flat_nbr_grid" : flat_nbr_grid,
-    #     # "index_nbr_grid" : index_nbr_grid,
-    #     "overlaps" : overlaps,
-    #     "acc_map" : acc_map,
-    # })
-
-    # ~~~~~~~~ return ~~~~~~~~
     return acc_map
 
 # def vis_acc(base_path, nnbrs):
@@ -336,19 +268,12 @@ def vis_acc(index_paths, nnbrs):
 
     assert torch.distributed.get_rank() == 0
 
-    pax({
-        "index_paths" : index_paths,
-        "nnbrs" : nnbrs,
-    })
-
     # ~~~~~~~~ acc map ~~~~~~~~
     acc_map = {}
     for k, index_path in enumerate(index_paths):
         print("index %d / %d ... '%s'." % (k, len(index_paths), index_path))
         # acc_map[index_path] = get_acc_map(base_path, nnbrs, index_path)
         acc_map[index_path] = get_acc_map(index_path, nnbrs)
-
-    pax({"acc_map": acc_map})
 
     # ~~~~~~~~ vert map ~~~~~~~~
     vert_map = {}
@@ -362,24 +287,11 @@ def vis_acc(index_paths, nnbrs):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     for i, vs in vert_map.items():
-        # pax({"vs": vs})
         # x, y = zip(*vs)
-        # pax({"x": x, "y": y})
         plt.plot(*zip(*vs), label = i.split(",")[0])
     plt.legend()
     plt.savefig("accs.png")
 
-    # ~~~~~~~~ debug ~~~~~~~~
-    pax({
-        "index_paths" : index_paths,
-        "acc_map" : acc_map,
-        "vert_map" : vert_map,
-    })
-
-    # ~~~~~~~~ return ~~~~~~~~
-    # ?
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -400,8 +312,6 @@ if __name__ == "__main__":
     args.nnbrs = 1, 2, 5, 10
     # args.nnbrs = 2, 20, 200
     # args.nnbrs = 200,
-
-    # pax({"args": args})
 
     # index_nvec_map = {}
     # for index_path in index_paths:
@@ -439,11 +349,3 @@ if __name__ == "__main__":
         query_flat_nns()
     else:
         raise Exception("specialize for task '%s'." % args.task)
-
-    pax({
-        "base_path" : base_path,
-        "index_paths" : index_paths,
-        # "index_nvec_map" : index_nvec_map,
-    })
-
-# eof

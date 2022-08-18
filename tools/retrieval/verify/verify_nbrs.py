@@ -20,10 +20,6 @@ import torch
 
 from tools.retrieval.index import FaissBaseIndex, IndexFactory
 
-# >>>
-from lutil import pax
-# <<<
-
 def verify_nbrs(args, timer):
 
     timer.push("add-base")
@@ -40,13 +36,6 @@ def verify_nbrs(args, timer):
 
     if torch.distributed.get_rank() != 0:
         return
-
-    # >>>
-    # pax({
-    #     "base_index_path" : base_index_path,
-    #     "test_index_path" : test_index_path,
-    # })
-    # <<<
 
     timer.push("get-index-paths")
     # base_index = FaissBaseIndex(args)
@@ -104,27 +93,5 @@ def verify_nbrs(args, timer):
         assert nbrs_equal
         num_rows_checked += len(base_nbrs)
 
-        # >>>
-        # pax({
-        #     "base_nbr_path" : base_nbr_path,
-        #     "test_nbr_path" : test_nbr_path,
-        #     "base_nbrs" : str(base_nbrs),
-        #     "test_nbrs" : str(test_nbrs),
-        #     "base_nbrs / shape" : str(base_nbrs.shape),
-        #     "test_nbrs / shape" : str(test_nbrs.shape),
-        #     "nbrs_equal" : nbrs_equal,
-        # })
-        # <<<
-
     assert num_rows_checked > 0, \
         "run 'query_index.sh/.py first; then run this script."
-
-    # >>>
-    # pax({
-    #     # "indexes" : indexes,
-    #     "index_paths" : index_paths,
-    #     "index_names" : index_names,
-    #     "nbr_paths" : nbr_paths,
-    #     "num_rows_checked" : num_rows_checked,
-    # })
-    # <<<

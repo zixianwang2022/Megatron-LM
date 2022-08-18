@@ -20,13 +20,10 @@ import numpy as np
 import os
 import torch
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
 from tools.retrieval.data import load_data
 from tools.retrieval.index.faiss_base import FaissBaseIndex
 from tools.retrieval.index.index import Index
+from tools.retrieval.utils import print_rank
 
 class FaissParallelAddIndex(Index):
 
@@ -399,8 +396,6 @@ class FaissParallelAddIndex(Index):
 
         data = np.random.rand(batch_size, args.ivf_dim).astype("f4")
 
-        print_seq("empty_index_path = %s." % empty_index_path)
-
         # Iterate rows
         for row in range(10, num_rows):
 
@@ -480,10 +475,6 @@ class FaissParallelAddIndex(Index):
                         input_list_size = input_invlists.list_size(list_id)
                         if input_list_size == 0:
                             continue
-                        # pax({
-                        #     "list_id" : list_id,
-                        #     "input_list_size" : input_list_size,
-                        # })
                         ids = self.swig_ptr(np.arange(
                             # output_index.ntotal + input_index.ntotal,
                             id_start,
@@ -507,31 +498,11 @@ class FaissParallelAddIndex(Index):
                     # output_index.ntotal += input_index.ntotal
                     output_index.ntotal = id_start
 
-                    # pax({"output_index": output_index})
-
-                    # if input_iter == 1:
-                    #     pax({
-                    #         "input_index" : input_index,
-                    #         "output_index" : output_index,
-                    #         "input_invlists" : input_invlists,
-                    #         "output_invlists" : output_invlists,
-                    #     })
-
                 index = output_index
-
-                # pax({
-                #     "input_index" : input_index,
-                #     "output_index" : output_index,
-                # })
-                # timer.pop()
 
             timer.push("write")
             faiss.write_index(index, output_index_path)
             timer.pop()
-
-            # exit(0)
-
-            # input_index_path = output_index_path
 
             timer.pop()
 

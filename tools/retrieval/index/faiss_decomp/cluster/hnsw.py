@@ -17,12 +17,9 @@ import faiss
 import os
 import torch
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
 from tools.retrieval.data import load_data, save_data
 from tools.retrieval.index.index import Index
+from tools.retrieval.utils import print_rank
 
 class HNSWIndex(Index):
 
@@ -44,8 +41,6 @@ class HNSWIndex(Index):
         timer.push("load-data")
         centroids = load_data(centroid_data_paths, timer)["centroids"]
         timer.pop()
-
-        # pax({"centroids": centroids})
 
         timer.push("init")
         hnsw = faiss.IndexHNSWFlat(self.args.ivf_dim, self.args.hnsw_m)
@@ -83,14 +78,6 @@ class HNSWIndex(Index):
             "centroid_ids" : o,
         } for i, o in zip(input_data_paths, all_output_data_paths) ]
 
-        # pax({
-        #     "input_data_paths" : input_data_paths,
-        #     "all_output_data_paths" : all_output_data_paths,
-        #     "all_output_data_paths / 0" : all_output_data_paths[0],
-        #     "missing_output_data_path_map" : missing_output_data_path_map,
-        # })
-        # print_seq(list(missing_output_data_path_map.values()))
-
         if not missing_output_data_path_map:
             return all_output_data_paths
 
@@ -120,8 +107,6 @@ class HNSWIndex(Index):
             dists, centroid_ids = hnsw.search(inp, 1)
             timer.pop()
 
-            # pax({"centroid_ids": centroid_ids})
-
             timer.push("save-data")
             save_data({
                 "centroid_ids" : centroid_ids,
@@ -131,8 +116,6 @@ class HNSWIndex(Index):
             timer.pop()
 
         timer.pop()
-
-        # pax({ ... })
 
         return all_output_data_paths
 
@@ -157,8 +140,6 @@ class HNSWIndex(Index):
 
         torch.distributed.barrier()
 
-        # pax({"output_data_paths": output_data_paths})
-
         return output_data_paths
 
     def add(
@@ -181,8 +162,5 @@ class HNSWIndex(Index):
         timer.pop()
 
         torch.distributed.barrier()
-
-        # pax({"output_data_paths": output_data_paths})
-        # print_seq(output_data_paths)
 
         return output_data_paths

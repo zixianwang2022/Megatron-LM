@@ -1,9 +1,18 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def test_knn():
 def query_flat_nns():
 
     import faiss # conda install -c conda-forge -y faiss-gpu
@@ -18,8 +27,6 @@ def query_flat_nns():
     args.ntest = int(1e4)
     args.nnbr = 2000
     args.base_dir = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval"
-
-    # pax({"args": args})
 
     time_map = {}
 
@@ -56,11 +63,6 @@ def query_flat_nns():
         test_data = train_data[:args.ntest]
         time_map["test_data"] = time.time() - t
         print("time / test_data = %f." % time_map["test_data"], flush = True)
-
-        # pax({
-        #     "train_data" : str(train_data.shape),
-        #     "test_data" : str(test_data.shape),
-        # })
 
     # ~~~~~~~~ index ~~~~~~~~
     if 0:
@@ -102,8 +104,6 @@ def query_flat_nns():
         time_map["query_index"] = time.time() - t
         print("time / query_index = %f." % time_map["query_index"], flush = True)
 
-        # pax({"D": D, "I": I})
-
         t = time.time()
         path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/v2/n2000/Flat__t65191936__neighbors.hdf5"
         f = h5py.File(path, "w")
@@ -121,12 +121,3 @@ def query_flat_nns():
         ", ".join([ "%s %.1f" % (k, v) for k, v in time_map.items() ]),
     ), flush = True)
     exit(0)
-    pax({
-        "train_data" : str(train_data.shape),
-        "test_data" : str(test_data.shape),
-        "kdtree" : kdtree,
-        "nns" : nns,
-        "time_map" : time_map,
-    })
-
-# eof
