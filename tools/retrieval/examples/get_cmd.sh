@@ -15,16 +15,18 @@ profile_stage_stop="cluster"
 # tasks="clean-data"
 # tasks="split-data"
 # tasks="gen-rand-data"
+# tasks=embed
 # tasks=train
 # tasks=add
 # tasks="remove-train-outputs,train"
-tasks="remove-add-outputs,add"
+# tasks="remove-add-outputs,add"
 # tasks="remove-add-outputs"
 # tasks="time-merge-partials"
 # tasks="remove-add-outputs,verify" # "verify-index"
 # tasks="verify-codes"
-# tasks="verify-nbrs"
-# tasks="query-acc"
+tasks="verify-nbrs"
+# tasks="query"
+# tasks="plot-acc"
 
 # ntrain=2048 ncluster=64 hnsw=4
 # ntrain=131072 ncluster=128 hnsw=32

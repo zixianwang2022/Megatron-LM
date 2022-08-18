@@ -13,40 +13,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import faiss
+import numpy as np
+import torch
+
+from tools.retrieval.add import add_to_index
+from tools.retrieval.index import FaissBaseIndex
+
+# >>>
+from lutil import pax
+# <<<
+
 def verify_codes(args, timer):
 
-    # timer.push("add-base")
-    # from retrieval.index.faiss_mono import FaissMonoIndex
-    # base_index = FaissMonoIndex(args)
-    # base_index_path = base_index.add(args.add_paths, args.index_dir_path, timer)
-    # timer.pop()
-
-    # timer.push("add-test")
-    # test_index_path = run_add_pipeline(args, timer)
-    # timer.pop()
-
-    # torch.distributed.barrier()
-
-    # if torch.distributed.get_rank() == 0:
-
-    timer.push("get-index-paths")
-    from retrieval.index.faiss_mono import FaissMonoIndex
-    base_index = FaissMonoIndex(args)
-    test_index = IndexFactory.get_index(args)
-    base_index_path = base_index.get_added_index_path(
-        args.add_paths,
-        args.index_dir_path,
-    )
-    test_index_path = test_index.get_added_index_path(
-        args.add_paths,
-        args.index_dir_path,
-    )
+    timer.push("add-base")
+    base_index = FaissBaseIndex(args)
+    base_index_path = base_index.add(args.add_paths, args.index_dir_path, timer)
     timer.pop()
 
+    timer.push("add-test")
+    test_index_path = add_to_index(args, timer)
+    timer.pop()
+
+    torch.distributed.barrier()
+
+    if torch.distributed.get_rank() != 0:
+        return
+
+    # timer.push("get-index-paths")
+    # base_index = FaissMonoIndex(args)
+    # test_index = IndexFactory.get_index(args)
+    # base_index_path = base_index.get_added_index_path(
+    #     args.add_paths,
+    #     args.index_dir_path,
+    # )
+    # test_index_path = test_index.get_added_index_path(
+    #     args.add_paths,
+    #     args.index_dir_path,
+    # )
+    # timer.pop()
+
+    # >>>
     # pax({
     #     "base_index_path" : base_index_path,
     #     "test_index_path" : test_index_path,
     # })
+    # <<<
 
     # Read indexes.
     timer.push("read")

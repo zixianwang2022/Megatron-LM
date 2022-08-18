@@ -25,7 +25,7 @@ from lutil import pax, print_rank, print_seq
 # from tools.retrieval import utils
 from tools.retrieval.data import load_data
 from tools.retrieval.index.index import Index
-from tools.retrieval.index.utils import get_index_str
+# from tools.retrieval.index.utils import get_index_str
 
 # class FaissMonoIndex(Index):
 class FaissBaseIndex(Index):
@@ -34,7 +34,7 @@ class FaissBaseIndex(Index):
 
         assert torch.distributed.get_rank() == 0
 
-        index_str = get_index_str(self.args)
+        # index_str = get_index_str(self.args)
         empty_index_path = self.get_empty_index_path(dir_path)
 
         # Index already exists? -> return.
@@ -85,7 +85,7 @@ class FaissBaseIndex(Index):
         assert torch.distributed.get_rank() == 0
 
         empty_index_path = self.get_empty_index_path(dir_path)
-        added_index_path = self.get_added_index_path(dir_path)
+        added_index_path = self.get_added_index_path(input_data_paths, dir_path)
 
         if os.path.isfile(added_index_path):
             return
@@ -133,4 +133,4 @@ class FaissBaseIndex(Index):
 
         torch.distributed.barrier()
 
-        return self.get_added_index_path(dir_path)
+        return self.get_added_index_path(input_data_paths, dir_path)

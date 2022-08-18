@@ -29,24 +29,20 @@ import json
 import os
 import torch
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
 from tools.retrieval.add import add_to_index, remove_add_outputs
 from tools.retrieval.data import (
-    # clean_data,
-    # gen_rand_data,
-    # get_all_data_paths,
+    clean_data,
+    gen_rand_data,
+    get_all_data_paths,
     get_train_add_data_paths,
 )
-# from tools.retrieval.index.factory import IndexFactory
 from tools.retrieval.index.utils import (
     get_index_dir_path,
     get_index_str,
 )
 from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
+from tools.retrieval.verify import verify_codes, verify_nbrs
 
 if __name__ == "__main__":
 
@@ -81,18 +77,6 @@ if __name__ == "__main__":
     args.index_str = get_index_str(args)
     args.tasks = args.tasks.split(",")
 
-    # # Input data directory. [ ... MOVE TO ARGS ... ]
-    # hostname = socket.gethostname()
-    # # hostname = os.environ["HOSTNAME_ORIG"]
-    # if hostname.startswith("luna-"):
-    #     args.base_dir = "/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval"
-    # elif hostname.startswith("rno") or hostname.startswith("dracocpu"):
-    #     args.base_dir = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval"
-    # elif hostname.startswith("ip-"):
-    #     args.base_dir = "/mnt/fsx-outputs-chipdesign/lmcafee/retrieval"
-    # else:
-    #     raise Exception("specialize for hostname '%s'." % hostname)
-
     # Torch distributed initialization.
     args.rank = int(os.getenv('RANK', '0'))
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
@@ -106,8 +90,6 @@ if __name__ == "__main__":
     )
 
     # Get input data batch paths (for training, adding, querying, verifying).
-    # if "train" in args.tasks or "add" in args.tasks or "verify" in args.tasks:
-    # if any([k in args.tasks for k in ["train", "add", "verify", "query-acc"]]):
     (
         args.ntrain,
         args.nadd,
@@ -117,8 +99,6 @@ if __name__ == "__main__":
     args.index_dir_path = get_index_dir_path(args)
     args.index_empty_path = \
         os.path.join(args.index_dir_path, "empty.faissindex")
-
-    # pax(0, {"args": args})
 
     # Select task to run.
     timer = Timer()
