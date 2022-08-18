@@ -16,3 +16,8 @@ Example tasks (use with --tasks):
 - [needs cleanup] Query ('query', 'plot-acc', 'query-flat-nns')
 - [yes] Verify ('verify-codes', 'verify-nbrs')
   - note: 'verify-nbrs' currently requires 'query_index.py' to be manually run first
+
+Sample code flow:
+- main.py (entry point; e.g., using '--tasks add')
+- add/add.py ('add' pipeline; init index; call index.add())
+- index/faiss_par_add/__init__.py (run add in parallel; store intermediate/final index to args.index_dir_path)
