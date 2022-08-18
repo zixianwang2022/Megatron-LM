@@ -28,7 +28,7 @@ class FaissBaseIndex(Index):
 
         assert torch.distributed.get_rank() == 0
 
-        index_str = get_index_str(self.args)
+        # index_str = get_index_str(self.args)
         empty_index_path = self.get_empty_index_path(dir_path)
 
         # Index already exists? -> return.
@@ -42,7 +42,7 @@ class FaissBaseIndex(Index):
 
         # Init index.
         timer.push("init")
-        index = faiss.index_factory(self.args.nfeats, index_str)
+        index = faiss.index_factory(self.args.nfeats, self.args.index_str)
         timer.pop()
 
         # Move to GPU.

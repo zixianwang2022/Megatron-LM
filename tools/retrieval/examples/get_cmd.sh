@@ -17,13 +17,13 @@ profile_stage_stop="cluster"
 # tasks="gen-rand-data"
 # tasks=embed
 # tasks=train
-# tasks=add
+tasks=add
 # tasks="remove-train-outputs,train"
 # tasks="remove-add-outputs,add"
 # tasks="remove-add-outputs"
 # tasks="time-merge-partials"
 # tasks="remove-add-outputs,verify" # "verify-index"
-tasks="verify-codes"
+# tasks="verify-codes"
 # tasks="verify-nbrs"
 # tasks="query"
 # tasks="plot-acc"
@@ -57,9 +57,9 @@ data_ty=corpus-clean
 # data_ty=rand-1m
 # data_ty=rand-100k
 
-# index_ty=faiss-base
+index_ty=faiss-base
 # index_ty=faiss-decomp
-index_ty=faiss-par-add
+# index_ty=faiss-par-add
 
 data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
 index_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
