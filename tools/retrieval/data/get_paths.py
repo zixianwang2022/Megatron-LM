@@ -1,113 +1,57 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
+"""Get paths of data batches for training, adding."""
+
 import glob
 import h5py
-# import numpy as np
-import socket
-# import torch
+import os
+import torch
 
+# >>>
 from lutil import pax, print_rank, print_seq
+# <<<
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def get_data_paths(args, is_clean):
 def get_all_data_paths(args, is_clean = True):
 
-    hostname = socket.gethostname()
-    # pax({"hostname": hostname})
+    # Get data paths.
+    paths = glob.glob(os.path.join(args.data_dir, "*.hdf5"))
+    paths.sort()
 
-    # ~~~~~~~~ feat paths [ hdf5 ] ~~~~~~~~
-    if hostname.startswith("luna-"):
-        # if args.data_ty == "rand":
-        #     raise Exception("update 'rand' for batch data loading; no 'ntrain'.")
-        #     if 0:
-        #         return np.random.rand(args.ntrain, 1024).astype("f4")
-        #     else:
-        #         from sklearn.datasets import make_blobs
-        #         data, labels, centers = make_blobs(
-        #             n_samples = args.ntrain,
-        #             n_features = 1024,
-        #             centers = 32,
-        #             return_centers = True,
-        #         )
-        #         pax({
-        #             "data" : data,
-        #             "labels" : labels,
-        #             "centers" : centers,
-        #         })
-        #         return data
-        if args.data_ty == "rand":
-            feat_paths = glob.glob("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/data/%s/*.hdf5" % args.data_ty)
-            pax(0, {"feat_paths": feat_paths})
-        elif args.data_ty == "corpus":
-            # feat_paths = glob.glob("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/sampled_pretraining/*.feat.hdf5")
-            feat_paths = glob.glob("/lustre/fsw/adlr/adlr-nlp/lmcafee/data/retrieval/data/corpus-%s.hdf5" % ("clean/*" if is_clean else "dirty/*.feat"))
-        else:
-            raise Exception("specialize for '%s'." % args.data_ty)
-
-    elif hostname.startswith("rno") or "dracocpu" in hostname:
-        # feat_paths = glob.glob(args.base_dir + "/enwiki-feat-16/*.hdf5")
-        # feat_paths = glob.glob(args.base_dir + "/enwiki-feat-16-split/*.hdf5")
-        # feat_paths = glob.glob(args.base_dir + "/enwiki-feat-1024/0000.hdf5")
-        # feat_paths = glob.glob(args.base_dir + "/v2/data0/*feat.hdf5")
-        if args.data_ty == "wiki":
-            # feat_paths = glob.glob(args.base_dir + "/v2/data1/feat/*feat.hdf5") # matches banned doc_ids
-            feat_paths = glob.glob(args.base_dir + "/data/wiki/feat-%s/*feat.hdf5" % data_state) # matches banned doc_ids
-        elif args.data_ty == "corpus":
-            # feat_paths = glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/pretrain*feat.hdf5")
-            if not is_clean:
-                feat_paths = glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/sampled_pretraining/*.feat.hdf5")
-            else:
-                feat_paths = glob.glob(args.base_dir+"/data/corpus-clean/*.hdf5")
-            # feat_paths = glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/../boxinw/processed_data/chunks/sampled_pretraining/*.feat.hdf5")
-        elif args.data_ty.startswith("rand-"):
-            feat_paths = glob.glob(args.base_dir + "/data/%s/*.hdf5" % args.data_ty)
-        else:
-            raise Exception("specialize for '%s'." % args.data_ty)
-
-    elif hostname.startswith("ip-"):
-        if args.data_ty == "wiki":
-            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/wiki/*.feat.hdf5")
-        elif args.data_ty == "corpus":
-            # feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/corpus/*.feat.hdf5")
-            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/corpus%s" % ("-dirty/*.feat.hdf5" if not is_clean else "-clean/*.hdf5"))
-        # elif args.data_ty == "rand-100k":
-        #     feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/rand-100k/*.hdf5")
-        elif args.data_ty.startswith("rand-"):
-            feat_paths = glob.glob("/mnt/fsx-outputs-chipdesign/lmcafee/retrieval/data/%s/*.hdf5" % args.data_ty)
-        else:
-            raise Exception("specialize for '%s'." % args.data_ty)
-
-    else:
-        raise Exception("specialize for hostname '%s'." % hostname)
-
-    feat_paths.sort()
-
-    # args.data_paths = feat_paths
-
-    # >>>
-    if 0:
+    # Count & print vecs.
+    if True:
+        rank = torch.distributed.get_rank()
         n = 0
-        for i, p in enumerate(feat_paths):
-            if i % 20 == 0:
-                print_rank(0, "counting feat path %d / %d." % (i, len(feat_paths)))
+        for i, p in enumerate(paths):
+            if rank == 0 and i % 50 == 0:
+                print(
+                    "counting feat path %d / %d." % (i, len(paths)),
+                    flush = True,
+                )
             f = h5py.File(p, "r")
             n += len(f["data"]) # feat"])
-        pax(0, {
-            "feat_paths" : feat_paths,
-            "n" : n,
-        })
-    # <<<
+        if rank == 0:
+            print("total vecs: %d." % n)
 
     return feat_paths
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# def get_train_add_data_paths(args, timer):
 def get_train_add_data_paths(args):
 
     all_paths = get_all_data_paths(args, True)
 
-    # print_seq(all_paths)
+    print_seq(all_paths)
 
     ntrain = None; train_paths = None
     nadd = None; add_paths = None
@@ -141,5 +85,3 @@ def get_train_add_data_paths(args):
     # })
 
     return ntrain, nadd, train_paths, add_paths
-
-# eof

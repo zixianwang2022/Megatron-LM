@@ -37,12 +37,12 @@ import torch
 from lutil import pax, print_rank, print_seq
 # <<<
 
-# from tools.retrieval.data import (
-#     clean_data,
-#     gen_rand_data,
-#     get_all_data_paths,
-#     get_train_add_data_paths,
-# )
+from tools.retrieval.data import (
+    # clean_data,
+    # gen_rand_data,
+    # get_all_data_paths,
+    get_train_add_data_paths,
+)
 # from tools.retrieval.index.factory import IndexFactory
 from tools.retrieval.index.utils import (
     # get_index_dir_path,
@@ -50,7 +50,6 @@ from tools.retrieval.index.utils import (
 )
 # from tools.retrieval.utils import Timer
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
 
     # Args.
