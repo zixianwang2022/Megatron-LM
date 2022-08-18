@@ -48,11 +48,13 @@ ntrain=2500000 nadd=4000000 ncluster=262144 hnsw=32
 pq_dim=32
 ivf_dim=256
 
-data_ty=corpus
+# data_ty=corpus
 # data_ty=wiki
 # data_ty=rand-1m
 # data_ty=rand-100k
+data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/corpus-clean
 
+index_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
 # index_ty=faiss-base
 # index_ty=faiss-decomp
 index_ty=faiss-par-add
@@ -61,16 +63,18 @@ PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
 
 # BUILD_INDEX_CMD=" \
 #     ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
+# --data-ty ${data_ty} \
 BUILD_INDEX_CMD=" \
     ./tools/retrieval/main.py \
     --tasks ${tasks} \
-    --data-ty ${data_ty} \
     --ntrain ${ntrain} \
     --nadd ${nadd} \
     --ncluster ${ncluster} \
     --hnsw-m ${hnsw} \
     --ivf-dim ${ivf_dim} \
     --pq-m ${pq_dim} \
+    --data-dir ${data_dir} \
+    --index-dir ${data_dir} \
     --index-ty ${index_ty} \
     --profile-stage-stop ${profile_stage_stop} \
 "

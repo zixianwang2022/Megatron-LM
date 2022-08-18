@@ -1,23 +1,35 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 import faiss
 import os
 import torch
 
+# >>>
 from lutil import pax, print_rank, print_seq
+# <<<
 
-from retrieval.index import Index
-from retrieval import utils
+from tools.retrieval.index.index import Index
+from tools.retrieval import utils
 
 from .cluster import IVFPQHNSWIndex
 from .preprocess import OPQIndex
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class FaissDecompIndex(Index):
 
-    # def __init__(self, args, timer): # remove timer arg?
-    def __init__(self, args): # remove timer arg?
+    def __init__(self, args):
 
         super().__init__(args)
 
@@ -41,12 +53,6 @@ class FaissDecompIndex(Index):
 
         active_stage_map = { k : self.stage_map[k] for k in active_stage_keys }
 
-        # pax({
-        #     "args" : self.args,
-        #     "active_stage_keys" : active_stage_keys,
-        #     "active_stage_map" : active_stage_map,
-        # })
-
         return active_stage_map
 
     def train(self, input_data_paths, dir_path, timer):
@@ -59,49 +65,7 @@ class FaissDecompIndex(Index):
             data_paths = stage.train(data_paths, sub_dir_path, timer)
             timer.pop()
 
-    # def split_index(self):
-
-    #     assert torch.distributed.get_rank() == 0
-
-    #     mono_index = faiss.read_index(os.path.join(
-    #         self.args.index_dir_path,
-    #         "empty.faissindex",
-    #     ))
-
-    #     # pre_index = faiss.IndexPreTransform(mono_index.index)
-    #     # pre_index.chain = mono_index.chain
-    #     # pre_index.index = None
-
-    #     # faiss.write_index(pre_index, os.path.join(
-    #     #     self.args.index_dir_path,
-    #     #     "preprocess",
-    #     #     "empty.faissindex",
-    #     # ))
-
-    #     cluster_index = faiss.extract_index_ivf(mono_index)
-
-    #     pax({
-    #         "args" : self.args,
-    #         "mono_index" : mono_index,
-    #         # "chain" : mono_index.chain,
-    #         # "chain / size" : mono_index.chain.size(),
-    #         # "pre_index" : pre_index,
-    #         # "pre_index / size" : pre_index.chain.size(),
-    #         "cluster_index" : cluster_index,
-    #     })
-
-    # def merge_index(self):
-    #     faiss.write_index(mono_index, mono_path)
-
     def add(self, input_data_paths, dir_path, timer):
-
-        # >>>
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     self.split_index()
-        # torch.distributed.barrier()
-        # raise Exception("split?")
-        # <<<
 
         active_stage_map = self.get_active_stage_map()
         data_paths = input_data_paths
@@ -110,15 +74,3 @@ class FaissDecompIndex(Index):
             sub_dir_path = utils.make_sub_dir(dir_path, key)
             data_paths = stage.add(data_paths, sub_dir_path, timer)
             timer.pop()
-
-            # raise Exception("preprocess / add.")
-
-        # >>>
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     self.merge_index()
-        # torch.distributed.barrier()
-        # raise Exception("merge?")
-        # <<<
-
-# eof

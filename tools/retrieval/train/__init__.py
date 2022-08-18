@@ -13,4 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .opq import OPQIndex
+# def run_train_pipeline(args, timer):
+def train_index(args, timer):
+
+    assert torch.cuda.is_available(), "index requires cuda."
+
+    # Init index.
+    timer.push("init")
+    index = IndexFactory.get_index(args)
+    timer.pop()
+
+    # Train index.
+    timer.push("train")
+    index.train(args.train_paths, args.index_dir_path, timer)
+    timer.pop()

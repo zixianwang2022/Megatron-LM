@@ -13,4 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .opq import OPQIndex
+def remove_add_outputs(args, timer):
+
+    # Single process only.
+    if torch.distributed.get_rank() != 0:
+        return
+
+    # Get file paths.
+    add_paths = [
+        os.path.join(args.index_dir_path, r, n)
+        for r, ds, fs in os.walk(args.index_dir_path)
+        for n in [ *ds, *fs ]
+        if n.startswith("add")
+    ]
+
+    # Remove files.
+    for p in add_paths:
+        if os.path.isdir(p):
+            shutil.rmtree(p)
+        elif os.path.isfile(p):
+            os.remove(p)
+        else:
+            raise Exception("specialize for this monster, '%s'." % p)

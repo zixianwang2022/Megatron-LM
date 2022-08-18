@@ -1,47 +1,34 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
+# >>>
 from lutil import pax, print_rank, print_seq
+# <<<
 
-from retrieval.index import Index
-import retrieval.utils as utils
+from tools.retrieval.index.index import Index
+import tools.retrieval.utils as utils
 
 from .hnsw import HNSWIndex
 from .ivfpq import IVFPQIndex
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# class IVFHNSWStage(Index):
-# class IVFHNSW(Index):
-# class IVFHNSWIndex(Index):
 class IVFPQHNSWIndex(Index):
 
-    # def __init__(self, args, d, stage_str):
-    #     super().__init__(args, d)
-
-    #     tokens = stage_str.split("_")
-    #     assert len(tokens) == 2
-    #     assert tokens[0].startswith("IVF") # redundant
-    #     assert tokens[1].startswith("HNSW")
-
-    #     self.nlist = int(tokens[0].replace("IVF", ""))
-    #     self.m = int(tokens[1].replace("HNSW", ""))
-
-    #     args.nlist = self.nlist
-
-    #     self.ivfpq = IVFPQIndex(args, d, self.nlist)
-    #     self.hnsw = HNSWIndex(args, d, self.m)
     def __init__(self, args):
-        # super().__init__(args, args.ivf_dim, None) # args.pq_dim)
         super().__init__(args)
         self.ivfpq = IVFPQIndex(args)
         self.hnsw = HNSWIndex(args)
-
-    # def dout(self):
-    #     return self.din()
-
-    # def verbose(self, v):
-    #     self.ivf.verbose(v)
-    #     self.hnsw.verbose(v)
 
     def train(self, input_data_paths, dir_path, timer):
 
@@ -149,5 +136,3 @@ class IVFPQHNSWIndex(Index):
         # return hnsw_output_data_paths
         # return residual_output_data_paths
         return ivfpq_output_data_paths
-
-# eof

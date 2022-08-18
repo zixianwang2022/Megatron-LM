@@ -20,15 +20,20 @@ import numpy as np
 import os
 import torch
 
+# >>>
 from lutil import pax, print_rank, print_seq
+# <<<
 
-from retrieval.data import load_data
-from retrieval.index import Index
-
-def my_swig_ptr(x):
-    return faiss.swig_ptr(np.ascontiguousarray(x))
+from tools.retrieval.data import load_data
+from tools.retrieval.index.faiss_base import FaissBaseIndex
+from tools.retrieval.index.index import Index
 
 class FaissParallelAddIndex(Index):
+
+    def train(self, input_data_paths, dir_path, timer):
+        raise Exception("better to inherit from FaissBaseIndex?")
+        index = FaissBaseIndex(args)
+        return index.train(input_data_paths, dir_path, timer)
 
     @classmethod
     def get_num_rows(cls, num_batches):
@@ -435,9 +440,9 @@ class FaissParallelAddIndex(Index):
                 timer.push("add-core")
                 index.add_core(
                     n = len(data),
-                    x = my_swig_ptr(data),
-                    xids = my_swig_ptr(np.arange(len(data), dtype = "i8")),
-                    precomputed_idx = my_swig_ptr(cluster_ids),
+                    x = self.swig_ptr(data),
+                    xids = self.swig_ptr(np.arange(len(data), dtype = "i8")),
+                    precomputed_idx = self.swig_ptr(cluster_ids),
                 )
                 timer.pop()
 
@@ -479,7 +484,7 @@ class FaissParallelAddIndex(Index):
                         #     "list_id" : list_id,
                         #     "input_list_size" : input_list_size,
                         # })
-                        ids = my_swig_ptr(np.arange(
+                        ids = self.swig_ptr(np.arange(
                             # output_index.ntotal + input_index.ntotal,
                             id_start,
                             id_start + input_list_size,
@@ -532,5 +537,3 @@ class FaissParallelAddIndex(Index):
 
         timer.print()
         exit(0)
-
-# eof

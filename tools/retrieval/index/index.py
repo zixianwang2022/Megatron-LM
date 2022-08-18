@@ -31,6 +31,10 @@ class Index:
         # index.verbose = True # ... maybe?
 
     @classmethod
+    def swig_ptr(x):
+        return faiss.swig_ptr(np.ascontiguousarray(x))
+
+    @classmethod
     def get_empty_index_path(cls, dir_path):
         return os.path.join(dir_path, "empty.faissindex")
     @classmethod

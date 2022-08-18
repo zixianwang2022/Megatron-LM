@@ -1,6 +1,18 @@
-# lawrence mcafee
+# coding=utf-8
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ~~~~~~~~ import ~~~~~~~~
 import faiss
 import h5py
 import numpy as np
@@ -8,22 +20,17 @@ import os
 import re
 import torch
 
+# >>>
 from lutil import pax, print_rank, print_seq
+# <<<
 
-from retrieval.data import load_data, save_data
-from retrieval.index import Index
+from tools.retrieval.data import load_data, save_data
+from tools.retrieval.index.index import Index
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def my_swig_ptr(x):
-    return faiss.swig_ptr(np.ascontiguousarray(x))
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# class IVFIndex(Index):
 class IVFPQIndex(Index):
 
     @classmethod
     def c_cpu_to_gpu(cls, index):
-        # raise Exception("use 'current_device' only.")
         clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index.d))
         index.clustering_index = clustering_index
 
@@ -355,10 +362,10 @@ class IVFPQIndex(Index):
         timer.push("add")
         index.add_core(
             n = nvecs,
-            x = my_swig_ptr(input_data),
-            # xids = my_swig_ptr(np.arange(*meta["vec_range"], dtype = "i8")),
-            xids = my_swig_ptr(np.arange(nvecs, dtype = "i8")),
-            precomputed_idx = my_swig_ptr(cluster_ids),
+            x = self.swig_ptr(input_data),
+            # xids = self.swig_ptr(np.arange(*meta["vec_range"], dtype = "i8")),
+            xids = self.swig_ptr(np.arange(nvecs, dtype = "i8")),
+            precomputed_idx = self.swig_ptr(cluster_ids),
         )
         timer.pop()
 
@@ -672,9 +679,9 @@ class IVFPQIndex(Index):
                 timer.push("add-core")
                 index.add_core(
                     n = len(data),
-                    x = my_swig_ptr(data),
-                    xids = my_swig_ptr(np.arange(len(data), dtype = "i8")),
-                    precomputed_idx = my_swig_ptr(cluster_ids),
+                    x = self.swig_ptr(data),
+                    xids = self.swig_ptr(np.arange(len(data), dtype = "i8")),
+                    precomputed_idx = self.swig_ptr(cluster_ids),
                 )
                 timer.pop()
 
@@ -726,7 +733,7 @@ class IVFPQIndex(Index):
                         #     "list_id" : list_id,
                         #     "input_list_size" : input_list_size,
                         # })
-                        ids = my_swig_ptr(np.arange(
+                        ids = self.swig_ptr(np.arange(
                             # output_index.ntotal + input_index.ntotal,
                             id_start,
                             id_start + input_list_size,
@@ -775,5 +782,3 @@ class IVFPQIndex(Index):
 
         timer.print()
         exit(0)
-
-# eof

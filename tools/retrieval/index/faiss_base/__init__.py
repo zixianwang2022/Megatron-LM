@@ -18,11 +18,13 @@ import faiss
 import os
 import torch
 
+# >>>
 from lutil import pax, print_rank, print_seq
+# <<<
 
 # from tools.retrieval import utils
 from tools.retrieval.data import load_data
-from tools.retrieval.index import Index
+from tools.retrieval.index.index import Index
 from tools.retrieval.index.utils import get_index_str
 
 # class FaissMonoIndex(Index):
@@ -35,27 +37,21 @@ class FaissBaseIndex(Index):
         index_str = get_index_str(self.args)
         empty_index_path = self.get_empty_index_path(dir_path)
 
+        # Index already exists? -> return.
         if os.path.isfile(empty_index_path):
-            # raise Exception("empty index already exists.")
             return
 
-        # print_seq(index_str)
-
+        # Load data.
         timer.push("load-data")
         inp = load_data(input_data_paths, timer)["data"]
         timer.pop()
 
-        # pax({
-        #     "inp / shape" : str(inp.shape),
-        #     "added_index_path" : added_index_path,
-        # })
-
+        # Init index.
         timer.push("init")
         index = faiss.index_factory(self.args.nfeats, index_str)
-        # pax(0, {"index": index})
         timer.pop()
 
-        # >>>
+        # Move to GPU.
         index_ivf = faiss.extract_index_ivf(index)
         clustering_index = \
             faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
@@ -64,12 +60,13 @@ class FaissBaseIndex(Index):
         self.c_verbose(index_ivf, True)
         self.c_verbose(index_ivf.quantizer, True)
         self.c_verbose(index_ivf.clustering_index, True)
-        # <<<
 
+        # Train index.
         timer.push("train")
         index.train(inp)
         timer.pop()
 
+        # Save index.
         timer.push("save")
         faiss.write_index(index, empty_index_path)
         timer.pop()

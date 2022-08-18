@@ -13,4 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .opq import OPQIndex
+from .add import add_to_index
+from .remove import remove_add_outputs

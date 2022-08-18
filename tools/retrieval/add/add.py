@@ -13,4 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .opq import OPQIndex
+# def run_add_pipeline(args, timer):
+def add_to_index(args, timer):
+
+    # Init index.
+    timer.push("init")
+    index = IndexFactory.get_index(args)
+    timer.pop()
+
+    # Add to index.
+    timer.push("add")
+    output_index_path = index.add(args.add_paths, args.index_dir_path, timer)
+    timer.pop()
+
+    return output_index_path

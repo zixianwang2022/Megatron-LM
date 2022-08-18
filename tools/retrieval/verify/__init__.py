@@ -13,4 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .opq import OPQIndex
+from .verify_codes import verify_codes
+from .verify_nbrs import verify_nbrs
