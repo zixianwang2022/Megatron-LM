@@ -23,6 +23,7 @@ from lutil import pax
 from tools.retrieval.utils import mkdir
 
 def get_index_str(args):
+    """Faiss notation for index structure."""
     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
         args.pq_m,
         args.ivf_dim,
@@ -32,11 +33,13 @@ def get_index_str(args):
     )
 
 def get_index_dir_path(args):
-
+    """Create sub-directory for this index."""
+    
     index_str = get_index_str(args)
     index_dir_path = os.path.join(
-        args.base_dir,
-        "index",
+        # args.base_dir,
+        # "index",
+        args.index_dir,
         "%s-%s" % (args.index_ty, args.data_ty),
         "%s__t%d" % (index_str, args.ntrain),
     )

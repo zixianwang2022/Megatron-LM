@@ -45,14 +45,14 @@ def get_all_data_paths(args, is_clean = True):
         if rank == 0:
             print("total vecs: %d." % n)
 
-    return feat_paths
+    return paths
 
 def get_train_add_data_paths(args):
 
+    # Get all available data paths.
     all_paths = get_all_data_paths(args, True)
 
-    print_seq(all_paths)
-
+    # Filter train, add subsets.
     ntrain = None; train_paths = None
     nadd = None; add_paths = None
     ntotal = 0
@@ -73,15 +73,8 @@ def get_train_add_data_paths(args):
         if ntrain is not None and nadd is not None:
             break
 
+    # Error if not enough data.
     if ntrain is None or nadd is None:
-        raise Exception("not even data paths?")
-
-    # pax(0, {
-    #     "all_paths" : all_paths,
-    #     "ntrain" : ntrain,
-    #     "nadd" : nadd,
-    #     "train_paths" : train_paths,
-    #     "add_paths" : add_paths,
-    # })
+        raise Exception("insufficient data paths?")
 
     return ntrain, nadd, train_paths, add_paths

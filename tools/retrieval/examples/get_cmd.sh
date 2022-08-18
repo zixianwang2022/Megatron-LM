@@ -65,7 +65,6 @@ PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
 
 # BUILD_INDEX_CMD=" \
 #     ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
-# --data-ty ${data_ty} \
 BUILD_INDEX_CMD=" \
     ./tools/retrieval/main.py \
     --tasks ${tasks} \
@@ -75,8 +74,9 @@ BUILD_INDEX_CMD=" \
     --hnsw-m ${hnsw} \
     --ivf-dim ${ivf_dim} \
     --pq-m ${pq_dim} \
+    --data-ty ${data_ty} \
     --data-dir ${data_dir} \
-    --index-dir ${data_dir} \
+    --index-dir ${index_dir} \
     --index-ty ${index_ty} \
     --profile-stage-stop ${profile_stage_stop} \
 "

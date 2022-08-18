@@ -45,10 +45,11 @@ from tools.retrieval.data import (
 )
 # from tools.retrieval.index.factory import IndexFactory
 from tools.retrieval.index.utils import (
-    # get_index_dir_path,
+    get_index_dir_path,
     get_index_str,
 )
-# from tools.retrieval.utils import Timer
+from toosl.retrieval.train import train_index
+from tools.retrieval.utils import Timer
 
 if __name__ == "__main__":
 
@@ -63,8 +64,12 @@ if __name__ == "__main__":
     parser.add_argument("--ivf-dim", type = int, required = True)
     parser.add_argument("--pq-m", type = int, required = True) # pq-dim
     parser.add_argument("--pq-nbits", type = int, default = 8)
-    # parser.add_argument("--data-ty", required = True,
-    #                     choices = [ "corpus", "wiki", "rand-1m", "rand-100k" ])
+    parser.add_argument("--data-ty", required = True, choices = [
+        "corpus-clean",
+        "wiki",
+        "rand-1m",
+        "rand-100k",
+    ])
     parser.add_argument("--data-dir", required = True)
     parser.add_argument("--index-dir", required = True)
     parser.add_argument("--index-ty", required = True, choices = [
@@ -116,7 +121,7 @@ if __name__ == "__main__":
     args.index_empty_path = \
         os.path.join(args.index_dir_path, "empty.faissindex")
 
-    pax(0, {"args": args})
+    # pax(0, {"args": args})
 
     # Select task to run.
     timer = Timer()
