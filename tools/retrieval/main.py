@@ -137,7 +137,7 @@ if __name__ == "__main__":
         elif task == "train":
             train_index(args, timer)
         elif task == "add":
-            run_add_pipeline(args, timer)
+            add_to_index(args, timer)
         elif task == "remove-add-outputs":
             remove_add_outputs(args, timer)
         elif task == "query":

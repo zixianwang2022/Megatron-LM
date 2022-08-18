@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# def run_add_pipeline(args, timer):
+from tools.retrieval.index import IndexFactory
+
 def add_to_index(args, timer):
 
     # Init index.
