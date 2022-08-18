@@ -2,6 +2,13 @@ This directory contains a collection of tools for building an similarity search 
 
 Please see 'tools/retrieval/examples/get_cmd.sh' for example usage. At the moment, environment variable NPROCS can either be manually set, or copied from SLURM_TASKS_PER_NODE, depending on if using an interactive or a batch run (see top of get_cmd.sh).
 
+Key files:
+
+- main.py (entry point)
+- examples/get_cmd.sh (sample arguments for main.py)
+- examples/run_main.sh (calls get_cmd.sh, main.py)
+- examples/run_cluster.sh (calls run_main.sh)
+
 Currently working indexes:
 
 - FaissBaseIndex (--index-ty faiss-base)
