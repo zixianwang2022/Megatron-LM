@@ -3,7 +3,8 @@
 # ~~~~~~~~ import ~~~~~~~~
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def split_feat_files():
+# def split_feat_files():
+def split_data_files():
 
     raise Exception("split again?")
 

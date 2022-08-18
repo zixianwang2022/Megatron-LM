@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# def run_train_pipeline(args, timer):
+import torch
+
+from tools.retrieval.index import IndexFactory
+
 def train_index(args, timer):
 
     assert torch.cuda.is_available(), "index requires cuda."

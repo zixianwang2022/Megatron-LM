@@ -31,8 +31,8 @@ from tools.retrieval.index.index import Index
 class FaissParallelAddIndex(Index):
 
     def train(self, input_data_paths, dir_path, timer):
-        raise Exception("better to inherit from FaissBaseIndex?")
-        index = FaissBaseIndex(args)
+        # raise Exception("better to inherit from FaissBaseIndex?")
+        index = FaissBaseIndex(self.args)
         return index.train(input_data_paths, dir_path, timer)
 
     @classmethod

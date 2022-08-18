@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .factory import IndexFactory
 from .faiss_base import FaissBaseIndex
 from .faiss_decomp import FaissDecompIndex
 from .faiss_par_add import FaissParallelAddIndex

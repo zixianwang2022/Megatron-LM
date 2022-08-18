@@ -16,10 +16,6 @@
 import os
 import torch
 
-# >>>
-from lutil import pax
-# <<<
-
 from tools.retrieval.utils import mkdir
 
 def get_index_str(args):

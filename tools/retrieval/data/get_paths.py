@@ -20,10 +20,6 @@ import h5py
 import os
 import torch
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
-
 def get_all_data_paths(args, is_clean = True):
 
     # Get data paths.
@@ -41,7 +37,7 @@ def get_all_data_paths(args, is_clean = True):
                     flush = True,
                 )
             f = h5py.File(p, "r")
-            n += len(f["data"]) # feat"])
+            n += len(f["data"])
         if rank == 0:
             print("total vecs: %d." % n)
 

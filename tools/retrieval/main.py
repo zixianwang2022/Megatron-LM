@@ -25,18 +25,15 @@ Tasks:
 
 import argparse
 from datetime import timedelta
-# import faiss
-# import json
-# import numpy as np
+import json
 import os
-# import shutil
-# import socket
 import torch
 
 # >>>
 from lutil import pax, print_rank, print_seq
 # <<<
 
+from tools.retrieval.add import add_to_index, remove_add_outputs
 from tools.retrieval.data import (
     # clean_data,
     # gen_rand_data,
@@ -48,7 +45,7 @@ from tools.retrieval.index.utils import (
     get_index_dir_path,
     get_index_str,
 )
-from toosl.retrieval.train import train_index
+from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
 
 if __name__ == "__main__":
@@ -134,18 +131,18 @@ if __name__ == "__main__":
         if task == "clean-data":
             clean_data(args, timer)
         elif task == "split-data":
-            split_feat_files(args, timer)
+            split_data_files(args, timer)
         elif task == "gen-rand-data":
             gen_rand_data(args, timer)
         elif task == "train":
-            run_train_pipeline(args, timer)
+            train_index(args, timer)
         elif task == "add":
             run_add_pipeline(args, timer)
         elif task == "remove-add-outputs":
             remove_add_outputs(args, timer)
         elif task == "query":
-            raise Exception("hi.")
-            run_query_pipeline(args, timer)
+            raise Exception("test me.")
+            query_index(args, timer)
         elif task == "query-acc":
             run_query_acc_pipeline(args, timer)
         elif task == "time-merge-partials":
