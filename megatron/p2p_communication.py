@@ -133,7 +133,7 @@ def _communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next,
             for req in reqs:
                 req.wait()
         # To protect against race condition when using batch_isend_irecv().
-        torch.cuda.synchronize()
+        #torch.cuda.synchronize()
 
     # If using scatter-gather optimization, gather smaller chunks.
     if not override_scatter_gather_tensors_in_pipeline and \

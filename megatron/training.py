@@ -428,6 +428,7 @@ def train_step(forward_step_func, data_iterator,
         torch.cuda.empty_cache()
 
     # Reduce gradients.
+    torch.cuda.synchronize()
     optimizer.reduce_model_grads(args, timers)
 
     # Vision gradients.
