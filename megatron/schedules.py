@@ -378,7 +378,7 @@ def forward_backward_pipelining_with_interleaving(forward_step_func,
                           timers)
 
         mbs_so_far[model_chunk_id] = mbs_so_far[model_chunk_id] + 1
-        if get_num_microbatches() <= mbs_so_far[model_chunk_id]:
+        if get_num_microbatches() == mbs_so_far[model_chunk_id]:
             model[model_chunk_id].allreduce_gradients()
          
         return input_tensor_grad
