@@ -127,15 +127,21 @@ if __name__ == "__main__":
             query_index(args, timer)
         elif task == "query-acc":
             run_query_acc_pipeline(args, timer)
-        elif task == "time-merge-partials":
-            from retrieval.index.faiss_decomp.cluster.ivfpq import IVFPQIndex
-            if torch.distributed.get_rank() == 0:
-                IVFPQIndex.time_merge_partials(args, timer)
-            torch.distributed.barrier()
         elif task == "verify-codes":
             verify_codes(args, timer)
         elif task == "verify-nbrs":
             verify_nbrs(args, timer)
+        elif task == "time-merge-partials":
+            from tools.retrieval.index import FaissParallelAddIndex
+            # if torch.distributed.get_rank() == 0:
+            FaissParallelAddIndex.time_merge_partials(args, timer)
+            torch.distributed.barrier()
+        elif task == "time-hnsw":
+            from tools.retrieval.index import FaissParallelAddIndex
+            FaissParallelAddIndex.time_hnsw(args, timer)
+        elif task == "time-query":
+            from tools.retrieval.index import FaissParallelAddIndex
+            FaissParallelAddIndex.time_query(args, timer)
         else:
             raise Exception("specialize for task '%s'." % task)
 

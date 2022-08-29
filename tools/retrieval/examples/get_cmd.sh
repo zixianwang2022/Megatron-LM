@@ -5,7 +5,8 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=4
+NPROCS=1
+# NPROCS=4
 # >>>
 
 # >>>>>>>>>>>>>>>>>>>>>>>
@@ -23,10 +24,12 @@ profile_stage_stop="cluster"
 # tasks="remove-add-outputs"
 # tasks="time-merge-partials"
 # tasks="remove-add-outputs,verify" # "verify-index"
-tasks="verify-codes"
+# tasks="verify-codes"
 # tasks="verify-nbrs"
 # tasks="query"
 # tasks="plot-acc"
+# tasks="time-hnsw"
+tasks="time-query"
 
 # ntrain=2048 ncluster=64 hnsw=4
 # ntrain=131072 ncluster=128 hnsw=32
@@ -58,8 +61,8 @@ data_ty=corpus-clean
 # data_ty=rand-100k
 
 # index_ty=faiss-base
-# index_ty=faiss-decomp
 index_ty=faiss-par-add
+# index_ty=faiss-decomp
 
 data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
 index_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index

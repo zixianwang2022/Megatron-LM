@@ -374,9 +374,182 @@ class FaissParallelAddIndex(Index):
         return output_index_path
 
     @classmethod
+    def time_hnsw(cls, args, timer):
+        """Timing model for HNSW cluster assignment."""
+
+        if torch.distributed.get_rank() != 0:
+            return
+
+        from lutil import pax
+        from tools.retrieval.utils import Timer
+
+        # pax({"max threads": faiss.omp_get_max_threads()})
+
+        timer = Timer()
+
+        timer.push("read-index")
+        empty_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index/faiss-base-corpus-clean/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000__trained.faissindex"
+        index = faiss.read_index(empty_index_path)
+        index_ivf = faiss.extract_index_ivf(index)
+        quantizer = index_ivf.quantizer
+        timer.pop()
+
+        batch_sizes = [ int(a) for a in [ 1e3, 1e6 ] ]
+        nnbrs = 1, 128, 1024, 4096 # 66000
+
+        # >>>
+        # if 1:
+        #     data = np.random.rand(10, args.ivf_dim).astype("f4")
+        #     D1, I1 = quantizer.search(data, 1)
+        #     D2, I2 = quantizer.search(data, 2)
+        #     D128, I128 = quantizer.search(data, 128)
+        #     # print(np.vstack([ I1[:,0], D1[:,0] ]).T)
+        #     # print(np.vstack([ I2[:,0], D2[:,0] ]).T)
+        #     # print(np.vstack([ I128[:,0], D128[:,0] ]).T)
+        #     print(np.vstack([ I1[:,0], I2[:,0], I128[:,0] ]).T)
+        #     print(np.vstack([ D1[:,0], D2[:,0], D128[:,0] ]).T)
+        #     # print(I1[:,0])
+        #     # print(I2)
+        #     # print(I128)
+        #     # print(D1)
+        #     # print(D2)
+        #     # print(D128)
+        #     exit(0)
+        # <<<
+
+        for batch_size_index, batch_size in enumerate(batch_sizes):
+
+            timer.push("data-%d" % batch_size)
+            data = np.random.rand(batch_size, args.ivf_dim).astype("f4")
+            timer.pop()
+
+            for nnbr_index, nnbr in enumerate(nnbrs):
+
+                timer.push("search-%d-%d" % (batch_size, nnbr))
+                D, I = quantizer.search(data, nnbr)
+                timer.pop()
+
+                # if nnbr > 1:
+                #     D1, I1 = quantizer.search(data, 1)
+                #     pax({
+                #         "I1" : I1,
+                #         "I" : I,
+                #     })
+
+                print("time hnsw ... bs %d [ %d/%d ]; nnbr %d [ %d/%d ]." % (
+                    batch_size,
+                    batch_size_index,
+                    len(batch_sizes),
+                    nnbr,
+                    nnbr_index,
+                    len(nnbrs),
+                ))
+
+        timer.print()
+        exit(0)
+
+        pax(0, {
+            "index" : index,
+            "index_ivf" : index_ivf,
+            "quantizer" : quantizer,
+            "result" : result,
+        })
+
+    @classmethod
+    def time_query(cls, args, timer):
+        """Timing model for querying."""
+
+        if torch.distributed.get_rank() != 0:
+            return
+
+        from lutil import pax
+        from tools.retrieval.utils import Timer
+
+        # >>>
+        # faiss.omp_set_num_threads(128)
+        # pax({"max threads": faiss.omp_get_max_threads()})
+        # <<<
+
+        timer = Timer()
+
+        timer.push("read-index")
+        # empty_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index/faiss-base-corpus-clean/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000__trained.faissindex"
+        added_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index/faiss-par-add-corpus-clean/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/added_064_000-063.faissindex"
+        index = faiss.read_index(added_index_path)
+        # index_ivf = faiss.extract_index_ivf(index)
+        # quantizer = index_ivf.quantizer
+        timer.pop()
+
+        # batch_sizes = [ int(a) for a in [ 1e3, 1e6 ] ]
+        # nnbrs = 1, 128, 1024, 4096 # 66000
+        
+        pax({"index": index})
+
+        # >>>
+        # if 1:
+        #     data = np.random.rand(10, args.ivf_dim).astype("f4")
+        #     D1, I1 = quantizer.search(data, 1)
+        #     D2, I2 = quantizer.search(data, 2)
+        #     D128, I128 = quantizer.search(data, 128)
+        #     # print(np.vstack([ I1[:,0], D1[:,0] ]).T)
+        #     # print(np.vstack([ I2[:,0], D2[:,0] ]).T)
+        #     # print(np.vstack([ I128[:,0], D128[:,0] ]).T)
+        #     print(np.vstack([ I1[:,0], I2[:,0], I128[:,0] ]).T)
+        #     print(np.vstack([ D1[:,0], D2[:,0], D128[:,0] ]).T)
+        #     # print(I1[:,0])
+        #     # print(I2)
+        #     # print(I128)
+        #     # print(D1)
+        #     # print(D2)
+        #     # print(D128)
+        #     exit(0)
+        # <<<
+
+        for batch_size_index, batch_size in enumerate(batch_sizes):
+
+            timer.push("data-%d" % batch_size)
+            data = np.random.rand(batch_size, args.ivf_dim).astype("f4")
+            timer.pop()
+
+            for nnbr_index, nnbr in enumerate(nnbrs):
+
+                timer.push("search-%d-%d" % (batch_size, nnbr))
+                D, I = quantizer.search(data, nnbr)
+                timer.pop()
+
+                # if nnbr > 1:
+                #     D1, I1 = quantizer.search(data, 1)
+                #     pax({
+                #         "I1" : I1,
+                #         "I" : I,
+                #     })
+
+                print("time hnsw ... bs %d [ %d/%d ]; nnbr %d [ %d/%d ]." % (
+                    batch_size,
+                    batch_size_index,
+                    len(batch_sizes),
+                    nnbr,
+                    nnbr_index,
+                    len(nnbrs),
+                ))
+
+        timer.print()
+        exit(0)
+
+        pax(0, {
+            "index" : index,
+            "index_ivf" : index_ivf,
+            "quantizer" : quantizer,
+            "result" : result,
+        })
+
+    @classmethod
     def time_merge_partials(cls, args, timer):
-        """Timining model for merging partial indexes."""
+        """Timing model for merging partial indexes."""
     
+        if torch.distributed.get_rank() != 0:
+            return
+
         from retrieval.utils import Timer
         timer = Timer()
 
