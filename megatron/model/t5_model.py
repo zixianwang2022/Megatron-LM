@@ -131,7 +131,7 @@ class T5Model(MegatronModule):
 
     def forward(self, encoder_input_ids, decoder_input_ids, encoder_attn_mask,
                 decoder_attn_mask, encoder_decoder_attn_mask,
-                tokentype_ids=None, lm_labels=None, enc_hidden_states=None):
+                tokentype_ids=None, lm_labels=None, enc_hidden_states=None, return_enc_hidden_states=False):
 
         # Converting the attention masks to proper parameter settings
         encoder_attn_mask, decoder_attn_mask, encoder_decoder_attn_mask = t5_extended_attention_mask(
@@ -157,6 +157,8 @@ class T5Model(MegatronModule):
                                      self.word_embeddings_weight())
 
             if lm_labels is None:
+                if return_enc_hidden_states:
+                    return lm_logits, encoder_output
                 return lm_logits
             else:
                 if self.fp16_lm_cross_entropy:

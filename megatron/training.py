@@ -348,7 +348,10 @@ def setup_model_and_optimizer(model_provider_func, model_type):
         fp.initialize(m)
     optimizer = get_megatron_optimizer(unwrapped_model)
 
-    lr_scheduler = get_learning_rate_scheduler(optimizer)
+    if args.finetune and args.epochs == 0:
+        lr_scheduler = None
+    else:
+        lr_scheduler = get_learning_rate_scheduler(optimizer)
 
     if args.load is not None:
         timers = get_timers()
@@ -356,7 +359,10 @@ def setup_model_and_optimizer(model_provider_func, model_type):
         # max time.
         torch.distributed.barrier()
         timers('load-checkpoint').start()
-        args.iteration = load_checkpoint(model, optimizer, lr_scheduler)
+        if args.finetune and args.epochs == 0:
+            args.iteration = load_checkpoint(model, None, None)
+        else:
+            args.iteration = load_checkpoint(model, optimizer, lr_scheduler)
         torch.distributed.barrier()
         timers('load-checkpoint').stop()
         timers.log(['load-checkpoint'])
