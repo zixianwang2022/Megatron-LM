@@ -37,7 +37,16 @@ def get_all_data_paths(args, is_clean = True):
                     flush = True,
                 )
             f = h5py.File(p, "r")
+            # if 1:
             n += len(f["data"])
+            # else:
+            #     # from lutil import pax
+            #     # pax({"p": p})
+            #     try:
+            #         n += len(f["feats"]) # boxin
+            #     except Exception as e:
+            #         pass
+            f.close()
         if rank == 0:
             print("total vecs: %d." % n)
 

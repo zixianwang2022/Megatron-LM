@@ -32,6 +32,7 @@ import torch
 from tools.retrieval.add import add_to_index, remove_add_outputs
 from tools.retrieval.data import (
     clean_data,
+    copy_corpus_dirty_data,
     gen_rand_data,
     get_all_data_paths,
     get_train_add_data_paths,
@@ -59,6 +60,7 @@ if __name__ == "__main__":
     parser.add_argument("--pq-nbits", type = int, default = 8)
     parser.add_argument("--data-ty", required = True, choices = [
         "corpus-clean",
+        "corpus-dirty",
         "wiki",
         "rand-1m",
         "rand-100k",
@@ -90,15 +92,16 @@ if __name__ == "__main__":
     )
 
     # Get input data batch paths (for training, adding, querying, verifying).
-    (
-        args.ntrain,
-        args.nadd,
-        args.train_paths,
-        args.add_paths,
-    ) = get_train_add_data_paths(args)
-    args.index_dir_path = get_index_dir_path(args)
-    args.index_empty_path = \
-        os.path.join(args.index_dir_path, "empty.faissindex")
+    if "copy-corpus-dirty" not in args.tasks:
+        (
+            args.ntrain,
+            args.nadd,
+            args.train_paths,
+            args.add_paths,
+        ) = get_train_add_data_paths(args)
+        args.index_dir_path = get_index_dir_path(args)
+        args.index_empty_path = \
+            os.path.join(args.index_dir_path, "empty.faissindex")
 
     # Select task to run.
     timer = Timer()
@@ -108,7 +111,9 @@ if __name__ == "__main__":
 
         timer.push(task)
 
-        if task == "clean-data":
+        if task == "copy-corpus-dirty":
+            copy_corpus_dirty_data(args, timer)
+        elif task == "clean-data":
             clean_data(args, timer)
         elif task == "split-data":
             split_data_files(args, timer)
@@ -123,7 +128,6 @@ if __name__ == "__main__":
         elif task == "remove-add-outputs":
             remove_add_outputs(args, timer)
         elif task == "query":
-            raise Exception("test me.")
             query_index(args, timer)
         elif task == "query-acc":
             run_query_acc_pipeline(args, timer)

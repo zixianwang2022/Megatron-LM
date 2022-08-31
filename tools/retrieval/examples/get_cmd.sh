@@ -6,7 +6,8 @@ set -u
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
 NPROCS=1
-# NPROCS=4
+# NPROCS=16
+# NPROCS=128
 # >>>
 
 # >>>>>>>>>>>>>>>>>>>>>>>
@@ -22,14 +23,15 @@ profile_stage_stop="cluster"
 # tasks="remove-train-outputs,train"
 # tasks="remove-add-outputs,add"
 # tasks="remove-add-outputs"
-# tasks="time-merge-partials"
 # tasks="remove-add-outputs,verify" # "verify-index"
 # tasks="verify-codes"
 # tasks="verify-nbrs"
-# tasks="query"
+tasks="query"
 # tasks="plot-acc"
 # tasks="time-hnsw"
-tasks="time-query"
+# tasks="time-query"
+# tasks="time-merge-partials"
+# tasks="copy-corpus-dirty"
 
 # ntrain=2048 ncluster=64 hnsw=4
 # ntrain=131072 ncluster=128 hnsw=32
@@ -39,7 +41,7 @@ tasks="time-query"
 # ntrain=50000000 nadd=200000000 ncluster=4194304 hnsw=32
 # ntrain=300000000 ncluster=4194304 hnsw=32
 # ntrain=50000 nadd=20000000 ncluster=16384 hnsw=32
-ntrain=50000 nadd=8000000 ncluster=16384 hnsw=32
+# ntrain=50000 nadd=8000000 ncluster=16384 hnsw=32
 # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
 # ntrain=2500000 nadd=100000000 ncluster=262144 hnsw=32
 # ntrain=2500000 nadd=20000000 ncluster=262144 hnsw=32
@@ -50,18 +52,20 @@ ntrain=50000 nadd=8000000 ncluster=16384 hnsw=32
 # ntrain=3000000 nadd=100000000 ncluster=1048576 hnsw=32
 # ntrain=3000000 nadd=$(($NPROCS*1000000)) ncluster=1048576 hnsw=32
 # ntrain=100000000 nadd=$(($NPROCS*1000000)) ncluster=4194304 hnsw=32
+ntrain=100000000 nadd=$((1*$NPROCS*1000000)) ncluster=4194304 hnsw=32
 
 pq_dim=32
 ivf_dim=256
 
 # data_ty=corpus
 data_ty=corpus-clean
+# data_ty=corpus-dirty
 # data_ty=wiki
 # data_ty=rand-1m
 # data_ty=rand-100k
 
-# index_ty=faiss-base
-index_ty=faiss-par-add
+index_ty=faiss-base
+# index_ty=faiss-par-add
 # index_ty=faiss-decomp
 
 data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty

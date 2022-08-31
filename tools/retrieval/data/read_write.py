@@ -63,7 +63,18 @@ def load_data(paths, timer):
         for k in f.keys():
             i0 = start_map[k]
             i1 = i0 + len(f[k])
-            data_map[k][i0:i1] = f[k]
+            if 1:
+                data_map[k][i0:i1] = f[k]
+            else:
+                d = np.copy(f[k])
+                if np.isnan(d).any():
+                    np.nan_to_num(d, copy = False, nan = 0.0)
+                data_map[k][i0:i1] = d
+
+                # if np.isnan(f[k]).any():
+                #     data_map[k][i0:i1] = np.nan_to_num(f[k], copy = False, nan = 0.0)
+                # else:
+                #     data_map[k][i0:i1] = f[k]
             start_map[k] += len(f[k])
         f.close()
         timer.pop()

@@ -76,6 +76,13 @@ class FaissBaseIndex(Index):
 
     def _add(self, input_data_paths, dir_path, timer):
 
+        # >>>
+        faiss.omp_set_num_threads(64)
+
+        # from lutil import pax
+        # pax({"nthreads": faiss.omp_get_max_threads()})
+        # <<<
+
         assert torch.distributed.get_rank() == 0
 
         empty_index_path = self.get_empty_index_path(dir_path)

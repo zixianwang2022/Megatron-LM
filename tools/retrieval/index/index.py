@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import faiss
+import numpy as np
 import os
 import torch
 
@@ -31,7 +32,7 @@ class Index:
         # index.verbose = True # ... maybe?
 
     @classmethod
-    def swig_ptr(x):
+    def swig_ptr(cls, x):
         return faiss.swig_ptr(np.ascontiguousarray(x))
 
     @classmethod

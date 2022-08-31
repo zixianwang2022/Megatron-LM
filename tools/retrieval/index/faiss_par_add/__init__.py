@@ -303,6 +303,12 @@ class FaissParallelAddIndex(Index):
            - Ranks move in lock-step across each row (i.e., 'cols')
         """
 
+        # >>>
+        faiss.omp_set_num_threads(4)
+        # from lutil import pax
+        # pax(0, {"nthreads": faiss.omp_get_max_threads()})
+        # <<<
+
         # Num batches & rows.
         num_batches = len(input_data_paths)
         num_rows = self.get_num_rows(num_batches) # e.g., 47B -> ~15.52 rows
@@ -395,7 +401,7 @@ class FaissParallelAddIndex(Index):
         timer.pop()
 
         batch_sizes = [ int(a) for a in [ 1e3, 1e6 ] ]
-        nnbrs = 1, 128, 1024, 4096 # 66000
+        nprobes = 1, 128, 1024, 4096 # 66000
 
         # >>>
         # if 1:
@@ -423,26 +429,26 @@ class FaissParallelAddIndex(Index):
             data = np.random.rand(batch_size, args.ivf_dim).astype("f4")
             timer.pop()
 
-            for nnbr_index, nnbr in enumerate(nnbrs):
+            for nprobe_index, nprobe in enumerate(nprobes):
 
-                timer.push("search-%d-%d" % (batch_size, nnbr))
-                D, I = quantizer.search(data, nnbr)
+                timer.push("search-%d-%d" % (batch_size, nprobe))
+                D, I = quantizer.search(data, nprobe)
                 timer.pop()
 
-                # if nnbr > 1:
+                # if nprobe > 1:
                 #     D1, I1 = quantizer.search(data, 1)
                 #     pax({
                 #         "I1" : I1,
                 #         "I" : I,
                 #     })
 
-                print("time hnsw ... bs %d [ %d/%d ]; nnbr %d [ %d/%d ]." % (
+                print("time hnsw ... bs %d [ %d/%d ]; nprobe %d [ %d/%d ]." % (
                     batch_size,
                     batch_size_index,
                     len(batch_sizes),
-                    nnbr,
-                    nnbr_index,
-                    len(nnbrs),
+                    nprobe,
+                    nprobe_index,
+                    len(nprobes),
                 ))
 
         timer.print()
@@ -466,72 +472,116 @@ class FaissParallelAddIndex(Index):
         from tools.retrieval.utils import Timer
 
         # >>>
-        # faiss.omp_set_num_threads(128)
+        faiss.omp_set_num_threads(1) # 128)
         # pax({"max threads": faiss.omp_get_max_threads()})
         # <<<
 
         timer = Timer()
 
         timer.push("read-index")
-        # empty_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index/faiss-base-corpus-clean/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000__trained.faissindex"
         added_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index/faiss-par-add-corpus-clean/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/added_064_000-063.faissindex"
         index = faiss.read_index(added_index_path)
-        # index_ivf = faiss.extract_index_ivf(index)
-        # quantizer = index_ivf.quantizer
+        index_ivf = faiss.extract_index_ivf(index)
         timer.pop()
 
-        # batch_sizes = [ int(a) for a in [ 1e3, 1e6 ] ]
-        # nnbrs = 1, 128, 1024, 4096 # 66000
+        batch_sizes = [ int(a) for a in [ 1e2, 1e4 ] ]
+        # nprobes = 1, 16, 128, 1024, 4096 # 66000
+        # nprobes = 2, 4
+        nprobes = 4096, # 16, 128
         
-        pax({"index": index})
-
-        # >>>
-        # if 1:
-        #     data = np.random.rand(10, args.ivf_dim).astype("f4")
-        #     D1, I1 = quantizer.search(data, 1)
-        #     D2, I2 = quantizer.search(data, 2)
-        #     D128, I128 = quantizer.search(data, 128)
-        #     # print(np.vstack([ I1[:,0], D1[:,0] ]).T)
-        #     # print(np.vstack([ I2[:,0], D2[:,0] ]).T)
-        #     # print(np.vstack([ I128[:,0], D128[:,0] ]).T)
-        #     print(np.vstack([ I1[:,0], I2[:,0], I128[:,0] ]).T)
-        #     print(np.vstack([ D1[:,0], D2[:,0], D128[:,0] ]).T)
-        #     # print(I1[:,0])
-        #     # print(I2)
-        #     # print(I128)
-        #     # print(D1)
-        #     # print(D2)
-        #     # print(D128)
-        #     exit(0)
-        # <<<
+        # pax({"index": index})
 
         for batch_size_index, batch_size in enumerate(batch_sizes):
 
             timer.push("data-%d" % batch_size)
-            data = np.random.rand(batch_size, args.ivf_dim).astype("f4")
+            opq_data = np.random.rand(batch_size, args.nfeats).astype("f4")
             timer.pop()
 
-            for nnbr_index, nnbr in enumerate(nnbrs):
+            for nprobe_index, nprobe in enumerate(nprobes):
 
-                timer.push("search-%d-%d" % (batch_size, nnbr))
-                D, I = quantizer.search(data, nnbr)
+                nnbr = 100
+
+                timer.push("search-%d-%d" % (batch_size, nprobe))
+
+                # >>>
+                index_ivf.nprobe = nprobe
+                # pax({
+                #     "index_ivf" : index_ivf,
+                #     "quantizer" : index_ivf.quantizer,
+                # })
+                # <<<
+
+                timer.push("full")
+                index.search(opq_data, nnbr)
                 timer.pop()
 
-                # if nnbr > 1:
-                #     D1, I1 = quantizer.search(data, 1)
-                #     pax({
-                #         "I1" : I1,
-                #         "I" : I,
-                #     })
+                timer.push("split")
 
-                print("time hnsw ... bs %d [ %d/%d ]; nnbr %d [ %d/%d ]." % (
+                timer.push("preproc")
+                ivf_data = index.chain.at(0).apply(opq_data)
+                timer.pop()
+
+                timer.push("assign")
+                D_hnsw, I_hnsw = index_ivf.quantizer.search(ivf_data, nprobe)
+                timer.pop()
+
+                # timer.push("pq")
+                # I = np.empty((batch_size, nnbr), dtype = "i8")
+                # D = np.empty((batch_size, nnbr), dtype = "f4")
+                # index_ivf.search_preassigned(
+                #     batch_size,
+                #     # cls.swig_ptr(I[:,0]),
+                #     cls.swig_ptr(ivf_data),
+                #     nnbr,
+                #     cls.swig_ptr(I_hnsw), # [:,0]),
+                #     cls.swig_ptr(D_hnsw), # [:,0]),
+                #     cls.swig_ptr(D),
+                #     cls.swig_ptr(I),
+                #     False,
+                # )
+                # timer.pop()
+
+                timer.push("swig")
+                I = np.empty((batch_size, nnbr), dtype = "i8")
+                D = np.empty((batch_size, nnbr), dtype = "f4")
+                ivf_data_ptr = cls.swig_ptr(ivf_data)
+                I_hnsw_ptr = cls.swig_ptr(I_hnsw)
+                D_hnsw_ptr = cls.swig_ptr(D_hnsw)
+                D_ptr = cls.swig_ptr(D)
+                I_ptr = cls.swig_ptr(I)
+                timer.pop()
+
+                timer.push("prefetch")
+                index_ivf.invlists.prefetch_lists(I_hnsw_ptr, batch_size * nprobe)
+                timer.pop()
+
+                timer.push("search-preassign")
+                index_ivf.search_preassigned(
                     batch_size,
-                    batch_size_index,
-                    len(batch_sizes),
+                    ivf_data_ptr,
                     nnbr,
-                    nnbr_index,
-                    len(nnbrs),
-                ))
+                    I_hnsw_ptr,
+                    D_hnsw_ptr,
+                    D_ptr,
+                    I_ptr,
+                    True, # False,
+                )
+                timer.pop()
+
+                timer.pop()
+
+                # pax({"I": I, "D": D})
+
+                # print("time query ... bs %d [ %d/%d ]; nprobe %d [ %d/%d ]." % (
+                #     batch_size,
+                #     batch_size_index,
+                #     len(batch_sizes),
+                #     nprobe,
+                #     nprobe_index,
+                #     len(nprobes),
+                # ))
+
+                timer.pop()
 
         timer.print()
         exit(0)
