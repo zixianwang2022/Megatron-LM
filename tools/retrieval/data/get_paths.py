@@ -20,7 +20,7 @@ import h5py
 import os
 import torch
 
-def get_all_data_paths(args, is_clean = True):
+def get_all_data_paths(args):
 
     # Get data paths.
     paths = glob.glob(os.path.join(args.data_dir, "*.hdf5"))
@@ -55,7 +55,7 @@ def get_all_data_paths(args, is_clean = True):
 def get_train_add_data_paths(args):
 
     # Get all available data paths.
-    all_paths = get_all_data_paths(args, True)
+    all_paths = get_all_data_paths(args)
 
     # Filter train, add subsets.
     ntrain = None; train_paths = None

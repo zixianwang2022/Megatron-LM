@@ -30,17 +30,20 @@ import os
 import torch
 
 from tools.retrieval.add import add_to_index, remove_add_outputs
+from tools.retrieval.bert import run_bert_nan_analysis
 from tools.retrieval.data import (
     clean_data,
     copy_corpus_dirty_data,
     gen_rand_data,
     get_all_data_paths,
+    get_nan_stats,
     get_train_add_data_paths,
 )
 from tools.retrieval.index.utils import (
     get_index_dir_path,
     get_index_str,
 )
+# from tools.retrieval.query import query_index
 from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
 from tools.retrieval.verify import verify_codes, verify_nbrs
@@ -146,6 +149,10 @@ if __name__ == "__main__":
         elif task == "time-query":
             from tools.retrieval.index import FaissParallelAddIndex
             FaissParallelAddIndex.time_query(args, timer)
+        elif task == "nan-stats":
+            get_nan_stats(args, timer)
+        elif task == "bert-nan-analysis":
+            run_bert_nan_analysis(args, timer)
         else:
             raise Exception("specialize for task '%s'." % task)
 

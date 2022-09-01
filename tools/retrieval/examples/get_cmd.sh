@@ -26,12 +26,14 @@ profile_stage_stop="cluster"
 # tasks="remove-add-outputs,verify" # "verify-index"
 # tasks="verify-codes"
 # tasks="verify-nbrs"
-tasks="query"
+# tasks="query"
 # tasks="plot-acc"
 # tasks="time-hnsw"
 # tasks="time-query"
 # tasks="time-merge-partials"
 # tasks="copy-corpus-dirty"
+# tasks="nan-stats"
+tasks="bert-nan-analysis"
 
 # ntrain=2048 ncluster=64 hnsw=4
 # ntrain=131072 ncluster=128 hnsw=32
@@ -58,8 +60,8 @@ pq_dim=32
 ivf_dim=256
 
 # data_ty=corpus
-data_ty=corpus-clean
-# data_ty=corpus-dirty
+# data_ty=corpus-clean
+data_ty=corpus-dirty
 # data_ty=wiki
 # data_ty=rand-1m
 # data_ty=rand-100k
