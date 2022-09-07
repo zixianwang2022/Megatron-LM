@@ -37,6 +37,7 @@ from tasks.t5_model_utils.finetune_utils import build_data_loader
 from tasks.t5_model_utils.finetune_utils import process_batch
 from tasks.glue.t5.metrics import clf_accuracy
 
+from megatron import fp as floating_point
 
 class Accuracy(object):
     def __init__(self, ignore_index=None):
@@ -190,12 +191,14 @@ def teacher_forcing_accuracy(name, model, dataloader,
     for i in range(len(model)):
         model[i].eval()
 
+    floating_point.no_track(True)
+
     with torch.no_grad():
         for batch in dataloader:
             tokens_enc, tokens_dec, types, loss_mask, \
             lm_labels, enc_mask, dec_mask, enc_dec_mask, _ \
                  = process_batch(batch)
-            logits, _ = model(tokens_enc,
+            logits = model[0](tokens_enc,
                               tokens_dec,
                               enc_mask,
                               dec_mask,
@@ -212,13 +215,15 @@ def teacher_forcing_accuracy(name, model, dataloader,
             score += n_correct
             total += n_total
 
+    floating_point.no_track(False)
+
     for i in range(len(model)):
         model[i].train()
 
     if rank0sampler:
         return score, total
     else:
-        unreduced = torch.cuda.LongTensor([score, total])
+        unreduced = torch.cuda.LongTensor([score.long(), total.long()])
         score, total = reduce_scores_and_print(unreduced,
                                                epoch,
                                                name,
@@ -236,6 +241,8 @@ def calculate_task_specific_score(name, model, dataloader, epoch,
 
     for i in range(len(model)):
         model[i].eval()
+
+    floating_point.no_track(True)
 
     with torch.no_grad():
         for batch in dataloader:
@@ -277,6 +284,8 @@ def calculate_task_specific_score(name, model, dataloader, epoch,
                 reference_list.append(ref_text)
                 total += 1
 
+    floating_point.no_track(False)
+
     for i in range(len(model)):
         model[i].train()
 
@@ -302,6 +311,8 @@ def calculate_squad_score(name, model, dataloader, epoch,
 
     for i in range(len(model)):
         model[i].eval()
+
+    floating_point.no_track(True)
 
     with torch.no_grad():
         for batch in dataloader:
@@ -355,6 +366,8 @@ def calculate_squad_score(name, model, dataloader, epoch,
                 reference_list_exact.append(normalize_answer(refs[max_exact_position]))
                 hypothesis_list.append(normalize_answer(hyp_text))
                 total += 1
+
+    floating_point.no_track(False)
 
     for i in range(len(model)):
         model[i].train()
