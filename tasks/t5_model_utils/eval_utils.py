@@ -37,7 +37,7 @@ from tasks.t5_model_utils.finetune_utils import build_data_loader
 from tasks.t5_model_utils.finetune_utils import process_batch
 from tasks.glue.t5.metrics import clf_accuracy
 
-from megatron import fp as _fp
+from megatron import fp as floating_point
 
 class Accuracy(object):
     def __init__(self, ignore_index=None):
