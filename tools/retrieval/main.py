@@ -39,6 +39,7 @@ from tools.retrieval.data import (
     get_nan_stats,
     get_train_add_data_paths,
 )
+from tools.retrieval.embed import embed_chunks
 from tools.retrieval.index.utils import (
     get_index_dir_path,
     get_index_str,
@@ -123,7 +124,7 @@ if __name__ == "__main__":
         elif task == "gen-rand-data":
             gen_rand_data(args, timer)
         elif task == "embed":
-            raise Exception("integrate bert script.")
+            embed_chunks(args, timer)
         elif task == "train":
             train_index(args, timer)
         elif task == "add":

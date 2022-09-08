@@ -1,5 +1,0 @@
-# lawrence mcafee
-
-from .ivf_hnsw import IVFHNSW
-
-# eof

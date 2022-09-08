@@ -5,8 +5,8 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=1
-# NPROCS=16
+# NPROCS=1
+NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -17,7 +17,7 @@ profile_stage_stop="cluster"
 # tasks="clean-data"
 # tasks="split-data"
 # tasks="gen-rand-data"
-# tasks=embed
+tasks=embed
 # tasks=train
 # tasks=add
 # tasks="remove-train-outputs,train"
@@ -33,7 +33,7 @@ profile_stage_stop="cluster"
 # tasks="time-merge-partials"
 # tasks="copy-corpus-dirty"
 # tasks="nan-stats"
-tasks="bert-nan-analysis"
+# tasks="bert-nan-analysis"
 
 # ntrain=2048 ncluster=64 hnsw=4
 # ntrain=131072 ncluster=128 hnsw=32
