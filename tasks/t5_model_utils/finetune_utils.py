@@ -32,6 +32,8 @@ from megatron.utils import average_losses_across_data_parallel_group as reduce_l
 from megatron.model.enums import ModelType
 from functools import partial
 
+from megatron import fp
+
 def process_batch(batch):
     """Process batch and produce inputs for the model."""
     tokens_enc = batch['text_enc'].long().cuda()
@@ -180,9 +182,13 @@ def _train(model, optimizer, lr_scheduler, forward_step,
             # Set to zero so the next epoch does not skip any batches.
             start_iteration = 0
 
+            fp.step(iteration, group=mpu.get_data_parallel_group())
+
             # Train for one step.
             losses_dict, skipped_iter, grad_norm, num_zeros_in_grad = train_step(forward_step, batch, model,
                                                                                  optimizer, lr_scheduler)
+            for m in model:
+                fp.save(m)
             iteration += 1
 
             # Logging.
@@ -222,6 +228,9 @@ def _train(model, optimizer, lr_scheduler, forward_step,
         # Callback at the end of each epoch.
         if end_of_epoch_callback is not None:
             end_of_epoch_callback(model, epoch + 1)
+
+    for m in model:
+        fp.save(m, force_save=True)
 
 
 def finetune(train_valid_datasets_provider, model_provider,
