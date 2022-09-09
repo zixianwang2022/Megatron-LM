@@ -39,6 +39,10 @@ class BertDataset(torch.utils.data.Dataset):
                  num_epochs, max_num_samples, masked_lm_prob,
                  max_seq_length, short_seq_prob, seed, binary_head):
 
+        # >>>
+        # raise Exception("hi.")
+        # <<<
+
         # Params to store.
         self.name = name
         self.seed = seed

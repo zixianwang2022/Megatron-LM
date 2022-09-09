@@ -5,8 +5,9 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
-NPROCS=16
+NPROCS=1
+# NPROCS=8
+# NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -17,7 +18,7 @@ profile_stage_stop="cluster"
 # tasks="clean-data"
 # tasks="split-data"
 # tasks="gen-rand-data"
-tasks=embed
+tasks=embed-chunks
 # tasks=train
 # tasks=add
 # tasks="remove-train-outputs,train"
@@ -70,9 +71,14 @@ index_ty=faiss-base
 # index_ty=faiss-par-add
 # index_ty=faiss-decomp
 
+# bert_load_path=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
+bert_load_path=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+token_data_path=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
+token_vocab_file=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
 data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
 index_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
-PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
+# PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
+PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
 
 # BUILD_INDEX_CMD=" \
 #     ${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add/retrieval/build/build_index.py \
@@ -85,6 +91,9 @@ BUILD_INDEX_CMD=" \
     --hnsw-m ${hnsw} \
     --ivf-dim ${ivf_dim} \
     --pq-m ${pq_dim} \
+    --bert-load-path ${bert_load_path} \
+    --token-data-path ${token_data_path} \
+    --token-vocab-file ${token_vocab_file} \
     --data-ty ${data_ty} \
     --data-dir ${data_dir} \
     --index-dir ${index_dir} \

@@ -380,6 +380,15 @@ def _load_base_checkpoint(load_dir, use_distributed_optimizer, rank0=False):
     # Read the tracker file and set the iteration.
     tracker_filename = get_checkpoint_tracker_filename(load_dir)
 
+    # >>>
+    # from lutil import pax
+    # pax(0, {
+    #     "load_dir" : load_dir,
+    #     "tracker_filename" : tracker_filename,
+    #     "tracker exists?" : os.path.isfile(tracker_filename),
+    # })
+    # <<<
+
     # If no tracker file, return nothing
     if not os.path.isfile(tracker_filename):
         if not rank0:
@@ -521,6 +530,17 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                               use_distributed_optimizer=args.use_distributed_optimizer,
                               rank0=False)
 
+    # >>>
+    # from lutil import pax
+    # pax(0, {
+    #     "load_dir" : load_dir,
+    #     "model" : model,
+    #     "model_state_dict" : list(model_state_dict.keys()),
+    #     "optim_state_dict" : list(optim_state_dict.keys()),
+    #     "release" : release,
+    # })
+    # <<<
+
     if model_state_dict is None:
         return 0
 
@@ -541,6 +561,14 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                              'iteration from checkpoint {}, exiting'.format(
                                  checkpoint_name))
                 sys.exit()
+
+    # >>>
+    # from lutil import pax
+    # pax(0, {
+    #     "iteration" : iteration,
+    #     "msd / iteration" : model_state_dict["iteration"],
+    # })
+    # <<<
 
     # Check arguments.
     assert args.consumed_train_samples == 0

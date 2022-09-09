@@ -129,6 +129,10 @@ def forward_step(forward_step_func,
     unwrapped_model.set_input_tensor(input_tensor)
     output_tensor, loss_func = forward_step_func(data_iterator, model)
     if mpu.is_pipeline_last_stage():
+        # >>>
+        # from lutil import pax
+        # pax(0, {"output_tensor": output_tensor})
+        # <<<
         if not collect_non_loss_data:
             output_tensor = loss_func(output_tensor)
             loss, loss_reduced = output_tensor

@@ -381,6 +381,10 @@ def setup_model_and_optimizer(model_provider_func,
         torch.distributed.barrier()
         timers('load-checkpoint').stop()
         timers.log(['load-checkpoint'])
+        # >>>
+        # from lutil import pax
+        # pax(0, {"args": args, "hi": "there"})
+        # <<<
     else:
         args.iteration = 0
 

@@ -51,6 +51,13 @@ def get_datasets_weights_and_num_samples(data_prefix,
     weights = [0]*num_datasets
     prefixes = [0]*num_datasets
     for i in range(num_datasets):
+        # >>>
+        from lutil import pax
+        pax(0, {
+            "data_prefix" : data_prefix,
+            "train_valid_test_num_samples" : train_valid_test_num_samples,
+        })
+        # <<<
         weights[i] = float(data_prefix[2*i])
         prefixes[i] = (data_prefix[2*i+1]).strip()
     # Normalize weights
