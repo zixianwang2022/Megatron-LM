@@ -154,6 +154,9 @@ class BertModel(MegatronModule):
         scaled_init_method = scaled_init_method_normal(args.init_method_std,
                                                        args.num_layers)
 
+        # >>>
+        # self.post_process = False
+        # <<<
         self.language_model, self._language_model_key = get_language_model(
             num_tokentypes=num_tokentypes,
             add_pooler=self.add_binary_head,
@@ -193,8 +196,20 @@ class BertModel(MegatronModule):
             tokentype_ids=tokentype_ids
         )
 
+        # >>>
+        # from lutil import pax
+        # pax(0, {
+        #     "lm_output" : lm_output,
+        #     "post_process" : self.post_process,
+        #     "add_binary_head" : self.add_binary_head,
+        # })
+        # <<<
+
         if self.post_process and self.add_binary_head:
             lm_output, pooled_output = lm_output
+            # >>> haaaaaaaaaaaaack. >>>
+            return pooled_output
+            # <<<
         else:
             pooled_output = None
 

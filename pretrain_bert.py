@@ -61,6 +61,11 @@ def get_batch(data_iterator):
         data = None
     data_b = mpu.broadcast_data(keys, data, datatype)
 
+    # >>>
+    from lutil import pax
+    pax(0, {"data": data, "data_b": data_b})
+    # <<<
+
     # Unpack.
     tokens = data_b['text'].long()
     types = data_b['types'].long()
