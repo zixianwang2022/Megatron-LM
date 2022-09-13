@@ -62,6 +62,10 @@ def make_dataset(path, impl, skip_warmup=False):
         return None
     if impl == 'infer':
         impl = infer_dataset_impl(path)
+    # >>>
+    # from lutil import pax
+    # pax(0, {"impl": impl, "path": path, "skip_warmup": skip_warmup})
+    # <<<
     if impl == 'lazy' and IndexedDataset.exists(path):
         return IndexedDataset(path)
     elif impl == 'cached' and IndexedDataset.exists(path):
@@ -136,6 +140,9 @@ class IndexedDataset(torch.utils.data.Dataset):
 
     def read_index(self, path):
         with open(index_file_path(path), 'rb') as f:
+            # >>>
+            raise Exception("hi.")
+            # <<<
             magic = f.read(8)
             assert magic == self._HDR_MAGIC, (
                 'Index file doesn\'t match expected format. '
@@ -273,6 +280,9 @@ class IndexedDatasetBuilder(object):
     }
 
     def __init__(self, out_file, dtype=np.int32):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         self.out_file = open(out_file, 'wb')
         self.dtype = dtype
         self.data_offsets = [0]
@@ -289,9 +299,15 @@ class IndexedDatasetBuilder(object):
         self.dim_offsets.append(self.dim_offsets[-1] + len(tensor.size()))
 
     def end_document(self):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         self.doc_idx.append(len(self.sizes))
 
     def merge_file_(self, another_file):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         index = IndexedDataset(another_file)
         assert index.dtype == self.dtype
 
@@ -317,6 +333,9 @@ class IndexedDatasetBuilder(object):
                     break
 
     def finalize(self, index_file):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         self.out_file.close()
         index = open(index_file, 'wb')
         index.write(b'TNTIDX\x00\x00')
@@ -411,6 +430,13 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
 
             self._bin_buffer_mmap = np.memmap(path, mode='r', order='C')
             self._bin_buffer = memoryview(self._bin_buffer_mmap)
+            # >>>
+            # from lutil import pax
+            # pax(0, {
+            #     "_bin_buffer_mmap" : self._bin_buffer_mmap,
+            #     "_bin_buffer" : self._bin_buffer,
+            # })
+            # <<<
             print_rank_0("    reading sizes...")
             self._sizes = np.frombuffer(
                 self._bin_buffer,
@@ -423,6 +449,15 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
             print_rank_0("    reading document index...")
             self._doc_idx = np.frombuffer(self._bin_buffer, dtype=np.int64, count=self._doc_count,
                                           offset=offset + self._sizes.nbytes + self._pointers.nbytes)
+
+            # >>>
+            # from lutil import pax
+            # pax(0, {
+            #     "_sizes" : self._sizes,
+            #     "_pointers" : self._pointers,
+            #     "_doc_idx" : self._doc_idx,
+            # })
+            # <<<
 
         def __del__(self):
             self._bin_buffer_mmap._mmap.close()
@@ -438,6 +473,9 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
 
         @property
         def doc_idx(self):
+            # >>>
+            # raise Exception("hi.")
+            # <<<
             return self._doc_idx
 
         @lru_cache(maxsize=8)
@@ -488,6 +526,10 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
             ptr, size = self._index[idx]
             np_array = np.frombuffer(self._bin_buffer, dtype=self._index.dtype,
                                      count=size, offset=ptr)
+            # >>>
+            # from lutil import pax
+            # pax(0, {"idx": idx, "ptr": ptr, "size": size, "np_array": np_array})
+            # <<<
             return np_array
         elif isinstance(idx, slice):
             start, stop, step = idx.indices(len(self))
@@ -522,6 +564,9 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
 
     @property
     def doc_idx(self):
+        # >>>
+        # raise Exception("hi.")
+        # <<<
         return self._index.doc_idx
 
     def get_doc_idx(self):
@@ -543,20 +588,32 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
 
 class MMapIndexedDatasetBuilder(object):
     def __init__(self, out_file, dtype=np.int64):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         self._data_file = open(out_file, 'wb')
         self._dtype = dtype
         self._sizes = []
         self._doc_idx = [0]
 
     def add_item(self, tensor):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         np_array = np.array(tensor.numpy(), dtype=self._dtype)
         self._data_file.write(np_array.tobytes(order='C'))
         self._sizes.append(np_array.size)
 
     def end_document(self):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         self._doc_idx.append(len(self._sizes))
 
     def merge_file_(self, another_file):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         # Concatenate index
         index = MMapIndexedDataset.Index(index_file_path(another_file))
         assert index.dtype == self._dtype
@@ -570,6 +627,9 @@ class MMapIndexedDatasetBuilder(object):
             shutil.copyfileobj(f, self._data_file)
 
     def finalize(self, index_file):
+        # >>>
+        raise Exception("hi.")
+        # <<<
         self._data_file.close()
 
         with MMapIndexedDataset.Index.writer(index_file, self._dtype) as index:

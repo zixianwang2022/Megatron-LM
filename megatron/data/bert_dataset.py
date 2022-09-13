@@ -53,6 +53,18 @@ class BertDataset(torch.utils.data.Dataset):
         # Dataset.
         self.indexed_dataset = indexed_dataset
 
+        # >>>
+        # from lutil import pax
+        # pax(0, {
+        #     "indexed_dataset" : {
+        #         "ty" : type(indexed_dataset).__name__,
+        #         # "_index" : indexed_dataset._index,
+        #         "doc_idx" : indexed_dataset.doc_idx,
+        #         "sizes" : indexed_dataset.sizes,
+        #     },
+        # })
+        # <<<
+
         # Build the samples mapping.
         self.samples_mapping = get_samples_mapping(self.indexed_dataset,
                                                    data_prefix,
@@ -63,6 +75,17 @@ class BertDataset(torch.utils.data.Dataset):
                                                    self.seed,
                                                    self.name,
                                                    self.binary_head)
+
+        # >>>
+        # from lutil import pax
+        # if torch.distributed.get_rank() == 0:
+        #     print(self.samples_mapping[:100])
+        # pax(0, {
+        #     # "indexed_dataset" : self.indexed_dataset,
+        #     "samples_mapping" : self.samples_mapping,
+        #     "samples_mapping / 0" : self.samples_mapping[0],
+        # })
+        # <<<
 
         # Vocab stuff.
         tokenizer = get_tokenizer()
@@ -83,6 +106,28 @@ class BertDataset(torch.utils.data.Dataset):
         # python randint is inclusive whereas the numpy one is exclusive.
         # We % 2**32 since numpy requres the seed to be between 0 and 2**32 - 1
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2**32))
+        # >>>
+        from lutil import pax
+        pax(0, {
+            "start_idx" : start_idx,
+            "end_idx" : end_idx,
+            "seq_length" : seq_length,
+            "indexed_dataset / %d" % start_idx : self.indexed_dataset[start_idx],
+            "sample" : sample,
+            "seed" : self.seed,
+            # "seq_length" : seq_length,
+            # "max_seq_length" : self.max_seq_length,
+            # "vocab_id_list" : self.vocab_id_list,
+            # "vocab_id_to_token_dict" : self.vocab_id_to_token_dict,
+            # "cls_id" : self.cls_id,
+            # "sep_id" : self.sep_id,
+            # "mask_id" : self.mask_id,
+            # "pad_id" : self.pad_id,
+            # "masked_lm_prob" : self.masked_lm_prob,
+            # "np_rng" : np_rng,
+            # "binary_head" : self.binary_head,
+        })
+        # <<<
         return build_training_sample(sample, seq_length,
                                      self.max_seq_length,  # needed for padding
                                      self.vocab_id_list,

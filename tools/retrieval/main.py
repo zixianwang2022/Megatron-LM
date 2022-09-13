@@ -38,7 +38,11 @@ from tools.retrieval.data import (
     get_nan_stats,
     get_train_add_data_paths,
 )
-from tools.retrieval.embed import embed_chunks, run_bert_nan_analysis
+from tools.retrieval.embed import (
+    embed_chunks,
+    preprocess_chunks,
+    run_bert_nan_analysis,
+)
 from tools.retrieval.index.utils import (
     get_index_dir_path,
     get_index_str,
@@ -86,7 +90,11 @@ if __name__ == "__main__":
     args.tasks = args.tasks.split(",")
 
     # Torch distributed initialization.
-    if "embed-chunks" not in args.tasks:
+    # if "embed-chunks" not in args.tasks:
+    if not any([ k in args.tasks for k in [
+            "embed-chunks",
+            "preprocess-chunks",
+    ]]):
         args.rank = int(os.getenv('RANK', '0'))
         args.world_size = int(os.getenv("WORLD_SIZE", '1'))
         torch.distributed.init_process_group(
@@ -99,7 +107,12 @@ if __name__ == "__main__":
         )
 
     # Get input data batch paths (for training, adding, querying, verifying).
-    if "embed-chunks" not in args.tasks and "copy-corpus-dirty" not in args.tasks:
+    # if "embed-chunks" not in args.tasks and "copy-corpus-dirty" not in args.tasks:
+    if not any([ k in args.tasks for k in [
+            "embed-chunks",
+            "preprocess-chunks",
+            "copy-corpus-dirty",
+    ]]):
         (
             args.ntrain,
             args.nadd,
@@ -127,6 +140,8 @@ if __name__ == "__main__":
             split_data_files(args, timer)
         elif task == "gen-rand-data":
             gen_rand_data(args, timer)
+        elif task == "preprocess-chunks":
+            preprocess_chunks(args, timer)
         elif task == "embed-chunks":
             embed_chunks(args, timer)
         elif task == "train":
