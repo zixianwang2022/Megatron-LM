@@ -29,6 +29,7 @@ import json
 import os
 import torch
 
+from megatron import initialize_megatron
 from tools.retrieval.add import add_to_index, remove_add_outputs
 from tools.retrieval.data import (
     clean_data,
@@ -40,7 +41,6 @@ from tools.retrieval.data import (
 )
 from tools.retrieval.embed import (
     embed_chunks,
-    preprocess_chunks,
     run_bert_nan_analysis,
 )
 from tools.retrieval.index.utils import (
@@ -48,43 +48,67 @@ from tools.retrieval.index.utils import (
     get_index_str,
 )
 # from tools.retrieval.query import query_index
+from tools.retrieval.preprocess import preprocess_chunks
 from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
 from tools.retrieval.verify import verify_codes, verify_nbrs
 
-if __name__ == "__main__":
+def add_retrieval_args(parser):
+    """Retrieval-LM preprocesing arguments."""
+
+    # >>>
+    # parser = argparse.ArgumentParser()
+    group = parser.add_argument_group(title='validation set')
+    # <<<
 
     # Args.
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--tasks", required = True)
-    parser.add_argument("--nfeats", "-f", type = int, default = 1024)
-    parser.add_argument("--ntrain", "-t", type = int, required = True)
-    parser.add_argument("--nadd", "-a", type = int, required = True)
-    parser.add_argument("--ncluster", type = int, required = True)
-    parser.add_argument("--hnsw-m", type = int, required = True) # hnsw-dim
-    parser.add_argument("--ivf-dim", type = int, required = True)
-    parser.add_argument("--pq-m", type = int, required = True) # pq-dim
-    parser.add_argument("--pq-nbits", type = int, default = 8)
-    parser.add_argument("--data-ty", required = True, choices = [
-        "corpus-clean",
-        "corpus-dirty",
-        "wiki",
-        "rand-1m",
-        "rand-100k",
-    ])
-    parser.add_argument("--data-dir", required = True)
-    parser.add_argument("--index-dir", required = True)
-    parser.add_argument("--index-ty", required = True, choices = [
+    group.add_argument("--tasks", required = True)
+    group.add_argument("--nfeats", "-f", type = int, default = 1024)
+    group.add_argument("--ntrain", "-t", type = int, required = True)
+    group.add_argument("--nadd", "-a", type = int, required = True)
+    group.add_argument("--ncluster", type = int, required = True)
+    group.add_argument("--hnsw-m", type = int, required = True) # hnsw-dim
+    group.add_argument("--ivf-dim", type = int, required = True)
+    group.add_argument("--pq-m", type = int, required = True) # pq-dim
+    group.add_argument("--pq-nbits", type = int, default = 8)
+    # group.add_argument("--data-ty", required = True, choices = [
+    #     "corpus-clean",
+    #     "corpus-dirty",
+    #     "wiki",
+    #     "rand-1m",
+    #     "rand-100k",
+    # ])
+    # group.add_argument("--data-dir", required = True)
+    group.add_argument("--index-dir", required = True)
+    group.add_argument("--index-ty", required = True, choices = [
         "faiss-base",
         "faiss-decomp",
         "faiss-par-add",
     ])
-    parser.add_argument("--token-data-path", required = True)
-    parser.add_argument("--token-vocab-file", required = True)
-    parser.add_argument("--bert-load-path", required = True)
-    parser.add_argument("--profile-stage-stop", default = None)
-    parser.add_argument("--local_rank", type = int, default = None)
-    args = parser.parse_args()
+    # group.add_argument("--data-path", required = True)
+    # group.add_argument("--vocab-file", required = True)
+    # group.add_argument("--merge-file", required = True)
+    # group.add_argument("--bert-load-path", required = True)
+    group.add_argument("--profile-stage-stop", default = None)
+    # group.add_argument("--local_rank", type = int, default = None)
+
+    # >>>
+    # args = parser.parse_args()
+    # <<<
+
+    return parser
+
+if __name__ == "__main__":
+
+    # Initalize and get arguments, timers, and Tensorboard writer.
+    initialize_megatron(
+        # ignore_unknown_args = True,
+        extra_args_provider = add_retrieval_args,
+        # args_defaults={"tokenizer_type" : "GPT2BPETokenizer"}, # see get_cmd.sh
+    )
+
+    args = get_args()
+    pax(0, {"args": args})
 
     args.index_str = get_index_str(args)
     args.tasks = args.tasks.split(",")
