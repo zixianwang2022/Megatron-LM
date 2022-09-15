@@ -29,7 +29,11 @@ import json
 import os
 import torch
 
-from megatron import initialize_megatron
+from megatron import (
+    get_args,
+    initialize_megatron,
+    print_rank_0,
+)
 from tools.retrieval.add import add_to_index, remove_add_outputs
 from tools.retrieval.data import (
     clean_data,
@@ -53,12 +57,16 @@ from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
 from tools.retrieval.verify import verify_codes, verify_nbrs
 
+# >>>
+from lutil import pax, print_seq
+# <<<
+
 def add_retrieval_args(parser):
     """Retrieval-LM preprocesing arguments."""
 
     # >>>
     # parser = argparse.ArgumentParser()
-    group = parser.add_argument_group(title='validation set')
+    group = parser.add_argument_group(title="Retrieval preprocessing.")
     # <<<
 
     # Args.
@@ -93,6 +101,25 @@ def add_retrieval_args(parser):
     # group.add_argument("--local_rank", type = int, default = None)
 
     # >>>
+    group.add_argument('--weight', type=float, default=0.5)
+    group.add_argument('--adaptor', action='store_true', default=False)
+    group.add_argument('--return-doc-ids', action='store_true', default=False)
+    group.add_argument('--return-neighbor-ids', action='store_true', default=False)
+    group.add_argument('--add-offset-doc-ids', action='store_true', default=False)
+    group.add_argument('--offset-dict-path', type=str, default='')
+    group.add_argument('--neighbors-path', type=str, default='')
+    # group.add_argument('--project-size', type=int, default=256)
+    # group.add_argument('--stored_params', type=dict, default=dict())
+    # group.add_argument('--eval_ppl', action='store_true', default=False)
+    parser.add_argument('--workers', type=int, default=100,
+                        help='Number of worker processes to launch')
+    parser.add_argument('--embed-start-index', type=int, default=0,
+                        help='iteration start')
+    parser.add_argument('--embed-end-index', type=int, default=0,
+                        help='iteration end')
+    # <<<
+
+    # >>>
     # args = parser.parse_args()
     # <<<
 
@@ -108,34 +135,38 @@ if __name__ == "__main__":
     )
 
     args = get_args()
-    pax(0, {"args": args})
-
     args.index_str = get_index_str(args)
     args.tasks = args.tasks.split(",")
 
-    # Torch distributed initialization.
-    # if "embed-chunks" not in args.tasks:
-    if not any([ k in args.tasks for k in [
-            "embed-chunks",
-            "preprocess-chunks",
-    ]]):
-        args.rank = int(os.getenv('RANK', '0'))
-        args.world_size = int(os.getenv("WORLD_SIZE", '1'))
-        torch.distributed.init_process_group(
-            # backend = "nccl",
-            backend = "gloo",
-            world_size = args.world_size,
-            rank = args.rank,
-            # timeout = timedelta(minutes = 10),
-            timeout = timedelta(days = 1),
-        )
+    # >>>
+    # pax(0, {"args": args})
+    # print_seq("hi.")
+    # <<<
+
+    # >>>
+    # # Torch distributed initialization.
+    # # if "embed-chunks" not in args.tasks:
+    # if not any([ k in args.tasks for k in [
+    #         "embed-chunks",
+    #         "preprocess-chunks",
+    # ]]):
+    #     args.rank = int(os.getenv('RANK', '0'))
+    #     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
+    #     torch.distributed.init_process_group(
+    #         # backend = "nccl",
+    #         backend = "gloo",
+    #         world_size = args.world_size,
+    #         rank = args.rank,
+    #         # timeout = timedelta(minutes = 10),
+    #         timeout = timedelta(days = 1),
+    #     )
+    # <<<
 
     # Get input data batch paths (for training, adding, querying, verifying).
-    # if "embed-chunks" not in args.tasks and "copy-corpus-dirty" not in args.tasks:
     if not any([ k in args.tasks for k in [
-            "embed-chunks",
-            "preprocess-chunks",
             "copy-corpus-dirty",
+            "preprocess-chunks",
+            "embed-chunks",
     ]]):
         (
             args.ntrain,

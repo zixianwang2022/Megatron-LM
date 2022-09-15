@@ -12,7 +12,8 @@ NPROCS=1
 # >>>
 
 # Data blend.
-. /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
+# . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
+. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/gpt3_blend.sh
 
 # >>>>>>>>>>>>>>>>>>>>>>>
 # profile_stage_stop="preprocess"
@@ -83,8 +84,8 @@ index_ty=faiss-base
 # +++
 # data_path=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt2_indexed_dataset/sample_dataset/wikidump_10k_text_document
 # data_path=${DATA_BLEND}
-VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
-MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
+VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
+MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
 # <<<
 # data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
 index_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
@@ -92,45 +93,23 @@ index_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
 
 SEED=1001
-EMBED_START=0
-EMBED_END=100
+EMBED_START_INDEX=0
+EMBED_END_INDEX=100
 NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/neighbors.hdf5
 OFFSET_DICT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/offset_dict.pkl
 
-#     --bert-load-path ${bert_load_path} \
-#     --data-ty ${data_ty} \
-#     --data-dir ${data_dir} \
-#     --profile-stage-stop ${profile_stage_stop} \
-RETRIEVAL_ARGS=" \
-    --tasks ${tasks} \
-    --ntrain ${ntrain} \
-    --nadd ${nadd} \
-    --ncluster ${ncluster} \
-    --hnsw-m ${hnsw} \
-    --ivf-dim ${ivf_dim} \
-    --pq-m ${pq_dim} \
-    --index-dir ${index_dir} \
-    --index-ty ${index_ty} \
-
-    --return_doc_ids \
-    --start ${EMBED_START} \
-    --end ${EMBED_END} \
-    --add_offset_doc_ids \
-    --offset_dict_path ${OFFSET_DICT_PATH} \
-    --neighbors_path ${NEIGHBOR_PATH} \
-"
 #     --save $FINETUNED_PATH \
 #     --load $CHECKPOINT_PATH \
 #     --log-validation-ppl-to-tensorboard \
 #     --tensorboard-dir ${TENSORBOARD_DIR} \
+#     --global-batch-size 1 \
 MEGATRON_ARGS=" \
     --seed ${SEED} \
-    --tokenizer-typee GPT2BPETokenizer \
+    --tokenizer-type GPT2BPETokenizer \
     --num-layers 24 \
     --hidden-size 1024 \
     --num-attention-heads 16 \
     --micro-batch-size 1 \
-    --global-batch-size 1 \
     --seq-length 2048 \
     --max-position-embeddings 2048 \
     --train-samples 192000000 \
@@ -162,8 +141,32 @@ MEGATRON_ARGS=" \
     --DDP-impl local \
     --finetune \
     --no-load-optim \
+"
+
+#     --bert-load-path ${bert_load_path} \
+#     --data-ty ${data_ty} \
+#     --data-dir ${data_dir} \
+#     --profile-stage-stop ${profile_stage_stop} \
+RETRIEVAL_ARGS=" \
+    --tasks ${tasks} \
+    --ntrain ${ntrain} \
+    --nadd ${nadd} \
+    --ncluster ${ncluster} \
+    --hnsw-m ${hnsw} \
+    --ivf-dim ${ivf_dim} \
+    --pq-m ${pq_dim} \
+    --index-dir ${index_dir} \
+    --index-ty ${index_ty} \
+
+    --return-doc-ids \
+    --embed-start-index ${EMBED_START_INDEX} \
+    --embed-end-index ${EMBED_END_INDEX} \
+    --add-offset-doc-ids \
+    --offset-dict-path ${OFFSET_DICT_PATH} \
+    --neighbors-path ${NEIGHBOR_PATH} \
     --weight 0 \
 "
+
 RETRIEVAL_PREPROCESS_CMD=" \
     python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
@@ -172,7 +175,7 @@ RETRIEVAL_PREPROCESS_CMD=" \
     --master_addr ${MASTER_ADDR} \
     --master_port 6000 \
     ./tools/retrieval/main.py \
-    ${RETRIEVAL_ARGS} \
     ${MEGATRON_ARGS} \
+    ${RETRIEVAL_ARGS} \
 "
 # eof

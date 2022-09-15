@@ -13,12 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import torch
 
 from .id import save_document_ids
 # from .offset import save_document_offsets
 from .order import save_document_order
 
 def preprocess_chunks(retrieval_args, timer):
+
+    if torch.distributed.get_rank() != 0:
+        return
+
     save_document_order()
     save_document_offsets()
     save_document_ids()

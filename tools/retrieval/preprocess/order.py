@@ -14,28 +14,77 @@
 # limitations under the License.
 
 import glob
-# import h5py
-# import numpy as np
-# import time
+import h5py
+# import joblib
+import numpy as np
+import os
+from pathlib import Path
+import time
+import torch
 from tqdm import tqdm
 
 # import sys
 # sys.path.append("/home/boxinw-src/megatron-lm/megatron")
 # sys.path.append("/home/boxinw-src/megatron-lm/")
 
+from megatron import get_args
 # from megatron.data import indexed_dataset
-# from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
+from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 # from megatron.tokenizer import build_tokenizer
 
 # >>>
 from lutil import pax
 # <<<
 
+def create_data_softlinks(data_files):
+
+    # Soft links. [ personal space ]
+    root_dir = \
+        "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/data"
+    for data_index, global_file in enumerate(data_files):
+
+        print("soft links, data %d / %d." % (data_index, len(data_files)))
+
+        local_dir = os.path.join(
+            root_dir,
+            os.path.basename(os.path.dirname(global_file)),
+        )
+        local_prefix = os.path.join(
+            local_dir,
+            os.path.splitext(os.path.basename(global_file))[0],
+        )
+        global_prefix = os.path.splitext(global_file)[0]
+
+        if not os.path.exists(local_dir):
+            os.mkdir(local_dir)
+
+        for ext in [ "bin", "idx" ]:
+            local_file = local_prefix + "." + ext
+            if not os.path.exists(local_file):
+                os.symlink(global_prefix + "." + ext, local_file)
+
+        # pax(0, {
+        #     "global_file" : global_file,
+        #     "root_dir" : root_dir,
+        #     "local_dir" : local_dir,
+        #     "local_prefix" : local_prefix,
+        #     "global_prefix" : global_prefix,
+        # })
+
+    pax(0, {"data_files": data_files})
+    # raise Exception("soft link.")
 
 # def dump_document_order():
 def save_document_order():
 
-    pax(0, {"args": args})
+    assert torch.distributed.get_rank() == 0, "single process operation."
+
+    args = get_args()
+
+    # pax(0, {
+    #     "args" : args,
+    #     "data_path" : args.data_path,
+    # })
 
     def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
         """Build indexed dataset."""
@@ -52,18 +101,21 @@ def save_document_order():
 
         return indexed_dataset
 
-    x = glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/*")
-    x.remove( '/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/bpe')
-    x.remove('/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh')
+    data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
+    data_files = [ path for path in data_files if os.path.exists(path) ]
 
-    datasets = [glob.glob(y + '/*.bin')[0] for y in x]
+    # >>>
+    if 0:
+        create_data_softlinks(data_files)
+    # <<<
 
-    created = glob.glob("*.hdf5")
+    # pax(0, {"data_files": data_files})
 
-    for hdf in created:
-        f = h5py.File(hdf, "r")
-        print(hdf, f["chunks"].shape, f["document_id"][-1])
+    # for hdf in existing_chunk_files:
+    #     f = h5py.File(hdf, "r")
+    #     print(hdf, f["chunks"].shape, f["document_id"][-1])
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # Books3_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 (393262503, 64) 190135
     # ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 (319135133, 64) 1189264
     # NIH_ExPorter_ftfy_id_shuf_text_document.chunks.hdf5 (5235460, 64) 740365
@@ -73,24 +125,16 @@ def save_document_order():
     # rn_dedup_shuf_cleaned_0.7_cleaned_shuf_text_document.chunks.hdf5 (349458767, 64) 28198167
     # PubMed_Abstracts_ftfy_id_shuf_text_document.chunks.hdf5 (74996373, 64) 14877028
     # CC-2020-50_id_cleaned_shuf_text_document.chunks.hdf5 (1088699591, 64) 77712318
-
-    datasets[-6:]
-
-    # ['/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/StackExchange-shuf/StackExchange_ftfy_id_shuf_text_document.bin',
-    #  '/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/Github-shuf/Github_ftfy_id_shuf_text_document.bin',
-    #  '/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/OpenWebText2-shuf/OpenWebText2_ftfy_cleaned_id_shuf_text_document.bin',
-    #  '/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/Pile-CC-shuf/Pile-CC_id_cleaned_shuf_text_document.bin',
-    #  '/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/BookCorpus2-shuf/BookCorpus2_ftfy_cleaned_id_shuf_text_document.bin',
-    #  '/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/Stories-shuf/stories_dedup0.7_shuf_cleaned_shuf_text_document.bin']
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     def get_database_and_index(indexed_dataset):
+
         size = indexed_dataset.sizes.shape[0]
         train = int(round(float(size) * 0.98))
         tot = 0
 
         databases = []
         indexes = []
-
 
         for document_id, document in enumerate(tqdm(indexed_dataset)):
             if document_id == train:
@@ -111,25 +155,51 @@ def save_document_order():
                 indexes.append(document_id)
         return databases, indexes
 
-    for dataset in datasets[-6:]:
-        from pathlib import Path
+    # for dataset in datasets[-6:]:
+    for data_index, data_file in enumerate(data_files):
 
-        dataset_name = Path(dataset).stem
-        print(dataset_name)
-        indexed_dataset = get_indexed_dataset_(dataset[:-4],
-                                           "mmap",
-                                           True)
-        database, index = get_database_and_index(indexed_dataset)
+        data_name = Path(data_file).stem
+        data_prefix = os.path.splitext(data_file)[0]
+        chunk_file = data_prefix + ".chunks.hdf5"
 
-        f = h5py.File(dataset_name + ".chunks.hdf5", "w")
+        # pax(0, {
+        #     "data_file" : data_file,
+        #     "chunk_file" : chunk_file,
+        # })
 
-        database = np.vstack(database)
-        index = np.array(index)
+        if os.path.exists(chunk_file):
+            continue
+
+        # pax(0, {"data_name": data_name, "data_prefix": data_prefix})
+        # print(data_name)
+
+        print("creating chunks, dataset %d / %d ... '%s'." %
+              (data_index, len(data_files), data_name))
+
+        indexed_dataset = get_indexed_dataset_(
+            data_prefix, # dataset[:-4],
+            "mmap",
+            True)
+        databases, indexes = get_database_and_index(indexed_dataset)
+
+        database = np.vstack(databases)
+        index = np.array(indexes)
+
+        f = h5py.File(chunk_file, "w")
         dset = f.create_dataset("chunks", data=database)
         dset = f.create_dataset("document_id", data=index)
-
         f.close()
 
+        # pax(0, {
+        #     "data_file" : data_file,
+        #     "indexed_dataset" : type(indexed_dataset).__name__,
+        #     "database" : type(database).__name__,
+        #     "index" : type(index).__name__,
+        # })
+
+    raise Exception("finished creating chunks.")
+
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # BookCorpus2_ftfy_cleaned_id_shuf_text_document
     #  > building dataset index ...
     #     reading sizes...
@@ -151,6 +221,7 @@ def save_document_order():
 
     #  > finished creating indexed dataset in 0.016499 seconds
     #     number of documents: 670273
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     hdatasets = glob.glob("*.hdf5")
 
@@ -160,6 +231,7 @@ def save_document_order():
         print(dataset, len(f['chunks']))
         tot += len(f['chunks'])
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # Books3_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 393262503
     # Pile-CC_id_cleaned_shuf_text_document.chunks.hdf5 786507531
     # ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 319135133
@@ -175,10 +247,13 @@ def save_document_order():
     # BookCorpus2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 23578839
     # StackExchange_ftfy_id_shuf_text_document.chunks.hdf5 184906924
     # CC-2020-50_id_cleaned_shuf_text_document.chunks.hdf5 1088699591
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     print(tot)
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # 5334816766
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     ARX="ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5"
     BC2="BookCorpus2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5"
@@ -220,7 +295,9 @@ def save_document_order():
 
     dset.shape
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # (5334816766, 64)
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     pointer = 0
     for order in tqdm(orders):
@@ -235,6 +312,7 @@ def save_document_order():
 
     orders
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # [('Books3_ftfy_cleaned_id_shuf_text_document.chunks.hdf5', 0.14336),
     #  ('rn_dedup_shuf_cleaned_0.7_cleaned_shuf_text_document.chunks.hdf5', 0.08962),
     #  ('OpenWebText2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5', 0.19336),
@@ -251,11 +329,13 @@ def save_document_order():
     #  ('CC-2021-04_id_cleaned_shuf_text_document.chunks.hdf5', 0.15652),
     #  ('ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5', 0.01359),
     #  ('Github_ftfy_id_shuf_text_document.chunks.hdf5', 0.01588)]
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    import joblib
     joblib.dump(orders, "order.pkl")
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # ['order.pkl']
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     f = h5py.File("sampled_pretraining_corpus" + ".chunks.hdf5", "w")
     sampled_tot = 300000000
@@ -278,6 +358,7 @@ def save_document_order():
 
     f['chunks'][2323453]
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # array([  547, 20467, 45427,    13,   632,   561,  1011,  4647,   284,
     #        30282,   262,  3580,  1022,  3288,   290,  7593,  4808,  7645,
     #           62, 27997,    13,  1892, 12362,    11,   262,  3288,  4808,
@@ -286,10 +367,13 @@ def save_document_order():
     #          422,  4890,   284,  2612,  4369,   284, 47906, 15885,   198,
     #          198,  1135,   783,   760,   326, 23426,   960,  8201,  5384,
     #          960], dtype=uint16)
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     f['chunks'].shape
 
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # (5334816766, 64)
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     raise Exception("it worked?")
 
