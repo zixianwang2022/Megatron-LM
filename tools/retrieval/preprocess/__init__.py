@@ -25,5 +25,5 @@ def preprocess_chunks(retrieval_args, timer):
         return
 
     save_document_order()
-    save_document_offsets()
+    # save_document_offsets()
     save_document_ids()
