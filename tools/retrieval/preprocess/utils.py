@@ -13,6 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+def get_chunk_index_path(args, data_prefix):
+    return data_prefix + f".chunk_index_n{args.retriever_chunk_len}.hdf5"
+
+
+def get_chunk_embedding_path(args, data_prefix):
+    return data_prefix + f".chunk_embed_n{args.retriever_chunk_len}.hdf5"
+
+
 def create_data_softlinks(data_files):
 
     # Soft links. [ personal space ]

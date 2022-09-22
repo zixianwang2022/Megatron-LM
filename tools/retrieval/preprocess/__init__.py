@@ -29,7 +29,8 @@
 #     save_document_ids(retrieval_args, timer)
 
 # from .gpt_chunks import build_gpt_chunk_index
-from .gpt_chunks import build_gpt_chunk_index as build_chunk_index
+# from .gpt_chunks import build_gpt_chunk_index as build_chunk_index
+from .build_chunk_index import build_chunk_index
 
 # def preprocess_chunks(args, timer):
 

@@ -22,8 +22,8 @@ NPROCS=1
 # TASKS="clean-data"
 # TASKS="split-data"
 # TASKS="gen-rand-data"
-TASKS="build-chunk-index" # "preprocess-chunks" # "embed-preprocess"
-# TASKS="embed-chunks"
+# TASKS="build-chunk-index" # "preprocess-chunks" # "embed-preprocess"
+TASKS="embed-chunks"
 # TASKS=train
 # TASKS=add
 # TASKS="remove-train-outputs,train"
@@ -95,7 +95,7 @@ NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/
 if [[ "$TASKS" == *"embed-chunks"* ]]; then
 
 # >>>
-    DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
+    # DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
     VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
     # BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
     BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng

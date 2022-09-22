@@ -37,7 +37,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     """Build train, valid, and test datasets."""
 
     # >>>
-    pax({"data_prefix": data_prefix})
+    # pax({"data_prefix": data_prefix})
     # <<<
 
     # Single dataset.
