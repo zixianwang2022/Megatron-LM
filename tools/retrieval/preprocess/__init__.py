@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch
+# import torch
 
 # from .id import save_document_ids
 # from .offset import save_document_offsets
@@ -28,12 +28,13 @@ import torch
 #     # save_document_offsets()
 #     save_document_ids(retrieval_args, timer)
 
-from .gpt_chunks import build_gpt_chunk_index
+# from .gpt_chunks import build_gpt_chunk_index
+from .gpt_chunks import build_gpt_chunk_index as build_chunk_index
 
-def preprocess_chunks(args, timer):
+# def preprocess_chunks(args, timer):
 
-    if torch.distributed.get_rank() != 0:
-        return
+#     if torch.distributed.get_rank() != 0:
+#         return
 
-    build_gpt_chunk_index(args, timer)
-    build_bert_chunks(args, timer)
+#     build_gpt_chunk_index(args, timer)
+#     build_bert_chunks(args, timer)

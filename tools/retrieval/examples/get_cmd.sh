@@ -22,7 +22,7 @@ NPROCS=1
 # TASKS="clean-data"
 # TASKS="split-data"
 # TASKS="gen-rand-data"
-TASKS="preprocess-chunks" # "embed-preprocess"
+TASKS="build-chunk-index" # "preprocess-chunks" # "embed-preprocess"
 # TASKS="embed-chunks"
 # TASKS=train
 # TASKS=add
@@ -202,6 +202,7 @@ RETRIEVAL_ARGS=" \
     --index-dir ${INDEX_DIR} \
     --index-ty ${INDEX_TY} \
 
+    --retriever-chunk-len 64 \
     --return-doc-ids \
     --embed-start-index ${EMBED_START_INDEX} \
     --embed-end-index ${EMBED_END_INDEX} \
