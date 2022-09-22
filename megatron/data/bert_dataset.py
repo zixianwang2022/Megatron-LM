@@ -32,6 +32,9 @@ from megatron.data.dataset_utils import (
     create_masked_lm_predictions
 )
 
+# >>>
+from lutil import pax
+# <<<
 
 class BertDataset(torch.utils.data.Dataset):
 
@@ -54,18 +57,28 @@ class BertDataset(torch.utils.data.Dataset):
         self.indexed_dataset = indexed_dataset
 
         # >>>
-        # from lutil import pax
-        # pax(0, {
-        #     "indexed_dataset" : {
-        #         "ty" : type(indexed_dataset).__name__,
-        #         # "_index" : indexed_dataset._index,
-        #         "doc_idx" : indexed_dataset.doc_idx,
-        #         "sizes" : indexed_dataset.sizes,
-        #     },
-        # })
+        pax(0, {
+            "indexed_dataset / dir" : dir(indexed_dataset),
+            # "indexed_dataset / __dict__" :
+            # list(indexed_dataset.__dict__.keys()),
+            "indexed_dataset" : {
+                # "thing" : dir(indexed_dataset),
+                "0" : indexed_dataset[0],
+                "1" : indexed_dataset[1],
+                "2" : indexed_dataset[2],
+                "Index" : indexed_dataset.Index,
+                "ty" : type(indexed_dataset).__name__,
+                # "_index" : indexed_dataset._index,
+                "doc_idx" : indexed_dataset.doc_idx,
+                "sizes" : indexed_dataset.sizes,
+            },
+        })
         # <<<
 
         # Build the samples mapping.
+        # >>>
+        # raise Exception("hi.")
+        # <<<
         self.samples_mapping = get_samples_mapping(self.indexed_dataset,
                                                    data_prefix,
                                                    num_epochs,
@@ -75,9 +88,12 @@ class BertDataset(torch.utils.data.Dataset):
                                                    self.seed,
                                                    self.name,
                                                    self.binary_head)
+        # >>>
+        # raise Exception("hi.")
+        # pax({"samples_mapping": self.samples_mapping})
+        # <<<
 
         # >>>
-        # from lutil import pax
         # if torch.distributed.get_rank() == 0:
         #     print(self.samples_mapping[:100])
         # pax(0, {
@@ -107,11 +123,10 @@ class BertDataset(torch.utils.data.Dataset):
         # We % 2**32 since numpy requres the seed to be between 0 and 2**32 - 1
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2**32))
         # >>>
-        from lutil import pax
         pax(0, {
-            "start_idx" : start_idx,
-            "end_idx" : end_idx,
-            "seq_length" : seq_length,
+            "start_idx" : int(start_idx),
+            "end_idx" : int(end_idx),
+            "seq_length" : int(seq_length),
             "indexed_dataset / %d" % start_idx : self.indexed_dataset[start_idx],
             "sample" : sample,
             "seed" : self.seed,

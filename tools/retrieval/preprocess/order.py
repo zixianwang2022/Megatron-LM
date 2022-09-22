@@ -40,44 +40,6 @@ from lutil import pax
 # see: notebook/faiss/create_chunks.ipynb
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-def create_data_softlinks(data_files):
-
-    # Soft links. [ personal space ]
-    root_dir = \
-        "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/data"
-    for data_index, global_file in enumerate(data_files):
-
-        print("soft links, data %d / %d." % (data_index, len(data_files)))
-
-        local_dir = os.path.join(
-            root_dir,
-            os.path.basename(os.path.dirname(global_file)),
-        )
-        local_prefix = os.path.join(
-            local_dir,
-            os.path.splitext(os.path.basename(global_file))[0],
-        )
-        global_prefix = os.path.splitext(global_file)[0]
-
-        if not os.path.exists(local_dir):
-            os.mkdir(local_dir)
-
-        for ext in [ "bin", "idx" ]:
-            local_file = local_prefix + "." + ext
-            if not os.path.exists(local_file):
-                os.symlink(global_prefix + "." + ext, local_file)
-
-        # pax(0, {
-        #     "global_file" : global_file,
-        #     "root_dir" : root_dir,
-        #     "local_dir" : local_dir,
-        #     "local_prefix" : local_prefix,
-        #     "global_prefix" : global_prefix,
-        # })
-
-    pax(0, {"data_files": data_files})
-    # raise Exception("soft link.")
-
 # def dump_document_order():
 def save_document_order():
 

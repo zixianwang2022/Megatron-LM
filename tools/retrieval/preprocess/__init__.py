@@ -15,15 +15,25 @@
 
 import torch
 
-from .id import save_document_ids
+# from .id import save_document_ids
 # from .offset import save_document_offsets
-from .order import save_document_order
+# from .order import save_document_order
 
-def preprocess_chunks(retrieval_args, timer):
+# def preprocess_chunks(retrieval_args, timer):
+
+#     if torch.distributed.get_rank() != 0:
+#         return
+
+#     save_document_order()
+#     # save_document_offsets()
+#     save_document_ids(retrieval_args, timer)
+
+from .gpt_chunks import build_gpt_chunk_index
+
+def preprocess_chunks(args, timer):
 
     if torch.distributed.get_rank() != 0:
         return
 
-    save_document_order()
-    # save_document_offsets()
-    save_document_ids()
+    build_gpt_chunk_index(args, timer)
+    build_bert_chunks(args, timer)

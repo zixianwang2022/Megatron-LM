@@ -238,23 +238,24 @@ if __name__ == "__main__":
     # Print timing.
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
-        print("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
-        print(json.dumps(vars(args), indent = 4), flush = True)
+        # print("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
+        # print(json.dumps(vars(args), indent = 4), flush = True) # non-serial
         print("~~~~~~~~ [ TIMER OBJ ] ~~~~~~~~")
         print(json.dumps(timer.time_map, indent = 4), flush = True)
         print("~~~~~~~~~~~~~~~~")
-        print("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
+        # print("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
         print("[ TIMER STR ] = %s" % json.dumps(timer.time_map), flush = True)
         print("~~~~~~~~~~~~~~~~")
         timer.print()
         print("~~~~~~~~~~~~~~~~")
-        print("L-RESULT : %s, %s, %s, %d, %d, '%s' ... %s ... [ %s ]." % (
+        # print("L-RESULT : %s, %s, %s, %d, %d, '%s' ... %s ... [ %s ]." % (
+        print("L-RESULT : %s, %s, %d, %d ... %s ... [ %s ]." % (
             args.tasks[-1],
-            args.data_ty,
+            # args.data_ty,
             args.index_ty,
             args.ntrain,
             args.nadd,
-            args.profile_stage_stop,
+            # args.profile_stage_stop,
             timer.get_child_str(args.tasks[-1]),
             args.index_str,
         ), flush = True)

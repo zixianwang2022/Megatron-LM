@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import partial
-import torch
+# from functools import partial
+# import torch
 
 from megatron import (
     get_args,
@@ -22,16 +22,19 @@ from megatron import (
     print_rank_0,
 )
 from megatron.data.dataset_utils import build_train_valid_test_datasets
-from megatron.initialize import initialize_megatron
-from megatron.model import BertModel, ModelType
-from megatron.schedules import get_forward_backward_func
+# from megatron.initialize import initialize_megatron
+from megatron.model import (
+    # BertModel,
+    ModelType,
+)
+# from megatron.schedules import get_forward_backward_func
 from megatron.training import (
     build_train_valid_test_data_iterators,
     setup_model_and_optimizer,
 )
 from pretrain_bert import (
     # forward_step as forward_step_func,
-    get_batch,
+    # get_batch,
     model_provider,
     # train_valid_test_datasets_provider,
 )
@@ -40,52 +43,52 @@ from pretrain_bert import (
 from lutil import pax, print_seq
 # <<<
 
-def initialize_megatron_for_embedding(retrieval_args):
+# ... [no] ... def initialize_megatron_for_embedding(retrieval_args):
 
-    # pretrain(train_valid_test_datasets_provider, model_provider,
-    #          ModelType.encoder_or_decoder,
-    #          forward_step, args_defaults={'tokenizer_type': 'BertWordPieceLowerCase'})
+#     # pretrain(train_valid_test_datasets_provider, model_provider,
+#     #          ModelType.encoder_or_decoder,
+#     #          forward_step, args_defaults={'tokenizer_type': 'BertWordPieceLowerCase'})
 
-    initialize_megatron(
-        ignore_unknown_args = True,
-        args_defaults = {
-            # "tokenizer_type": "BertWordPieceCase",
-            "tokenizer_type": "BertWordPieceLowerCase",
-            "data_path" : [ retrieval_args.token_data_path ],
-            "vocab_file" : retrieval_args.token_vocab_file,
+#     initialize_megatron(
+#         ignore_unknown_args = True,
+#         args_defaults = {
+#             # "tokenizer_type": "BertWordPieceCase",
+#             "tokenizer_type": "BertWordPieceLowerCase",
+#             "data_path" : [ retrieval_args.token_data_path ],
+#             "vocab_file" : retrieval_args.token_vocab_file,
 
-            # "tensor_model_parallel_size" : 2,
-            # "pipeline_model_parallel_size" : 2,
-            "num_layers" : 24,
-            "hidden_size" : 1024,
-            "num_attention_heads" : 16,
-            # "micro_batch_size" : 2,
-            "micro_batch_size" : 128, # *2, 128, 1024
-            # "global_batch_size" : 16,
-            "seq_length" : 512,
-            "max_position_embeddings" : 512,
-            "train_iters" : 1, # 1000000,
-            # "save" : $CHECKPOINT_PATH,
-            "load" : retrieval_args.bert_load_path,
-            # "data_impl" : mmap,
-            # "split" : 949,50,1,
-            # "distributed_backend" : nccl,
-            "lr" : 0.0001,
-            # "lr_decay_style" : linear,
-            # "min_lr" : 1.0e-5,
-            # "lr_decay_iters" : 990000,
-            # "weight_decay" : 1e-2,
-            # "clip_grad" : 1.0,
-            # "lr_warmup_fraction" : .01,
-            # "log_interval" : 100,
-            # "save_interval" : 10000,
-            # "eval_interval" : 1000,
-            # "eval_iters" : 10,
-            # "fp16" : True,
-        },
-    )
+#             # "tensor_model_parallel_size" : 2,
+#             # "pipeline_model_parallel_size" : 2,
+#             "num_layers" : 24,
+#             "hidden_size" : 1024,
+#             "num_attention_heads" : 16,
+#             # "micro_batch_size" : 2,
+#             "micro_batch_size" : 128, # *2, 128, 1024
+#             # "global_batch_size" : 16,
+#             "seq_length" : 512,
+#             "max_position_embeddings" : 512,
+#             "train_iters" : 1, # 1000000,
+#             # "save" : $CHECKPOINT_PATH,
+#             "load" : retrieval_args.bert_load_path,
+#             # "data_impl" : mmap,
+#             # "split" : 949,50,1,
+#             # "distributed_backend" : nccl,
+#             "lr" : 0.0001,
+#             # "lr_decay_style" : linear,
+#             # "min_lr" : 1.0e-5,
+#             # "lr_decay_iters" : 990000,
+#             # "weight_decay" : 1e-2,
+#             # "clip_grad" : 1.0,
+#             # "lr_warmup_fraction" : .01,
+#             # "log_interval" : 100,
+#             # "save_interval" : 10000,
+#             # "eval_interval" : 1000,
+#             # "eval_iters" : 10,
+#             # "fp16" : True,
+#         },
+#     )
 
-# def model_provider(pre_process=True, post_process=True):
+# ... [no] ... def model_provider(pre_process=True, post_process=True):
 #     """Build the model."""
 
 #     print_rank_0('building BERT model ...')
@@ -239,11 +242,12 @@ def embed_batches(models, data_iterator):
                 **{"loss_dicts / %d" % i : d for i, d in enumerate(loss_dicts)},
             })
 
-def embed_chunks(retrieval_args, timer):
+# def embed_chunks(retrieval_args, timer):
+def embed_chunks(args, timer):
 
-    initialize_megatron_for_embedding(retrieval_args)
+    # initialize_megatron_for_embedding(retrieval_args)
 
-    megatron_args = get_args()
+    # megatron_args = get_args()
     # megatron_args.bert_binary_head = False
     # megatron_args.model_type = ModelType.encoder_or_decoder
 
@@ -252,9 +256,18 @@ def embed_chunks(retrieval_args, timer):
     # for m in models:
     #     m.post_process = False
 
+    # pax({
+    #     "args" : args,
+    #     "models" : models,
+    # })
+
     train_data_iterator, valid_data_iterator, test_data_iterator \
         = build_train_valid_test_data_iterators(
             train_valid_test_datasets_provider)
+
+    pax({
+        "train_data_iterator" : train_data_iterator,
+    })
 
     embed_batches(models, train_data_iterator)
 

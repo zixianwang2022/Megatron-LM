@@ -15,10 +15,12 @@
 
 # """Pretrain GPT"""
 # from functools import partial
+import h5py
+import joblib
 # import multiprocessing
 import numpy as np
 # import time
-# import torch
+import torch
 from tqdm import tqdm
 
 from megatron import (
@@ -97,7 +99,7 @@ def get_batch_for_preprocess(data_iterator):
         data = None
     tokens_ = data['text']
     tokens = tokens_[:, :-1].contiguous()
-    pax(0, {"data": data, "doc_ids": data["doc_ids"]})
+    # pax(0, {"data": data, "doc_ids": data["doc_ids"]})
     return tokens, [doc.item() for doc in data["doc_ids"]], data['idx']
 
 # def get_batch_for_preprocess_by_data(data):
@@ -200,8 +202,10 @@ def save_document_ids(retrieval_args, timer):
     update_train_iters(args)
     # <<<
 
-    args.iteration = args.start
-    args.consumed_train_samples = args.start  # consumed samples == iterations (bs=1)
+    # pax({"args": args})
+
+    args.iteration = args.embed_start_index
+    args.consumed_train_samples = args.embed_start_index  # consumed samples == iterations (bs=1)
 
     # pax(0, {"args": args})
 
@@ -242,16 +246,14 @@ def save_document_ids(retrieval_args, timer):
     if args.neighbors_path:
         data_path = args.neighbors_path
 
+    # pax({"data_path": data_path})
+
     if args.add_offset_doc_ids:
-        output_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}_seed" \
-                                  f"_{args.seed}_with_offset.tokens.h5py"
-        doc_ids_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}" \
-                                   f"_seed_{args.seed}_with_offset.doc_ids.pkl"
+        output_file = data_path + f"_start_{args.embed_start_index}_end_{args.embed_end_index}_ns_{args.train_iters}_sl_{args.seq_length}_seed_{args.seed}_with_offset.tokens.h5py"
+        doc_ids_file = data_path + f"_start_{args.embed_start_index}_end_{args.embed_end_index}_ns_{args.train_iters}_sl_{args.seq_length}_seed_{args.seed}_with_offset.doc_ids.pkl"
     else:
-        output_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}" \
-                                  f"_seed_{args.seed}.tokens.h5py"
-        doc_ids_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}" \
-                                   f"_seed_{args.seed}.doc_ids.pkl"
+        output_file = data_path + f"_start_{args.embed_start_index}_end_{args.embed_end_index}_ns_{args.train_iters}_sl_{args.seq_length}_seed_{args.seed}.tokens.h5py"
+        doc_ids_file = data_path + f"_start_{args.embed_start_index}_end_{args.embed_end_index}_ns_{args.train_iters}_sl_{args.seq_length}_seed_{args.seed}.doc_ids.pkl"
     print("Dumping: ", output_file)
     print("Dumping: ", doc_ids_file)
 
@@ -260,33 +262,38 @@ def save_document_ids(retrieval_args, timer):
     #     "doc_ids_file" : doc_ids_file,
     # })
 
-    import h5py
-    output = np.zeros((args.end - args.start, 2048), dtype='uint16')
+    output = np.zeros((args.embed_end_index - args.embed_start_index, 2048), dtype='uint16')
     doc_ids_list = []
 
     if args.do_train and args.train_iters > 0:
-        for iteration in tqdm(range(args.start, args.end)):
+        for iteration in tqdm(range(args.embed_start_index, args.embed_end_index)):
             timers('batch-generator').start()
             tokens, doc_ids, data_idx = get_batch_for_preprocess(train_data_iterator)
-            pax(0, {
-                "tokens" : tokens,
-                "doc_ids" : doc_ids,
-                "data_idx" : data_idx,
-            })
-            if iteration - args.start < 10:
+            # pax(0, {
+            #     "tokens" : tokens,
+            #     "doc_ids" : doc_ids,
+            #     "data_idx" : data_idx,
+            # })
+            if iteration - args.embed_start_index < 10:
                 print(tokens, doc_ids, data_idx)
-            output[iteration - args.start] = tokens[0].numpy()
+            output[iteration - args.embed_start_index] = tokens[0].numpy()
             doc_ids_list.append(doc_ids)
             timers('batch-generator').stop()
 
         print_datetime('after training is done')
 
-    raise Exception("ready to dump?")
+    # >>>
+    pax({
+        "output" : str(output.shape),
+        "doc_ids_list" : doc_ids_list,
+    })
+    # raise Exception("ready to dump?")
+    # <<<
 
     output_file = h5py.File(output_file, "w")
     output_file.create_dataset("tokens", data=output)
     output_file.close()
-    import joblib
+
     joblib.dump(doc_ids_list, doc_ids_file)
 
 

@@ -27,11 +27,18 @@ from megatron.data.dataset_utils import get_datasets_weights_and_num_samples
 from megatron.data.dataset_utils import get_train_valid_test_split_
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
+# >>>
+from lutil import pax, print_seq
+# <<<
 
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
                                     seq_length, seed, skip_warmup):
     """Build train, valid, and test datasets."""
+
+    # >>>
+    pax({"data_prefix": data_prefix})
+    # <<<
 
     # Single dataset.
     if len(data_prefix) == 1:
@@ -155,10 +162,16 @@ class GPTDataset(torch.utils.data.Dataset):
     # >>>
     def __init__(self, name, data_prefix, documents, indexed_dataset,
                  num_samples, seq_length, seed):
+
+        # >>>
         args = get_args()
         self.args = args
+        # <<<
+
         self.name = name
         self.indexed_dataset = indexed_dataset
+
+        # >>>
         self.return_doc_ids = args.return_doc_ids   # requires the bs=1
         self.return_neighbor_ids = args.return_neighbor_ids
         if args.add_offset_doc_ids:
@@ -169,6 +182,7 @@ class GPTDataset(torch.utils.data.Dataset):
                     self.offset = v
                     break
             print(data_prefix, "dataset offset", self.offset)
+        # <<<
 
         # Checks
         assert np.min(documents) >= 0
@@ -178,10 +192,13 @@ class GPTDataset(torch.utils.data.Dataset):
         self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
             self.name, data_prefix, documents, self.indexed_dataset.sizes,
             num_samples, seq_length, seed)
+
+        # >>>
         print("self.sample_idx.shape[0] - 1", self.sample_idx.shape[0] - 1)
         print("self.num_samples", num_samples)
         self.num_samples = num_samples
         self.data_prefix = data_prefix
+        # <<<
     # <<<
 
     def __len__(self):
@@ -190,6 +207,11 @@ class GPTDataset(torch.utils.data.Dataset):
         return self.sample_idx.shape[0] - 1
 
     def __getitem__(self, idx):
+
+        # >>>
+        orig_idx = idx
+        # <<<
+
         # Get the shuffled index.
         idx = self.shuffle_idx[idx]
         # Start and end documents and offsets.
@@ -203,28 +225,25 @@ class GPTDataset(torch.utils.data.Dataset):
         # <<<
         # If we are within the same document, just extract the chunk.
         if doc_index_f == doc_index_l:
-            # >>>
             doc_ids.append(self.doc_idx[doc_index_f].item())
-            pax(0, {"doc_ids": doc_ids})
+            # >>>
+            # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
             # <<<
             sample = self.indexed_dataset.get(self.doc_idx[doc_index_f],
                                               offset=offset_f,
                                               length=offset_l - offset_f + 1)
         else:
             # Otherwise, get the rest of the initial document.
-            # >>>
             doc_ids.append(self.doc_idx[doc_index_f].item())
-            pax(0, {"doc_ids": doc_ids})
-            # <<<
             sample_list = [self.indexed_dataset.get(self.doc_idx[doc_index_f],
                                                     offset=offset_f)]
             # Loop over all in between documents and add the entire document.
             for i in range(doc_index_f + 1, doc_index_l):
-                # >>>
                 doc_ids.append(self.doc_idx[i].item())
-                pax(0, {"doc_ids": doc_ids})
-                # <<<
                 sample_list.append(self.indexed_dataset.get(self.doc_idx[i]))
+            # >>>
+            # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
+            # <<<
             # And finally add the relevant portion of last document.
             sample_list.append(self.indexed_dataset.get(
                 self.doc_idx[doc_index_l],
@@ -239,7 +258,7 @@ class GPTDataset(torch.utils.data.Dataset):
                     'doc_ids': doc_ids,
                     'idx': np.int32(orig_idx),
                     'dataset_ids': [self.data_prefix]}
-            pax(0, {"data": data})
+            # pax(0, {"data": data})
             return data
         # <<<
         else:
