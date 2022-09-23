@@ -286,52 +286,6 @@ def build_chunk_indexes(args, workdir):
     })
     # <<<
 
-    raise Exception("finished creating chunks.")
-
-    # joblib.dump(orders, "order.pkl")
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # ['order.pkl']
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # f = h5py.File("sampled_pretraining_corpus" + ".chunks.hdf5", "w")
-    # sampled_tot = 300000000
-    # dset = f.create_dataset("chunks", (sampled_tot,64), dtype="uint16")
-
-    # pointer = 0
-    # for order in tqdm(orders):
-    #     dataset = order[0]
-    #     ratio = order[1]
-    #     size = int(round(float(sampled_tot) * ratio))
-
-    #     rf = h5py.File(dataset, "r")
-    #     data = rf["chunks"]
-    #     dset[pointer:pointer + size] = data[:size]
-    #     pointer += size
-
-    # f.close()
-
-    # f = h5py.File("pretraining_corpus" + ".chunks.hdf5", "r")
-
-    # f['chunks'][2323453]
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # array([  547, 20467, 45427,    13,   632,   561,  1011,  4647,   284,
-    # #        30282,   262,  3580,  1022,  3288,   290,  7593,  4808,  7645,
-    # #           62, 27997,    13,  1892, 12362,    11,   262,  3288,  4808,
-    # #         7645,    62, 27997,   287,  9215,  2900,   503,   284,   307,
-    # #        13205,    11,  9472,   262,  7593,   318, 21499,  2728,  2279,
-    # #          422,  4890,   284,  2612,  4369,   284, 47906, 15885,   198,
-    # #          198,  1135,   783,   760,   326, 23426,   960,  8201,  5384,
-    # #          960], dtype=uint16)
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # f['chunks'].shape
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # (5334816766, 64)
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # raise Exception("it worked?")
+    # raise Exception("finished creating chunks.")
 
 # eof
