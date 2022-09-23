@@ -136,6 +136,7 @@ def save_document_order(args, workdir):
     # data_prefixes = [ os.path.splitext(f)[0] for f in data_files ]
     # data_names = [ Path(f).stem for f in data_files ]
 
+    # Data metadata.
     assert len(args.data_path) % 2 == 0, \
         "currently, only blendable dataset is supported."
     data_metas = []
@@ -152,6 +153,9 @@ def save_document_order(args, workdir):
             "name" : name,
             "chunk_index_path" : get_single_chunk_index_path(workdir, name)
         })
+
+    # Deterministic dataset order (alphabetical).
+    data_metas.sort(key = lambda m : m["prefix"])
 
     # pax({
     #     "data_metas" : data_metas,
