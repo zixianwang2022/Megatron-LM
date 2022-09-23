@@ -16,6 +16,7 @@
 # import glob
 import h5py
 # import joblib
+import json
 import numpy as np
 import os
 from pathlib import Path
@@ -42,50 +43,40 @@ from lutil import pax
 # see: notebook/faiss/create_chunks.ipynb
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-# def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
-#     """Build indexed dataset."""
-#     print(' > building dataset index ...')
+def get_sorted_dataset_metadatas(args, workdir):
 
-#     start_time = time.time()
-#     indexed_dataset = make_indexed_dataset(data_prefix,
-#                                            data_impl,
-#                                            skip_warmup)
-#     print(' > finished creating indexed dataset in {:4f} '
-#                  'seconds'.format(time.time() - start_time))
-#     print('    number of documents: {}'.format(
-#         indexed_dataset.sizes.shape[0]))
+    assert len(args.data_path) % 2 == 0, \
+        "currently, only blendable dataset is supported."
 
-#     return indexed_dataset
+    # Data metadata.
+    data_metas = []
+    for i in range(0, len(args.data_path), 2):
+        ratio = float(args.data_path[i])
+        prefix = args.data_path[i + 1]
+        path = prefix + ".bin"
+        name = os.path.basename(prefix)
+        assert os.path.exists(path)
+        data_metas.append({
+            "ratio" : ratio,
+            "prefix" : prefix,
+            "path" : path,
+            "name" : name,
+            "chunk_index_path" : get_single_chunk_index_path(workdir, name)
+        })
 
-# def get_database_and_index(indexed_dataset):
+    # Deterministic dataset order (alphabetical).
+    data_metas.sort(key = lambda m : m["prefix"])
 
-#     size = indexed_dataset.sizes.shape[0]
-#     train = int(round(float(size) * 0.98))
-#     tot = 0
+    return data_metas
 
-#     databases = []
-#     indexes = []
+def save_dataset_metadatas(workdir, data_metas):
 
-#     for document_id, document in enumerate(tqdm(indexed_dataset)):
-#         if document_id == train:
-#             break
-#         eod = document[-1]
-#         document = document[:-1]
-#         token_no = len(document)
-#         tot += token_no
-#         chunks = int(np.ceil(token_no / 64))
+    # Save dataset order.
+    order_path = os.path.join(workdir, "order.json")
+    with open(order_path, "w") as f:
+        json.dump(data_metas, f)
 
-#         for i in range(chunks):
-#             tokens = document[i * 64:(i+1) *64]
-#             if len(tokens) < 64:
-#                 pad = np.array([eod] * (64 - len(tokens)), dtype='uint16')
-#                 tokens = np.hstack((tokens, pad))
-#             assert len(tokens) == 64
-#             databases.append(tokens)
-#             indexes.append(document_id)
-#     return databases, indexes
-# def build_single_chunk_index(args, indexed_dataset):
-def build_chunk_index(args, indexed_dataset):
+def build_individual_chunk_index(args, indexed_dataset):
 
     size = indexed_dataset.sizes.shape[0]
     train = int(round(float(size) * 0.98))
@@ -122,59 +113,10 @@ def build_chunk_index(args, indexed_dataset):
     # return eods, chunk_index
     return chunk_index
 
-# def dump_document_order():
-def save_document_order(args, workdir):
+def build_individual_chunk_indexes(args, workdir, data_metas):
 
-    assert torch.distributed.get_rank() == 0, "single process operation."
-
-    # args = get_args()
-
-    # Data files.
-    # # data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
-    # pax({"data_files": data_files})
-    # data_files = [ path for path in data_files if os.path.exists(path) ]
-    # data_prefixes = [ os.path.splitext(f)[0] for f in data_files ]
-    # data_names = [ Path(f).stem for f in data_files ]
-
-    # Data metadata.
-    assert len(args.data_path) % 2 == 0, \
-        "currently, only blendable dataset is supported."
-    data_metas = []
-    for i in range(0, len(args.data_path), 2):
-        ratio = float(args.data_path[i])
-        prefix = args.data_path[i + 1]
-        path = prefix + ".bin"
-        name = os.path.basename(prefix)
-        assert os.path.exists(path)
-        data_metas.append({
-            "ratio" : ratio,
-            "prefix" : prefix,
-            "path" : path,
-            "name" : name,
-            "chunk_index_path" : get_single_chunk_index_path(workdir, name)
-        })
-
-    # Deterministic dataset order (alphabetical).
-    data_metas.sort(key = lambda m : m["prefix"])
-
-    # pax({
-    #     "data_metas" : data_metas,
-    #     "data_metas / 0" : data_metas[0],
-    # })
-
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # create_data_softlinks(data_files)
-    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # Build chunk indexes.
-    # for data_index, data_file in enumerate(data_files):
-    #     data_name = data_names[data_index]
-    #     data_prefix = data_prefixes[data_index]
-    #     chunk_index_file = ?
     for data_index, data_meta in enumerate(data_metas):
 
-        # data_name = data_meta["name"]
-        # data_prefix = data_meta["prefix"]
         chunk_index_path = data_meta["chunk_index_path"]
 
         if os.path.exists(chunk_index_path):
@@ -183,8 +125,8 @@ def save_document_order(args, workdir):
         print(" > creating chunk index, dataset %d / %d ... '%s'." %
               (data_index, len(data_metas), data_meta["name"]))
 
-        indexed_dataset = make_indexed_dataset(data_prefix, "mmap", True)
-        chunk_index = build_chunk_index(args, indexed_dataset)
+        indexed_dataset = make_indexed_dataset(data_meta["prefix"], "mmap", True)
+        chunk_index = build_individual_chunk_index(args, indexed_dataset)
 
         print(" > saving chunk index.")
 
@@ -194,6 +136,8 @@ def save_document_order(args, workdir):
         f.close()
 
         print(" > finished saving chunk index.")
+
+def build_full_chunk_index(args, workdir, data_metas):
 
     # Count total chunks.
     total_chunks = 0
@@ -260,11 +204,24 @@ def save_document_order(args, workdir):
 
         f.close()
 
-    # Save dataset order.
-    order_path = os.path.join(workdir, "order.json")
-    with open(order_path, "w") as f:
-        json.dump(data_metas, f)
-    
+# def dump_document_order():
+def save_document_order(args, workdir):
+
+    assert torch.distributed.get_rank() == 0, "single process operation."
+
+    # Dataset metadata. (sorted, official order)
+    data_metas = get_sorted_dataset_metadatas(args, workdir)
+    save_dataset_metadatas(workdir, data_metas)
+
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # create_data_softlinks(data_files)
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    # Build chunk indexes.
+    build_individual_chunk_indexes(args, workdir, data_metas)
+    build_full_chunk_index(args, workdir, data_metas)
+    build_sampled_chunk_index(args, workdir, data_metas)
+
     raise Exception("finished creating chunks.")
 
     # joblib.dump(orders, "order.pkl")
