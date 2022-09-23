@@ -23,13 +23,18 @@ from lutil import pax
 # def get_chunk_index_path(args, data_prefix):
 #     pax({"workdir": args.retrieval_workdir})
 #     return data_prefix + f".chunk_index_n{args.retriever_chunk_len}.hdf5"
-def get_single_chunk_index_path(workdir, data_name):
+# def get_single_chunk_index_path(workdir, data_name):
+def get_individual_chunk_index_path(workdir, data_name):
     # return os.path.join(workdir, f"{data_name}.chunk_index.hdf5")
     return os.path.join(workdir, f"chunk_index.{data_name}.hdf5")
 
 
-def get_concat_chunk_index_path(workdir):
-    return os.path.join(workdir, f"chunk_index.concat.hdf5")
+def get_full_chunk_index_path(workdir):
+    return os.path.join(workdir, f"chunk_index.full.hdf5")
+
+
+def get_sampled_chunk_index_path(workdir):
+    return os.path.join(workdir, f"chunk_index.sampled.hdf5")
 
 
 # def get_chunk_embedding_path(args, data_prefix):

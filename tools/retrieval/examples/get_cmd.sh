@@ -89,6 +89,7 @@ RETRIEVAL_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/workdir
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
 
 RETRIEVAL_CHUNK_LEN=64
+RETRIEVAL_NCHUNKS_SAMPLED=300000000
 SEED=1001
 EMBED_START_INDEX=0
 EMBED_END_INDEX=100 # 000
@@ -207,6 +208,7 @@ RETRIEVAL_ARGS=" \
 
     --retrieval-workdir ${RETRIEVAL_WORKDIR} \
     --retrieval-chunk-len ${RETRIEVAL_CHUNK_LEN} \
+    --retrieval-nchunks-sampled ${RETRIEVAL_NCHUNKS_SAMPLED} \
     --return-doc-ids \
     --embed-start-index ${EMBED_START_INDEX} \
     --embed-end-index ${EMBED_END_INDEX} \
