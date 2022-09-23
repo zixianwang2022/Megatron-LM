@@ -79,7 +79,7 @@ def save_dataset_metadatas(workdir, data_metas):
     # Save dataset order.
     order_path = os.path.join(workdir, "order.json")
     with open(order_path, "w") as f:
-        json.dump(data_metas, f)
+        json.dump(data_metas, f, indent = 4) # remove 'indent', once debugged.
 
 def build_individual_chunk_index(args, indexed_dataset):
 
@@ -143,52 +143,34 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
 
         print(" > finished saving chunk index.")
 
-    # # >>>
-    # # rename.
-    # for m in data_metas:
-    #     print("rename '%s'." % m["name"])
-    #     f = h5py.File(m["chunk_index_path"], "w")
-    #     f["chunks"] = f["index"]
-    #     del f["index"]
-    #     f.close()
-    # raise Exception("renamed.")
-    # # <<<
-
     # Set n_chunks, n_chunks_sampled (for unambiguity).
     print(" > compute n_chunks, n_chunks_sampled.")
-    for data_index, data_meta in enumerate(tqdm(data_metas)):
+    for data_index, data_meta in enumerate(data_metas):
 
         f = h5py.File(data_meta["chunk_index_path"], "r")
-        data_meta["n_chunks"] = len(f["index"])
+        data_meta["n_chunks"] = len(f["chunks"])
         f.close()
 
         data_meta["n_chunks_sampled"] = \
             int(round(args.retrieval_nchunks_sampled * data_meta["ratio"]))
 
-        pax({"data_meta": data_meta})
+        # pax({"data_meta": data_meta})
 
-def build_full_chunk_index(args, workdir, data_metas):
-
-    # Count total chunks.
-    n_chunks = 0
-    dtype = None
+    print(" > compute document offsets.")
+    document_offset = 0
     for data_index, data_meta in enumerate(data_metas):
 
         f = h5py.File(data_meta["chunk_index_path"], "r")
-        n_chunks += len(f["index"])
-        dtype = f["index"].dtype
+        data_meta["document_offset"] = document_offset
+        document_offset += f["chunks"][-1, 0].item()
         f.close()
 
-        print(" > counting chunks, dataset %d / %d, total %d ... '%s'." %
-              (data_index, len(data_metas), n_chunks, data_meta["name"]))
+    # pax({"document_offsets": [ m["document_offset"] for m in data_metas ]})
 
-    # pax({
-    #     "n_chunks" : n_chunks,
-    #     "dtype" : dtype,
-    # })
+def build_full_chunk_index(args, workdir, data_metas):
 
-    # Full chunk index path.
     full_index_path = get_full_chunk_index_path(workdir)
+    n_chunks = sum(m["n_chunks"] for m in data_metas)
 
     # Delete existing chunk index if incorrect size.
     if os.path.exists(full_index_path):
@@ -199,14 +181,13 @@ def build_full_chunk_index(args, workdir, data_metas):
         f.close()
 
         if n_chunks != n_alloc or n_chunks != n_written:
-            raise Exception("temporarily disabled.")
             os.remove(full_index_path)
 
     # Build full chunk index.
     if not os.path.exists(full_index_path):
 
         f = h5py.File(full_index_path, "w")
-        chunk_index = f.create_dataset("chunks", (n_chunks, 3), dtype = dtype)
+        chunk_index = f.create_dataset("chunks", (n_chunks, 3), dtype = "i8")
         dataset_offsets = f.create_dataset(
             "dataset_offsets", (len(data_metas) + 1,), dtype = "uint64")
         n_written = f.create_dataset("n_written", (1,), dtype = "uint64")
@@ -219,7 +200,7 @@ def build_full_chunk_index(args, workdir, data_metas):
                   (data_index, len(data_metas), data_meta["name"]))
 
             g = h5py.File(data_meta["chunk_index_path"], "r")
-            data = g["index"]
+            data = g["chunks"]
             chunk_index[start_index:start_index + len(data)] = data
             start_index += len(data)
             dataset_offsets[data_index + 1] = start_index
@@ -228,42 +209,14 @@ def build_full_chunk_index(args, workdir, data_metas):
 
         f.close()
 
+
 def build_sampled_chunk_index(args, workdir, data_metas):
 
-    # full_index_path = get_full_chunk_index_path(workdir)
     sampled_index_path = get_sampled_chunk_index_path(workdir)
-
-    # # Count total chunks.
-    # f = h5py.File(full_index_path, "r")
-    # n_chunks_full = len(f["chunks"])
-    # # pax({
-    # #     "dataset_offsets" : np.copy(f["dataset_offsets"]),
-    # #     "n_written" : np.copy(f["n_written"]),
-    # # })
-    # f.close()
-
-    # >>>>>>>>  [ **** hack, until using full dataset. **** ] >>>>>>>>
-    # Compute sampled chunk count.
-    # n_chunks_sampled = reduce(
-    #     lambda acc, m : acc + int(round(args.retrieval_nchunks_sampled * m["ratio"])),
-    #     data_metas,
-    #     0,
-    # )
-    n_chunks_sampled = sum(m["n_chunks_sampled"] for m in data_metas)
-    # <<<<<<<<
-
-    pax({
-        "full_index_path" : full_index_path,
-        "sampled_index_path" : sampled_index_path,
-        "n_chunks_full" : n_chunks_full,
-        "n_chunks_sampled / arg" : args.retrieval_nchunks_sampled,
-        "n_chunks_sampled" : n_chunks_sampled,
-    })
+    n_chunks = sum(m["n_chunks_sampled"] for m in data_metas)
 
     # Delete existing chunk index if incorrect size.
     if os.path.exists(sampled_index_path):
-
-        raise Exception("sampled index exists.")
 
         f = h5py.File(sampled_index_path)
         n_alloc = len(f["chunks"])           # total allocated
@@ -271,14 +224,13 @@ def build_sampled_chunk_index(args, workdir, data_metas):
         f.close()
 
         if n_chunks != n_alloc or n_chunks != n_written:
-            raise Exception("temporarily disabled [ sampled ].")
             os.remove(sampled_index_path)
 
     # Build sampled chunk index.
     if not os.path.exists(sampled_index_path):
 
-        f = h5py.File(chunk_index_path, "w")
-        chunk_index = f.create_dataset("chunks", (n_chunks, 3), dtype = dtype)
+        f = h5py.File(sampled_index_path, "w")
+        chunk_index = f.create_dataset("chunks", (n_chunks, 3), dtype = "i8")
         dataset_offsets = f.create_dataset(
             "dataset_offsets", (len(data_metas) + 1,), dtype = "uint64")
         n_written = f.create_dataset("n_written", (1,), dtype = "uint64")
@@ -291,24 +243,24 @@ def build_sampled_chunk_index(args, workdir, data_metas):
                   (data_index, len(data_metas), data_meta["name"]))
 
             g = h5py.File(data_meta["chunk_index_path"], "r")
-            data = g["index"]
-            # dddn = 
-            raise Exception("hi.")
+            data = g["chunks"][:data_meta["n_chunks_sampled"]]
             chunk_index[start_index:start_index + len(data)] = data
             start_index += len(data)
-            chunks_written[0] = start_index
+            dataset_offsets[data_index + 1] = start_index
+            n_written[0] = start_index
             g.close()
 
         f.close()
 
+
 # def dump_document_order():
-def save_document_order(args, workdir):
+# def save_document_order(args, workdir):
+def build_chunk_indexes(args, workdir):
 
     assert torch.distributed.get_rank() == 0, "single process operation."
 
     # Dataset metadata. (sorted, official order)
     data_metas = get_sorted_dataset_metadatas(args, workdir)
-    save_dataset_metadatas(workdir, data_metas)
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # create_data_softlinks(data_files)
@@ -318,6 +270,21 @@ def save_document_order(args, workdir):
     build_individual_chunk_indexes(args, workdir, data_metas)
     build_full_chunk_index(args, workdir, data_metas)
     build_sampled_chunk_index(args, workdir, data_metas)
+
+    # Save dataset metadata. (fully annotated at this point)
+    save_dataset_metadatas(workdir, data_metas)
+
+    # >>>
+    f = h5py.File(get_full_chunk_index_path(workdir), "r")
+    g = h5py.File(get_sampled_chunk_index_path(workdir), "r")
+    pax({
+        "full / chunks" : str(f["chunks"].shape),
+        "sampled / chunks" : str(g["chunks"].shape),
+        "full / offsets" : np.copy(f["dataset_offsets"]).tolist(),
+        "sampled / offsets" : np.copy(g["dataset_offsets"]).tolist(),
+        
+    })
+    # <<<
 
     raise Exception("finished creating chunks.")
 

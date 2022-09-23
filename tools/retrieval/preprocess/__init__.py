@@ -18,7 +18,7 @@ import torch
 
 # from .id import save_document_ids
 # from .offset import save_document_offsets
-from .order import save_document_order
+from .index_chunks import build_chunk_indexes
 
 def preprocess_chunks(args, timer):
 
@@ -30,6 +30,6 @@ def preprocess_chunks(args, timer):
     os.makedirs(workdir, exist_ok = True)
 
     # Stages.
-    save_document_order(args, workdir)
+    build_chunk_indexes(args, workdir)
     save_document_offsets(args, workdir)
     save_document_ids(args, workdir, timer)
