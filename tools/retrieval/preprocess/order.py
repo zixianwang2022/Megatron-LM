@@ -27,12 +27,12 @@ from tqdm import tqdm
 # sys.path.append("/home/boxinw-src/megatron-lm/megatron")
 # sys.path.append("/home/boxinw-src/megatron-lm/")
 
-from megatron import get_args
+# from megatron import get_args
 # from megatron.data import indexed_dataset
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 # from megatron.tokenizer import build_tokenizer
 
-from .utils import get_single_chunk_index_path
+from .utils import get_single_chunk_index_path, get_concat_chunk_index_path
 
 # >>>
 from lutil import pax
@@ -127,99 +127,110 @@ def save_document_order(args, workdir):
 
     assert torch.distributed.get_rank() == 0, "single process operation."
 
-    args = get_args()
+    # args = get_args()
 
     # Data files.
-    data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
-    data_files = [ path for path in data_files if os.path.exists(path) ]
+    # # data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
+    # pax({"data_files": data_files})
+    # data_files = [ path for path in data_files if os.path.exists(path) ]
+    # data_prefixes = [ os.path.splitext(f)[0] for f in data_files ]
+    # data_names = [ Path(f).stem for f in data_files ]
+
+    assert len(args.data_path) % 2 == 0, \
+        "currently, only blendable dataset is supported."
+    data_metas = []
+    for i in range(0, len(args.data_path), 2):
+        ratio = float(args.data_path[i])
+        prefix = args.data_path[i + 1]
+        path = prefix + ".bin"
+        name = os.path.basename(prefix)
+        assert os.path.exists(path)
+        data_metas.append({
+            "ratio" : ratio,
+            "prefix" : prefix,
+            "path" : path,
+            "name" : name,
+            "chunk_index_path" : get_single_chunk_index_path(workdir, name)
+        })
+
+    # pax({
+    #     "data_metas" : data_metas,
+    #     "data_metas / 0" : data_metas[0],
+    # })
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # create_data_softlinks(data_files)
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     # Build chunk indexes.
-    for data_index, data_file in enumerate(data_files):
+    # for data_index, data_file in enumerate(data_files):
+    #     data_name = data_names[data_index]
+    #     data_prefix = data_prefixes[data_index]
+    #     chunk_index_file = ?
+    for data_index, data_meta in enumerate(data_metas):
 
-        data_name = Path(data_file).stem
-        data_prefix = os.path.splitext(data_file)[0]
-        chunk_index_file = get_single_chunk_index_path(workdir, data_name)
+        data_name = data_meta["name"]
+        data_prefix = data_meta["prefix"]
+        chunk_index_path = data_meta["chunk_index_path"]
 
-        if os.path.exists(chunk_index_file):
+        if os.path.exists(chunk_index_path):
             continue
 
         print(" > creating chunk index, dataset %d / %d ... '%s'." %
-              (data_index, len(data_files), data_name))
+              (data_index, len(data_metas), data_name))
 
-        # indexed_dataset = get_indexed_dataset_(data_prefix, "mmap", True)
         indexed_dataset = make_indexed_dataset(data_prefix, "mmap", True)
         chunk_index = build_chunk_index(args, indexed_dataset)
 
         print(" > saving chunk index.")
 
-        f = h5py.File(chunk_index_file, "w")
+        f = h5py.File(chunk_index_path, "w")
         # dset = f.create_dataset("eods", data=eods)
         dset = f.create_dataset("index", data=chunk_index)
         f.close()
 
         print(" > finished saving chunk index.")
 
+    # Count total chunks.
+    total_chunks = 0
+    for data_index, data_meta in enumerate(data_metas):
+
+        f = h5py.File(data_meta["chunk_index_path"], "r")
+        total_chunks += len(f["index"])
+        f.close()
+
+        print(" > counting chunks, dataset %d / %d, total %d ... '%s'." %
+              (data_index, len(data_metas), total_chunks, data_name))
+
+
+    # Concatenated chunks index.
+    chunk_index_path = get_concat_chunk_index_path(workdir)
+
+    # Delete existing chunk index if incorrect size.
+    if os.path.exists(chunk_index_path):
+
+        raise Exception("concat chunks exist.")
+
+        f = h5py.File(chunk_index_path)
+        total_chunks_existing = len(f["index"])
+        f.close()
+
+        if total_chunks != total_chunks_existing:
+            raise Exception("delete existing")
+            os.remove(chunk_index_path)
+
+    # Build concatenated chunk index.
+    if not os.path.exists(chunk_index_path):
+
+        raise Exception("concat chunk indexes.")
+
+    pax({
+        # "args" : args,
+        "chunk_index_path" : chunk_index_path,
+    })
+
+    
     raise Exception("finished creating chunks.")
-
-    #######################################################################
-    #######################################################################
-    #######################################################################
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # BookCorpus2_ftfy_cleaned_id_shuf_text_document
-    # #  > building dataset index ...
-    # #     reading sizes...
-    # #     reading pointers...
-    # #     reading document index...
-    # #     creating numpy buffer of mmap...
-    # #     creating memory view of numpy buffer...
-
-    # #  > finished creating indexed dataset in 0.025186 seconds
-    # #     number of documents: 18766
-
-    # # stories_dedup0.7_shuf_cleaned_shuf_text_document
-    # #  > building dataset index ...
-    # #     reading sizes...
-    # #     reading pointers...
-    # #     reading document index...
-    # #     creating numpy buffer of mmap...
-    # #     creating memory view of numpy buffer...
-
-    # #  > finished creating indexed dataset in 0.016499 seconds
-    # #     number of documents: 670273
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # hdatasets = glob.glob("*.hdf5")
-
-    # tot = 0
-    # for dataset in hdatasets:
-    #     f = h5py.File(dataset, "r")
-    #     print(dataset, len(f['chunks']))
-    #     tot += len(f['chunks'])
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # Books3_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 393262503
-    # # Pile-CC_id_cleaned_shuf_text_document.chunks.hdf5 786507531
-    # # ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 319135133
-    # # OpenWebText2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 233910963
-    # # NIH_ExPorter_ftfy_id_shuf_text_document.chunks.hdf5 5235460
-    # # Gutenberg_PG-19_ftfy_cleaned_id_cleaned_shuf_text_document.chunks.hdf5 40814306
-    # # CC-2021-04_id_cleaned_shuf_text_document.chunks.hdf5 1309682321
-    # # Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5 66630804
-    # # rn_dedup_shuf_cleaned_0.7_cleaned_shuf_text_document.chunks.hdf5 349458767
-    # # PubMed_Abstracts_ftfy_id_shuf_text_document.chunks.hdf5 74996373
-    # # stories_dedup0.7_shuf_cleaned_shuf_text_document.chunks.hdf5 80830687
-    # # Github_ftfy_id_shuf_text_document.chunks.hdf5 377166564
-    # # BookCorpus2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 23578839
-    # # StackExchange_ftfy_id_shuf_text_document.chunks.hdf5 184906924
-    # # CC-2020-50_id_cleaned_shuf_text_document.chunks.hdf5 1088699591
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # print(tot)
 
     # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # # 5334816766

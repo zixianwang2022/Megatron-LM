@@ -28,6 +28,10 @@ def get_single_chunk_index_path(workdir, data_name):
     return os.path.join(workdir, f"chunk_index.{data_name}.hdf5")
 
 
+def get_concat_chunk_index_path(workdir):
+    return os.path.join(workdir, f"chunk_index.concat.hdf5")
+
+
 # def get_chunk_embedding_path(args, data_prefix):
 #     return data_prefix + f".chunk_embed_n{args.retriever_chunk_len}.hdf5"
 
