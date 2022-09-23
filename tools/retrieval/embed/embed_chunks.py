@@ -44,10 +44,10 @@ from pretrain_bert import (
     model_provider,
     # train_valid_test_datasets_provider,
 )
-from tools.retrieval.preprocess.utils import (
-    get_chunk_index_path,
-    get_chunk_embedding_path,
-)
+# from tools.retrieval.preprocess.utils import (
+#     get_chunk_index_path,
+#     get_chunk_embedding_path,
+# )
 
 from .chunk_dataset import GPTChunkDataset
 
@@ -286,7 +286,6 @@ def get_chunk_data_loader(args, models, data_prefix):
     # >>>
     pax({
         "chunk_index" : chunk_index,
-        "chunk_dataset" : chunk_dataset,
         "dataset" : dataset,
         "batch_sampler" : batch_sampler,
         "data_loader" : data_loader,

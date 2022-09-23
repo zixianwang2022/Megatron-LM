@@ -52,7 +52,7 @@ from tools.retrieval.index.utils import (
     get_index_str,
 )
 # from tools.retrieval.query import query_index
-from tools.retrieval.preprocess import build_chunk_index
+from tools.retrieval.preprocess import preprocess_chunks
 from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
 from tools.retrieval.verify import verify_codes, verify_nbrs
@@ -87,7 +87,7 @@ def add_retrieval_args(parser):
     #     "rand-100k",
     # ])
     # group.add_argument("--data-dir", required = True)
-    group.add_argument("--index-dir", required = True)
+    # group.add_argument("--index-dir", required = True)
     group.add_argument("--index-ty", required = True, choices = [
         "faiss-base",
         "faiss-decomp",
@@ -101,7 +101,8 @@ def add_retrieval_args(parser):
     # group.add_argument("--local_rank", type = int, default = None)
 
     # >>>
-    group.add_argument('--retriever-chunk-len', type=int)
+    group.add_argument("--retrieval-workdir", required = True)
+    group.add_argument('--retrieval-chunk-len', type=int) # or retriever?
     group.add_argument('--weight', type=float, default=0.5)
     group.add_argument('--adaptor', action='store_true', default=False)
     group.add_argument('--return-doc-ids', action='store_true', default=False)
@@ -166,8 +167,8 @@ if __name__ == "__main__":
     # Get input data batch paths (for training, adding, querying, verifying).
     if not any([ k in args.tasks for k in [
             "copy-corpus-dirty",
-            # "preprocess-chunks",
-            "build-chunk-index",
+            "preprocess-chunks",
+            # "build-chunk-index",
             "embed-chunks",
     ]]):
         (
@@ -197,10 +198,10 @@ if __name__ == "__main__":
             split_data_files(args, timer)
         elif task == "gen-rand-data":
             gen_rand_data(args, timer)
-        # elif task == "preprocess-chunks":
-        #     preprocess_chunks(args, timer)
-        elif task == "build-chunk-index":
-            build_chunk_index(args, timer)
+        elif task == "preprocess-chunks":
+            preprocess_chunks(args, timer)
+        # elif task == "build-chunk-index":
+        #     build_chunk_index(args, timer)
         elif task == "embed-chunks":
             embed_chunks(args, timer)
         elif task == "train":

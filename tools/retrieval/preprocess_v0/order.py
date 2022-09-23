@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import glob
+import glob
 import h5py
 # import joblib
 import numpy as np
 import os
 from pathlib import Path
-# import time
+import time
 import torch
 from tqdm import tqdm
 
@@ -32,8 +32,6 @@ from megatron import get_args
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 # from megatron.tokenizer import build_tokenizer
 
-from .utils import get_single_chunk_index_path
-
 # >>>
 from lutil import pax
 # <<<
@@ -42,128 +40,130 @@ from lutil import pax
 # see: notebook/faiss/create_chunks.ipynb
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-# def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
-#     """Build indexed dataset."""
-#     print(' > building dataset index ...')
-
-#     start_time = time.time()
-#     indexed_dataset = make_indexed_dataset(data_prefix,
-#                                            data_impl,
-#                                            skip_warmup)
-#     print(' > finished creating indexed dataset in {:4f} '
-#                  'seconds'.format(time.time() - start_time))
-#     print('    number of documents: {}'.format(
-#         indexed_dataset.sizes.shape[0]))
-
-#     return indexed_dataset
-
-# def get_database_and_index(indexed_dataset):
-
-#     size = indexed_dataset.sizes.shape[0]
-#     train = int(round(float(size) * 0.98))
-#     tot = 0
-
-#     databases = []
-#     indexes = []
-
-#     for document_id, document in enumerate(tqdm(indexed_dataset)):
-#         if document_id == train:
-#             break
-#         eod = document[-1]
-#         document = document[:-1]
-#         token_no = len(document)
-#         tot += token_no
-#         chunks = int(np.ceil(token_no / 64))
-
-#         for i in range(chunks):
-#             tokens = document[i * 64:(i+1) *64]
-#             if len(tokens) < 64:
-#                 pad = np.array([eod] * (64 - len(tokens)), dtype='uint16')
-#                 tokens = np.hstack((tokens, pad))
-#             assert len(tokens) == 64
-#             databases.append(tokens)
-#             indexes.append(document_id)
-#     return databases, indexes
-# def build_single_chunk_index(args, indexed_dataset):
-def build_chunk_index(args, indexed_dataset):
-
-    size = indexed_dataset.sizes.shape[0]
-    train = int(round(float(size) * 0.98))
-
-    # eods = []
-    chunk_index = []
-
-    for document_id, document in enumerate(tqdm(indexed_dataset)):
-
-        # >>>
-        # if document_id == 1000:
-        #     break
-        # <<<
-
-        if document_id == train:
-            break
-
-        eod = document[-1]
-        document = document[:-1]
-        document_len = len(document)
-
-        chunk_start_idxs = list(range(0, document_len, args.retrieval_chunk_len))
-        chunk_end_idxs = [min(document_len, s + args.retrieval_chunk_len)
-                          for s in chunk_start_idxs]
-
-        # eods.append(eod)
-        chunk_index.extend([(document_id, *idxs)
-                            for idxs in zip(chunk_start_idxs, chunk_end_idxs)])
-
-    print(' > converting chunk index to numpy.')
-    # eods = np.array(eods)
-    chunk_index = np.array(chunk_index)
-
-    # return eods, chunk_index
-    return chunk_index
-
 # def dump_document_order():
-def save_document_order(args, workdir):
+def save_document_order():
 
     assert torch.distributed.get_rank() == 0, "single process operation."
 
     args = get_args()
 
-    # Data files.
+    # pax(0, {
+    #     "args" : args,
+    #     "data_path" : args.data_path,
+    # })
+
+    def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
+        """Build indexed dataset."""
+        print(' > building dataset index ...')
+
+        start_time = time.time()
+        indexed_dataset = make_indexed_dataset(data_prefix,
+                                               data_impl,
+                                               skip_warmup)
+        print(' > finished creating indexed dataset in {:4f} '
+                     'seconds'.format(time.time() - start_time))
+        print('    number of documents: {}'.format(
+            indexed_dataset.sizes.shape[0]))
+
+        return indexed_dataset
+
     data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
     data_files = [ path for path in data_files if os.path.exists(path) ]
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # create_data_softlinks(data_files)
+    if 0:
+        create_data_softlinks(data_files)
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    # Build chunk indexes.
+    # pax(0, {"data_files": data_files})
+
+    # for hdf in existing_chunk_files:
+    #     f = h5py.File(hdf, "r")
+    #     print(hdf, f["chunks"].shape, f["document_id"][-1])
+
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # Books3_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 (393262503, 64) 190135
+    # ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5 (319135133, 64) 1189264
+    # NIH_ExPorter_ftfy_id_shuf_text_document.chunks.hdf5 (5235460, 64) 740365
+    # Gutenberg_PG-19_ftfy_cleaned_id_cleaned_shuf_text_document.chunks.hdf5 (40814306, 64) 26746
+    # CC-2021-04_id_cleaned_shuf_text_document.chunks.hdf5 (1309682321, 64) 94208202
+    # Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5 (66630804, 64) 5743989
+    # rn_dedup_shuf_cleaned_0.7_cleaned_shuf_text_document.chunks.hdf5 (349458767, 64) 28198167
+    # PubMed_Abstracts_ftfy_id_shuf_text_document.chunks.hdf5 (74996373, 64) 14877028
+    # CC-2020-50_id_cleaned_shuf_text_document.chunks.hdf5 (1088699591, 64) 77712318
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    def get_database_and_index(indexed_dataset):
+
+        size = indexed_dataset.sizes.shape[0]
+        train = int(round(float(size) * 0.98))
+        tot = 0
+
+        databases = []
+        indexes = []
+
+        for document_id, document in enumerate(tqdm(indexed_dataset)):
+            if document_id == train:
+                break
+            eod = document[-1]
+            document = document[:-1]
+            token_no = len(document)
+            tot += token_no
+            chunks = int(np.ceil(token_no / 64))
+
+            for i in range(chunks):
+                tokens = document[i * 64:(i+1) *64]
+                if len(tokens) < 64:
+                    pad = np.array([eod] * (64 - len(tokens)), dtype='uint16')
+                    tokens = np.hstack((tokens, pad))
+                assert len(tokens) == 64
+                databases.append(tokens)
+                indexes.append(document_id)
+        return databases, indexes
+
+    # for dataset in datasets[-6:]:
     for data_index, data_file in enumerate(data_files):
 
         data_name = Path(data_file).stem
         data_prefix = os.path.splitext(data_file)[0]
-        chunk_index_file = get_single_chunk_index_path(workdir, data_name)
+        chunk_file = data_prefix + ".chunks.hdf5"
 
-        if os.path.exists(chunk_index_file):
+        # pax(0, {
+        #     "data_file" : data_file,
+        #     "chunk_file" : chunk_file,
+        # })
+
+        if os.path.exists(chunk_file):
             continue
 
-        print(" > creating chunk index, dataset %d / %d ... '%s'." %
+        # pax(0, {"data_name": data_name, "data_prefix": data_prefix})
+        # print(data_name)
+
+        print("creating chunks, dataset %d / %d ... '%s'." %
               (data_index, len(data_files), data_name))
 
-        # indexed_dataset = get_indexed_dataset_(data_prefix, "mmap", True)
-        indexed_dataset = make_indexed_dataset(data_prefix, "mmap", True)
-        chunk_index = build_chunk_index(args, indexed_dataset)
+        indexed_dataset = get_indexed_dataset_(
+            data_prefix, # dataset[:-4],
+            "mmap",
+            True)
+        databases, indexes = get_database_and_index(indexed_dataset)
 
-        print(" > saving chunk index.")
+        database = np.vstack(databases)
+        index = np.array(indexes)
 
-        f = h5py.File(chunk_index_file, "w")
-        # dset = f.create_dataset("eods", data=eods)
-        dset = f.create_dataset("index", data=chunk_index)
+        f = h5py.File(chunk_file, "w")
+        dset = f.create_dataset("chunks", data=database)
+        dset = f.create_dataset("document_id", data=index)
         f.close()
 
-        print(" > finished saving chunk index.")
+        # pax(0, {
+        #     "data_file" : data_file,
+        #     "indexed_dataset" : type(indexed_dataset).__name__,
+        #     "database" : type(database).__name__,
+        #     "index" : type(index).__name__,
+        # })
 
-    raise Exception("finished creating chunks.")
+    # raise Exception("finished creating chunks.")
 
     #######################################################################
     #######################################################################

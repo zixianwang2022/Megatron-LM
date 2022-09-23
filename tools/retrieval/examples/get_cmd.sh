@@ -22,8 +22,9 @@ NPROCS=1
 # TASKS="clean-data"
 # TASKS="split-data"
 # TASKS="gen-rand-data"
-# TASKS="build-chunk-index" # "preprocess-chunks" # "embed-preprocess"
-TASKS="embed-chunks"
+# TASKS="build-chunk-index"
+TASKS="preprocess-chunks" # "embed-preprocess"
+# TASKS="embed-chunks"
 # TASKS=train
 # TASKS=add
 # TASKS="remove-train-outputs,train"
@@ -82,10 +83,12 @@ VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
 MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
 # <<<
 # data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
-INDEX_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
+# INDEX_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
+RETRIEVAL_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/workdirs/0
 # PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
 
+RETRIEVAL_CHUNK_LEN=64
 SEED=1001
 EMBED_START_INDEX=0
 EMBED_END_INDEX=100 # 000
@@ -191,6 +194,7 @@ fi
 #     --profile-stage-stop ${PROFILE_STAGE_STOP} \
 #     --add-offset-doc-ids \
 #     --offset-dict-path ${OFFSET_DICT_PATH} \
+#     --index-dir ${INDEX_DIR} \
 RETRIEVAL_ARGS=" \
     --tasks ${TASKS} \
     --ntrain ${NTRAIN} \
@@ -199,10 +203,10 @@ RETRIEVAL_ARGS=" \
     --ivf-dim ${IVF_DIM} \
     --hnsw-m ${HNSW_M} \
     --pq-m ${PQ_M} \
-    --index-dir ${INDEX_DIR} \
     --index-ty ${INDEX_TY} \
 
-    --retriever-chunk-len 64 \
+    --retrieval-workdir ${RETRIEVAL_WORKDIR} \
+    --retrieval-chunk-len ${RETRIEVAL_CHUNK_LEN} \
     --return-doc-ids \
     --embed-start-index ${EMBED_START_INDEX} \
     --embed-end-index ${EMBED_END_INDEX} \

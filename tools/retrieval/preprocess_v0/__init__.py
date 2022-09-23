@@ -13,23 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import torch
+# import torch
 
 # from .id import save_document_ids
 # from .offset import save_document_offsets
-from .order import save_document_order
+# from .order import save_document_order
 
-def preprocess_chunks(args, timer):
+# def preprocess_chunks(retrieval_args, timer):
 
-    if torch.distributed.get_rank() != 0:
-        return
+#     if torch.distributed.get_rank() != 0:
+#         return
 
-    # Preprocessing workdir.
-    workdir = os.path.join(args.retrieval_workdir, "preprocess")
-    os.makedirs(workdir, exist_ok = True)
+#     save_document_order()
+#     # save_document_offsets()
+#     save_document_ids(retrieval_args, timer)
 
-    # Stages.
-    save_document_order(args, workdir)
-    save_document_offsets(args, workdir)
-    save_document_ids(args, workdir, timer)
+# from .gpt_chunks import build_gpt_chunk_index
+# from .gpt_chunks import build_gpt_chunk_index as build_chunk_index
+from .build_chunk_index import build_chunk_index
+
+# def preprocess_chunks(args, timer):
+
+#     if torch.distributed.get_rank() != 0:
+#         return
+
+#     build_gpt_chunk_index(args, timer)
+#     build_bert_chunks(args, timer)
