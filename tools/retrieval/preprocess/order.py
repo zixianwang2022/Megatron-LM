@@ -173,15 +173,15 @@ def save_document_order(args, workdir):
     #     chunk_index_file = ?
     for data_index, data_meta in enumerate(data_metas):
 
-        data_name = data_meta["name"]
-        data_prefix = data_meta["prefix"]
+        # data_name = data_meta["name"]
+        # data_prefix = data_meta["prefix"]
         chunk_index_path = data_meta["chunk_index_path"]
 
         if os.path.exists(chunk_index_path):
             continue
 
         print(" > creating chunk index, dataset %d / %d ... '%s'." %
-              (data_index, len(data_metas), data_name))
+              (data_index, len(data_metas), data_meta["name"]))
 
         indexed_dataset = make_indexed_dataset(data_prefix, "mmap", True)
         chunk_index = build_chunk_index(args, indexed_dataset)
@@ -197,15 +197,21 @@ def save_document_order(args, workdir):
 
     # Count total chunks.
     total_chunks = 0
+    chunk_index_dtype = None
     for data_index, data_meta in enumerate(data_metas):
 
         f = h5py.File(data_meta["chunk_index_path"], "r")
         total_chunks += len(f["index"])
+        chunk_index_dtype = f["index"].dtype
         f.close()
 
         print(" > counting chunks, dataset %d / %d, total %d ... '%s'." %
-              (data_index, len(data_metas), total_chunks, data_name))
+              (data_index, len(data_metas), total_chunks, data_meta["name"]))
 
+    # pax({
+    #     "total_chunks" : total_chunks,
+    #     "chunk_index_dtype" : chunk_index_dtype,
+    # })
 
     # Concatenated chunks index.
     chunk_index_path = get_concat_chunk_index_path(workdir)
@@ -213,108 +219,53 @@ def save_document_order(args, workdir):
     # Delete existing chunk index if incorrect size.
     if os.path.exists(chunk_index_path):
 
-        raise Exception("concat chunks exist.")
-
         f = h5py.File(chunk_index_path)
-        total_chunks_existing = len(f["index"])
+        total_chunks_alloc = len(f["index"])              # total allocated
+        total_chunks_written = f["num_written"][0].item() # total written
         f.close()
 
-        if total_chunks != total_chunks_existing:
-            raise Exception("delete existing")
+        if total_chunks != total_chunks_alloc or \
+           total_chunks != total_chunks_written:
+            raise Exception("temporarily disabled.")
             os.remove(chunk_index_path)
 
     # Build concatenated chunk index.
     if not os.path.exists(chunk_index_path):
 
-        raise Exception("concat chunk indexes.")
+        f = h5py.File(chunk_index_path, "w")
+        chunk_index = f.create_dataset(
+            "index",
+            (total_chunks, 3),
+            dtype = chunk_index_dtype,
+        )
+        chunks_written = f.create_dataset(
+            "num_written",
+            (1,),
+            dtype = "uint64",
+        )
+        chunks_written[0] = 0
 
-    pax({
-        # "args" : args,
-        "chunk_index_path" : chunk_index_path,
-    })
+        start_index = 0
+        for data_index, data_meta in enumerate(data_metas):
 
+            print(" > concatenating chunks, dataset %d / %d ... '%s'." %
+                  (data_index, len(data_metas), data_meta["name"]))
+
+            g = h5py.File(data_meta["chunk_index_path"], "r")
+            data = g["index"]
+            chunk_index[start_index:start_index + len(data)] = data
+            start_index += len(data)
+            chunks_written[0] = start_index
+            g.close()
+
+        f.close()
+
+    # Save dataset order.
+    order_path = os.path.join(workdir, "order.json")
+    with open(order_path, "w") as f:
+        json.dump(data_metas, f)
     
     raise Exception("finished creating chunks.")
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # 5334816766
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # ARX="ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5"
-    # BC2="BookCorpus2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5"
-    # B3="Books3_ftfy_cleaned_id_shuf_text_document.chunks.hdf5"
-    # CC2020="CC-2020-50_id_cleaned_shuf_text_document.chunks.hdf5"
-    # CC2021="CC-2021-04_id_cleaned_shuf_text_document.chunks.hdf5"
-    # GIT="Github_ftfy_id_shuf_text_document.chunks.hdf5"
-    # GUT="Gutenberg_PG-19_ftfy_cleaned_id_cleaned_shuf_text_document.chunks.hdf5"
-    # NIH="NIH_ExPorter_ftfy_id_shuf_text_document.chunks.hdf5"
-    # OWT2="OpenWebText2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5"
-    # PCC="Pile-CC_id_cleaned_shuf_text_document.chunks.hdf5"
-    # PM="PubMed_Abstracts_ftfy_id_shuf_text_document.chunks.hdf5"
-    # RN="rn_dedup_shuf_cleaned_0.7_cleaned_shuf_text_document.chunks.hdf5"
-    # SE="StackExchange_ftfy_id_shuf_text_document.chunks.hdf5"
-    # ST="stories_dedup0.7_shuf_cleaned_shuf_text_document.chunks.hdf5"
-    # WIK="Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5"
-
-    # DATA_BLEND={B3: 0.14336,
-    #             RN: 0.08962,
-    #             OWT2: 0.19336,
-    #             SE: 0.05689,
-    #             ST: 0.00859,
-    #             PM: 0.02897,
-    #             WIK: 0.04771,
-    #             GUT: 0.00873,
-    #             BC2: 0.01007,
-    #             NIH:0.00208,
-    #             CC2020: 0.13017,
-    #             PCC:  0.09446,
-    #             CC2021: 0.15652,
-    #             ARX: 0.01359,
-    #             GIT: 0.01588
-    #            }
-
-    # orders = [(k, v) for k, v in DATA_BLEND.items()]
-
-    # f = h5py.File("pretraining_corpus" + ".chunks.hdf5", "w")
-    # dset = f.create_dataset("chunks", (tot,64), dtype="uint16")
-
-    # dset.shape
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # (5334816766, 64)
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-    # pointer = 0
-    # for order in tqdm(orders):
-    #     dataset = order[0]
-
-    #     rf = h5py.File(dataset, "r")
-    #     data = rf["chunks"]
-    #     dset[pointer:pointer + len(data)] = data
-    #     pointer += len(data)
-
-    # f.close()
-
-    # orders
-
-    # # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # # [('Books3_ftfy_cleaned_id_shuf_text_document.chunks.hdf5', 0.14336),
-    # #  ('rn_dedup_shuf_cleaned_0.7_cleaned_shuf_text_document.chunks.hdf5', 0.08962),
-    # #  ('OpenWebText2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5', 0.19336),
-    # #  ('StackExchange_ftfy_id_shuf_text_document.chunks.hdf5', 0.05689),
-    # #  ('stories_dedup0.7_shuf_cleaned_shuf_text_document.chunks.hdf5', 0.00859),
-    # #  ('PubMed_Abstracts_ftfy_id_shuf_text_document.chunks.hdf5', 0.02897),
-    # #  ('Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5', 0.04771),
-    # #  ('Gutenberg_PG-19_ftfy_cleaned_id_cleaned_shuf_text_document.chunks.hdf5',
-    # #   0.00873),
-    # #  ('BookCorpus2_ftfy_cleaned_id_shuf_text_document.chunks.hdf5', 0.01007),
-    # #  ('NIH_ExPorter_ftfy_id_shuf_text_document.chunks.hdf5', 0.00208),
-    # #  ('CC-2020-50_id_cleaned_shuf_text_document.chunks.hdf5', 0.13017),
-    # #  ('Pile-CC_id_cleaned_shuf_text_document.chunks.hdf5', 0.09446),
-    # #  ('CC-2021-04_id_cleaned_shuf_text_document.chunks.hdf5', 0.15652),
-    # #  ('ArXiv_ftfy_cleaned_id_shuf_text_document.chunks.hdf5', 0.01359),
-    # #  ('Github_ftfy_id_shuf_text_document.chunks.hdf5', 0.01588)]
-    # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     # joblib.dump(orders, "order.pkl")
 
