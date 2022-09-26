@@ -62,8 +62,8 @@ def get_batch(data_iterator):
     data_b = mpu.broadcast_data(keys, data, datatype)
 
     # >>>
-    from lutil import pax
-    pax(0, {"data": data, "data_b": data_b})
+    # from lutil import pax
+    # pax(0, {"data": data, "data_b": data_b})
     # <<<
 
     # Unpack.

@@ -13,7 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import torch
+
+from megatron import get_tokenizer
+from megatron.data.bert_dataset import build_training_sample
+# from megatron.tokenizer.gpt2_tokenization import GPT2Tokenizer
+from megatron.tokenizer.tokenizer import _GPT2BPETokenizer
 
 # >>>
 from lutil import pax
@@ -26,10 +32,24 @@ class GPTChunkDataset(torch.utils.data.Dataset):
     #     self.indexed_dataset = indexed_dataset
     #     self.chunk_index = chunk_index
     #     self.eods = eods
-    def __init__(self, indexed_datasets, dataset_offsets, chunk_index):
+    def __init__(self, indexed_datasets, dataset_offsets, chunk_index,
+                 max_chunk_len):
         self.indexed_datasets = indexed_datasets
         self.dataset_offsets = dataset_offsets
         self.chunk_index = chunk_index
+        self.max_chunk_len = max_chunk_len
+
+        dataset_ids = []
+        for i in range(len(dataset_offsets) - 1):
+            dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
+        self.dataset_ids = [ i for ii in dataset_ids for i in ii ]
+
+        # pax({
+        #     "dataset_offsets" : self.dataset_offsets,
+        #     "dataset_ids" :
+        #     [ "%d / %s ..." % (len(ii), str(ii[:10])) for ii in dataset_ids ],
+        #     "*dataset_ids / len" : len(self.dataset_ids),
+        # })
 
     def __len__(self):
         raise Exception("length?")
@@ -37,64 +57,152 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         #    sample i --> [sample_idx[i], sample_idx[i+1])
         return self.sample_idx.shape[0] - 1
 
-    def __getitem__(self, idx):
+    def __getitem__(self, chunk_id):
 
-        raise Exception("get item.")
+        # dataset_idx = self.chunk_index_to_dataset_index(chunk_idx)
 
-        raise Exception("detokenize -> retokenize.")
+        dataset_id = self.dataset_ids[chunk_id]
+        document_id, chunk_start_idx, chunk_end_idx = self.chunk_index[chunk_id]
+        chunk_len = chunk_end_idx - chunk_start_idx
+        indexed_dataset = self.indexed_datasets[dataset_id]
 
-        # >>>
-        orig_idx = idx
-        # <<<
+        chunk = indexed_dataset.get(document_id,
+                                    offset = chunk_start_idx,
+                                    length = chunk_len)
 
-        # Get the shuffled index.
-        idx = self.shuffle_idx[idx]
-        # Start and end documents and offsets.
-        doc_index_f = self.sample_idx[idx][0]
-        doc_index_l = self.sample_idx[idx + 1][0]
-        offset_f = self.sample_idx[idx][1]
-        offset_l = self.sample_idx[idx + 1][1]
+        if chunk_len != self.max_chunk_len:
+            assert chunk_len < self.max_chunk_len, "invalid chunk len."
+            raise Exception("extend chunk with tokenizer.eod.")
 
-        # >>>
-        doc_ids = []
-        # <<<
-        # If we are within the same document, just extract the chunk.
-        if doc_index_f == doc_index_l:
-            doc_ids.append(self.doc_idx[doc_index_f].item())
-            # >>>
-            # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
-            # <<<
-            sample = self.indexed_dataset.get(self.doc_idx[doc_index_f],
-                                              offset=offset_f,
-                                              length=offset_l - offset_f + 1)
-        else:
-            # Otherwise, get the rest of the initial document.
-            doc_ids.append(self.doc_idx[doc_index_f].item())
-            sample_list = [self.indexed_dataset.get(self.doc_idx[doc_index_f],
-                                                    offset=offset_f)]
-            # Loop over all in between documents and add the entire document.
-            for i in range(doc_index_f + 1, doc_index_l):
-                doc_ids.append(self.doc_idx[i].item())
-                sample_list.append(self.indexed_dataset.get(self.doc_idx[i]))
-            # >>>
-            # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
-            # <<<
-            # And finally add the relevant portion of last document.
-            sample_list.append(self.indexed_dataset.get(
-                self.doc_idx[doc_index_l],
-                length=offset_l + 1))
-            sample = np.concatenate(sample_list)
+        # pax({
+        #     # "indexed_dataset" : indexed_dataset,
+        #     "chunk_id" : chunk_id,
+        #     "dataset_id" : dataset_id,
+        #     "document_id" : document_id,
+        #     "chunk_start_idx" : chunk_start_idx,
+        #     "chunk_end_idx" : chunk_end_idx,
+        #     "chunk" : chunk,
+        # })
+
+        return {'text': np.array(chunk, dtype=np.int64)}
+
+class BertChunkDataset(GPTChunkDataset):
+
+    def __init__(self, indexed_datasets, dataset_offsets,
+                 chunk_index, max_chunk_len,
+                 # num_epochs,
+                 # max_num_samples,
+                 masked_lm_prob,
+                 # max_seq_length,
+                 # short_seq_prob,
+                 seed,
+                 binary_head,
+    ):
+
+        super().__init__(indexed_datasets, dataset_offsets,
+                         chunk_index, max_chunk_len)
 
         # >>>
-        if self.return_doc_ids:
-            if self.args.add_offset_doc_ids:
-                doc_ids = [self.offset + x for x in doc_ids]
-            data = {'text': np.array(sample, dtype=np.int64),
-                    'doc_ids': doc_ids,
-                    'idx': np.int32(orig_idx),
-                    'dataset_ids': [self.data_prefix]}
-            # pax(0, {"data": data})
-            return data
+        # gpt_tokenizer = GPT2Tokenizer(
+        self.gpt_tokenizer = _GPT2BPETokenizer(
+            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
+            merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+        )
+        self.bert_tokenizer = get_tokenizer()
         # <<<
-        else:
-            return {'text': np.array(sample, dtype=np.int64)}
+
+        # Params to store.
+        self.seed = seed
+        self.masked_lm_prob = masked_lm_prob
+        # self.max_seq_length = max_seq_length
+        self.binary_head = binary_head
+
+        # Vocab stuff.
+        # tokenizer = get_tokenizer()
+        self.vocab_id_list = list(self.bert_tokenizer.inv_vocab.keys())
+        self.vocab_id_to_token_dict = self.bert_tokenizer.inv_vocab
+        self.cls_id = self.bert_tokenizer.cls
+        self.sep_id = self.bert_tokenizer.sep
+        self.mask_id = self.bert_tokenizer.mask
+        self.pad_id = self.bert_tokenizer.pad
+        
+
+    def __getitem__(self, chunk_id):
+
+        gpt_token_ids = super().__getitem__(chunk_id)["text"]
+        gpt_token_ids = [t for t in gpt_token_ids.tolist()
+                         if t != self.gpt_tokenizer.eod]
+
+        text = self.gpt_tokenizer.detokenize(gpt_token_ids)
+
+        bert_token_ids = self.bert_tokenizer.tokenize(text)
+        # >>>
+        # bert_chunk_len = len(bert_token_ids)
+        # if bert_chunk_len != self.max_chunk_len:
+        #     assert bert_chunk_len < self.max_chunk_len, "invalid chunk len."
+        #     bert_token_ids += [self.bert_tokenizer.eos_token_id] * \
+        #         (self.max_chunk_len - bert_chunk_len)
+        #     # pax({
+        #     #     "bert_tokenizer" : self.bert_tokenizer,
+        #     #     "bert_token_ids" : "%d ... %s" % (
+        #     #         len(bert_token_ids),
+        #     #         str(bert_token_ids),
+        #     #     ),
+        #     # })
+        # +++
+        # Final token will be padded in 'build_sample'.
+        assert len(bert_token_ids) <= self.max_chunk_len - 1
+        # <<<
+
+        # pax({
+        #     "gpt_token_ids" : gpt_token_ids,
+        #     "bert_token_ids" : bert_token_ids,
+        #     "gpt_token_ids / str" : str(gpt_token_ids.tolist()),
+        #     "bert_token_ids / str" : str(bert_token_ids.tolist()),
+        #     "text" : text,
+        # })
+
+        # >>>
+        # return {'text': np.array(bert_token_ids, dtype=np.int64)}
+        # <<<
+
+        # Note that this rng state should be numpy and not python since
+        # python randint is inclusive whereas the numpy one is exclusive.
+        # We % 2**32 since numpy requres the seed to be between 0 and 2**32 - 1
+        np_rng = np.random.RandomState(seed=((self.seed + chunk_id) % 2**32))
+
+        # >>>
+        # pax(0, {
+        #     "start_idx" : int(start_idx),
+        #     "end_idx" : int(end_idx),
+        #     "seq_length" : int(seq_length),
+        #     "indexed_dataset / %d" % start_idx : self.indexed_dataset[start_idx],
+        #     "sample" : sample,
+        #     "seed" : self.seed,
+        #     # "seq_length" : seq_length,
+        #     # "max_seq_length" : self.max_seq_length,
+        #     # "vocab_id_list" : self.vocab_id_list,
+        #     # "vocab_id_to_token_dict" : self.vocab_id_to_token_dict,
+        #     # "cls_id" : self.cls_id,
+        #     # "sep_id" : self.sep_id,
+        #     # "mask_id" : self.mask_id,
+        #     # "pad_id" : self.pad_id,
+        #     # "masked_lm_prob" : self.masked_lm_prob,
+        #     # "np_rng" : np_rng,
+        #     # "binary_head" : self.binary_head,
+        # })
+        # <<<
+
+        sample = build_training_sample([bert_token_ids],
+                                       self.max_chunk_len,
+                                       self.max_chunk_len,  # needed for padding
+                                       self.vocab_id_list,
+                                       self.vocab_id_to_token_dict,
+                                       self.cls_id, self.sep_id,
+                                       self.mask_id, self.pad_id,
+                                       self.masked_lm_prob, np_rng,
+                                       self.binary_head)
+
+        # pax({"sample": sample})
+
+        return sample

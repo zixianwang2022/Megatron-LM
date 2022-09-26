@@ -22,7 +22,7 @@ import torch
 
 from megatron import (
     get_args,
-    get_tokenizer,
+    # get_tokenizer,
     mpu,
     print_rank_0,
 )
@@ -41,7 +41,7 @@ from megatron.training import (
 )
 from pretrain_bert import (
     # forward_step as forward_step_func,
-    # get_batch,
+    get_batch,
     model_provider,
     # train_valid_test_datasets_provider,
 )
@@ -51,7 +51,7 @@ from pretrain_bert import (
 # )
 
 from ..preprocess.utils import get_sampled_chunk_index_path
-from .chunk_dataset import GPTChunkDataset
+from .chunk_dataset import BertChunkDataset
 
 # >>>
 from lutil import pax, print_seq
@@ -166,45 +166,50 @@ def loss_func(loss_mask, sentence_order, output_tensor, non_loss_data):
         return loss, {'lm loss': averaged_losses[0]}
 
 
-def get_batch(data_iterator):
-    """Generate a batch"""
-    args = get_args()
-    # tokenizer = get_tokenizer()
+# def get_batch(data_iterator):
+#     """Generate a batch"""
+#     args = get_args()
+#     # tokenizer = get_tokenizer()
 
-    # pax({"tokenizer": tokenizer})
+#     # pax({"tokenizer": tokenizer})
 
-    # Items and their type.
-    keys = ['text']
-    datatype = torch.int64
+#     # Items and their type.
+#     # keys = ['text']
+#     keys = ['text', 'types', 'labels', 'is_random', 'loss_mask', 'padding_mask']
+#     datatype = torch.int64
 
-    # Broadcast data.
-    if data_iterator is not None:
-        data = next(data_iterator)
-    else:
-        data = None
-    data_b = mpu.broadcast_data(keys, data, datatype)
+#     # Broadcast data.
+#     if data_iterator is not None:
+#         data = next(data_iterator)
+#     else:
+#         data = None
+#     data_b = mpu.broadcast_data(keys, data, datatype)
 
-    # >>>
-    pax({
-        "data" : data,
-        "data_b" : data_b,
-    })
-    # <<<
+#     # >>>
+#     print(data_b["text"])
+#     pax({
+#         "data" : data,
+#         "data_b" : data_b,
+#     })
+#     # <<<
 
-    # Unpack.
-    tokens_ = data_b['text'].long()
-    labels = tokens_[:, 1:].contiguous()
-    tokens = tokens_[:, :-1].contiguous()
+#     raise Exception("detokenize -> retokenize.")
 
-    # Get the masks and postition ids.
-    attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
-        tokens,
-        tokenizer.eod,
-        args.reset_position_ids,
-        args.reset_attention_mask,
-        args.eod_mask_loss)
+#     # Unpack.
+#     tokens_ = data_b['text'].long()
+#     labels = tokens_[:, 1:].contiguous()
+#     tokens = tokens_[:, :-1].contiguous()
 
-    return tokens, labels, loss_mask, attention_mask, position_ids
+#     # Get the masks and postition ids.
+#     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
+#         tokens,
+#         tokenizer.eod,
+#         args.reset_position_ids,
+#         args.reset_attention_mask,
+#         args.eod_mask_loss)
+
+#     return tokens, labels, loss_mask, attention_mask, position_ids
+
 
 def forward_step(data_iterator, model):
     # raise Exception("hi.")
@@ -219,15 +224,15 @@ def forward_step(data_iterator, model):
     # timers('batch-generator').stop()
 
     # >>>
-    pax(0, {
-        "data_iterator" : data_iterator,
-        "tokens" : tokens,
-        "types" : types,
-        "sentence_order" : sentence_order,
-        "loss_mask" : loss_mask,
-        "lm_labels" : lm_labels,
-        "padding_mask" : padding_mask,
-    })
+    # pax(0, {
+    #     "data_iterator" : data_iterator,
+    #     "tokens" : tokens,
+    #     "types" : types,
+    #     "sentence_order" : sentence_order,
+    #     "loss_mask" : loss_mask,
+    #     "lm_labels" : lm_labels,
+    #     "padding_mask" : padding_mask,
+    # })
     # <<<
 
     if not args.bert_binary_head:
@@ -238,35 +243,35 @@ def forward_step(data_iterator, model):
                           lm_labels=lm_labels)
 
     # >>>
-    # pax(0, {
-    #     "model" : model,
-    #     "tokens" : tokens,
-    #     "output_tensor" : output_tensor,
-    # })
+    pax(0, {
+        "model" : model,
+        "tokens" : tokens,
+        "output_tensor" : output_tensor,
+    })
     # <<<
 
     return output_tensor, partial(loss_func, loss_mask, sentence_order)
 
-def train_valid_test_datasets_provider(train_val_test_num_samples):
-    """Build train, valid, and test datasets."""
-    args = get_args()
+# def train_valid_test_datasets_provider(train_val_test_num_samples):
+#     """Build train, valid, and test datasets."""
+#     args = get_args()
 
-    print_rank_0('> building train, validation, and test datasets '
-                 'for BERT ...')
-    train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
-        data_prefix=args.data_path,
-        data_impl=args.data_impl,
-        splits_string=args.split,
-        train_valid_test_num_samples=train_val_test_num_samples,
-        max_seq_length=64, # args.seq_length,
-        masked_lm_prob=args.mask_prob,
-        short_seq_prob=args.short_seq_prob,
-        seed=args.seed,
-        skip_warmup=(not args.mmap_warmup),
-        binary_head=args.bert_binary_head)
-    print_rank_0("> finished creating BERT datasets ...")
+#     print_rank_0('> building train, validation, and test datasets '
+#                  'for BERT ...')
+#     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
+#         data_prefix=args.data_path,
+#         data_impl=args.data_impl,
+#         splits_string=args.split,
+#         train_valid_test_num_samples=train_val_test_num_samples,
+#         max_seq_length=64, # args.seq_length,
+#         masked_lm_prob=args.mask_prob,
+#         short_seq_prob=args.short_seq_prob,
+#         seed=args.seed,
+#         skip_warmup=(not args.mmap_warmup),
+#         binary_head=args.bert_binary_head)
+#     print_rank_0("> finished creating BERT datasets ...")
 
-    return train_ds, valid_ds, test_ds
+#     return train_ds, valid_ds, test_ds
 
 # def embed_chunks():
 def embed_batches(models, data_iterator):
@@ -280,7 +285,7 @@ def embed_batches(models, data_iterator):
 
         for batch_index in range(len(data_iterator)):
 
-            print_rank_0("bach %d / %d." % (batch_index, len(data_iterator)))
+            print_rank_0("batch %d / %d." % (batch_index, len(data_iterator)))
 
             loss_dicts = forward_backward_func(
                 forward_step, # _func,
@@ -427,7 +432,36 @@ def get_chunk_data_loader(args, data_metas, timer):
     # })
 
     # Chunk dataset.
-    dataset = GPTChunkDataset(indexed_datasets, dataset_offsets, chunk_index)
+    # dataset = GPTChunkDataset(
+    dataset = BertChunkDataset(
+        indexed_datasets,
+        dataset_offsets,
+        chunk_index,
+        args.retrieval_chunk_len,
+
+        # max_num_samples = args.retrieval_nchunks_sampled,
+        # masked_lm_prob,
+        # max_seq_length,
+        # short_seq_prob,
+        # seed,
+        # binary_head,
+
+        # data_prefix=args.data_path,
+        # data_impl=args.data_impl,
+        # splits_string=args.split,
+        # train_valid_test_num_samples=train_val_test_num_samples,
+        # max_seq_length=args.seq_length,
+        masked_lm_prob=args.mask_prob,
+        # short_seq_prob=args.short_seq_prob,
+        seed=args.seed,
+        # skip_warmup=(not args.mmap_warmup),
+        # >>>
+        # binary_head = args.bert_binary_head,
+        binary_head = False, # allos len(sentences) == 1
+        # <<<
+    )
+
+    # pax({"dataset": dataset})
 
     # Megatron sampler.
     batch_sampler = MegatronPretrainingSampler(

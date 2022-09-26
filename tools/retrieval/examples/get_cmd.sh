@@ -110,8 +110,11 @@ if [[ "$TASKS" == *"embed-chunks"* ]]; then
     # +++
     # <<<
 
+    # NUM_WORKERS=1
+
     # --save ${BERT_LOAD_PATH} \
     # --merge-file ${MERGE_FILE} \
+    # --num-workers ${NUM_WORKERS} \
     MEGATRON_ARGS=" \
         --seed ${SEED} \
         --tokenizer-type ${TOKENIZER_TYPE} \
