@@ -89,7 +89,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 class BertChunkDataset(GPTChunkDataset):
 
     def __init__(self, indexed_datasets, dataset_offsets,
-                 chunk_index, max_chunk_len,
+                 chunk_index, max_chunk_len, max_embed_chunk_len,
                  # num_epochs,
                  # max_num_samples,
                  masked_lm_prob,
@@ -101,6 +101,8 @@ class BertChunkDataset(GPTChunkDataset):
 
         super().__init__(indexed_datasets, dataset_offsets,
                          chunk_index, max_chunk_len)
+
+        self.max_embed_chunk_len = max_embed_chunk_len
 
         # >>>
         # gpt_tokenizer = GPT2Tokenizer(
@@ -150,8 +152,14 @@ class BertChunkDataset(GPTChunkDataset):
         #     #     ),
         #     # })
         # +++
+        # pax({
+        #     "max_chunk_len" : self.max_chunk_len,
+        #     "max_embed_chunk_len" : self.max_embed_chunk_len,
+        # })
+
         # Final token will be padded in 'build_sample'.
-        assert len(bert_token_ids) <= self.max_chunk_len - 1
+        # assert len(bert_token_ids) <= self.max_chunk_len - 2 # cls, sep[, eos]
+        assert len(bert_token_ids) <= self.max_embed_chunk_len - 2 # cls, sep[, eos]
         # <<<
 
         # pax({
@@ -194,8 +202,8 @@ class BertChunkDataset(GPTChunkDataset):
         # <<<
 
         sample = build_training_sample([bert_token_ids],
-                                       self.max_chunk_len,
-                                       self.max_chunk_len,  # needed for padding
+                                       len(bert_token_ids), # self.max_chunk_len,
+                                       self.max_embed_chunk_len,  # for padding
                                        self.vocab_id_list,
                                        self.vocab_id_to_token_dict,
                                        self.cls_id, self.sep_id,

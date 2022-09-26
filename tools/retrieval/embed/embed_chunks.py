@@ -243,6 +243,7 @@ def forward_step(data_iterator, model):
                           lm_labels=lm_labels)
 
     # >>>
+    print(tokens)
     pax(0, {
         "model" : model,
         "tokens" : tokens,
@@ -438,6 +439,7 @@ def get_chunk_data_loader(args, data_metas, timer):
         dataset_offsets,
         chunk_index,
         args.retrieval_chunk_len,
+        args.retrieval_max_embed_chunk_len,
 
         # max_num_samples = args.retrieval_nchunks_sampled,
         # masked_lm_prob,
@@ -457,7 +459,7 @@ def get_chunk_data_loader(args, data_metas, timer):
         # skip_warmup=(not args.mmap_warmup),
         # >>>
         # binary_head = args.bert_binary_head,
-        binary_head = False, # allos len(sentences) == 1
+        binary_head = False, # allows len(segments) == 1
         # <<<
     )
 

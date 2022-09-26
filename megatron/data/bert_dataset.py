@@ -203,12 +203,25 @@ def build_training_sample(sample,
     # Build tokens and toketypes.
     tokens, tokentypes = create_tokens_and_tokentypes(tokens_a, tokens_b,
                                                       cls_id, sep_id)
+    # >>>
+    # print("[r%d] **** sample %d, tokens_a %d, tokens_b %d, tokens %d." % (
+    #     torch.distributed.get_rank(),
+    #     len(sample[0]),
+    #     len(tokens_a),
+    #     len(tokens_b),
+    #     len(tokens),
+    # ))
+    # <<<
 
     # Masking.
     max_predictions_per_seq = masked_lm_prob * max_num_tokens
     (tokens, masked_positions, masked_labels, _, _) = create_masked_lm_predictions(
         tokens, vocab_id_list, vocab_id_to_token_dict, masked_lm_prob,
         cls_id, sep_id, mask_id, max_predictions_per_seq, np_rng)
+
+    # >>>
+    # print("[r%d] **** tokens %d." % (torch.distributed.get_rank(), len(tokens)))
+    # <<<
 
     # Padding.
     tokens_np, tokentypes_np, labels_np, padding_mask_np, loss_mask_np \
@@ -233,7 +246,11 @@ def pad_and_convert_to_numpy(tokens, tokentypes, masked_positions,
     # Some checks.
     num_tokens = len(tokens)
     padding_length = max_seq_length - num_tokens
-    assert padding_length >= 0
+    # >>>
+    # assert padding_length >= 0
+    assert padding_length >= 0, f"tokens {len(tokens)}, max {max_seq_length}."
+    # pax({"pad_id": pad_id})
+    # <<<
     assert len(tokentypes) == num_tokens
     assert len(masked_positions) == len(masked_labels)
 
