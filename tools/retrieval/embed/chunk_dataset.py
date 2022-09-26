@@ -159,7 +159,9 @@ class BertChunkDataset(GPTChunkDataset):
 
         # Final token will be padded in 'build_sample'.
         # assert len(bert_token_ids) <= self.max_chunk_len - 2 # cls, sep[, eos]
-        assert len(bert_token_ids) <= self.max_embed_chunk_len - 2 # cls, sep[, eos]
+        # cls, sep[, eos]
+        assert len(bert_token_ids) <= self.max_embed_chunk_len - 2, \
+            ? ? ?
         # <<<
 
         # pax({

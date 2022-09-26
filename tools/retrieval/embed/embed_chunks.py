@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# from functools import partial
+from functools import partial
 import h5py
 import json
 import numpy as np
@@ -128,10 +128,10 @@ from lutil import pax, print_seq
 def loss_func(loss_mask, sentence_order, output_tensor, non_loss_data):
     assert non_loss_data
     # >>>
-    pax(0, {
-        "output_tensor" : output_tensor,
-        "non_loss_data" : non_loss_data,
-    })
+    # pax(0, {
+    #     "output_tensor" : output_tensor,
+    #     "non_loss_data" : non_loss_data,
+    # })
     # <<<
     return output_tensor
 
@@ -243,12 +243,12 @@ def forward_step(data_iterator, model):
                           lm_labels=lm_labels)
 
     # >>>
-    print(tokens)
-    pax(0, {
-        "model" : model,
-        "tokens" : tokens,
-        "output_tensor" : output_tensor,
-    })
+    # print(tokens)
+    # pax(0, {
+    #     "model" : model,
+    #     "tokens" : tokens,
+    #     "output_tensor" : output_tensor,
+    # })
     # <<<
 
     return output_tensor, partial(loss_func, loss_mask, sentence_order)
@@ -275,7 +275,7 @@ def forward_step(data_iterator, model):
 #     return train_ds, valid_ds, test_ds
 
 # def embed_chunks():
-def embed_batches(models, data_iterator):
+def embed_batches(args, models, data_iterator):
 
     for m in models:
         m.eval()
@@ -284,11 +284,12 @@ def embed_batches(models, data_iterator):
     # data_iterator = train_data_iterator
     with torch.no_grad():
 
-        for batch_index in range(len(data_iterator)):
+        num_batches = int(np.ceil(len(data_iterator) / args.micro_batch_size))
+        for batch_index in range(num_batches):
 
-            print_rank_0("batch %d / %d." % (batch_index, len(data_iterator)))
+            print_rank_0("batch %d / %d." % (batch_index, num_batches))
 
-            loss_dicts = forward_backward_func(
+            output_tensors = forward_backward_func(
                 forward_step, # _func,
                 data_iterator,
                 models,
@@ -298,9 +299,10 @@ def embed_batches(models, data_iterator):
                 collect_non_loss_data = True,
             )
 
-            pax(0, {
-                **{"loss_dicts / %d" % i : d for i, d in enumerate(loss_dicts)},
-            })
+            # pax(0, {
+            #     "output_tensors" : output_tensors,
+            #     # **{"loss_dicts / %d" % i : d for i, d in enumerate(loss_dicts)},
+            # })
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # def get_chunk_data_loader(args, models, data_prefix):
@@ -510,7 +512,7 @@ def embed_chunks(args, timer):
     models, optimizer, opt_param_scheduler = \
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
-    embed_batches(models, data_iterator)
+    embed_batches(args, models, data_iterator)
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
