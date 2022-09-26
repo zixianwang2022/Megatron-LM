@@ -23,8 +23,8 @@ NPROCS=1
 # TASKS="split-data"
 # TASKS="gen-rand-data"
 # TASKS="build-chunk-index"
-TASKS="preprocess-chunks" # "embed-preprocess"
-# TASKS="embed-chunks"
+# TASKS="preprocess-chunks" # "embed-preprocess"
+TASKS="embed-chunks"
 # TASKS=train
 # TASKS=add
 # TASKS="remove-train-outputs,train"
@@ -81,6 +81,7 @@ INDEX_TY=faiss-base
 DATA_PATH=${DATA_BLEND}
 VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
 MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
+TOKENIZER_TYPE=GPT2BPETokenizer
 # <<<
 # data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
 # INDEX_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
@@ -99,14 +100,18 @@ NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/
 if [[ "$TASKS" == *"embed-chunks"* ]]; then
 
 # >>>
-    # DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
-    VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
+    # >>>
     # BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
     BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+    # DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
+    VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
     # TOKENIZER_TYPE=BertWordPieceCase
     TOKENIZER_TYPE=BertWordPieceLowerCase
+    # +++
+    # <<<
 
     # --save ${BERT_LOAD_PATH} \
+    # --merge-file ${MERGE_FILE} \
     MEGATRON_ARGS=" \
         --seed ${SEED} \
         --tokenizer-type ${TOKENIZER_TYPE} \
@@ -149,7 +154,7 @@ else
     #     --global-batch-size 1 \
     MEGATRON_ARGS=" \
         --seed ${SEED} \
-        --tokenizer-type GPT2BPETokenizer \
+        --tokenizer-type ${TOKENIZER_TYPE} \
         --num-layers 24 \
         --hidden-size 1024 \
         --num-attention-heads 16 \

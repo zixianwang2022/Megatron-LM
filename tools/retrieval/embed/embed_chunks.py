@@ -15,15 +15,16 @@
 
 # from functools import partial
 import h5py
+import json
 import numpy as np
 import os
 import torch
 
 from megatron import (
-    # get_args,
-    # get_tokenizer,
+    get_args,
+    get_tokenizer,
     mpu,
-    # print_rank_0,
+    print_rank_0,
 )
 from megatron.data.data_samplers import MegatronPretrainingSampler
 # from megatron.data.dataset_utils import build_train_valid_test_datasets
@@ -33,7 +34,7 @@ from megatron.model import (
     # BertModel,
     ModelType,
 )
-# from megatron.schedules import get_forward_backward_func
+from megatron.schedules import get_forward_backward_func
 from megatron.training import (
     # build_train_valid_test_data_iterators,
     setup_model_and_optimizer,
@@ -49,6 +50,7 @@ from pretrain_bert import (
 #     get_chunk_embedding_path,
 # )
 
+from ..preprocess.utils import get_sampled_chunk_index_path
 from .chunk_dataset import GPTChunkDataset
 
 # >>>
@@ -164,6 +166,46 @@ def loss_func(loss_mask, sentence_order, output_tensor, non_loss_data):
         return loss, {'lm loss': averaged_losses[0]}
 
 
+def get_batch(data_iterator):
+    """Generate a batch"""
+    args = get_args()
+    # tokenizer = get_tokenizer()
+
+    # pax({"tokenizer": tokenizer})
+
+    # Items and their type.
+    keys = ['text']
+    datatype = torch.int64
+
+    # Broadcast data.
+    if data_iterator is not None:
+        data = next(data_iterator)
+    else:
+        data = None
+    data_b = mpu.broadcast_data(keys, data, datatype)
+
+    # >>>
+    pax({
+        "data" : data,
+        "data_b" : data_b,
+    })
+    # <<<
+
+    # Unpack.
+    tokens_ = data_b['text'].long()
+    labels = tokens_[:, 1:].contiguous()
+    tokens = tokens_[:, :-1].contiguous()
+
+    # Get the masks and postition ids.
+    attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
+        tokens,
+        tokenizer.eod,
+        args.reset_position_ids,
+        args.reset_attention_mask,
+        args.eod_mask_loss)
+
+    return tokens, labels, loss_mask, attention_mask, position_ids
+
 def forward_step(data_iterator, model):
     # raise Exception("hi.")
     """Forward step."""
@@ -177,15 +219,15 @@ def forward_step(data_iterator, model):
     # timers('batch-generator').stop()
 
     # >>>
-    # pax(0, {
-    #     "data_iterator" : data_iterator,
-    #     "tokens" : tokens,
-    #     "types" : types,
-    #     "sentence_order" : sentence_order,
-    #     "loss_mask" : loss_mask,
-    #     "lm_labels" : lm_labels,
-    #     "padding_mask" : padding_mask,
-    # })
+    pax(0, {
+        "data_iterator" : data_iterator,
+        "tokens" : tokens,
+        "types" : types,
+        "sentence_order" : sentence_order,
+        "loss_mask" : loss_mask,
+        "lm_labels" : lm_labels,
+        "padding_mask" : padding_mask,
+    })
     # <<<
 
     if not args.bert_binary_head:
@@ -254,20 +296,138 @@ def embed_batches(models, data_iterator):
                 **{"loss_dicts / %d" % i : d for i, d in enumerate(loss_dicts)},
             })
 
-def get_chunk_data_loader(args, models, data_prefix):
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# def get_chunk_data_loader(args, models, data_prefix):
 
-    # Token dataset.
-    indexed_dataset = make_indexed_dataset(data_prefix, "mmap", True)
+#     # Token dataset.
+#     indexed_dataset = make_indexed_dataset(data_prefix, "mmap", True)
+
+#     # Chunk index.
+#     chunk_index_file = get_chunk_index_path(args, data_prefix)
+#     f = h5py.File(chunk_index_file, "r")
+#     eods = np.copy(f["eods"])
+#     chunk_index = np.copy(f["index"])
+#     f.close()
+
+#     # Chunk dataset.
+#     dataset = GPTChunkDataset(indexed_dataset, chunk_index, eods)
+
+#     # Megatron sampler.
+#     batch_sampler = MegatronPretrainingSampler(
+#         total_samples=len(chunk_index),
+#         consumed_samples=0,
+#         micro_batch_size=args.micro_batch_size,
+#         data_parallel_rank=mpu.get_data_parallel_rank(),
+#         data_parallel_size=mpu.get_data_parallel_world_size())
+
+#     # Torch dataloader.
+#     data_loader = torch.utils.data.DataLoader(dataset,
+#                                               batch_sampler=batch_sampler,
+#                                               num_workers=args.num_workers,
+#                                               pin_memory=True)
+
+#     # >>>
+#     pax({
+#         "chunk_index" : chunk_index,
+#         "dataset" : dataset,
+#         "batch_sampler" : batch_sampler,
+#         "data_loader" : data_loader,
+#     })
+#     # <<<
+
+#     return data_loader
+
+# def embed_chunks_single_dataset(args, models, data_prefix):
+
+#     data_loader = get_chunk_data_loader(args, models, data_prefix)
+
+#     pax({"data_loader": data_loader})
+
+# def embed_chunks(retrieval_args, timer):
+# def embed_chunks(args, timer):
+
+#     # initialize_megatron_for_embedding(retrieval_args)
+
+#     # megatron_args = get_args()
+#     # megatron_args.bert_binary_head = False
+#     # megatron_args.model_type = ModelType.encoder_or_decoder
+
+#     models, optimizer, opt_param_scheduler = \
+#         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
+#     # for m in models:
+#     #     m.post_process = False
+
+#     # pax({
+#     #     "args" : args,
+#     #     "models" : models,
+#     # })
+
+#     # >>>
+#     # train_data_iterator, valid_data_iterator, test_data_iterator \
+#     #     = build_train_valid_test_data_iterators(
+#     #         train_valid_test_datasets_provider)
+#     # pax({"train_data_iterator": train_data_iterator})
+
+#     # embed_batches(models, train_data_iterator)
+
+#     # pax(0, {
+#     #     "retrieval_args" : retrieval_args,
+#     #     "megatron_args" : megatron_args,
+#     #     # "tokenizer" : tokenizer,
+#     #     "models" : models,
+#     #     # "optimizer" : optimizer,
+#     #     # "opt_param_scheduler" : opt_param_scheduler,
+#     #     # "train_data_iterator" : train_data_iterator,
+#     #     "train_data_iterator / len" : len(train_data_iterator),
+#     #     "valid_data_iterator / len" : len(valid_data_iterator),
+#     #     "test_data_iterator / len" : len(test_data_iterator),
+#     # })
+#     # <<<
+
+#     data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
+#     data_files = [ path for path in data_files if os.path.exists(path) ]
+#     data_prefixes = [ os.path.splitext(f)[0] for f in data_files ]
+
+#     # pax({"data_prefixes": data_prefixes})
+
+#     for data_index, data_prefix in enumerate(data_prefixes):
+
+#         chunk_embedding_file = get_chunk_embedding_path(args, data_prefix)
+
+#         if os.path.exists(chunk_embedding_file):
+#             continue
+
+#         print(" > embedding chunks, dataset %d / %d ... '%s'." %
+#               (data_index, len(data_files), os.path.basename(data_prefix)))
+
+#         embeddings = embed_chunks_single_dataset(args, models, data_prefix)
+
+#         pax({"embeddings": embeddings})
+
+#     raise Exception("finished embedding?")
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+def get_chunk_data_loader(args, data_metas, timer):
+
+    # Token datasets.
+    indexed_datasets = \
+        [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
 
     # Chunk index.
-    chunk_index_file = get_chunk_index_path(args, data_prefix)
-    f = h5py.File(chunk_index_file, "r")
-    eods = np.copy(f["eods"])
-    chunk_index = np.copy(f["index"])
+    chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
+    f = h5py.File(chunk_index_path, "r")
+    dataset_offsets = np.copy(f["dataset_offsets"])
+    chunk_index = np.copy(f["chunks"])
     f.close()
 
+    # pax({
+    #     "indexed_datasets" : indexed_datasets,
+    #     "chunk_index_path" : chunk_index_path,
+    #     "dataset_offsets" : dataset_offsets,
+    #     "chunks / len" : len(chunk_index)
+    # })
+
     # Chunk dataset.
-    dataset = GPTChunkDataset(indexed_dataset, chunk_index, eods)
+    dataset = GPTChunkDataset(indexed_datasets, dataset_offsets, chunk_index)
 
     # Megatron sampler.
     batch_sampler = MegatronPretrainingSampler(
@@ -284,83 +444,38 @@ def get_chunk_data_loader(args, models, data_prefix):
                                               pin_memory=True)
 
     # >>>
-    pax({
-        "chunk_index" : chunk_index,
-        "dataset" : dataset,
-        "batch_sampler" : batch_sampler,
-        "data_loader" : data_loader,
-    })
+    # pax({
+    #     # "chunk_index" : chunk_index,
+    #     "dataset" : dataset,
+    #     "batch_sampler" : batch_sampler,
+    #     "data_loader" : data_loader,
+    # })
     # <<<
 
     return data_loader
 
-def embed_chunks_single_dataset(args, models, data_prefix):
-
-    data_loader = get_chunk_data_loader(args, models, data_prefix)
-
-    pax({"data_loader": data_loader})
-
-# def embed_chunks(retrieval_args, timer):
 def embed_chunks(args, timer):
 
-    # initialize_megatron_for_embedding(retrieval_args)
+    # # Embedding workdir.
+    # workdir = os.path.join(args.retrieval_workdir, "embed")
+    # os.makedirs(workdir, exist_ok = True)
 
-    # megatron_args = get_args()
-    # megatron_args.bert_binary_head = False
-    # megatron_args.model_type = ModelType.encoder_or_decoder
+    with open(os.path.join(args.retrieval_workdir, "order.json")) as f:
+        data_metas = json.load(f)
+
+    data_loader = get_chunk_data_loader(args, data_metas, timer)
+    data_iterator = iter(data_loader)
+
+    # pax({
+    #     "data_metas" : data_metas,
+    #     "data_loader" : data_loader,
+    # })
 
     models, optimizer, opt_param_scheduler = \
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
-    # for m in models:
-    #     m.post_process = False
 
-    # pax({
-    #     "args" : args,
-    #     "models" : models,
-    # })
+    embed_batches(models, data_iterator)
 
-    # >>>
-    # train_data_iterator, valid_data_iterator, test_data_iterator \
-    #     = build_train_valid_test_data_iterators(
-    #         train_valid_test_datasets_provider)
-    # pax({"train_data_iterator": train_data_iterator})
-
-    # embed_batches(models, train_data_iterator)
-
-    # pax(0, {
-    #     "retrieval_args" : retrieval_args,
-    #     "megatron_args" : megatron_args,
-    #     # "tokenizer" : tokenizer,
-    #     "models" : models,
-    #     # "optimizer" : optimizer,
-    #     # "opt_param_scheduler" : opt_param_scheduler,
-    #     # "train_data_iterator" : train_data_iterator,
-    #     "train_data_iterator / len" : len(train_data_iterator),
-    #     "valid_data_iterator / len" : len(valid_data_iterator),
-    #     "test_data_iterator / len" : len(test_data_iterator),
-    # })
-    # <<<
-
-    data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
-    data_files = [ path for path in data_files if os.path.exists(path) ]
-    data_prefixes = [ os.path.splitext(f)[0] for f in data_files ]
-
-    # pax({"data_prefixes": data_prefixes})
-
-    for data_index, data_prefix in enumerate(data_prefixes):
-
-        chunk_embedding_file = get_chunk_embedding_path(args, data_prefix)
-
-        if os.path.exists(chunk_embedding_file):
-            continue
-
-        print(" > embedding chunks, dataset %d / %d ... '%s'." %
-              (data_index, len(data_files), os.path.basename(data_prefix)))
-
-        embeddings = embed_chunks_single_dataset(args, models, data_prefix)
-
-        pax({"embeddings": embeddings})
-
-    raise Exception("finished embedding?")
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 # eof

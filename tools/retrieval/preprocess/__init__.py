@@ -25,11 +25,12 @@ def preprocess_chunks(args, timer):
     if torch.distributed.get_rank() != 0:
         return
 
-    # Preprocessing workdir.
-    workdir = os.path.join(args.retrieval_workdir, "preprocess")
-    os.makedirs(workdir, exist_ok = True)
+    # # Preprocessing workdir.
+    # workdir = os.path.join(args.retrieval_workdir, "preprocess")
+    # os.makedirs(workdir, exist_ok = True)
+    workdir = args.retrieval_workdir
 
     # Stages.
     build_chunk_indexes(args, workdir)
-    save_document_offsets(args, workdir)
-    save_document_ids(args, workdir, timer)
+    # save_document_offsets(args, workdir)
+    # save_document_ids(args, workdir, timer)

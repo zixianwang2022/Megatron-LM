@@ -22,11 +22,14 @@ from lutil import pax
 
 class GPTChunkDataset(torch.utils.data.Dataset):
 
-    def __init__(self, indexed_dataset, chunk_index, eods):
-
-        self.indexed_dataset = indexed_dataset
+    # def __init__(self, indexed_dataset, chunk_index, eods):
+    #     self.indexed_dataset = indexed_dataset
+    #     self.chunk_index = chunk_index
+    #     self.eods = eods
+    def __init__(self, indexed_datasets, dataset_offsets, chunk_index):
+        self.indexed_datasets = indexed_datasets
+        self.dataset_offsets = dataset_offsets
         self.chunk_index = chunk_index
-        self.eods = eods
 
     def __len__(self):
         raise Exception("length?")
@@ -37,6 +40,8 @@ class GPTChunkDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
 
         raise Exception("get item.")
+
+        raise Exception("detokenize -> retokenize.")
 
         # >>>
         orig_idx = idx

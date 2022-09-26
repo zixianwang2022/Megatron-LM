@@ -275,15 +275,15 @@ def build_chunk_indexes(args, workdir):
     save_dataset_metadatas(workdir, data_metas)
 
     # >>>
-    f = h5py.File(get_full_chunk_index_path(workdir), "r")
-    g = h5py.File(get_sampled_chunk_index_path(workdir), "r")
-    pax({
-        "full / chunks" : str(f["chunks"].shape),
-        "sampled / chunks" : str(g["chunks"].shape),
-        "full / offsets" : np.copy(f["dataset_offsets"]).tolist(),
-        "sampled / offsets" : np.copy(g["dataset_offsets"]).tolist(),
+    # f = h5py.File(get_full_chunk_index_path(workdir), "r")
+    # g = h5py.File(get_sampled_chunk_index_path(workdir), "r")
+    # pax({
+    #     "full / chunks" : str(f["chunks"].shape),
+    #     "sampled / chunks" : str(g["chunks"].shape),
+    #     "full / offsets" : np.copy(f["dataset_offsets"]).tolist(),
+    #     "sampled / offsets" : np.copy(g["dataset_offsets"]).tolist(),
         
-    })
+    # })
     # <<<
 
     # raise Exception("finished creating chunks.")
