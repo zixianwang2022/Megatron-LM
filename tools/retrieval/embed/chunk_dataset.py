@@ -19,7 +19,10 @@ import torch
 from megatron import get_tokenizer
 from megatron.data.bert_dataset import build_training_sample
 # from megatron.tokenizer.gpt2_tokenization import GPT2Tokenizer
-from megatron.tokenizer.tokenizer import _GPT2BPETokenizer
+from megatron.tokenizer.tokenizer import (
+    _BertWordPieceTokenizer,
+    _GPT2BPETokenizer,
+)
 
 # >>>
 from lutil import pax
@@ -37,12 +40,19 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         self.indexed_datasets = indexed_datasets
         self.dataset_offsets = dataset_offsets
         self.chunk_index = chunk_index
-        self.max_chunk_len = max_chunk_len
+        self.max_gpt_chunk_len = max_chunk_len
 
         dataset_ids = []
         for i in range(len(dataset_offsets) - 1):
             dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
         self.dataset_ids = [ i for ii in dataset_ids for i in ii ]
+
+        # >>>
+        self.gpt_tokenizer = _GPT2BPETokenizer(
+            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
+            merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+        )
+        # <<<
 
         # pax({
         #     "dataset_offsets" : self.dataset_offsets,
@@ -66,13 +76,22 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         chunk_len = chunk_end_idx - chunk_start_idx
         indexed_dataset = self.indexed_datasets[dataset_id]
 
-        chunk = indexed_dataset.get(document_id,
-                                    offset = chunk_start_idx,
-                                    length = chunk_len)
+        token_ids = indexed_dataset.get(document_id,
+                                        offset = chunk_start_idx,
+                                        length = chunk_len)
 
-        if chunk_len != self.max_chunk_len:
-            assert chunk_len < self.max_chunk_len, "invalid chunk len."
-            raise Exception("extend chunk with tokenizer.eod.")
+        if chunk_len != self.max_gpt_chunk_len:
+            assert chunk_len < self.max_gpt_chunk_len, "invalid chunk len."
+            token_ids = token_ids.tolist()
+            token_ids += [self.gpt_tokenizer.eod_id] * \
+                (self.max_gpt_chunk_len - chunk_len)
+            # pax({
+            #     "tokenizer" : self.gpt_tokenizer,
+            #     "token_ids" : "%d ... %s" % (
+            #         len(token_ids),
+            #         str(token_ids),
+            #     ),
+            # })
 
         # pax({
         #     # "indexed_dataset" : indexed_dataset,
@@ -84,7 +103,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         #     "chunk" : chunk,
         # })
 
-        return {'text': np.array(chunk, dtype=np.int64)}
+        return {'text': np.array(token_ids, dtype=np.int64)}
 
 class BertChunkDataset(GPTChunkDataset):
 
@@ -102,15 +121,19 @@ class BertChunkDataset(GPTChunkDataset):
         super().__init__(indexed_datasets, dataset_offsets,
                          chunk_index, max_chunk_len)
 
-        self.max_embed_chunk_len = max_embed_chunk_len
+        self.max_bert_chunk_len = max_embed_chunk_len
 
         # >>>
         # gpt_tokenizer = GPT2Tokenizer(
-        self.gpt_tokenizer = _GPT2BPETokenizer(
-            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-            merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+        # self.gpt_tokenizer = _GPT2BPETokenizer(
+        #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
+        #     merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+        # )
+        # self.bert_tokenizer = get_tokenizer()
+        self.bert_tokenizer = _BertWordPieceTokenizer(
+            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
+            lower_case = True,
         )
-        self.bert_tokenizer = get_tokenizer()
         # <<<
 
         # Params to store.
@@ -159,10 +182,32 @@ class BertChunkDataset(GPTChunkDataset):
 
         # Final token will be padded in 'build_sample'.
         # assert len(bert_token_ids) <= self.max_chunk_len - 2 # cls, sep[, eos]
-        # cls, sep[, eos]
-        assert len(bert_token_ids) <= self.max_embed_chunk_len - 2, \
-            ? ? ?
+
+        # >>>
+        # Cls, Sep [+pad_id] need to be added.
+        if 0: # original code.
+            assert len(bert_token_ids) <= self.max_bert_chunk_len - 2, \
+                "tokens %d, max tokens %d." % (len(bert_token_ids),
+                                               self.max_bert_chunk_len)
+        else:
+            if len(bert_token_ids) > self.max_bert_chunk_len - 2:
+                print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+                print("~~~~ text ~~~~")
+                print(text)
+                print("~~~~ gpt token ids [ %d ] ~~~~" % len(gpt_token_ids))
+                [print("%d ... '%s'" % (t, self.gpt_tokenizer.detokenize([t])))
+                 for t in gpt_token_ids]
+                print("~~~~ bert token ids [ %d ] ~~~~" % len(bert_token_ids))
+                [print("%d ... '%s'" % (t, self.bert_tokenizer.detokenize([t])))
+                 for t in bert_token_ids]
+                raise Exception("bert overflow.")
         # <<<
+
+        # >>>>>>>> haaaaaaaaaack. >>>>>>>>
+        if len(bert_token_ids) == 0:
+            # raise Exception("hi, empty bert.")
+            bert_token_ids = [ self.pad_id ]
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # pax({
         #     "gpt_token_ids" : gpt_token_ids,
@@ -203,15 +248,23 @@ class BertChunkDataset(GPTChunkDataset):
         # })
         # <<<
 
-        sample = build_training_sample([bert_token_ids],
-                                       len(bert_token_ids), # self.max_chunk_len,
-                                       self.max_embed_chunk_len,  # for padding
-                                       self.vocab_id_list,
-                                       self.vocab_id_to_token_dict,
-                                       self.cls_id, self.sep_id,
-                                       self.mask_id, self.pad_id,
-                                       self.masked_lm_prob, np_rng,
-                                       self.binary_head)
+        try:
+            sample = build_training_sample([bert_token_ids],
+                                           len(bert_token_ids), # self.max_chunk_len,
+                                           self.max_bert_chunk_len, # for padding
+                                           self.vocab_id_list,
+                                           self.vocab_id_to_token_dict,
+                                           self.cls_id, self.sep_id,
+                                           self.mask_id, self.pad_id,
+                                           self.masked_lm_prob, np_rng,
+                                           self.binary_head)
+        except Exception as e:
+            print("~~~ text = '%s'. ~~~" % text)
+            pax({
+                "text" : text,
+                "gpt_token_ids" : gpt_token_ids,
+                "bert_token_ids" : bert_token_ids,
+            })
 
         # pax({"sample": sample})
 

@@ -18,6 +18,7 @@ import h5py
 import json
 import numpy as np
 import os
+import time
 import torch
 
 from megatron import (
@@ -285,9 +286,11 @@ def embed_batches(args, models, data_iterator):
     with torch.no_grad():
 
         num_batches = int(np.ceil(len(data_iterator) / args.micro_batch_size))
+        start_time = time.time()
+        n_samples_consumed = 0
         for batch_index in range(num_batches):
 
-            print_rank_0("batch %d / %d." % (batch_index, num_batches))
+            # print_rank_0("batch %d / %d." % (batch_index, num_batches))
 
             output_tensors = forward_backward_func(
                 forward_step, # _func,
@@ -298,6 +301,16 @@ def embed_batches(args, models, data_iterator):
                 forward_only = True,
                 collect_non_loss_data = True,
             )
+
+            n_samples_consumed += args.micro_batch_size
+            # sec_per_sample = (time.time() - start_time) / n_samples_consumed
+            samples_per_sec = n_samples_consumed / (time.time() - start_time)
+            print_rank_0("batch %d / %d ... %.3f samples/sec [ 47b = %.1f node days ]." % (
+                batch_index,
+                num_batches,
+                samples_per_sec,
+                (47e9 / samples_per_sec) / 16 / (24 * 3600),
+            ))
 
             # pax(0, {
             #     "output_tensors" : output_tensors,

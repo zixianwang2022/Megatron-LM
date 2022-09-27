@@ -23,8 +23,8 @@ NPROCS=1
 # TASKS="split-data"
 # TASKS="gen-rand-data"
 # TASKS="build-chunk-index"
-# TASKS="preprocess-chunks" # "embed-preprocess"
-TASKS="embed-chunks"
+TASKS="preprocess-chunks" # "embed-preprocess"
+# TASKS="embed-chunks"
 # TASKS=train
 # TASKS=add
 # TASKS="remove-train-outputs,train"
@@ -85,12 +85,12 @@ TOKENIZER_TYPE=GPT2BPETokenizer
 # <<<
 # data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
 # INDEX_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
-RETRIEVAL_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/workdirs/0
+RETRIEVAL_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/workdirs/1
 # PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
 
 RETRIEVAL_CHUNK_LEN=64
-RETRIEVAL_MAX_EMBED_CHUNK_LEN=70
+RETRIEVAL_MAX_EMBED_CHUNK_LEN=130 # 70 -> 72 -> 80 -> 90 -> 130
 RETRIEVAL_NCHUNKS_SAMPLED=300000000
 SEED=1001
 EMBED_START_INDEX=0
@@ -126,7 +126,7 @@ if [[ "$TASKS" == *"embed-chunks"* ]]; then
         --num-layers 24 \
         --hidden-size 1024 \
         --num-attention-heads 16 \
-        --micro-batch-size 8 \
+        --micro-batch-size 1024 \
         --seq-length 512 \
         --max-position-embeddings 512 \
         --train-iters 1000000 \

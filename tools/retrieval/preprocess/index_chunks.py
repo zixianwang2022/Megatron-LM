@@ -29,10 +29,16 @@ from tqdm import tqdm
 # sys.path.append("/home/boxinw-src/megatron-lm/megatron")
 # sys.path.append("/home/boxinw-src/megatron-lm/")
 
-# from megatron import get_args
+# from megatron import (
+#     # get_args,
+#     get_tokenizer,
+# )
 # from megatron.data import indexed_dataset
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
-# from megatron.tokenizer import build_tokenizer
+from megatron.tokenizer.tokenizer import (
+    _BertWordPieceTokenizer,
+    _GPT2BPETokenizer,
+)
 
 from .utils import (
     get_individual_chunk_index_path,
@@ -83,6 +89,15 @@ def save_dataset_metadatas(workdir, data_metas):
 
 def build_individual_chunk_index(args, indexed_dataset):
 
+    gpt_tokenizer = _GPT2BPETokenizer(
+        vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
+        merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+    )
+    bert_tokenizer = _BertWordPieceTokenizer(
+        vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
+        lower_case = True,
+    )
+
     size = indexed_dataset.sizes.shape[0]
     train = int(round(float(size) * 0.98))
 
@@ -108,8 +123,47 @@ def build_individual_chunk_index(args, indexed_dataset):
                           for s in chunk_start_idxs]
 
         # eods.append(eod)
-        chunk_index.extend([(document_id, *idxs)
-                            for idxs in zip(chunk_start_idxs, chunk_end_idxs)])
+        # chunk_index.extend([(document_id, *idxs)
+        #                     for idxs in zip(chunk_start_idxs, chunk_end_idxs)])
+        # >>>
+        chunk_ranges = []
+        for i, chunk_start_idx in enumerate(chunk_start_idxs):
+            chunk_end_idx = chunk_end_idxs[i]
+            gpt_token_ids = indexed_dataset.get(
+                idx = document_id,
+                offset = chunk_start_idx,
+                length = chunk_end_idx - chunk_start_idx,
+            )
+            gpt_token_ids = [t for t in gpt_token_ids.tolist() # unnecessary?
+                             if t != gpt_tokenizer.eod]
+            text = gpt_tokenizer.detokenize(gpt_token_ids)
+            bert_token_ids = bert_tokenizer.tokenize(text)
+
+            if True or len(bert_token_ids) > 0:
+                chunk_index.append((
+                    document_id,
+                    chunk_start_idx,
+                    chunk_end_idx,
+                    len(bert_token_ids),
+                ))
+            # >>>
+            else:
+                pax({
+                    "gpt_tokenizer" : gpt_tokenizer,
+                    "bert_tokenizer" : bert_tokenizer,
+                    "text" : text,
+                    "gpt_token_ids" : "%d / %s" % (
+                        len(gpt_token_ids),
+                        str(gpt_token_ids),
+                    ),
+                    "bert_token_ids" : "%d / %s" % (
+                        len(bert_token_ids),
+                        str(bert_token_ids),
+                    ),
+                })
+            # <<<
+
+    pax({"chunk_index / len": len(chunk_index)})
 
     print(' > converting chunk index to numpy.')
     # eods = np.array(eods)
@@ -268,6 +322,7 @@ def build_chunk_indexes(args, workdir):
 
     # Build chunk indexes.
     build_individual_chunk_indexes(args, workdir, data_metas)
+    raise Exception("finished individual.")
     build_full_chunk_index(args, workdir, data_metas)
     build_sampled_chunk_index(args, workdir, data_metas)
 
