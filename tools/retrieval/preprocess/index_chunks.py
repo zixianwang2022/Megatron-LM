@@ -268,6 +268,7 @@ def save_dataset_metadatas(workdir, data_metas):
 #     # return eods, chunk_index
 #     return chunk_index
 def build_partial_chunk_index(
+        args,
         proc_id,
         n_procs,
         indexed_dataset,
@@ -275,145 +276,73 @@ def build_partial_chunk_index(
         bert_tokenizer,
 ):
 
-    # n_documents = len(indexed_dataset)
-    n_documents = len(indexed_dataset.doc_idx) - 1 # doc_idx starts at 0
-    n_documents_per_proc = int(np.ceil(n_documents / n_procs))
-    document_start_id = proc_id * n_documents_per_proc
-    document_end_id = min(n_documents, document_start_id + n_documents_per_proc)
+    # n_docs = len(indexed_dataset)
+    n_docs = len(indexed_dataset.doc_idx) - 1 # doc_idx starts at 0
+    n_docs_per_proc = int(np.ceil(n_docs / n_procs))
+    doc_start_id = proc_id * n_docs_per_proc
+    doc_end_id = min(n_docs, doc_start_id + n_docs_per_proc)
 
     # pax({
     #     # "indexed_dataset" : indexed_dataset,
     #     "n_procs" : n_procs,
-    #     "n_documents" : n_documents,
-    #     "n_documents_per_proc" : n_documents_per_proc,
-    #     "doc coverage" : n_procs * n_documents_per_proc,
+    #     "n_docs" : n_docs,
+    #     "n_docs_per_proc" : n_docs_per_proc,
+    #     "doc coverage" : n_procs * n_docs_per_proc,
     # })
     print(" > building partial chunk index, proc %d / %d, docs %d:%d / %d." % (
         proc_id,
         n_procs,
-        document_start_id,
-        document_end_id,
+        doc_start_id,
+        doc_end_id,
+        n_docs,
     ))
 
-    return proc_id
+    # return proc_id
 
     chunk_index = []
-    for document_id, document in enumerate(tqdm(indexed_dataset)):
+    doc_range = range(doc_start_id, doc_end_id)
+    doc_iter = lambda : tqdm(doc_range) if proc_id == 0 else doc_range
+    for doc_id in doc_iter():
 
         # >>>
-        # if document_id == 1000:
-        #     break
+        if doc_id == 16:
+            break
         # <<<
 
-        if document_id == train:
-            break
+        doc = indexed_dataset.get(doc_id)
+        eod_id = doc[-1]
+        doc = doc[:-1] # remove 'eod' token
+        doc_len = len(doc)
 
-        eod = document[-1]
-        document = document[:-1]
-        document_len = len(document)
-
-        chunk_start_idxs = list(range(0, document_len, args.retrieval_chunk_len))
-        chunk_end_idxs = [min(document_len, s + args.retrieval_chunk_len)
+        chunk_start_idxs = list(range(0, doc_len, args.retrieval_chunk_len))
+        chunk_end_idxs = [min(doc_len, s + args.retrieval_chunk_len)
                           for s in chunk_start_idxs]
 
-        # eods.append(eod)
-        # >>>
-        # chunk_index.extend([(document_id, *idxs)
-        #                     for idxs in zip(chunk_start_idxs, chunk_end_idxs)])
-        # +++
+        for i, chunk_start_idx in enumerate(chunk_start_idxs):
+            chunk_end_idx = chunk_end_idxs[i]
+            gpt_token_ids = indexed_dataset.get(
+                idx = doc_id,
+                offset = chunk_start_idx,
+                length = chunk_end_idx - chunk_start_idx,
+            )
+            gpt_token_ids = [ t for t in gpt_token_ids.tolist() if t != eod_id ]
+            text = gpt_tokenizer.detokenize(gpt_token_ids)
+            bert_token_ids = bert_tokenizer.tokenize(text)
 
-            # thread_start_idxs = list(range(0, len(chunk_start_idxs), n_threads))
-        # pax({"bert_chunk_lens": bert_chunk_lens})
+            chunk_index.append((
+                doc_id,
+                chunk_start_idx,
+                chunk_end_idx,
+                len(bert_token_ids),
+            ))
 
-        chunk_index.extend([(document_id, *idxs) for idxs in zip(
-            chunk_start_idxs,
-            chunk_end_idxs,
-            bert_chunk_lens,
-        )])
+    if proc_id == 0:
+        pax({
+            "chunk_index / len" : len(chunk_index),
+            "chunk_index" : chunk_index[:100],
+        })
 
-        # pax({
-        #     "chunk_start_idxs / len" : len(chunk_start_idxs),
-        #     "thread_start_idxs" : str(thread_start_idxs),
-        #     "n_threads" : n_threads,
-        # })
-        # chunk_ranges = []
-        # for i, chunk_start_idx in enumerate(chunk_start_idxs):
-        #     chunk_end_idx = chunk_end_idxs[i]
-        #     gpt_token_ids = indexed_dataset.get(
-        #         idx = document_id,
-        #         offset = chunk_start_idx,
-        #         length = chunk_end_idx - chunk_start_idx,
-        #     )
-        #     gpt_token_ids = [t for t in gpt_token_ids.tolist() # unnecessary?
-        #                      if t != gpt_tokenizer.eod]
-        #     text = gpt_tokenizer.detokenize(gpt_token_ids)
-        #     bert_token_ids = bert_tokenizer.tokenize(text)
-
-        #     if True or len(bert_token_ids) > 0:
-        #         chunk_index.append((
-        #             document_id,
-        #             chunk_start_idx,
-        #             chunk_end_idx,
-        #             len(bert_token_ids),
-        #         ))
-        #     # >>>
-        #     else:
-        #         pax({
-        #             "gpt_tokenizer" : gpt_tokenizer,
-        #             "bert_tokenizer" : bert_tokenizer,
-        #             "text" : text,
-        #             "gpt_token_ids" : "%d / %s" % (
-        #                 len(gpt_token_ids),
-        #                 str(gpt_token_ids),
-        #             ),
-        #             "bert_token_ids" : "%d / %s" % (
-        #                 len(bert_token_ids),
-        #                 str(bert_token_ids),
-        #             ),
-        #         })
-        #     # <<<
-
-    # thread_id = threading.get_ident()
-
-    # if chunk_id % 10 == 0:
-    #     print("processing doc %d, chunk %d / %d." % (document_id, chunk_id, n_chunks))
-
-    gpt_token_ids = indexed_dataset.get(
-        idx = document_id,
-        offset = chunk_start_idx,
-        length = chunk_end_idx - chunk_start_idx,
-    )
-    gpt_token_ids = [t for t in gpt_token_ids.tolist() # unnecessary?
-                     if t != gpt_tokenizer.eod]
-    text = gpt_tokenizer.detokenize(gpt_token_ids)
-    bert_token_ids = bert_tokenizer.tokenize(text)
-
-    # if len(bert_token_ids) > 0:
-    #     chunk_index.append((
-    #         document_id,
-    #         chunk_start_idx,
-    #         chunk_end_idx,
-    #         len(bert_token_ids),
-    #     ))
-    # >>>
-    # if len(bert_token_ids) == 0:
-    #     pax({
-    #         "gpt_tokenizer" : gpt_tokenizer,
-    #         "bert_tokenizer" : bert_tokenizer,
-    #         "text" : text,
-    #         "gpt_token_ids" : "%d / %s" % (
-    #             len(gpt_token_ids),
-    #             str(gpt_token_ids),
-    #         ),
-    #         "bert_token_ids" : "%d / %s" % (
-    #             len(bert_token_ids),
-    #             str(bert_token_ids),
-    #         ),
-    #     })
-    # <<<
-
-    return len(bert_token_ids)
-    # return text, gpt_token_ids, bert_token_ids
+    return proc_id, chunk_index
 
 
 def build_individual_chunk_index(args, indexed_dataset):
@@ -427,16 +356,19 @@ def build_individual_chunk_index(args, indexed_dataset):
         lower_case = True,
     )
 
-    n_procs = 8
+    n_procs = 8 # 8, 128
 
     # size = indexed_dataset.sizes.shape[0]
     # train = int(round(float(size) * 0.98))
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers = n_threads) as executor:
+    # executor_ty = concurrent.futures.ThreadPoolExecutor
+    executor_ty = concurrent.futures.ProcessPoolExecutor
+    with executor_ty(max_workers = n_procs) as executor:
         futures = []
         for proc_id in range(n_procs): # not true process id
             futures.append(executor.submit(
                 build_partial_chunk_index,
+                args,
                 proc_id,
                 n_procs,
                 indexed_dataset,
@@ -498,15 +430,15 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
         # pax({"data_meta": data_meta})
 
     print(" > compute document offsets.")
-    document_offset = 0
+    doc_offset = 0
     for data_index, data_meta in enumerate(data_metas):
 
         f = h5py.File(data_meta["chunk_index_path"], "r")
-        data_meta["document_offset"] = document_offset
-        document_offset += f["chunks"][-1, 0].item()
+        data_meta["doc_offset"] = doc_offset
+        doc_offset += f["chunks"][-1, 0].item()
         f.close()
 
-    # pax({"document_offsets": [ m["document_offset"] for m in data_metas ]})
+    # pax({"doc_offsets": [ m["doc_offset"] for m in data_metas ]})
 
 def build_full_chunk_index(args, workdir, data_metas):
 

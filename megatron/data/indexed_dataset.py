@@ -20,6 +20,10 @@ import numpy as np
 import torch
 from megatron import print_rank_0
 
+# >>>
+from lutil import pax
+# <<<
+
 
 def __best_fitting_dtype(vocab_size=None):
     if vocab_size is not None and vocab_size < 65500:
@@ -63,7 +67,6 @@ def make_dataset(path, impl, skip_warmup=False):
     if impl == 'infer':
         impl = infer_dataset_impl(path)
     # >>>
-    # from lutil import pax
     # pax(0, {"impl": impl, "path": path, "skip_warmup": skip_warmup})
     # <<<
     if impl == 'lazy' and IndexedDataset.exists(path):
@@ -431,7 +434,6 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
             self._bin_buffer_mmap = np.memmap(path, mode='r', order='C')
             self._bin_buffer = memoryview(self._bin_buffer_mmap)
             # >>>
-            # from lutil import pax
             # pax(0, {
             #     "_bin_buffer_mmap" : self._bin_buffer_mmap,
             #     "_bin_buffer" : self._bin_buffer,
@@ -451,7 +453,6 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
                                           offset=offset + self._sizes.nbytes + self._pointers.nbytes)
 
             # >>>
-            # from lutil import pax
             # pax(0, {
             #     "_sizes" : self._sizes,
             #     "_pointers" : self._pointers,
@@ -498,7 +499,12 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
         return self._path
 
     def __setstate__(self, state):
-        self._do_init(state)
+        # >>>
+        # self._do_init(state)
+        # +++
+        # pax({"state": state})
+        self._do_init(state, skip_warmup = False)
+        # <<<
 
     def _do_init(self, path, skip_warmup):
         self._path = path
@@ -527,7 +533,6 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
             np_array = np.frombuffer(self._bin_buffer, dtype=self._index.dtype,
                                      count=size, offset=ptr)
             # >>>
-            # from lutil import pax
             # pax(0, {"idx": idx, "ptr": ptr, "size": size, "np_array": np_array})
             # <<<
             return np_array
