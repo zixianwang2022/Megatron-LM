@@ -276,38 +276,38 @@ def build_partial_chunk_index(
         bert_tokenizer,
 ):
 
+    # progress_proc_ids = set(range(0, n_procs, int(n_procs / 8)))
+    progress_proc_ids = set(range(n_procs))
+
     # n_docs = len(indexed_dataset)
     n_docs = len(indexed_dataset.doc_idx) - 1 # doc_idx starts at 0
     n_docs_per_proc = int(np.ceil(n_docs / n_procs))
     doc_start_id = proc_id * n_docs_per_proc
     doc_end_id = min(n_docs, doc_start_id + n_docs_per_proc)
 
-    # pax({
-    #     # "indexed_dataset" : indexed_dataset,
-    #     "n_procs" : n_procs,
-    #     "n_docs" : n_docs,
-    #     "n_docs_per_proc" : n_docs_per_proc,
-    #     "doc coverage" : n_procs * n_docs_per_proc,
-    # })
-    print(" > building partial chunk index, proc %d / %d, docs %d:%d / %d." % (
-        proc_id,
-        n_procs,
-        doc_start_id,
-        doc_end_id,
-        n_docs,
-    ))
+    if proc_id in progress_proc_ids:
+        print(" > building partial chunk index, proc %d / %d, docs %d:%d / %d."%(
+            proc_id,
+            n_procs,
+            doc_start_id,
+            doc_end_id,
+            n_docs,
+        ))
 
-    # return proc_id
+    # Progress bars (snapshot of overall progress).
+    doc_id_iter = range(doc_start_id, doc_end_id)
+    # doc_id_iter = range(doc_start_id, min(n_docs, doc_start_id+128)) # for debug
+    pbar = tqdm(doc_id_iter) \
+        if proc_id in progress_proc_ids else \
+           doc_id_iter
 
     chunk_index = []
-    doc_range = range(doc_start_id, doc_end_id)
-    doc_iter = lambda : tqdm(doc_range) if proc_id == 0 else doc_range
-    for doc_id in doc_iter():
+    for doc_id in pbar:
 
-        # >>>
-        if doc_id == 16:
-            break
-        # <<<
+        try:
+            pbar.set_description("proc %d / %d." % (proc_id, n_procs))
+        except:
+            pass
 
         doc = indexed_dataset.get(doc_id)
         eod_id = doc[-1]
@@ -336,11 +336,11 @@ def build_partial_chunk_index(
                 len(bert_token_ids),
             ))
 
-    if proc_id == 0:
-        pax({
-            "chunk_index / len" : len(chunk_index),
-            "chunk_index" : chunk_index[:100],
-        })
+    # if proc_id == 0:
+    #     pax({
+    #         "chunk_index / len" : len(chunk_index),
+    #         "chunk_index" : chunk_index[:100],
+    #     })
 
     return proc_id, chunk_index
 
@@ -356,7 +356,7 @@ def build_individual_chunk_index(args, indexed_dataset):
         lower_case = True,
     )
 
-    n_procs = 8 # 8, 128
+    n_procs = 128 # 8, 128
 
     # size = indexed_dataset.sizes.shape[0]
     # train = int(round(float(size) * 0.98))
@@ -379,15 +379,23 @@ def build_individual_chunk_index(args, indexed_dataset):
         for future in concurrent.futures.as_completed(futures):
             partial_chunk_indexes.append(future.result())
 
-    pax({"partial_chunk_indexes": partial_chunk_indexes})
+    partial_chunk_indexes.sort(key = lambda item : item[0]) # sort by proc_id
+    chunk_index = [item
+                   for partial_chunk_index in partial_chunk_indexes
+                   for item in partial_chunk_index[1]]
 
-    pax({"chunk_index / len": len(chunk_index)})
+    # pax({
+    #     "partial_chunk_indexes" :
+    #     [ "%d, len %d" % (p, len(ii)) for p, ii in partial_chunk_indexes ],
+    #     "chunk_index / len" : len(chunk_index),
+    #     "chunk_index / start" : chunk_index[:8],
+    #     "chunk_index / end" : chunk_index[-8:],
+    #     "empty berts" : sum(item[3] == 0 for item in chunk_index),
+    # })
 
     print(' > converting chunk index to numpy.')
-    # eods = np.array(eods)
     chunk_index = np.array(chunk_index)
 
-    # return eods, chunk_index
     return chunk_index
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
