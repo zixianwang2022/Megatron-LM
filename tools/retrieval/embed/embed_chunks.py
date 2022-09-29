@@ -436,8 +436,9 @@ def get_chunk_data_loader(args, data_metas, timer):
     # Chunk index.
     chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
     f = h5py.File(chunk_index_path, "r")
-    dataset_offsets = np.copy(f["dataset_offsets"])
-    chunk_index = np.copy(f["chunks"])
+    # pax({"f / keys": list(f.keys())})
+    dataset_offsets = np.copy(f["dataset_offsets_valid"])
+    chunk_index = np.copy(f["chunks_valid"])
     f.close()
 
     # pax({

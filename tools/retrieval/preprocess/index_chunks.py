@@ -278,6 +278,8 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
 
 def build_full_chunk_index(args, workdir, data_metas):
 
+    print(" > build full chunk index.")
+
     full_index_path = get_full_chunk_index_path(workdir)
     n_chunks = {
         "valid" : sum(m["n_chunks_valid"] for m in data_metas),
@@ -348,6 +350,8 @@ def build_full_chunk_index(args, workdir, data_metas):
 
 def build_sampled_chunk_index(args, workdir, data_metas):
 
+    print(" > build sampled chunk index.")
+
     sampled_index_path = get_sampled_chunk_index_path(workdir)
     n_chunks = sum(m["n_chunks_sampled"] for m in data_metas)
 
@@ -366,10 +370,10 @@ def build_sampled_chunk_index(args, workdir, data_metas):
     if not os.path.exists(sampled_index_path):
 
         f = h5py.File(sampled_index_path, "w")
-        chunk_index = f.create_dataset("chunks", (n_chunks, 4), dtype = "i8")
+        chunk_index = f.create_dataset("chunks_valid", (n_chunks, 4), dtype = "i8")
         dataset_offsets = f.create_dataset(
-            "dataset_offsets", (len(data_metas) + 1,), dtype = "uint64")
-        n_written = f.create_dataset("n_written", (1,), dtype = "uint64")
+            "dataset_offsets_valid", (len(data_metas) + 1,), dtype = "uint64")
+        n_written = f.create_dataset("n_written_valid", (1,), dtype = "uint64")
         n_written[0] = 0
 
         start_index = 0

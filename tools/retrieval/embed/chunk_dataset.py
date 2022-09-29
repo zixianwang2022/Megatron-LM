@@ -54,6 +54,20 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         )
         # <<<
 
+        bert_chunk_lens = list(enumerate(self.chunk_index[:, 3]))
+        print(" > sort / start.")
+        import time
+        t = time.time()
+        bert_chunk_lens.sort(key = lambda item : item[1])
+        # sample_idxs = np.argsortbert_chunk_lens.sort()
+        print(" > sort / end. [ %.2f sec ]" % (time.time() - t))
+        print(np.array(bert_chunk_lens))
+        pax({
+            "chunk_index" : chunk_index,
+            # "bert_chunk_lens" : bert_chunk_lens,
+        })
+        raise Exception("sort by bert length.")
+
         # pax({
         #     "dataset_offsets" : self.dataset_offsets,
         #     "dataset_ids" :
