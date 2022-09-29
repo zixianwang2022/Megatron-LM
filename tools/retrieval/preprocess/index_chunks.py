@@ -301,7 +301,9 @@ def build_partial_chunk_index(
         if proc_id in progress_proc_ids else \
            doc_id_iter
 
-    chunk_index = []
+    # chunk_index = []
+    chunk_index_valid = []
+    chunk_index_invalid = []
     for doc_id in pbar:
 
         try:
@@ -328,8 +330,12 @@ def build_partial_chunk_index(
             gpt_token_ids = [ t for t in gpt_token_ids.tolist() if t != eod_id ]
             text = gpt_tokenizer.detokenize(gpt_token_ids)
             bert_token_ids = bert_tokenizer.tokenize(text)
+            # bert_chunk_len = len(bert_token_ids)
 
-            chunk_index.append((
+            _chunk_index = chunk_index_invalid \
+                if len(bert_token_ids) == 0 else \
+                   chunk_index_valid
+            _chunk_index.append((
                 doc_id,
                 chunk_start_idx,
                 chunk_end_idx,
@@ -342,7 +348,8 @@ def build_partial_chunk_index(
     #         "chunk_index" : chunk_index[:100],
     #     })
 
-    return proc_id, chunk_index
+    # return proc_id, chunk_index
+    return proc_id, chunk_index_valid, chunk_index_invalid
 
 
 def build_individual_chunk_index(args, indexed_dataset):
@@ -380,19 +387,21 @@ def build_individual_chunk_index(args, indexed_dataset):
             partial_chunk_indexes.append(future.result())
 
     partial_chunk_indexes.sort(key = lambda item : item[0]) # sort by proc_id
-    chunk_index = [item
-                   for partial_chunk_index in partial_chunk_indexes
-                   for item in partial_chunk_index[1]]
+    chunk_index_valid = [item
+                         for partial_chunk_index in partial_chunk_indexes
+                         for item in partial_chunk_index[1]]
+    chunk_index_invalid = [item
+                           for partial_chunk_index in partial_chunk_indexes
+                           for item in partial_chunk_index[2]]
 
-    n_chunks_all = len(chunk_index)
-    n_chunks_invalid = sum(item[3] == 0 for item in chunk_index)
-    n_chunks_valid = n_chunks_all - n_chunks_invalid
-
-    pax({
-        "n_chunks_all" : n_chunks_all,
-        "n_chunks_invalid" : n_chunks_invalid,
-        "n_chunks_valid" : n_chunks_valid,
-    })
+    # n_chunks_all = len(chunk_index)
+    # n_chunks_invalid = sum(item[3] == 0 for item in chunk_index)
+    # n_chunks_valid = n_chunks_all - n_chunks_invalid
+    # pax({
+    #     "n_chunks_all" : n_chunks_all,
+    #     "n_chunks_invalid" : n_chunks_invalid,
+    #     "n_chunks_valid" : n_chunks_valid,
+    # })
     
     # pax({
     #     "partial_chunk_indexes" :
@@ -404,9 +413,10 @@ def build_individual_chunk_index(args, indexed_dataset):
     # })
 
     print(' > converting chunk index to numpy.')
-    chunk_index = np.array(chunk_index)
+    chunk_index_valid = np.array(chunk_index_valid)
+    chunk_index_invalid = np.array(chunk_index_invalid)
 
-    return chunk_index
+    return chunk_index_valid, chunk_index_invalid
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 def build_individual_chunk_indexes(args, workdir, data_metas):
@@ -423,58 +433,63 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
               (data_index, len(data_metas), data_meta["name"]))
 
         indexed_dataset = make_indexed_dataset(data_meta["prefix"], "mmap", True)
-        chunk_index = build_individual_chunk_index(args, indexed_dataset)
+        chunk_index_valid, chunk_index_invalid = \
+            build_individual_chunk_index(args, indexed_dataset)
 
         print(" > saving chunk index.")
 
         f = h5py.File(chunk_index_path, "w")
         # dset = f.create_dataset("eods", data = eods)
-        dset = f.create_dataset("chunks", data = chunk_index)
+        # dset = f.create_dataset("chunks", data = chunk_index)
+        dset = f.create_dataset("chunks_valid", data = chunk_index_valid)
+        dset = f.create_dataset("chunks_invalid", data = chunk_index_invalid)
         f.close()
 
         print(" > finished saving chunk index.")
 
+    # raise Exception("finished saving chunk indexes.")
+
     # >>>
-    print(" > compute n_chunks_valid.")
-    for data_index, data_meta in enumerate(data_metas):
-        f = h5py.File(data_meta["chunk_index_path"], "r")
-        gpath = data_meta["chunk_index_path"] + ".NEW"
-        # if "n_chunks_all" not in f:
-        if not os.path.exists(gpath):
-            batch_size = 1000000
+    # print(" > compute n_chunks_valid.")
+    # for data_index, data_meta in enumerate(data_metas):
+    #     f = h5py.File(data_meta["chunk_index_path"], "r")
+    #     gpath = data_meta["chunk_index_path"] + ".NEW"
+    #     # if "n_chunks_all" not in f:
+    #     if not os.path.exists(gpath):
+    #         batch_size = 1000000
 
-            n_chunks_all = len(f["chunks"])
-            n_chunks_invalid = 0
-            for start_idx in range(0, n_chunks_all, batch_size):
-                print("    batch %d / %d." % (
-                    int(start_idx / batch_size),
-                    int(n_chunks_all / batch_size),
-                ))
-                end_idx = min(n_chunks_all, start_idx + batch_size)
-                n_chunks_invalid += sum(f["chunks"][start_idx:end_idx, 3] == 0)
-            n_chunks_invalid = n_chunks_invalid.item()
-            n_chunks_valid = n_chunks_all - n_chunks_invalid
+    #         n_chunks_all = len(f["chunks"])
+    #         n_chunks_invalid = 0
+    #         for start_idx in range(0, n_chunks_all, batch_size):
+    #             print("    batch %d / %d." % (
+    #                 int(start_idx / batch_size),
+    #                 int(n_chunks_all / batch_size),
+    #             ))
+    #             end_idx = min(n_chunks_all, start_idx + batch_size)
+    #             n_chunks_invalid += sum(f["chunks"][start_idx:end_idx, 3] == 0)
+    #         n_chunks_invalid = n_chunks_invalid.item()
+    #         n_chunks_valid = n_chunks_all - n_chunks_invalid
 
-            g = h5py.File(gpath, "w")
-            f.copy(f["chunks"], g, "chunks")
-            g.create_dataset("n_chunks_all", (1,), dtype = "uint64")
-            g.create_dataset("n_chunks_valid", (1,), dtype = "uint64")
-            g["n_chunks_all"][0] = n_chunks_all
-            g["n_chunks_valid"][0] = n_chunks_valid
-            g.close()
-            # pax({
-            #     "chunks?" : "chunks" in f,
-            #     "n_chunks_all?" : "n_chunks_all" in f,
-            #     "n_chunks_valid?" : "n_chunks_valid" in f,
-            #     "n_chunks_all" : n_chunks_all,
-            #     "n_chunks_invalid" : n_chunks_invalid,
-            #     "n_chunks_valid" : n_chunks_valid,
-            # })
-        # else:
-        #     raise Exception("dataset already updated.")
-        f.close()
+    #         g = h5py.File(gpath, "w")
+    #         f.copy(f["chunks"], g, "chunks")
+    #         g.create_dataset("n_chunks_all", (1,), dtype = "uint64")
+    #         g.create_dataset("n_chunks_valid", (1,), dtype = "uint64")
+    #         g["n_chunks_all"][0] = n_chunks_all
+    #         g["n_chunks_valid"][0] = n_chunks_valid
+    #         g.close()
+    #         # pax({
+    #         #     "chunks?" : "chunks" in f,
+    #         #     "n_chunks_all?" : "n_chunks_all" in f,
+    #         #     "n_chunks_valid?" : "n_chunks_valid" in f,
+    #         #     "n_chunks_all" : n_chunks_all,
+    #         #     "n_chunks_invalid" : n_chunks_invalid,
+    #         #     "n_chunks_valid" : n_chunks_valid,
+    #         # })
+    #     # else:
+    #     #     raise Exception("dataset already updated.")
+    #     f.close()
 
-    raise Exception("finished computing n_chunks_valid.")
+    # raise Exception("finished computing n_chunks_valid.")
     # <<<
 
     # Set n_chunks, n_chunks_sampled (for unambiguity).
@@ -484,13 +499,15 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
         f = h5py.File(data_meta["chunk_index_path"], "r")
         # data_meta["n_chunks_all"] = len(f["chunks"])
         # data_meta["n_chunks_valid"] = sum(f["chunks"][:, 3] > 0)
-        data_meta["n_chunks_all"] = f["n_chunks_all"][0].item()
-        data_meta["n_chunks_valid"] = f["n_chunks_valid"][0].item()
+        # data_meta["n_chunks_all"] = f["n_chunks_all"][0].item()
+        # data_meta["n_chunks_valid"] = f["n_chunks_valid"][0].item()
+        data_meta["n_chunks_valid"] = len(f["chunks_valid"])
+        data_meta["n_chunks_invalid"] = len(f["chunks_invalid"])
         f.close()
 
         # pax({
-        #     "n_chunks_all" : n_chunks_all,
         #     "n_chunks_valid" : n_chunks_valid,
+        #     "n_chunks_invalid" : n_chunks_invalid,
         # })
 
         data_meta["n_chunks_sampled"] = \
@@ -498,7 +515,7 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
 
         assert data_meta["n_chunks_sampled"] < data_meta["n_chunks_valid"]
         
-        # pax({"data_meta": data_meta})
+        pax({"data_meta": data_meta})
 
     print(" > compute document offsets.")
     doc_offset = 0
