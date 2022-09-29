@@ -384,6 +384,16 @@ def build_individual_chunk_index(args, indexed_dataset):
                    for partial_chunk_index in partial_chunk_indexes
                    for item in partial_chunk_index[1]]
 
+    n_chunks_all = len(chunk_index)
+    n_chunks_invalid = sum(item[3] == 0 for item in chunk_index)
+    n_chunks_valid = n_chunks_all - n_chunks_invalid
+
+    pax({
+        "n_chunks_all" : n_chunks_all,
+        "n_chunks_invalid" : n_chunks_invalid,
+        "n_chunks_valid" : n_chunks_valid,
+    })
+    
     # pax({
     #     "partial_chunk_indexes" :
     #     [ "%d, len %d" % (p, len(ii)) for p, ii in partial_chunk_indexes ],
@@ -424,17 +434,70 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
 
         print(" > finished saving chunk index.")
 
+    # >>>
+    print(" > compute n_chunks_valid.")
+    for data_index, data_meta in enumerate(data_metas):
+        f = h5py.File(data_meta["chunk_index_path"], "r")
+        gpath = data_meta["chunk_index_path"] + ".NEW"
+        # if "n_chunks_all" not in f:
+        if not os.path.exists(gpath):
+            batch_size = 1000000
+
+            n_chunks_all = len(f["chunks"])
+            n_chunks_invalid = 0
+            for start_idx in range(0, n_chunks_all, batch_size):
+                print("    batch %d / %d." % (
+                    int(start_idx / batch_size),
+                    int(n_chunks_all / batch_size),
+                ))
+                end_idx = min(n_chunks_all, start_idx + batch_size)
+                n_chunks_invalid += sum(f["chunks"][start_idx:end_idx, 3] == 0)
+            n_chunks_invalid = n_chunks_invalid.item()
+            n_chunks_valid = n_chunks_all - n_chunks_invalid
+
+            g = h5py.File(gpath, "w")
+            f.copy(f["chunks"], g, "chunks")
+            g.create_dataset("n_chunks_all", (1,), dtype = "uint64")
+            g.create_dataset("n_chunks_valid", (1,), dtype = "uint64")
+            g["n_chunks_all"][0] = n_chunks_all
+            g["n_chunks_valid"][0] = n_chunks_valid
+            g.close()
+            # pax({
+            #     "chunks?" : "chunks" in f,
+            #     "n_chunks_all?" : "n_chunks_all" in f,
+            #     "n_chunks_valid?" : "n_chunks_valid" in f,
+            #     "n_chunks_all" : n_chunks_all,
+            #     "n_chunks_invalid" : n_chunks_invalid,
+            #     "n_chunks_valid" : n_chunks_valid,
+            # })
+        # else:
+        #     raise Exception("dataset already updated.")
+        f.close()
+
+    raise Exception("finished computing n_chunks_valid.")
+    # <<<
+
     # Set n_chunks, n_chunks_sampled (for unambiguity).
-    print(" > compute n_chunks, n_chunks_sampled.")
+    print(" > compute n_chunks_all, n_chunks_valid, n_chunks_sampled.")
     for data_index, data_meta in enumerate(data_metas):
 
         f = h5py.File(data_meta["chunk_index_path"], "r")
-        data_meta["n_chunks"] = len(f["chunks"])
+        # data_meta["n_chunks_all"] = len(f["chunks"])
+        # data_meta["n_chunks_valid"] = sum(f["chunks"][:, 3] > 0)
+        data_meta["n_chunks_all"] = f["n_chunks_all"][0].item()
+        data_meta["n_chunks_valid"] = f["n_chunks_valid"][0].item()
         f.close()
+
+        # pax({
+        #     "n_chunks_all" : n_chunks_all,
+        #     "n_chunks_valid" : n_chunks_valid,
+        # })
 
         data_meta["n_chunks_sampled"] = \
             int(round(args.retrieval_nchunks_sampled * data_meta["ratio"]))
 
+        assert data_meta["n_chunks_sampled"] < data_meta["n_chunks_valid"]
+        
         # pax({"data_meta": data_meta})
 
     print(" > compute document offsets.")
@@ -448,10 +511,65 @@ def build_individual_chunk_indexes(args, workdir, data_metas):
 
     # pax({"doc_offsets": [ m["doc_offset"] for m in data_metas ]})
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# def build_full_chunk_index(args, workdir, data_metas):
+
+#     full_index_path = get_full_chunk_index_path(workdir)
+#     n_chunks = sum(m["n_chunks"] for m in data_metas)
+
+#     # Delete existing chunk index if incorrect size.
+#     if os.path.exists(full_index_path):
+
+#         f = h5py.File(full_index_path)
+#         n_alloc = len(f["chunks"])           # total allocated
+#         n_written = f["n_written"][0].item() # total written
+#         f.close()
+
+#         if n_chunks != n_alloc or n_chunks != n_written:
+#             os.remove(full_index_path)
+
+#     # Build full chunk index.
+#     if not os.path.exists(full_index_path):
+
+#         f = h5py.File(full_index_path, "w")
+#         chunk_index = f.create_dataset("chunks", (n_chunks, 3), dtype = "i8")
+#         dataset_offsets = f.create_dataset(
+#             "dataset_offsets", (len(data_metas) + 1,), dtype = "uint64")
+#         n_written = f.create_dataset("n_written", (1,), dtype = "uint64")
+#         n_written[0] = 0
+
+#         start_index = 0
+#         for data_index, data_meta in enumerate(data_metas):
+
+#             print(" > concatenating chunks, dataset %d / %d ... '%s'." %
+#                   (data_index, len(data_metas), data_meta["name"]))
+
+#             g = h5py.File(data_meta["chunk_index_path"], "r")
+#             data = g["chunks"]
+#             chunk_index[start_index:start_index + len(data)] = data
+#             start_index += len(data)
+#             dataset_offsets[data_index + 1] = start_index
+#             n_written[0] = start_index
+#             g.close()
+
+#         f.close()
+def get_n_chunks(data_metas):
+
+    pax({
+        "data_metas" : data_metas,
+        "data_metas / 0" : data_metas[0],
+    })
+
 def build_full_chunk_index(args, workdir, data_metas):
 
     full_index_path = get_full_chunk_index_path(workdir)
-    n_chunks = sum(m["n_chunks"] for m in data_metas)
+    # n_chunks = sum(m["n_chunks"] for m in data_metas)
+    n_chunks_all, n_chunks_nonempty = get_n_chunks(data_metas)
+
+    pax({
+        "n_chunks_all" : n_chunks_all,
+        "n_chunks_nonempty" : n_chunks_nonempty,
+    })
 
     # Delete existing chunk index if incorrect size.
     if os.path.exists(full_index_path):
@@ -489,6 +607,7 @@ def build_full_chunk_index(args, workdir, data_metas):
             g.close()
 
         f.close()
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 def build_sampled_chunk_index(args, workdir, data_metas):
@@ -538,7 +657,12 @@ def build_sampled_chunk_index(args, workdir, data_metas):
 # def save_document_order(args, workdir):
 def build_chunk_indexes(args, workdir):
 
+    # >>>
     assert torch.distributed.get_rank() == 0, "single process operation."
+    # +++
+    # if torch.distributed.get_rank() == 0:
+    #     return
+    # <<<
 
     # Dataset metadata. (sorted, official order)
     data_metas = get_sorted_dataset_metadatas(args, workdir)
@@ -549,9 +673,11 @@ def build_chunk_indexes(args, workdir):
 
     # Build chunk indexes.
     build_individual_chunk_indexes(args, workdir, data_metas)
-    raise Exception("finished individual.")
+    # raise Exception("finished individual.")
     build_full_chunk_index(args, workdir, data_metas)
+    raise Exception("finished full.")
     build_sampled_chunk_index(args, workdir, data_metas)
+    raise Exception("finished sampled.")
 
     # Save dataset metadata. (fully annotated at this point)
     save_dataset_metadatas(workdir, data_metas)
