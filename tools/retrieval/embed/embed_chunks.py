@@ -293,13 +293,14 @@ def embed_batches(args, models, data_loader):
     # data_iterator = train_data_iterator
     with torch.no_grad():
 
-        num_batches = int(np.ceil(len(data_iterator) / args.micro_batch_size))
-        start_time = time.time()
-        n_samples_consumed = 0
-        for batch_index in range(num_batches):
+        n_batches = int(np.ceil(len(data_iterator) / args.micro_batch_size))
+        dataset_start_time = time.time()
+        # n_samples_consumed = 0
+        for batch_index in range(n_batches):
 
-            # print_rank_0("batch %d / %d." % (batch_index, num_batches))
+            # print_rank_0("batch %d / %d." % (batch_index, n_batches))
 
+            batch_start_time = time.time()
             output_tensors = forward_backward_func(
                 forward_step, # _func,
                 data_iterator,
@@ -309,22 +310,35 @@ def embed_batches(args, models, data_loader):
                 forward_only = True,
                 collect_non_loss_data = True,
             )
-
-            n_samples_consumed += args.micro_batch_size
-            # sec_per_sample = (time.time() - start_time) / n_samples_consumed
-            samples_per_sec = n_samples_consumed / (time.time() - start_time)
-            print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ]." % (
-                batch_index,
-                num_batches,
-                data_loader.dataset.batch_chunk_lens[batch_index],
-                samples_per_sec,
-                (47e9 / samples_per_sec) / 16 / (24 * 3600),
-            ))
+            batch_end_time = time.time()
 
             # pax(0, {
             #     "output_tensors" : output_tensors,
             #     # **{"loss_dicts / %d" % i : d for i, d in enumerate(loss_dicts)},
             # })
+
+            # >>>
+            # n_samples_consumed += args.micro_batch_size
+            # samples_per_sec = n_samples_consumed / (time.time() - start_time)
+            # print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ]." % (
+            #     batch_index,
+            #     n_batches,
+            #     data_loader.dataset.batch_chunk_lens[batch_index],
+            #     samples_per_sec,
+            #     (47e9 / samples_per_sec) / 16 / (24 * 3600),
+            # ))
+            # +++
+            est_dataset_time = (batch_end_time - dataset_start_time) + \
+                (n_batches - batch_index - 1)*(batch_end_time - batch_start_time)
+            samples_per_sec = len(data_loader.dataset) / est_dataset_time
+            print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ]." % (
+                batch_index,
+                n_batches,
+                data_loader.dataset.batch_chunk_lens[batch_index],
+                samples_per_sec,
+                (47e9 / samples_per_sec) / 16 / (24 * 3600),
+            ))
+            # <<<
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # def get_chunk_data_loader(args, models, data_prefix):

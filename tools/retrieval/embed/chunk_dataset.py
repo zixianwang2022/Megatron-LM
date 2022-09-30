@@ -62,10 +62,11 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         # })
 
     def __len__(self):
-        raise Exception("length?")
-        # -1 is due to data structure used to retieve the index:
-        #    sample i --> [sample_idx[i], sample_idx[i+1])
-        return self.sample_idx.shape[0] - 1
+        # raise Exception("length?")
+        # # -1 is due to data structure used to retieve the index:
+        # #    sample i --> [sample_idx[i], sample_idx[i+1])
+        # return self.sample_idx.shape[0] - 1
+        return len(self.chunk_index)
 
     def __getitem__(self, chunk_id):
 
@@ -165,7 +166,7 @@ class BertChunkDataset(GPTChunkDataset):
         t = time.time()
         bert_chunk_lens.sort(key = lambda item : item[1])
         # >>>
-        bert_chunk_lens.reverse() # for debugging.
+        # bert_chunk_lens.reverse() # for debugging.
         # <<<
         self.sample_idxs = [ item[0] for item in bert_chunk_lens ]
         print(" > sort / end. [ %.2f sec ]" % (time.time() - t))
