@@ -340,116 +340,7 @@ def embed_batches(args, models, data_loader):
             ))
             # <<<
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# def get_chunk_data_loader(args, models, data_prefix):
 
-#     # Token dataset.
-#     indexed_dataset = make_indexed_dataset(data_prefix, "mmap", True)
-
-#     # Chunk index.
-#     chunk_index_file = get_chunk_index_path(args, data_prefix)
-#     f = h5py.File(chunk_index_file, "r")
-#     eods = np.copy(f["eods"])
-#     chunk_index = np.copy(f["index"])
-#     f.close()
-
-#     # Chunk dataset.
-#     dataset = GPTChunkDataset(indexed_dataset, chunk_index, eods)
-
-#     # Megatron sampler.
-#     batch_sampler = MegatronPretrainingSampler(
-#         total_samples=len(chunk_index),
-#         consumed_samples=0,
-#         micro_batch_size=args.micro_batch_size,
-#         data_parallel_rank=mpu.get_data_parallel_rank(),
-#         data_parallel_size=mpu.get_data_parallel_world_size())
-
-#     # Torch dataloader.
-#     data_loader = torch.utils.data.DataLoader(dataset,
-#                                               batch_sampler=batch_sampler,
-#                                               num_workers=args.num_workers,
-#                                               pin_memory=True)
-
-#     # >>>
-#     pax({
-#         "chunk_index" : chunk_index,
-#         "dataset" : dataset,
-#         "batch_sampler" : batch_sampler,
-#         "data_loader" : data_loader,
-#     })
-#     # <<<
-
-#     return data_loader
-
-# def embed_chunks_single_dataset(args, models, data_prefix):
-
-#     data_loader = get_chunk_data_loader(args, models, data_prefix)
-
-#     pax({"data_loader": data_loader})
-
-# def embed_chunks(retrieval_args, timer):
-# def embed_chunks(args, timer):
-
-#     # initialize_megatron_for_embedding(retrieval_args)
-
-#     # megatron_args = get_args()
-#     # megatron_args.bert_binary_head = False
-#     # megatron_args.model_type = ModelType.encoder_or_decoder
-
-#     models, optimizer, opt_param_scheduler = \
-#         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
-#     # for m in models:
-#     #     m.post_process = False
-
-#     # pax({
-#     #     "args" : args,
-#     #     "models" : models,
-#     # })
-
-#     # >>>
-#     # train_data_iterator, valid_data_iterator, test_data_iterator \
-#     #     = build_train_valid_test_data_iterators(
-#     #         train_valid_test_datasets_provider)
-#     # pax({"train_data_iterator": train_data_iterator})
-
-#     # embed_batches(models, train_data_iterator)
-
-#     # pax(0, {
-#     #     "retrieval_args" : retrieval_args,
-#     #     "megatron_args" : megatron_args,
-#     #     # "tokenizer" : tokenizer,
-#     #     "models" : models,
-#     #     # "optimizer" : optimizer,
-#     #     # "opt_param_scheduler" : opt_param_scheduler,
-#     #     # "train_data_iterator" : train_data_iterator,
-#     #     "train_data_iterator / len" : len(train_data_iterator),
-#     #     "valid_data_iterator / len" : len(valid_data_iterator),
-#     #     "test_data_iterator / len" : len(test_data_iterator),
-#     # })
-#     # <<<
-
-#     data_files = [ prefix.rstrip("/") + ".bin" for prefix in args.data_path ]
-#     data_files = [ path for path in data_files if os.path.exists(path) ]
-#     data_prefixes = [ os.path.splitext(f)[0] for f in data_files ]
-
-#     # pax({"data_prefixes": data_prefixes})
-
-#     for data_index, data_prefix in enumerate(data_prefixes):
-
-#         chunk_embedding_file = get_chunk_embedding_path(args, data_prefix)
-
-#         if os.path.exists(chunk_embedding_file):
-#             continue
-
-#         print(" > embedding chunks, dataset %d / %d ... '%s'." %
-#               (data_index, len(data_files), os.path.basename(data_prefix)))
-
-#         embeddings = embed_chunks_single_dataset(args, models, data_prefix)
-
-#         pax({"embeddings": embeddings})
-
-#     raise Exception("finished embedding?")
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def get_chunk_data_loader(args, data_metas, timer):
 
     # Token datasets.
@@ -459,7 +350,6 @@ def get_chunk_data_loader(args, data_metas, timer):
     # Chunk index.
     chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
     f = h5py.File(chunk_index_path, "r")
-    # pax({"f / keys": list(f.keys())})
     dataset_offsets = np.copy(f["dataset_offsets_valid"])
     chunk_index = np.copy(f["chunks_valid"])
     f.close()
@@ -478,26 +368,12 @@ def get_chunk_data_loader(args, data_metas, timer):
         dataset_offsets,
         chunk_index,
         args.retrieval_chunk_len,
-        # args.retrieval_max_embed_chunk_len,
         args.seq_length,
         args.micro_batch_size,
 
-        # max_num_samples = args.retrieval_nchunks_sampled,
-        # masked_lm_prob,
-        # max_seq_length,
-        # short_seq_prob,
-        # seed,
-        # binary_head,
-
-        # data_prefix=args.data_path,
-        # data_impl=args.data_impl,
-        # splits_string=args.split,
-        # train_valid_test_num_samples=train_val_test_num_samples,
-        # max_seq_length=args.seq_length,
         masked_lm_prob=args.mask_prob,
-        # short_seq_prob=args.short_seq_prob,
         seed=args.seed,
-        # skip_warmup=(not args.mmap_warmup),
+
         # >>>
         # binary_head = args.bert_binary_head,
         binary_head = False, # allows len(segments) == 1
