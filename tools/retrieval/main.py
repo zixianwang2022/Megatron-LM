@@ -103,7 +103,7 @@ def add_retrieval_args(parser):
     # >>>
     group.add_argument("--retrieval-workdir") # , required = True)
     group.add_argument("--retrieval-chunk-len", type=int) # or retriever?
-    group.add_argument("--retrieval-max-embed-chunk-len", type=int)
+    # group.add_argument("--retrieval-max-embed-chunk-len", type=int)
     group.add_argument("--retrieval-nchunks-sampled", type=int)
     group.add_argument('--weight', type=float, default=0.5)
     group.add_argument('--adaptor', action='store_true', default=False)

@@ -29,6 +29,10 @@ from megatron.model import BertModel, ModelType
 from megatron.training import pretrain
 from megatron.utils import average_losses_across_data_parallel_group
 
+# >>>
+from lutil import pax
+# <<<
+
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
@@ -62,8 +66,9 @@ def get_batch(data_iterator):
     data_b = mpu.broadcast_data(keys, data, datatype)
 
     # >>>
-    # from lutil import pax
-    # pax(0, {"data": data, "data_b": data_b})
+    # if data_b["text"].shape[1] != 3:
+    #     print(data_b["text"])
+    #     pax(0, {"data": data, "data_b": data_b, "text": data_b["text"]})
     # <<<
 
     # Unpack.

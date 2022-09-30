@@ -276,7 +276,15 @@ def forward_step(data_iterator, model):
 #     return train_ds, valid_ds, test_ds
 
 # def embed_chunks():
-def embed_batches(args, models, data_iterator):
+# def embed_batches(args, models, data_iterator):
+def embed_batches(args, models, data_loader):
+
+    # pax({
+    #     "data_loader" : data_loader,
+    #     "dataset" : data_loader.dataset,
+    # })
+
+    data_iterator = iter(data_loader)
 
     for m in models:
         m.eval()
@@ -305,9 +313,10 @@ def embed_batches(args, models, data_iterator):
             n_samples_consumed += args.micro_batch_size
             # sec_per_sample = (time.time() - start_time) / n_samples_consumed
             samples_per_sec = n_samples_consumed / (time.time() - start_time)
-            print_rank_0("batch %d / %d ... %.3f samples/sec [ 47b = %.1f node days ]." % (
+            print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ]." % (
                 batch_index,
                 num_batches,
+                data_loader.dataset.batch_chunk_lens[batch_index],
                 samples_per_sec,
                 (47e9 / samples_per_sec) / 16 / (24 * 3600),
             ))
@@ -455,7 +464,9 @@ def get_chunk_data_loader(args, data_metas, timer):
         dataset_offsets,
         chunk_index,
         args.retrieval_chunk_len,
-        args.retrieval_max_embed_chunk_len,
+        # args.retrieval_max_embed_chunk_len,
+        args.seq_length,
+        args.micro_batch_size,
 
         # max_num_samples = args.retrieval_nchunks_sampled,
         # masked_lm_prob,
@@ -516,7 +527,7 @@ def embed_chunks(args, timer):
         data_metas = json.load(f)
 
     data_loader = get_chunk_data_loader(args, data_metas, timer)
-    data_iterator = iter(data_loader)
+    # data_iterator = iter(data_loader)
 
     # pax({
     #     "data_metas" : data_metas,
@@ -526,7 +537,8 @@ def embed_chunks(args, timer):
     models, optimizer, opt_param_scheduler = \
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
-    embed_batches(args, models, data_iterator)
+    # embed_batches(args, models, data_iterator)
+    embed_batches(args, models, data_loader)
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 

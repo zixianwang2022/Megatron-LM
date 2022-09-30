@@ -90,7 +90,7 @@ RETRIEVAL_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/workdir
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
 
 RETRIEVAL_CHUNK_LEN=64
-RETRIEVAL_MAX_EMBED_CHUNK_LEN=130 # 70 -> 72 -> 80 -> 90 -> 130
+# RETRIEVAL_MAX_EMBED_CHUNK_LEN=130 # 70 -> 72 -> 80 -> 90 -> 130
 RETRIEVAL_NCHUNKS_SAMPLED=300000000
 SEED=1001
 EMBED_START_INDEX=0
@@ -113,6 +113,10 @@ if [[ "$TASKS" == *"embed-chunks"* ]]; then
 
     # NUM_WORKERS=1
 
+    # MICRO_BATCH_SIZE=1024 # oom
+    MICRO_BATCH_SIZE=512
+    # MICRO_BATCH_SIZE=16 # good
+
     # --save ${BERT_LOAD_PATH} \
     # --merge-file ${MERGE_FILE} \
     # --num-workers ${NUM_WORKERS} \
@@ -126,7 +130,7 @@ if [[ "$TASKS" == *"embed-chunks"* ]]; then
         --num-layers 24 \
         --hidden-size 1024 \
         --num-attention-heads 16 \
-        --micro-batch-size 1024 \
+        --micro-batch-size ${MICRO_BATCH_SIZE} \
         --seq-length 512 \
         --max-position-embeddings 512 \
         --train-iters 1000000 \
@@ -206,6 +210,7 @@ fi
 #     --add-offset-doc-ids \
 #     --offset-dict-path ${OFFSET_DICT_PATH} \
 #     --index-dir ${INDEX_DIR} \
+#     --retrieval-max-embed-chunk-len ${RETRIEVAL_MAX_EMBED_CHUNK_LEN} \
 RETRIEVAL_ARGS=" \
     --tasks ${TASKS} \
     --ntrain ${NTRAIN} \
@@ -218,7 +223,6 @@ RETRIEVAL_ARGS=" \
 
     --retrieval-workdir ${RETRIEVAL_WORKDIR} \
     --retrieval-chunk-len ${RETRIEVAL_CHUNK_LEN} \
-    --retrieval-max-embed-chunk-len ${RETRIEVAL_MAX_EMBED_CHUNK_LEN} \
     --retrieval-nchunks-sampled ${RETRIEVAL_NCHUNKS_SAMPLED} \
     --return-doc-ids \
     --embed-start-index ${EMBED_START_INDEX} \
