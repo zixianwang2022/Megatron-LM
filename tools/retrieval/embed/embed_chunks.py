@@ -48,66 +48,18 @@ from lutil import pax, print_seq
 # <<<
 
 
-def get_chunk_data_loader(args, data_metas, timer):
-
-    # Token datasets.
-    indexed_datasets = \
-        [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
-
-    # Chunk index.
+def get_n_chunks(args):
     chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
     f = h5py.File(chunk_index_path, "r")
-    dataset_offsets = np.copy(f["dataset_offsets_valid"])
-    chunk_index = np.copy(f["chunks_valid"])
+    n_chunks = len(f["chunks_valid"])
     f.close()
-
-    # Chunk dataset.
-    dataset = BertChunkDataset(
-        indexed_datasets,
-        dataset_offsets,
-        chunk_index,
-        args.retrieval_chunk_len,
-        args.seq_length,
-        args.micro_batch_size,
-
-        masked_lm_prob=args.mask_prob,
-        seed=args.seed,
-
-        # >>>
-        # binary_head = args.bert_binary_head,
-        binary_head = False, # allows len(segments) == 1
-        # <<<
-    )
-
-    # Megatron sampler.
-    batch_sampler = MegatronPretrainingSampler(
-        total_samples=len(chunk_index),
-        consumed_samples=0,
-        micro_batch_size=args.micro_batch_size,
-        data_parallel_rank=mpu.get_data_parallel_rank(),
-        data_parallel_size=mpu.get_data_parallel_world_size())
-
-    # Torch data loader.
-    data_loader = torch.utils.data.DataLoader(dataset,
-                                              batch_sampler=batch_sampler,
-                                              num_workers=args.num_workers,
-                                              pin_memory=True)
-
-    # >>>
-    # pax({
-    #     # "chunk_index" : chunk_index,
-    #     "dataset" : dataset,
-    #     "batch_sampler" : batch_sampler,
-    #     "data_loader" : data_loader,
-    # })
-    # <<<
-
-    return data_loader
+    return n_chunks
 
 
-def get_missing_embedding_blocks(args, workdir, data_loader):
+# def get_missing_embedding_blocks(args, workdir, data_loader):
+def get_missing_embedding_blocks(args, workdir, n_chunks):
 
-    n_chunks = len(data_loader)
+    # n_chunks = len(data_loader)
 
     block_size = args.retrieval_block_size
     block_start_idxs = list(range(0, n_chunks, block_size))
@@ -148,6 +100,145 @@ def get_missing_embedding_blocks(args, workdir, data_loader):
     return rank_missing_block_items
 
     
+# def get_chunk_data_loader(args, data_metas, timer):
+
+#     # Token datasets.
+#     indexed_datasets = \
+#         [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
+
+#     # Chunk index.
+#     chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
+#     f = h5py.File(chunk_index_path, "r")
+#     dataset_offsets = np.copy(f["dataset_offsets_valid"])
+#     chunk_index = np.copy(f["chunks_valid"])
+#     f.close()
+
+#     # Chunk dataset.
+#     dataset = BertChunkDataset(
+#         indexed_datasets,
+#         dataset_offsets,
+#         chunk_index,
+#         args.retrieval_chunk_len,
+#         args.seq_length,
+#         args.micro_batch_size,
+
+#         masked_lm_prob=args.mask_prob,
+#         seed=args.seed,
+
+#         # >>>
+#         # binary_head = args.bert_binary_head,
+#         binary_head = False, # allows len(segments) == 1
+#         # <<<
+#     )
+
+#     # Megatron sampler.
+#     batch_sampler = MegatronPretrainingSampler(
+#         total_samples=len(chunk_index),
+#         consumed_samples=0,
+#         micro_batch_size=args.micro_batch_size,
+#         data_parallel_rank=mpu.get_data_parallel_rank(),
+#         data_parallel_size=mpu.get_data_parallel_world_size())
+
+#     # Torch data loader.
+#     data_loader = torch.utils.data.DataLoader(dataset,
+#                                               batch_sampler=batch_sampler,
+#                                               num_workers=args.num_workers,
+#                                               pin_memory=True)
+
+#     # >>>
+#     # pax({
+#     #     # "chunk_index" : chunk_index,
+#     #     "dataset" : dataset,
+#     #     "batch_sampler" : batch_sampler,
+#     #     "data_loader" : data_loader,
+#     # })
+#     # <<<
+
+#     return data_loader
+def get_shared_dataset_info(args):
+
+    # Load dataset metadata.
+    with open(os.path.join(args.retrieval_workdir, "order.json")) as f:
+        data_metas = json.load(f)
+
+    # Token datasets.
+    indexed_datasets = \
+        [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
+
+    # Chunk index.
+    chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
+    f = h5py.File(chunk_index_path, "r")
+    dataset_offsets = np.copy(f["dataset_offsets_valid"])
+    chunk_index = np.copy(f["chunks_valid"])
+    f.close()
+
+    dataset_ids = []
+    for i in range(len(dataset_offsets) - 1):
+        dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
+    dataset_ids = [ i for ii in dataset_ids for i in ii ]
+
+    return {
+        "data_metas" : data_metas,
+        "indexed_datasets" : indexed_datasets,
+        # "dataset_offsets" : dataset_offsets,
+        "dataset_ids" : dataset_ids,
+        "chunk_index" : chunk_index,
+    }
+
+def get_block_data_loader(args, shared_dataset_info, chunk_start_id, chunk_end_id):
+
+    # pax(0, {"shared_dataset_info": shared_dataset_info})
+
+    # Chunk dataset.
+    # t = time.time()
+    dataset = BertChunkDataset(
+        indexed_datasets = shared_dataset_info["indexed_datasets"],
+        dataset_ids = shared_dataset_info["dataset_ids"][chunk_start_id:chunk_end_id],
+        chunk_index = shared_dataset_info["chunk_index"][chunk_start_id:chunk_end_id],
+        # chunk_start_idx = chunk_start_idx,
+        # chunk_end_idx = chunk_end_idx,
+        max_chunk_len = args.retrieval_chunk_len,
+        max_seq_len = args.seq_length,
+        micro_batch_size = args.micro_batch_size,
+
+        masked_lm_prob = args.mask_prob,
+        seed = args.seed,
+
+        # >>>
+        # binary_head = args.bert_binary_head,
+        binary_head = False, # allows len(segments) == 1
+        # <<<
+    )
+    # t = time.time() - t
+    # print_seq("chunk dataset, %.3f sec." % t)
+
+    # Megatron sampler.
+    batch_sampler = MegatronPretrainingSampler(
+        # total_samples = len(chunk_index),
+        total_samples = chunk_end_id - chunk_start_id,
+        consumed_samples = 0,
+        micro_batch_size = args.micro_batch_size,
+        data_parallel_rank = mpu.get_data_parallel_rank(),
+        data_parallel_size = mpu.get_data_parallel_world_size())
+
+    # Torch data loader.
+    data_loader = torch.utils.data.DataLoader(dataset,
+                                              batch_sampler=batch_sampler,
+                                              num_workers=args.num_workers,
+                                              pin_memory=True)
+
+    # >>>
+    # pax({
+    #     # "chunk_index" : chunk_index,
+    #     "dataset" : dataset,
+    #     "batch_sampler" : batch_sampler,
+    #     "data_loader" : data_loader,
+    # })
+    # <<<
+
+    return data_loader
+
+
 def loss_func(loss_mask, sentence_order, output_tensor, non_loss_data):
     assert non_loss_data
     return output_tensor
@@ -192,6 +283,7 @@ def forward_step(data_iterator, model):
     return output_tensor, partial(loss_func, loss_mask, sentence_order)
 
 
+# def embed_batches(args, models, data_loader, missing_embedding_blocks):
 def embed_batches(args, models, data_loader):
 
     # Data iterator.
@@ -239,41 +331,76 @@ def embed_batches(args, models, data_loader):
             ))
 
 
+def embed_blocks(args, models, shared_data_info, missing_embedding_blocks):
+
+    for block_index, block_info in enumerate(missing_embedding_blocks):
+
+        # Data loader.
+        data_loader = get_block_data_loader(args,
+                                            shared_data_info,
+                                            *block_info["range"])
+
+        embed_batches(args, models, data_loader)
+
+        pax(0, {
+            "data_loader" : data_loader,
+            "data_loader / len" : len(data_loader),
+        })
+        
+
+
 def embed_chunks(args, timer):
+
+    # print_seq("i am data rank %d." % mpu.get_data_parallel_rank())
 
     # Embedding workdir.
     workdir = os.path.join(args.retrieval_workdir, "embed")
     os.makedirs(workdir, exist_ok = True)
 
-    # Load dataset metadata.
-    with open(os.path.join(args.retrieval_workdir, "order.json")) as f:
-        data_metas = json.load(f)
-
-    # print_seq("i am data rank %d." % mpu.get_data_parallel_rank())
-
-    # Data loader.
-    data_loader = get_chunk_data_loader(args, data_metas, timer)
-
-    # Missing embedding blocks (stored on disk).
-    missing_embedding_blocks = \
-        get_missing_embedding_blocks(args, workdir, data_loader)
-
-    # Prevent missing block race condition.
-    torch.distributed.barrier()
-
-    pax(0, {
-        "data_metas" : data_metas,
-        # "data_loader" : data_loader,
-        "data_loader / len" : len(data_loader),
-        "missing_embedding_blocks" : missing_embedding_blocks,
-    })
-
     # Load model.
     models, optimizer, opt_param_scheduler = \
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
+    # Share dataset info (indexed datasets, chunk index, etc.).
+    # t = time.time()
+    shared_dataset_info = get_shared_dataset_info(args)
+    # t = time.time() - t
+    # print_seq("shared dataset info, time = %.3f." % t)
+
+    # pax(0, {"shared_dataset_info": shared_dataset_info})
+
+    # Missing embedding blocks (stored on disk).
+    n_chunks = get_n_chunks(args)
+    missing_embedding_blocks = \
+        get_missing_embedding_blocks(args, workdir, n_chunks) # data_loader)
+
+    # Prevent missing file race condition.
+    torch.distributed.barrier()
+
+    # pax(0, {
+    #     "missing_embedding_blocks" : missing_embedding_blocks,
+    #     "n_chunks" : n_chunks,
+    # })
+
+    # # >>>
+    # # Data loader.
+    # # t = time.time()
+    # data_loader = get_chunk_data_loader(args, data_metas, timer)
+    # # t = time.time() - t
+    # # print_seq("data_loader, %.3f sec." % t)
+    # # <<<
+
+    # pax(0, {
+    #     "data_metas" : data_metas,
+    #     # "data_loader" : data_loader,
+    #     "data_loader / len" : len(data_loader),
+    # })
+
     # Embed batches.
-    embed_batches(args, models, data_loader)
+    # embed_batches(args, models, data_loader, missing_embedding_blocks)
+    embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks)
+
+    raise Exception("unsort chunks.")
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 

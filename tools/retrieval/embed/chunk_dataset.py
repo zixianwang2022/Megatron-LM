@@ -24,24 +24,39 @@ from megatron.tokenizer.tokenizer import (
 )
 
 # >>>
-from lutil import pax
+from lutil import pax, print_seq
 # <<<
 
 
 class GPTChunkDataset(torch.utils.data.Dataset):
 
-    def __init__(self, indexed_datasets, dataset_offsets, chunk_index,
-                 max_chunk_len):
+    def __init__(
+            self,
+            indexed_datasets,
+            # dataset_offsets,
+            dataset_ids,
+            chunk_index,
+            # chunk_start_id,
+            # chunk_end_id,
+            max_chunk_len,
+    ):
 
         self.indexed_datasets = indexed_datasets
-        self.dataset_offsets = dataset_offsets
+        # self.dataset_offsets = dataset_offsets
+        self.dataset_ids = dataset_ids
         self.chunk_index = chunk_index
         self.max_gpt_chunk_len = max_chunk_len
 
-        dataset_ids = []
-        for i in range(len(dataset_offsets) - 1):
-            dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
-        self.dataset_ids = [ i for ii in dataset_ids for i in ii ]
+        # self.chunk_start_idx = chunk_start_idx
+        # self.chunk_end_idx = chunk_end_idx
+        # assert chunk_start_idx < chunk_end_idx \
+        #     and chunk_start_idx >= 0 \
+        #     and chunk_end_idx < len(chunk_index)
+
+        # dataset_ids = []
+        # for i in range(len(dataset_offsets) - 1):
+        #     dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
+        # self.dataset_ids = [ i for ii in dataset_ids for i in ii ]
 
         # >>>
         self.gpt_tokenizer = _GPT2BPETokenizer(
@@ -56,21 +71,28 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         #     [ "%d / %s ..." % (len(ii), str(ii[:10])) for ii in dataset_ids ],
         #     "*dataset_ids / len" : len(self.dataset_ids),
         # })
+        # pax(0, {
+        #     "dataset_ids / len" : len(dataset_ids),
+        #     "chunk_index / len" : len(chunk_index),
+        # })
 
 
     def __len__(self):
         return len(self.chunk_index)
+        # return self.chunk_end_idx - self.chunk_start_idx
 
 
     def __getitem__(self, chunk_id):
 
+        # raise Exception("add chunk_start_idx.")
+
         dataset_id = self.dataset_ids[chunk_id]
-        doc_id, chunk_start_idx, chunk_end_idx, _ = self.chunk_index[chunk_id]
-        chunk_len = chunk_end_idx - chunk_start_idx
+        doc_id, token_start_idx, token_end_idx, _ = self.chunk_index[chunk_id]
+        chunk_len = token_end_idx - token_start_idx
         indexed_dataset = self.indexed_datasets[dataset_id]
 
         token_ids = indexed_dataset.get(doc_id,
-                                        offset = chunk_start_idx,
+                                        offset = token_start_idx,
                                         length = chunk_len)
 
         if chunk_len != self.max_gpt_chunk_len:
@@ -84,8 +106,8 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         #     "chunk_id" : chunk_id,
         #     "dataset_id" : dataset_id,
         #     "doc_id" : doc_id,
-        #     "chunk_start_idx" : chunk_start_idx,
-        #     "chunk_end_idx" : chunk_end_idx,
+        #     "token_start_idx" : token_start_idx,
+        #     "token_end_idx" : token_end_idx,
         #     "chunk" : chunk,
         # })
 
@@ -94,17 +116,31 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
 class BertChunkDataset(GPTChunkDataset):
 
-    def __init__(self, indexed_datasets, dataset_offsets,
-                 chunk_index, max_chunk_len,
-                 max_seq_len,
-                 micro_batch_size,
-                 masked_lm_prob,
-                 seed,
-                 binary_head,
+    def __init__(
+            self,
+            indexed_datasets,
+            # dataset_offsets,
+            dataset_ids,
+            chunk_index,
+            # chunk_start_idx,
+            # chunk_end_idx,
+            max_chunk_len,
+            max_seq_len,
+            micro_batch_size,
+            masked_lm_prob,
+            seed,
+            binary_head,
     ):
 
-        super().__init__(indexed_datasets, dataset_offsets,
-                         chunk_index, max_chunk_len)
+        super().__init__(
+            indexed_datasets,
+            # dataset_offsets,
+            dataset_ids,
+            chunk_index,
+            # chunk_start_idx,
+            # chunk_end_idx,
+            max_chunk_len,
+        )
 
         # >>>
         # self.bert_tokenizer = get_tokenizer()
@@ -144,6 +180,13 @@ class BertChunkDataset(GPTChunkDataset):
         self.sample_idxs = [ item[0] for item in bert_chunk_lens ]
         print_rank_0(" > sort / end. [ %.2f sec ]" % (time.time() - t))
 
+        # >>>
+        # print_rank_0([a[1] for a in bert_chunk_lens])
+        # pax(0, {
+        #     "bert_chunk_lens / len" : len(bert_chunk_lens),
+        # })
+        # <<<
+
         # Group samples idxs into microbatches.
         n_chunks = len(self.sample_idxs)
         self.batch_chunk_lens = []
@@ -158,6 +201,8 @@ class BertChunkDataset(GPTChunkDataset):
     def __getitem__(self, sample_id):
 
         chunk_id = self.sample_idxs[sample_id]
+
+        # print_seq("chunk_id = %d." % chunk_id)
 
         gpt_token_ids = super().__getitem__(chunk_id)["text"]
         gpt_token_ids = [t for t in gpt_token_ids.tolist()

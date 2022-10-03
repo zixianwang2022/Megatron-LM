@@ -144,7 +144,7 @@ def forward_step(forward_step_func,
             forward_data_store.append(loss_reduced)
         else:
             data = loss_func(output_tensor, non_loss_data=True)
-            pax({"data": data})
+            # pax({"data": data})
             forward_data_store.append(data)
 
     timers('forward-compute').stop()
