@@ -26,7 +26,7 @@ from megatron import (
     mpu,
     print_rank_0,
 )
-from megatron.data.data_samplers import MegatronPretrainingSampler
+# from megatron.data.data_samplers import MegatronPretrainingSampler
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from megatron.model import ModelType
 from megatron.schedules import get_forward_backward_func
@@ -213,13 +213,23 @@ def get_block_data_loader(args, shared_dataset_info, chunk_start_id, chunk_end_i
     # print_seq("chunk dataset, %.3f sec." % t)
 
     # Megatron sampler.
-    batch_sampler = MegatronPretrainingSampler(
-        # total_samples = len(chunk_index),
-        total_samples = chunk_end_id - chunk_start_id,
-        consumed_samples = 0,
-        micro_batch_size = args.micro_batch_size,
-        data_parallel_rank = mpu.get_data_parallel_rank(),
-        data_parallel_size = mpu.get_data_parallel_world_size())
+    # >>>
+    # batch_sampler = MegatronPretrainingSampler(
+    #     # total_samples = len(chunk_index),
+    #     total_samples = chunk_end_id - chunk_start_id,
+    #     consumed_samples = 0,
+    #     micro_batch_size = args.micro_batch_size,
+    #     data_parallel_rank = mpu.get_data_parallel_rank(),
+    #     data_parallel_size = mpu.get_data_parallel_world_size())
+    # +++
+    from torch.utils.data import BatchSampler, SequentialSampler
+    batch_sampler = BatchSampler(
+        sampler = SequentialSampler(dataset),
+        batch_size = args.micro_batch_size,
+        drop_last = False,
+    )
+    # pax(0, {"batch_sampler": batch_sampler})
+    # +++
 
     # Torch data loader.
     data_loader = torch.utils.data.DataLoader(dataset,

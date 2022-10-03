@@ -92,6 +92,10 @@ class MegatronPretrainingSampler:
         return start_idx, end_idx
 
     def __iter__(self):
+        # >>>
+        # from megatron import print_rank_0
+        # print_rank_0("taking me batch.")
+        # <<<
         batch = []
         # Last batch will be dropped if drop_last is not set False
         for idx in range(self.consumed_samples, self.total_samples):

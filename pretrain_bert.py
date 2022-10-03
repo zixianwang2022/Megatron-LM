@@ -67,8 +67,8 @@ def get_batch(data_iterator):
 
     # >>>
     # if data_b["text"].shape[1] != 3:
-    #     print(data_b["text"])
-    #     pax(0, {"data": data, "data_b": data_b, "text": data_b["text"]})
+    print_rank_0(data_b["text"])
+    pax(0, {"data": data, "data_b": data_b, "text": data_b["text"]})
     # <<<
 
     # Unpack.
