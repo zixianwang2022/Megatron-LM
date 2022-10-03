@@ -28,6 +28,9 @@ from .global_vars import get_args
 from .utils import (unwrap_model,
                     print_rank_0)
 
+# >>>
+from lutil import pax
+# <<<
 
 _CHECKPOINT_VERSION = None
 
@@ -381,7 +384,6 @@ def _load_base_checkpoint(load_dir, use_distributed_optimizer, rank0=False):
     tracker_filename = get_checkpoint_tracker_filename(load_dir)
 
     # >>>
-    # from lutil import pax
     # pax(0, {
     #     "load_dir" : load_dir,
     #     "tracker_filename" : tracker_filename,
@@ -531,13 +533,13 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                               rank0=False)
 
     # >>>
-    # from lutil import pax
     # pax(0, {
     #     "load_dir" : load_dir,
     #     "model" : model,
     #     "model_state_dict" : list(model_state_dict.keys()),
     #     "optim_state_dict" : list(optim_state_dict.keys()),
     #     "release" : release,
+    #     "config" : model_state_dict["config"],
     # })
     # <<<
 
@@ -563,7 +565,6 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                 sys.exit()
 
     # >>>
-    # from lutil import pax
     # pax(0, {
     #     "iteration" : iteration,
     #     "msd / iteration" : model_state_dict["iteration"],

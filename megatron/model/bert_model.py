@@ -208,7 +208,7 @@ class BertModel(MegatronModule):
         if self.post_process and self.add_binary_head:
             lm_output, pooled_output = lm_output
             # >>> haaaaaaaaaaaaack. >>>
-            return pooled_output
+            # return pooled_output
             # <<<
         else:
             pooled_output = None

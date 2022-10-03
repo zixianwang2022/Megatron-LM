@@ -5,9 +5,9 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=1
+# NPROCS=1
 # NPROCS=8
-# NPROCS=16
+NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -93,8 +93,12 @@ RETRIEVAL_CHUNK_LEN=64
 # RETRIEVAL_MAX_EMBED_CHUNK_LEN=130 # 70 -> 72 -> 80 -> 90 -> 130
 RETRIEVAL_NCHUNKS_SAMPLED=300000000
 SEED=1001
-EMBED_START_INDEX=0
-EMBED_END_INDEX=100 # 000
+# EMBED_START_INDEX=0
+# EMBED_END_INDEX=100 # 000
+# RETRIEVAL_EMBED_MODEL="bert"
+RETRIEVAL_BLOCK_SIZE=10000 # 10000, 1000000
+# RETRIEVAL_EMBED_POOLING_METHOD="avg"
+# RETRIEVAL_EMBED_POOLING_METHOD="avg-padding-aware"
 NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/neighbors.hdf5
 # OFFSET_DICT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/offset_dict.pkl
 
@@ -122,11 +126,12 @@ if [[ "$TASKS" == *"embed-chunks"* ]]; then
     # --num-workers ${NUM_WORKERS} \
     # --micro-batch-size 2 \
     # --global-batch-size 16 \
+    # --use-checkpoint-args \
     MEGATRON_ARGS=" \
         --seed ${SEED} \
         --tokenizer-type ${TOKENIZER_TYPE} \
-        --tensor-model-parallel-size 2 \
-        --pipeline-model-parallel-size 2 \
+        --tensor-model-parallel-size 1 \
+        --pipeline-model-parallel-size 1 \
         --num-layers 24 \
         --hidden-size 1024 \
         --num-attention-heads 16 \
@@ -211,6 +216,8 @@ fi
 #     --offset-dict-path ${OFFSET_DICT_PATH} \
 #     --index-dir ${INDEX_DIR} \
 #     --retrieval-max-embed-chunk-len ${RETRIEVAL_MAX_EMBED_CHUNK_LEN} \
+#     --embed-start-index ${EMBED_START_INDEX} \
+#     --embed-end-index ${EMBED_END_INDEX} \
 RETRIEVAL_ARGS=" \
     --tasks ${TASKS} \
     --ntrain ${NTRAIN} \
@@ -224,9 +231,8 @@ RETRIEVAL_ARGS=" \
     --retrieval-workdir ${RETRIEVAL_WORKDIR} \
     --retrieval-chunk-len ${RETRIEVAL_CHUNK_LEN} \
     --retrieval-nchunks-sampled ${RETRIEVAL_NCHUNKS_SAMPLED} \
+    --retrieval-block-size ${RETRIEVAL_BLOCK_SIZE} \
     --return-doc-ids \
-    --embed-start-index ${EMBED_START_INDEX} \
-    --embed-end-index ${EMBED_END_INDEX} \
     --neighbors-path ${NEIGHBOR_PATH} \
     --weight 0 \
 "
