@@ -87,9 +87,10 @@ def get_missing_embedding_blocks(args, workdir, n_chunks):
     # >>>
     # print_seq("my inital ranges are %s." % ", ".join(str(i["range"]) for i in rank_missing_block_items[:3]))
     # pax(0, {
-    #     "missing_block_items" : missing_block_items,
-    #     "missing_block_items / 0" : missing_block_items[0],
-    #     "rank_missing_block_items" : rank_missing_block_items,
+    #     "all_block_items / len" : len(all_block_items),
+    #     "missing_block_items / len" : len(missing_block_items),
+    #     # "missing_block_items / 0" : missing_block_items[0],
+    #     "rank_missing_block_items / len" : len(rank_missing_block_items),
     #     "workdir" : workdir,
     #     # "data_loader / len" : len(data_loader),
     #     "n_chunks" : n_chunks,
@@ -200,15 +201,16 @@ def get_block_data_loader(args, shared_dataset_info, chunk_start_id, chunk_end_i
         max_chunk_len = args.retrieval_chunk_len,
         max_seq_len = args.seq_length,
         micro_batch_size = args.micro_batch_size,
-
+        
         masked_lm_prob = args.mask_prob,
         seed = args.seed,
-
+        
         # >>>
         # binary_head = args.bert_binary_head,
         binary_head = False, # allows len(segments) == 1
         # <<<
     )
+
     # t = time.time() - t
     # print_seq("chunk dataset, %.3f sec." % t)
 
@@ -294,7 +296,9 @@ def forward_step(data_iterator, model):
 
 
 # def embed_batches(args, models, data_loader, missing_embedding_blocks):
-def embed_batches(args, models, data_loader):
+def embed_batches(args, models, data_loader,
+                  # get_more_data_loaders,
+):
 
     # Data iterator.
     data_iterator = iter(data_loader)
@@ -303,18 +307,35 @@ def embed_batches(args, models, data_loader):
     for m in models:
         m.eval()
 
+    # >>>
+    # get_more_data_loaders() # good.
+    # <<<
+
     # Compute embeddings.
     forward_backward_func = get_forward_backward_func()
     with torch.no_grad():
 
         # Iterate batches.
-        n_batches = int(np.ceil(len(data_iterator) / args.micro_batch_size))
+        # n_batches = int(np.ceil(len(data_iterator) / args.micro_batch_size))
+        n_batches = len(data_iterator)
+        # pax(0, {
+        #     "data_loader / len" : len(data_loader),
+        #     "data_iterator / len" : len(data_iterator),
+        #     "n_batches" : n_batches,
+        # })
         dataset_start_time = time.time()
         batch_times = []
+        embeddings = []
+        # >>>
+        # get_more_data_loaders() # good.
+        # <<<
         for batch_index in range(n_batches):
 
             # Forward pass.
             batch_start_time = time.time()
+            # >>>
+            # get_more_data_loaders()
+            # <<<
             output_tensors = forward_backward_func(
                 forward_step,
                 data_iterator,
@@ -324,6 +345,11 @@ def embed_batches(args, models, data_loader):
                 forward_only = True,
                 collect_non_loss_data = True,
             )
+            # >>>
+            # get_more_data_loaders()
+            # <<<
+            assert len(output_tensors) == 1, "assert len(models) == 1 before this"
+            embeddings.append(output_tensors[0].cpu().numpy())
             batch_end_time = time.time()
             batch_times.append(batch_end_time - batch_start_time)
             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
@@ -340,26 +366,65 @@ def embed_batches(args, models, data_loader):
                 (47e9 / samples_per_sec) / 16 / (24 * 3600),
             ))
 
+    return np.concatenate(embeddings, axis = 0)
+
 
 def embed_blocks(args, models, shared_data_info, missing_embedding_blocks):
 
     for block_index, block_info in enumerate(missing_embedding_blocks):
 
+        print_rank_0("embed block %d / %d ... %s." % (
+            block_index,
+            len(missing_embedding_blocks),
+            os.path.basename(block_info["path"]),
+        ))
+
+        # raise Exception("hi.")
+
         # Data loader.
-        data_loader = get_block_data_loader(args,
-                                            shared_data_info,
-                                            *block_info["range"])
+        def get_data_loader():
+            return get_block_data_loader(args,
+                                         shared_data_info,
+                                         *block_info["range"])
+        def get_more_data_loaders():
+            get_data_loader()
+            get_data_loader()
+            raise Exception("hi.")
 
-        embed_batches(args, models, data_loader)
+        data_loader = get_data_loader()
 
-        pax(0, {
-            "data_loader" : data_loader,
-            "data_loader / len" : len(data_loader),
-        })
-        
+        embeddings = embed_batches(args, models, data_loader,
+                                   # get_more_data_loaders,
+        )
+
+        # >>>
+        # get_more_data_loaders()
+        # <<<
+
+        f = h5py.File(block_info["path"], "w")
+        f.create_dataset("data", data = embeddings)
+        f.close()
+
+        # pax(0, {
+        #     "embeddings" : embeddings,
+        #     "data_loader" : data_loader,
+        #     "data_loader / len" : len(data_loader),
+        #     "block_info" : block_info,
+        # })
+
+    # >>>
+    torch.distributed.barrier()
+    print_seq("i am done.")
+    # <<<
 
 
 def embed_chunks(args, timer):
+
+    # >>>
+    # from .test_huggingface import test_huggingface
+    # test_huggingface(args, timer)
+    # raise Exception("hi.")
+    # <<<
 
     # print_seq("i am data rank %d." % mpu.get_data_parallel_rank())
 
@@ -377,7 +442,16 @@ def embed_chunks(args, timer):
     # t = time.time() - t
     # print_seq("shared dataset info, time = %.3f." % t)
 
-    # pax(0, {"shared_dataset_info": shared_dataset_info})
+    # >>>
+    # bert_chunk_lens = [ a[3] for a in shared_dataset_info["chunk_index"] ]
+    # pax(0, {
+    #     "shared_dataset_info" : shared_dataset_info,
+    #     "bert_chunks_lens" : bert_chunk_lens[:20],
+    #     "bert_chunks_lens / len" : len(bert_chunk_lens),
+    #     "mean" : np.mean(bert_chunk_lens),
+    #     "var" : np.var(bert_chunk_lens),
+    # })
+    # <<<
 
     # Missing embedding blocks (stored on disk).
     n_chunks = get_n_chunks(args)

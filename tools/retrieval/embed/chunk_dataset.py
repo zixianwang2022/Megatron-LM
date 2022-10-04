@@ -168,17 +168,19 @@ class BertChunkDataset(GPTChunkDataset):
 
         # Sort samples by bert chunk length.
         bert_chunk_lens = list(enumerate(self.chunk_index[:, 3]))
-        print_rank_0(" > sort / start.")
-        import time
-        t = time.time()
-        # >>> [ temporarily removed. ]
-        # bert_chunk_lens.sort(key = lambda item : item[1])
-        # <<<
-        # >>>
-        # bert_chunk_lens.reverse() # for debugging.
-        # <<<
+        if 0:
+            print_rank_0(" > sort / start.")
+            import time
+            t = time.time()
+            # >>> [ temporarily removed. ]
+            bert_chunk_lens.sort(key = lambda item : item[1])
+            # <<<
+            # >>>
+            # bert_chunk_lens.reverse() # for debugging.
+            # <<<
+            print_rank_0(" > sort / end. [ %.2f sec ]" % (time.time() - t))
+
         self.sample_idxs = [ item[0] for item in bert_chunk_lens ]
-        print_rank_0(" > sort / end. [ %.2f sec ]" % (time.time() - t))
 
         # >>>
         # print_rank_0([a[1] for a in bert_chunk_lens])
