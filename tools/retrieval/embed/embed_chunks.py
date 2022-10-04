@@ -20,6 +20,7 @@ import numpy as np
 import os
 import time
 import torch
+from tqdm import tqdm
 
 from megatron import (
     get_args,
@@ -61,25 +62,53 @@ def get_missing_embedding_blocks(args, workdir, n_chunks):
 
     # n_chunks = len(data_loader)
 
+    # Block ranges.
     block_size = args.retrieval_block_size
     block_start_idxs = list(range(0, n_chunks, block_size))
     block_end_idxs = [ min(n_chunks, i + block_size) for i in block_start_idxs ]
     block_ranges = list(zip(block_start_idxs, block_end_idxs))
 
-    # block_path_map = {r:os.path.join(workdir, "%d-%d.hdf5" % r)
-    #                   for r in block_ranges}
-    # missing_block_path_map = {r:p
-    #                           for r, p in block_path_map.items()
-    #                           if not os.path.exists(p)}
+    # All block files (existing + missing).
+    n_digits = int(np.ceil(np.log(n_chunks) / np.log(10)) + 1)
     all_block_items = [{
         "range" : r,
-        "path" : os.path.join(workdir, "%d-%d.hdf5" % r)
+        "path" : os.path.join(
+            workdir,
+            "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
+        )
     } for r in block_ranges]
+
+    # Delete corrupt files.
+    if torch.distributed.get_rank() == 0:
+        existing_block_paths = [item["path"]
+                                for item in all_block_items
+                                if os.path.exists(item["path"])]
+        # pax({"existing_block_paths": existing_block_paths})
+        pbar = tqdm(existing_block_paths)
+        for index, path in enumerate(pbar):
+            # print_rank_0(" > verifying embedding block %d / %d, '%s'." % (
+            #     index,
+            #     len(existing_block_paths),
+            #     os.path.basename(path),
+            # ))
+            pbar.set_description("verifying embedding block.")
+            f = h5py.File(path, "r")
+            try:
+                assert f["data"].shape[1] == 1024
+            except:
+                raise Exception("delete block file.")
+            finally:
+                f.close()
+
+    # Wait for files to be deleted.
+    torch.distributed.barrier()
+
+    # Filter missing files.
     missing_block_items = [item
                            for item in all_block_items
                            if not os.path.exists(item["path"])]
 
-
+    # This rank's missing files.
     data_parallel_rank = mpu.get_data_parallel_rank()
     data_parallel_world_size = mpu.get_data_parallel_world_size()
     rank_missing_block_items = missing_block_items[data_parallel_rank:len(missing_block_items):data_parallel_world_size]
@@ -87,6 +116,7 @@ def get_missing_embedding_blocks(args, workdir, n_chunks):
     # >>>
     # print_seq("my inital ranges are %s." % ", ".join(str(i["range"]) for i in rank_missing_block_items[:3]))
     # pax(0, {
+    #     "rank_missing_block_items" : rank_missing_block_items,
     #     "all_block_items / len" : len(all_block_items),
     #     "missing_block_items / len" : len(missing_block_items),
     #     # "missing_block_items / 0" : missing_block_items[0],
