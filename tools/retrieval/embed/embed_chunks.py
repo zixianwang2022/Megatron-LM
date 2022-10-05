@@ -524,12 +524,6 @@ def print_longest_bert_chunks(args, shared_dataset_info):
 
 def embed_chunks(args, timer):
 
-    # >>>
-    # from .test_huggingface import test_huggingface
-    # test_huggingface(args, timer)
-    # raise Exception("hi.")
-    # <<<
-
     # print_seq("i am data rank %d." % mpu.get_data_parallel_rank())
 
     # Embedding workdir.
@@ -558,8 +552,14 @@ def embed_chunks(args, timer):
     # <<<
 
     # >>>
-    print_longest_bert_chunks(args, shared_dataset_info)
-    raise Exception("hi.")
+    # print_longest_bert_chunks(args, shared_dataset_info)
+    # raise Exception("hi.")
+    # <<<
+
+    # >>>
+    # from .test_huggingface import test_huggingface
+    # test_huggingface(args, shared_dataset_info, timer)
+    # raise Exception("hi.")
     # <<<
 
     # Missing embedding blocks (stored on disk).
