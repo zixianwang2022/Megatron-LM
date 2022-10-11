@@ -41,26 +41,40 @@ from pretrain_bert import (
     # train_valid_test_datasets_provider,
 )
 
-from ..preprocess.utils import get_sampled_chunk_index_path
+# from ..preprocess.utils import get_sampled_chunk_index_path
+from ..preprocess.utils import get_chunk_index_path_map
 from .chunk_dataset import BertChunkDataset
+from .long_bert_chunks import print_longest_bert_chunks
 
 # >>>
 from lutil import pax, print_seq
 # <<<
 
 
-def get_n_chunks(args):
-    chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
-    f = h5py.File(chunk_index_path, "r")
-    n_chunks = len(f["chunks_valid"])
-    f.close()
-    return n_chunks
+# def get_n_chunks(args):
+#     chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
+#     f = h5py.File(chunk_index_path, "r")
+#     n_chunks = len(f["chunks_valid"])
+#     f.close()
+#     return n_chunks
+# def get_n_chunks(args):
+#     chunk_index_path_map = get_chunk_index_path_map(args.retrieval_workdir)
+#     pax(0, {"chunk_index_path_map": chunk_index_path_map})
+#     f = h5py.File(chunk_index_path, "r")
+#     n_chunks = len(f["chunks_valid"])
+#     f.close()
+#     return n_chunks
 
 
 # def get_missing_embedding_blocks(args, workdir, data_loader):
-def get_missing_embedding_blocks(args, workdir, n_chunks):
+# def get_missing_embedding_blocks(args, workdir, n_chunks):
+# def get_missing_embedding_blocks(args, workdir, prefix, dataset_info):
+def get_missing_embedding_blocks(args, workdir, dataset_info):
 
     # n_chunks = len(data_loader)
+    n_chunks = len(dataset_info["chunk_index"])
+
+    # pax(0, {"workdir": workdir, "n_chunks": n_chunks})
 
     # Block ranges.
     block_size = args.retrieval_block_size
@@ -75,8 +89,11 @@ def get_missing_embedding_blocks(args, workdir, n_chunks):
         "path" : os.path.join(
             workdir,
             "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
+            # "%s_%s-%s.hdf5" % (prefix, *[ str(i).zfill(n_digits) for i in r ]),
         )
     } for r in block_ranges]
+
+    # pax(0, {"all_block_items": all_block_items})
 
     # Delete corrupt files.
     if torch.distributed.get_rank() == 0:
@@ -126,11 +143,27 @@ def get_missing_embedding_blocks(args, workdir, n_chunks):
     #     "n_chunks" : n_chunks,
     #     "block_size" : block_size,
     # })
+    print_seq("my start/end ranges [ %d ] ... %s, %s." % (
+        len(rank_missing_block_items),
+        str(rank_missing_block_items[0]["range"]),
+        str(rank_missing_block_items[-1]["range"]),
+    ))
     # <<<
 
     return rank_missing_block_items
 
     
+# def get_missing_embedding_block_map(args, workdir, dataset_info_map):
+
+#     missing_block_map = {
+#         key : get_missing_embedding_blocks(args, workdir, key, dataset_info)
+#         for key, dataset_info in dataset_info_map.items()
+#     }
+
+#     pax(0, {"missing_block_map": missing_block_map})
+
+#     return missing_block_map
+
 # def get_chunk_data_loader(args, data_metas, timer):
 
 #     # Token datasets.
@@ -186,7 +219,37 @@ def get_missing_embedding_blocks(args, workdir, n_chunks):
 #     # <<<
 
 #     return data_loader
-def get_shared_dataset_info(args):
+# def get_shared_dataset_info(args):
+
+#     # Load dataset metadata.
+#     with open(os.path.join(args.retrieval_workdir, "order.json")) as f:
+#         data_metas = json.load(f)
+
+#     # Token datasets.
+#     indexed_datasets = \
+#         [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
+
+#     # Chunk index.
+#     chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
+#     f = h5py.File(chunk_index_path, "r")
+#     dataset_offsets = np.copy(f["dataset_offsets_valid"])
+#     chunk_index = np.copy(f["chunks_valid"])
+#     f.close()
+
+#     dataset_ids = []
+#     for i in range(len(dataset_offsets) - 1):
+#         dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
+#     dataset_ids = [ i for ii in dataset_ids for i in ii ]
+
+#     return {
+#         "data_metas" : data_metas,
+#         "indexed_datasets" : indexed_datasets,
+#         # "dataset_offsets" : dataset_offsets,
+#         "dataset_ids" : dataset_ids,
+#         "chunk_index" : chunk_index,
+#     }
+# def get_shared_dataset_info_map(args):
+def get_dataset_info_map(args):
 
     # Load dataset metadata.
     with open(os.path.join(args.retrieval_workdir, "order.json")) as f:
@@ -197,24 +260,41 @@ def get_shared_dataset_info(args):
         [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
 
     # Chunk index.
-    chunk_index_path = get_sampled_chunk_index_path(args.retrieval_workdir)
-    f = h5py.File(chunk_index_path, "r")
-    dataset_offsets = np.copy(f["dataset_offsets_valid"])
-    chunk_index = np.copy(f["chunks_valid"])
-    f.close()
+    chunk_index_path_map = get_chunk_index_path_map(args.retrieval_workdir)
+    dataset_info_map = {} # key: {} for key in chunk_index_path_map}
+    for key, chunk_index_path in chunk_index_path_map.items():
 
-    dataset_ids = []
-    for i in range(len(dataset_offsets) - 1):
-        dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
-    dataset_ids = [ i for ii in dataset_ids for i in ii ]
+        f = h5py.File(chunk_index_path, "r")
+        dataset_offsets = np.copy(f["dataset_offsets_valid"])
+        chunk_index = np.copy(f["chunks_valid"])
+        f.close()
 
-    return {
-        "data_metas" : data_metas,
-        "indexed_datasets" : indexed_datasets,
-        # "dataset_offsets" : dataset_offsets,
-        "dataset_ids" : dataset_ids,
-        "chunk_index" : chunk_index,
-    }
+        # if key == "shared":
+        pax(0, {
+            "data_metas" : [ d["prefix"] for d in data_metas ],
+            "dataset_offsets" : str(dataset_offsets),
+        })
+
+        dataset_ids = []
+        for i in range(len(dataset_offsets) - 1):
+            dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
+        dataset_ids = [ i for ii in dataset_ids for i in ii ]
+
+        dataset_info_map[key] = {
+            "data_metas" : data_metas,
+            "indexed_datasets" : indexed_datasets,
+            # "dataset_offsets" : dataset_offsets,
+            "dataset_ids" : dataset_ids,
+            "chunk_index" : chunk_index,
+        }
+
+    # pax(0, {
+    #     "dataset_info_map" :
+    #     {k:str(v) for k,v in dataset_info_map.items()},
+    # })
+    pax(0, dataset_info_map)
+
+    return dataset_info_map
 
 def get_block_data_loader(args, shared_dataset_info, chunk_start_id, chunk_end_id):
 
@@ -448,83 +528,103 @@ def embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks):
     # <<<
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-import time
-
-def print_longest_bert_chunks(args, shared_dataset_info):
-
-    n_chunks = len(shared_dataset_info["chunk_index"])
-
-    data_loader = get_block_data_loader(args,
-                                        shared_dataset_info,
-                                        0, n_chunks)
-    dataset = data_loader.dataset
-    gpt_tokenizer = dataset.gpt_tokenizer
-    bert_tokenizer = dataset.bert_tokenizer
-
-    # pax({"bert_tokenizer": bert_tokenizer})
-
-    print_rank_0(" > sort / start.")
-    t = time.time()
-    bert_chunk_lens = list(enumerate(dataset.chunk_index[:, 3]))
-    bert_chunk_lens.sort(key = lambda item : item[1])
-    bert_chunk_lens.reverse() # for debugging.
-    print_rank_0(" > sort / end. [ %.2f sec ]" % (time.time() - t))
-
-    results = []
-    for k, (chunk_id, bert_chunk_len) in enumerate(bert_chunk_lens[:20]):
-
-        gpt_token_ids = super(type(dataset),dataset).__getitem__(chunk_id)["text"]
-        text = gpt_tokenizer.detokenize(gpt_token_ids)
-        bert_token_ids = bert_tokenizer.tokenize(text)
-
-        print()
-        print()
-        print("#############################################################")
-        print("#############################################################")
-        print("#############################################################")
-        print("LENGTHS ... gpt %d, bert %d" % (len(gpt_token_ids), len(bert_token_ids)))
-        print("#############################################################")
-        print("GPT TOKENS ... %s" % ", ".join("(%d/%s)" % (i, str(gpt_tokenizer.detokenize([i])).replace("\n", "\\n").replace("\r", "\\r")) for i in gpt_token_ids))
-        print("#############################################################")
-        print("BERT TOKENS ... %s" % ", ".join("(%d/%s)" % (i, str(bert_tokenizer.inv_vocab[i]).replace("\n", "\\n").replace("\r", "\\r")) for i in bert_token_ids))
-        print("#############################################################")
-        
-
-        # print("TEXT ... %s" % text)
-        print()
-        # print("####")
-        # print("####")
-        print(text)
-        print()
-
-        # pax({
-        #     "text" : text,
-        #     "gpt_token_ids" : "%d / %s" % (
-        #         len(gpt_token_ids),
-        #         str(gpt_token_ids.tolist()),
-        #     ),
-        #     "bert_token_ids" : "%d / %s" % (
-        #         len(bert_token_ids),
-        #         str(bert_token_ids),
-        #     ),
-        # })
-        
-    torch.distributed.barrier()
-    exit(0)
-
-    pax(0, {
-        "shared_dataset_info" : shared_dataset_info,
-        "n_chunks" : n_chunks,
-        "data_loader" : data_loader,
-        "bert_chunk_lens" : bert_chunk_lens[:10],
-    })
-
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-def embed_chunks(args, timer):
+# def embed_chunks(args, timer):
 
-    # print_seq("i am data rank %d." % mpu.get_data_parallel_rank())
+#     # print_seq("i am data rank %d." % mpu.get_data_parallel_rank())
+
+#     # Embedding workdir.
+#     workdir = os.path.join(args.retrieval_workdir, "embed")
+#     os.makedirs(workdir, exist_ok = True)
+
+#     # Load model.
+#     models, optimizer, opt_param_scheduler = \
+#         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
+
+#     # Share dataset info (indexed datasets, chunk index, etc.).
+#     # t = time.time()
+#     shared_dataset_info = get_shared_dataset_info(args)
+#     # t = time.time() - t
+#     # print_seq("shared dataset info, time = %.3f." % t)
+
+#     # pax(0, {"shared_dataset_info_map": shared_dataset_info_map})
+
+#     # >>>
+#     # bert_chunk_lens = [ a[3] for a in shared_dataset_info["chunk_index"] ]
+#     # pax(0, {
+#     #     "shared_dataset_info" : shared_dataset_info,
+#     #     "bert_chunks_lens" : bert_chunk_lens[:20],
+#     #     "bert_chunks_lens / len" : len(bert_chunk_lens),
+#     #     "mean" : np.mean(bert_chunk_lens),
+#     #     "var" : np.var(bert_chunk_lens),
+#     # })
+#     # <<<
+
+#     # >>>
+#     # print_longest_bert_chunks(args, shared_dataset_info)
+#     # raise Exception("hi.")
+#     # <<<
+
+#     # >>>
+#     # from .test_huggingface import test_huggingface
+#     # test_huggingface(args, shared_dataset_info, timer)
+#     # raise Exception("hi.")
+#     # <<<
+
+#     # Missing embedding blocks (stored on disk).
+#     n_chunks = get_n_chunks(args)
+#     missing_embedding_blocks = \
+#         get_missing_embedding_blocks(args, workdir, n_chunks) # data_loader)
+
+#     # Prevent missing file race condition.
+#     torch.distributed.barrier()
+
+#     # pax(0, {
+#     #     "missing_embedding_blocks" : missing_embedding_blocks,
+#     #     "n_chunks" : n_chunks,
+#     # })
+
+#     # # >>>
+#     # # Data loader.
+#     # # t = time.time()
+#     # data_loader = get_chunk_data_loader(args, data_metas, timer)
+#     # # t = time.time() - t
+#     # # print_seq("data_loader, %.3f sec." % t)
+#     # # <<<
+
+#     # pax(0, {
+#     #     "data_metas" : data_metas,
+#     #     # "data_loader" : data_loader,
+#     #     "data_loader / len" : len(data_loader),
+#     # })
+
+#     # Embed batches.
+#     # embed_batches(args, models, data_loader, missing_embedding_blocks)
+#     embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks)
+
+#     raise Exception("unsort chunks.")
+def embed_dataset_chunks(args, workdir, models, prefix, dataset_info):
+
+    # Dataset workdir.
+    workdir = os.path.join(workdir, prefix)
+    os.makedirs(workdir, exist_ok = True)
+
+    # Missing embedding blocks (stored on disk).
+    missing_embedding_blocks = \
+        get_missing_embedding_blocks(args, workdir, dataset_info)
+
+    pax(0, {"missing_embedding_blocks": missing_embedding_blocks})
+
+    # Prevent missing file race condition.
+    torch.distributed.barrier()
+
+    # Embed batches.
+    embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks)
+
+    raise Exception("unsort chunks.")
+
+def embed_chunks(args, timer):
 
     # Embedding workdir.
     workdir = os.path.join(args.retrieval_workdir, "embed")
@@ -535,65 +635,12 @@ def embed_chunks(args, timer):
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
     # Share dataset info (indexed datasets, chunk index, etc.).
-    # t = time.time()
-    shared_dataset_info = get_shared_dataset_info(args)
-    # t = time.time() - t
-    # print_seq("shared dataset info, time = %.3f." % t)
+    dataset_info_map = get_dataset_info_map(args)
 
-    # >>>
-    # bert_chunk_lens = [ a[3] for a in shared_dataset_info["chunk_index"] ]
-    # pax(0, {
-    #     "shared_dataset_info" : shared_dataset_info,
-    #     "bert_chunks_lens" : bert_chunk_lens[:20],
-    #     "bert_chunks_lens / len" : len(bert_chunk_lens),
-    #     "mean" : np.mean(bert_chunk_lens),
-    #     "var" : np.var(bert_chunk_lens),
-    # })
-    # <<<
-
-    # >>>
-    # print_longest_bert_chunks(args, shared_dataset_info)
-    # raise Exception("hi.")
-    # <<<
-
-    # >>>
-    # from .test_huggingface import test_huggingface
-    # test_huggingface(args, shared_dataset_info, timer)
-    # raise Exception("hi.")
-    # <<<
-
-    # Missing embedding blocks (stored on disk).
-    n_chunks = get_n_chunks(args)
-    missing_embedding_blocks = \
-        get_missing_embedding_blocks(args, workdir, n_chunks) # data_loader)
-
-    # Prevent missing file race condition.
-    torch.distributed.barrier()
-
-    # pax(0, {
-    #     "missing_embedding_blocks" : missing_embedding_blocks,
-    #     "n_chunks" : n_chunks,
-    # })
-
-    # # >>>
-    # # Data loader.
-    # # t = time.time()
-    # data_loader = get_chunk_data_loader(args, data_metas, timer)
-    # # t = time.time() - t
-    # # print_seq("data_loader, %.3f sec." % t)
-    # # <<<
-
-    # pax(0, {
-    #     "data_metas" : data_metas,
-    #     # "data_loader" : data_loader,
-    #     "data_loader / len" : len(data_loader),
-    # })
-
-    # Embed batches.
-    # embed_batches(args, models, data_loader, missing_embedding_blocks)
-    embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks)
-
-    raise Exception("unsort chunks.")
+    for prefix, dataset_info in dataset_info_map.items():
+        print_rank_0(" > embed '%s' chunks. [ count %d ]" %
+                     (prefix, len(dataset_info["chunk_index"])))
+        embed_dataset_chunks(args, workdir, models, prefix, dataset_info)
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 

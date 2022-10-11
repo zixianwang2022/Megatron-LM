@@ -117,12 +117,12 @@ def add_retrieval_args(parser):
     # group.add_argument('--project-size', type=int, default=256)
     # group.add_argument('--stored_params', type=dict, default=dict())
     # group.add_argument('--eval_ppl', action='store_true', default=False)
-    parser.add_argument('--workers', type=int, default=100,
-                        help='Number of worker processes to launch')
-    parser.add_argument('--embed-start-index', type=int, default=0,
-                        help='iteration start')
-    parser.add_argument('--embed-end-index', type=int, default=0,
-                        help='iteration end')
+    # group.add_argument('--workers', type=int, default=100,
+    #                    help='Number of worker processes to launch')
+    # group.add_argument('--embed-start-index', type=int, default=0,
+    #                    help='iteration start')
+    # group.add_argument('--embed-end-index', type=int, default=0,
+    #                    help='iteration end')
     # <<<
 
     # >>>

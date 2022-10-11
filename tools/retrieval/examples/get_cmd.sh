@@ -7,6 +7,7 @@ set -u
 # >>>
 # NPROCS=1
 # NPROCS=2
+# NPROCS=4
 # NPROCS=8
 NPROCS=16
 # NPROCS=128
@@ -26,8 +27,8 @@ NPROCS=16
 # TASKS="build-chunk-index"
 # TASKS="preprocess-chunks" # "embed-preprocess"
 TASKS="embed-chunks"
-# TASKS=train
-# TASKS=add
+# TASKS=train-index # train
+# TASKS=add-index # add
 # TASKS="remove-train-outputs,train"
 # TASKS="remove-add-outputs,add"
 # TASKS="remove-add-outputs"
@@ -92,7 +93,8 @@ PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preproces
 
 RETRIEVAL_CHUNK_LEN=64
 # RETRIEVAL_MAX_EMBED_CHUNK_LEN=130 # 70 -> 72 -> 80 -> 90 -> 130
-RETRIEVAL_NCHUNKS_SAMPLED=300000000
+# RETRIEVAL_NCHUNKS_SAMPLED=300000000
+RETRIEVAL_NCHUNKS_SAMPLED=3000000
 SEED=1001
 # EMBED_START_INDEX=0
 # EMBED_END_INDEX=100 # 000
@@ -105,7 +107,7 @@ NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/
 
 if [[ "$TASKS" == *"embed-chunks"* ]]; then
 
-# >>>
+    # >>>
     # >>>
     # BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
     BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng

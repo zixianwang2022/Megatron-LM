@@ -57,6 +57,8 @@ def get_train_add_data_paths(args):
     # Get all available data paths.
     all_paths = get_all_data_paths(args)
 
+    pax({"all_paths": all_paths})
+
     # Filter train, add subsets.
     ntrain = None; train_paths = None
     nadd = None; add_paths = None

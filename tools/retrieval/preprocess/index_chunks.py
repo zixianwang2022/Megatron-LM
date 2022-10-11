@@ -359,11 +359,12 @@ def build_sampled_chunk_index(args, workdir, data_metas):
     if os.path.exists(sampled_index_path):
 
         f = h5py.File(sampled_index_path)
-        n_alloc = len(f["chunks"])           # total allocated
-        n_written = f["n_written"][0].item() # total written
+        n_alloc = len(f["chunks_valid"])           # total allocated
+        n_written = f["n_written_valid"][0].item() # total written
         f.close()
 
         if n_chunks != n_alloc or n_chunks != n_written:
+            raise Exception("remove sampled?")
             os.remove(sampled_index_path)
 
     # Build sampled chunk index.
@@ -405,7 +406,11 @@ def build_chunk_indexes(args, workdir):
     # <<<
 
     # Dataset metadata. (sorted, official order)
-    data_metas = get_sorted_dataset_metadatas(args, workdir)
+    individual_workdir = os.path.join(workdir, "chunk_indexes")
+    os.makedirs(individual_workdir, exist_ok = True)
+    data_metas = get_sorted_dataset_metadatas(args, individual_workdir)
+
+    # pax(0, {"data_metas": data_metas})
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # create_data_softlinks(data_files)

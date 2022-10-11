@@ -26,6 +26,8 @@ def train_index(args, timer):
     index = IndexFactory.get_index(args)
     timer.pop()
 
+    pax({"index": index})
+
     # Train index.
     timer.push("train")
     index.train(args.train_paths, args.index_dir_path, timer)
