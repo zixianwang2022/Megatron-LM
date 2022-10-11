@@ -130,6 +130,15 @@ def get_missing_embedding_blocks(args, workdir, dataset_info):
     data_parallel_world_size = mpu.get_data_parallel_world_size()
     rank_missing_block_items = missing_block_items[data_parallel_rank:len(missing_block_items):data_parallel_world_size]
 
+    # Extend rank's missing items (with None) such that all ranks have equal
+    # length lists. This allows for easier tracking of global progress.
+    n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_block_items)])
+    torch.distributed.all_reduce(n_missing_tensor,
+                                 op = torch.distributed.ReduceOp.MAX)
+    max_n_missing = n_missing_tensor.item()
+    rank_missing_block_items += \
+        [None] * (max_n_missing - len(rank_missing_block_items))
+
     # >>>
     # print_seq("my inital ranges are %s." % ", ".join(str(i["range"]) for i in rank_missing_block_items[:3]))
     # pax(0, {
@@ -143,11 +152,11 @@ def get_missing_embedding_blocks(args, workdir, dataset_info):
     #     "n_chunks" : n_chunks,
     #     "block_size" : block_size,
     # })
-    print_seq("my start/end ranges [ %d ] ... %s, %s." % (
-        len(rank_missing_block_items),
-        str(rank_missing_block_items[0]["range"]),
-        str(rank_missing_block_items[-1]["range"]),
-    ))
+    # print_seq("my start/end ranges [ %d ] ... %s, %s." % (
+    #     len(rank_missing_block_items),
+    #     str(rank_missing_block_items[0]["range"]),
+    #     str(rank_missing_block_items[-1]["range"]),
+    # ))
     # <<<
 
     return rank_missing_block_items
@@ -269,11 +278,11 @@ def get_dataset_info_map(args):
         chunk_index = np.copy(f["chunks_valid"])
         f.close()
 
-        # if key == "shared":
-        pax(0, {
-            "data_metas" : [ d["prefix"] for d in data_metas ],
-            "dataset_offsets" : str(dataset_offsets),
-        })
+        # if key == "sampled":
+        #     pax(0, {
+        #         "data_metas" : [ d["prefix"] for d in data_metas ],
+        #         "dataset_offsets" : str(dataset_offsets),
+        #     })
 
         dataset_ids = []
         for i in range(len(dataset_offsets) - 1):
@@ -292,7 +301,7 @@ def get_dataset_info_map(args):
     #     "dataset_info_map" :
     #     {k:str(v) for k,v in dataset_info_map.items()},
     # })
-    pax(0, dataset_info_map)
+    # pax(0, dataset_info_map)
 
     return dataset_info_map
 
@@ -479,52 +488,50 @@ def embed_batches(args, models, data_loader,
     return np.concatenate(embeddings, axis = 0)
 
 
-def embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks):
+# def embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks):
+def embed_blocks(args, models, prefix, dataset_info, missing_embedding_blocks):
 
+    # print_seq("%d blocks." % len(missing_embedding_blocks))
+
+    # Iterate blocks.
     for block_index, block_info in enumerate(missing_embedding_blocks):
 
-        print_rank_0("embed block %d / %d ... %s." % (
-            block_index,
-            len(missing_embedding_blocks),
-            os.path.basename(block_info["path"]),
-        ))
+        # Missing block lists are extended with None to have equal-length
+        # lists. Skip the Nones.
+        if block_info is not None:
 
-        # raise Exception("hi.")
+            print_rank_0("embed '%s' block %d / %d ... %s." % (
+                prefix,
+                block_index,
+                len(missing_embedding_blocks),
+                os.path.basename(block_info["path"]),
+            ))
 
-        # Data loader.
-        def get_data_loader():
-            return get_block_data_loader(args,
-                                         shared_dataset_info,
-                                         *block_info["range"])
-        # def get_more_data_loaders():
-        #     get_data_loader()
-        #     get_data_loader()
-        #     raise Exception("hi.")
+            # Data loader.
+            data_loader = get_block_data_loader(args,
+                                                dataset_info,
+                                                *block_info["range"])
 
-        data_loader = get_data_loader()
+            embeddings = embed_batches(args, models, data_loader)
 
-        embeddings = embed_batches(args, models, data_loader,
-                                   # get_more_data_loaders,
-        )
+            f = h5py.File(block_info["path"], "w")
+            f.create_dataset("data", data = embeddings)
+            f.close()
 
-        # >>>
-        # get_more_data_loaders()
-        # <<<
+            # pax(0, {
+            #     "embeddings" : embeddings,
+            #     "data_loader" : data_loader,
+            #     "data_loader / len" : len(data_loader),
+            #     "block_info" : block_info,
+            # })
 
-        f = h5py.File(block_info["path"], "w")
-        f.create_dataset("data", data = embeddings)
-        f.close()
-
-        # pax(0, {
-        #     "embeddings" : embeddings,
-        #     "data_loader" : data_loader,
-        #     "data_loader / len" : len(data_loader),
-        #     "block_info" : block_info,
-        # })
+        # Synchronize progress across all ranks. (for easier observation)
+        print_rank_0(" > waiting for other ranks to finish block.")
+        torch.distributed.barrier()
 
     # >>>
     torch.distributed.barrier()
-    print_seq("i am done.")
+    print_seq("finished embedding '%s'." % prefix)
     # <<<
 
 
@@ -614,13 +621,13 @@ def embed_dataset_chunks(args, workdir, models, prefix, dataset_info):
     missing_embedding_blocks = \
         get_missing_embedding_blocks(args, workdir, dataset_info)
 
-    pax(0, {"missing_embedding_blocks": missing_embedding_blocks})
+    # pax(0, {"missing_embedding_blocks": missing_embedding_blocks})
 
     # Prevent missing file race condition.
     torch.distributed.barrier()
 
     # Embed batches.
-    embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks)
+    embed_blocks(args, models, prefix, dataset_info, missing_embedding_blocks)
 
     raise Exception("unsort chunks.")
 
@@ -634,9 +641,10 @@ def embed_chunks(args, timer):
     models, optimizer, opt_param_scheduler = \
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
-    # Share dataset info (indexed datasets, chunk index, etc.).
+    # Dataset infos (indexed datasets, chunk index, etc.).
     dataset_info_map = get_dataset_info_map(args)
 
+    # Embed each (i.e., full, sampled) dataset.
     for prefix, dataset_info in dataset_info_map.items():
         print_rank_0(" > embed '%s' chunks. [ count %d ]" %
                      (prefix, len(dataset_info["chunk_index"])))

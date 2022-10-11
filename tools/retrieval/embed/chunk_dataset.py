@@ -91,9 +91,17 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         chunk_len = token_end_idx - token_start_idx
         indexed_dataset = self.indexed_datasets[dataset_id]
 
-        token_ids = indexed_dataset.get(doc_id,
-                                        offset = token_start_idx,
-                                        length = chunk_len)
+        try:
+            token_ids = indexed_dataset.get(doc_id,
+                                            offset = token_start_idx,
+                                            length = chunk_len)
+        except:
+            pax(0, {
+                "doc_id" : doc_id,
+                "token_start_idx" : token_start_idx,
+                "chunk_len" :  chunk_len,
+            })
+
 
         if chunk_len != self.max_gpt_chunk_len:
             assert chunk_len < self.max_gpt_chunk_len, "invalid chunk len."
