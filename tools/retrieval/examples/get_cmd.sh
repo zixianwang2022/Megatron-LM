@@ -5,11 +5,11 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=1
+# NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-# NPROCS=16
+NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -232,7 +232,7 @@ RETRIEVAL_ARGS=" \
     --index-ty ${INDEX_TY} \
 
     --retrieval-workdir ${RETRIEVAL_WORKDIR} \
-    --retrieval-chunk-len ${RETRIEVAL_CHUNK_LEN} \
+    --retrieval-chunk-length ${RETRIEVAL_CHUNK_LEN} \
     --retrieval-nchunks-sampled ${RETRIEVAL_NCHUNKS_SAMPLED} \
     --retrieval-block-size ${RETRIEVAL_BLOCK_SIZE} \
     --return-doc-ids \

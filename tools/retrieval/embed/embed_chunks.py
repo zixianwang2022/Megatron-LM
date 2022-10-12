@@ -20,26 +20,29 @@ import numpy as np
 import os
 import time
 import torch
+from torch.utils.data import BatchSampler, DataLoader, SequentialSampler, Subset
+from torch.utils.data._utils.collate import default_collate
 from tqdm import tqdm
 
 from megatron import (
     get_args,
+    get_tokenizer,
     mpu,
     print_rank_0,
 )
 # from megatron.data.data_samplers import MegatronPretrainingSampler
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
-from megatron.model import ModelType
+from megatron.model import BertModel, ModelType
 from megatron.schedules import get_forward_backward_func
 from megatron.training import (
     setup_model_and_optimizer,
 )
-from pretrain_bert import (
-    # forward_step as forward_step_func,
-    get_batch,
-    model_provider,
-    # train_valid_test_datasets_provider,
-)
+# from pretrain_bert import (
+#     # forward_step as forward_step_func,
+#     get_batch,
+#     model_provider,
+#     # train_valid_test_datasets_provider,
+# )
 
 # from ..preprocess.utils import get_sampled_chunk_index_path
 from ..preprocess.utils import get_chunk_index_path_map
@@ -66,13 +69,31 @@ from lutil import pax, print_seq
 #     return n_chunks
 
 
+def model_provider(pre_process=True, post_process=True):
+    """Build the model."""
+
+    print_rank_0(" > build Bert model.")
+
+    args = get_args()
+    num_tokentypes = 2 if args.bert_binary_head else 0
+    model = BertModel(
+        num_tokentypes=num_tokentypes,
+        add_binary_head=args.bert_binary_head,
+        parallel_output=True,
+        pre_process=pre_process,
+        post_process=post_process)
+
+    return model
+
+
 # def get_missing_embedding_blocks(args, workdir, data_loader):
 # def get_missing_embedding_blocks(args, workdir, n_chunks):
 # def get_missing_embedding_blocks(args, workdir, prefix, dataset_info):
 def get_missing_embedding_blocks(args, workdir, dataset_info):
 
     # n_chunks = len(data_loader)
-    n_chunks = len(dataset_info["chunk_index"])
+    # n_chunks = len(dataset_info["chunk_index"])
+    n_chunks = len(dataset_info["dataset"])
 
     # pax(0, {"workdir": workdir, "n_chunks": n_chunks})
 
@@ -273,6 +294,7 @@ def get_dataset_info_map(args):
     dataset_info_map = {} # key: {} for key in chunk_index_path_map}
     for key, chunk_index_path in chunk_index_path_map.items():
 
+        # Load chunk index.
         f = h5py.File(chunk_index_path, "r")
         dataset_offsets = np.copy(f["dataset_offsets_valid"])
         chunk_index = np.copy(f["chunks_valid"])
@@ -284,17 +306,32 @@ def get_dataset_info_map(args):
         #         "dataset_offsets" : str(dataset_offsets),
         #     })
 
+        # Dataset ids.
         dataset_ids = []
         for i in range(len(dataset_offsets) - 1):
             dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
         dataset_ids = [ i for ii in dataset_ids for i in ii ]
 
+        # Dataset.
+        dataset = BertChunkDataset(
+            indexed_datasets = indexed_datasets,
+            dataset_ids = dataset_ids,
+            chunk_index = chunk_index,
+            max_chunk_length = args.retrieval_chunk_length,
+            max_model_seq_length = args.seq_length,
+            masked_lm_prob = args.mask_prob,
+            seed = args.seed,
+        )
+
+        # dataset_info_map[key] = {
+        #     "data_metas" : data_metas,
+        #     "indexed_datasets" : indexed_datasets,
+        #     # "dataset_offsets" : dataset_offsets,
+        #     "dataset_ids" : dataset_ids,
+        #     "chunk_index" : chunk_index,
+        # }
         dataset_info_map[key] = {
-            "data_metas" : data_metas,
-            "indexed_datasets" : indexed_datasets,
-            # "dataset_offsets" : dataset_offsets,
-            "dataset_ids" : dataset_ids,
-            "chunk_index" : chunk_index,
+            "dataset" : dataset,
         }
 
     # pax(0, {
@@ -305,95 +342,184 @@ def get_dataset_info_map(args):
 
     return dataset_info_map
 
-def get_block_data_loader(args, shared_dataset_info, chunk_start_id, chunk_end_id):
 
-    # pax(0, {"shared_dataset_info": shared_dataset_info})
+# def get_block_data_loader(args, shared_dataset_info, chunk_start_id, chunk_end_id):
 
-    # Chunk dataset.
-    # t = time.time()
-    dataset = BertChunkDataset(
-        indexed_datasets = shared_dataset_info["indexed_datasets"],
-        dataset_ids = shared_dataset_info["dataset_ids"][chunk_start_id:chunk_end_id],
-        chunk_index = shared_dataset_info["chunk_index"][chunk_start_id:chunk_end_id],
-        # chunk_start_idx = chunk_start_idx,
-        # chunk_end_idx = chunk_end_idx,
-        max_chunk_len = args.retrieval_chunk_len,
-        max_seq_len = args.seq_length,
-        micro_batch_size = args.micro_batch_size,
+#     # pax(0, {"shared_dataset_info": shared_dataset_info})
+
+#     # Chunk dataset.
+#     # t = time.time()
+#     dataset = BertChunkDataset(
+#         indexed_datasets = shared_dataset_info["indexed_datasets"],
+#         dataset_ids = shared_dataset_info["dataset_ids"][chunk_start_id:chunk_end_id],
+#         chunk_index = shared_dataset_info["chunk_index"][chunk_start_id:chunk_end_id],
+#         max_chunk_length = args.retrieval_chunk_length,
+#         # max_seq_len = args.seq_length,
+#         max_model_seq_length = args.seq_length,
+#         # micro_batch_size = args.micro_batch_size,
         
-        masked_lm_prob = args.mask_prob,
-        seed = args.seed,
+#         masked_lm_prob = args.mask_prob,
+#         seed = args.seed,
         
-        # >>>
-        # binary_head = args.bert_binary_head,
-        binary_head = False, # allows len(segments) == 1
-        # <<<
-    )
+#         # >>>
+#         # binary_head = args.bert_binary_head,
+#         # binary_head = False, # allows len(segments) == 1
+#         # <<<
+#     )
 
-    # t = time.time() - t
-    # print_seq("chunk dataset, %.3f sec." % t)
+#     # t = time.time() - t
+#     # print_seq("chunk dataset, %.3f sec." % t)
 
-    # Megatron sampler.
-    # >>>
-    # batch_sampler = MegatronPretrainingSampler(
-    #     # total_samples = len(chunk_index),
-    #     total_samples = chunk_end_id - chunk_start_id,
-    #     consumed_samples = 0,
-    #     micro_batch_size = args.micro_batch_size,
-    #     data_parallel_rank = mpu.get_data_parallel_rank(),
-    #     data_parallel_size = mpu.get_data_parallel_world_size())
-    # +++
-    from torch.utils.data import BatchSampler, SequentialSampler
+#     # Megatron sampler.
+#     # >>>
+#     # batch_sampler = MegatronPretrainingSampler(
+#     #     # total_samples = len(chunk_index),
+#     #     total_samples = chunk_end_id - chunk_start_id,
+#     #     consumed_samples = 0,
+#     #     micro_batch_size = args.micro_batch_size,
+#     #     data_parallel_rank = mpu.get_data_parallel_rank(),
+#     #     data_parallel_size = mpu.get_data_parallel_world_size())
+#     # +++
+#     from torch.utils.data import BatchSampler, SequentialSampler
+#     batch_sampler = BatchSampler(
+#         sampler = SequentialSampler(dataset),
+#         batch_size = args.micro_batch_size,
+#         drop_last = False,
+#     )
+#     # pax(0, {"batch_sampler": batch_sampler})
+#     # +++
+
+#     # Torch data loader.
+#     data_loader = torch.utils.data.DataLoader(dataset,
+#                                               batch_sampler=batch_sampler,
+#                                               num_workers=args.num_workers,
+#                                               pin_memory=True)
+
+#     # >>>
+#     # pax({
+#     #     # "chunk_index" : chunk_index,
+#     #     "dataset" : dataset,
+#     #     "batch_sampler" : batch_sampler,
+#     #     "data_loader" : data_loader,
+#     # })
+#     # <<<
+
+#     return data_loader
+def collate_batch(samples):
+    """Collate samples of various lengths.
+
+    This collate function handles samples with various sequence lengths, by
+    padding 'text' arrays with pad_id, and other arrays with 0.
+    """
+
+    n_samples = len(samples)
+    keys = list(samples[0].keys())
+    tokenizer = get_tokenizer()
+    # pax(0, {"tokenizer": tokenizer})
+
+    # Max sample length across all samples.
+    max_length_map = { key:0 for key in keys }
+    for sample in samples:
+        for key in keys:
+            value_length = \
+                len(sample[key]) if isinstance(sample[key], np.ndarray) else None
+            max_length_map[key] = None \
+                if value_length is None else \
+                   max(max_length_map[key], value_length)
+
+    # Pad samples.
+    padded_samples = []
+    for sample in samples:
+        padded_sample = {}
+        for key in keys:
+            padded_sample[key] = \
+                np.pad(
+                    sample[key],
+                    (0, max_length_map[key] - len(sample[key])),
+                    mode = "constant",
+                    constant_values = tokenizer.pad_id if key == "text" else 0,
+                ) \
+                if isinstance(sample[key], np.ndarray) else \
+                   sample[key]
+        padded_samples.append(padded_sample)
+
+    # Build batch with padded samples.
+    batch = default_collate(padded_samples)
+
+    # pax(0, {"batch": batch})
+
+    return batch
+
+def get_block_data_loader(args, full_dataset, chunk_start_idx, chunk_end_idx):
+    """Build data loader over data subset.
+
+    Get a subset of the dataset (from start_idx -> end_idx), and wrap it in
+    a sequential sampler and data loader.
+    """
+
+    # Dataset subset.
+    block_dataset = Subset(full_dataset, range(chunk_start_idx, chunk_end_idx))
+
+    # Sequential & batch samplers.
     batch_sampler = BatchSampler(
-        sampler = SequentialSampler(dataset),
+        sampler = SequentialSampler(block_dataset),
         batch_size = args.micro_batch_size,
         drop_last = False,
     )
-    # pax(0, {"batch_sampler": batch_sampler})
-    # +++
 
-    # Torch data loader.
-    data_loader = torch.utils.data.DataLoader(dataset,
-                                              batch_sampler=batch_sampler,
-                                              num_workers=args.num_workers,
-                                              pin_memory=True)
-
-    # >>>
-    # pax({
-    #     # "chunk_index" : chunk_index,
-    #     "dataset" : dataset,
-    #     "batch_sampler" : batch_sampler,
-    #     "data_loader" : data_loader,
-    # })
-    # <<<
+    # Data loader.
+    data_loader = DataLoader(block_dataset,
+                             batch_sampler = batch_sampler,
+                             num_workers = args.num_workers,
+                             pin_memory = True,
+                             collate_fn = collate_batch)
 
     return data_loader
 
 
-def loss_func(loss_mask, sentence_order, output_tensor, non_loss_data):
+def get_batch(data_iterator):
+    """Build the batch."""
+
+    # Items and their type.
+    keys = ['text', 'types', 'labels', 'is_random', 'loss_mask', 'padding_mask',
+            'seq_length']
+    datatype = torch.int64
+
+    # Broadcast data.
+    if data_iterator is not None:
+        data = next(data_iterator)
+    else:
+        data = None
+    data_b = mpu.broadcast_data(keys, data, datatype)
+
+    # Unpack.
+    tokens = data_b['text'].long()
+    types = data_b['types'].long()
+    sentence_order = data_b['is_random'].long()
+    loss_mask = data_b['loss_mask'].float()
+    lm_labels = data_b['labels'].long()
+    padding_mask = data_b['padding_mask'].long()
+    seq_lengths = data_b['seq_length'].long()
+
+    return tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
+        seq_lengths
+
+
+def loss_func(loss_mask, sentence_order, seq_lengths,
+              output_tensor, non_loss_data):
+    """Loss function. Sequence lengths returned here for progress print-outs."""
     assert non_loss_data
-    return output_tensor
+    return seq_lengths, output_tensor
 
 
 def forward_step(data_iterator, model):
     """Forward step."""
+
     args = get_args()
 
     # Get the batch.
-    tokens, types, sentence_order, loss_mask, lm_labels, padding_mask = get_batch(
-        data_iterator)
-
-    # >>>
-    # pax(0, {
-    #     "data_iterator" : data_iterator,
-    #     "tokens" : tokens,
-    #     "types" : types,
-    #     "sentence_order" : sentence_order,
-    #     "loss_mask" : loss_mask,
-    #     "lm_labels" : lm_labels,
-    #     "padding_mask" : padding_mask,
-    # })
-    # <<<
+    tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
+        seq_lengths = get_batch(data_iterator)
 
     if not args.bert_binary_head:
         types = None
@@ -402,16 +528,52 @@ def forward_step(data_iterator, model):
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
 
-    # >>>
-    # print(tokens)
-    # pax(0, {
-    #     "model" : model,
-    #     "tokens" : tokens,
-    #     "output_tensor" : output_tensor,
-    # })
-    # <<<
+    return output_tensor, partial(loss_func, loss_mask, sentence_order,
+                                  seq_lengths)
 
-    return output_tensor, partial(loss_func, loss_mask, sentence_order)
+
+# def loss_func(loss_mask, sentence_order, output_tensor, non_loss_data):
+#     assert non_loss_data
+#     return output_tensor
+
+
+# def forward_step(data_iterator, model):
+#     """Forward step."""
+#     args = get_args()
+
+#     # Get the batch.
+#     tokens, types, sentence_order, loss_mask, lm_labels, padding_mask = get_batch(
+#         data_iterator)
+
+#     # >>>
+#     # pax(0, {
+#     #     "data_iterator" : data_iterator,
+#     #     "tokens" : tokens,
+#     #     "types" : types,
+#     #     "sentence_order" : sentence_order,
+#     #     "loss_mask" : loss_mask,
+#     #     "lm_labels" : lm_labels,
+#     #     "padding_mask" : padding_mask,
+#     # })
+#     # <<<
+
+#     if not args.bert_binary_head:
+#         types = None
+
+#     # Forward pass through the model.
+#     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
+#                           lm_labels=lm_labels)
+
+#     # >>>
+#     # print(tokens)
+#     # pax(0, {
+#     #     "model" : model,
+#     #     "tokens" : tokens,
+#     #     "output_tensor" : output_tensor,
+#     # })
+#     # <<<
+
+#     return output_tensor, partial(loss_func, loss_mask, sentence_order)
 
 
 # def embed_batches(args, models, data_loader, missing_embedding_blocks):
@@ -455,7 +617,8 @@ def embed_batches(args, models, data_loader,
             # >>>
             # get_more_data_loaders()
             # <<<
-            output_tensors = forward_backward_func(
+            # output_tensors = forward_backward_func(
+            results = forward_backward_func(
                 forward_step,
                 data_iterator,
                 models,
@@ -464,14 +627,15 @@ def embed_batches(args, models, data_loader,
                 forward_only = True,
                 collect_non_loss_data = True,
             )
-            # >>>
-            # get_more_data_loaders()
-            # <<<
-            assert len(output_tensors) == 1, "assert len(models) == 1 before this"
-            embeddings.append(output_tensors[0].cpu().numpy())
             batch_end_time = time.time()
             batch_times.append(batch_end_time - batch_start_time)
             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
+
+            assert len(results) == 1, "assert len(models) == 1 before this"
+            seq_lengths, output_tensor = results[0]
+            embeddings.append(output_tensor.cpu().numpy())
+
+            # pax(0, {"seq_lengths": seq_lengths, "output_tensor": output_tensor})
 
             # Progress.
             est_dataset_time = (batch_end_time - dataset_start_time) + \
@@ -480,10 +644,13 @@ def embed_batches(args, models, data_loader,
             print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ]." % (
                 batch_index,
                 n_batches,
-                data_loader.dataset.batch_chunk_lens[batch_index],
+                # data_loader.dataset.batch_chunk_lens[batch_index],
+                seq_lengths.max().item(),
                 samples_per_sec,
                 (47e9 / samples_per_sec) / 16 / (24 * 3600),
             ))
+
+            # raise Exception("hi.")
 
     return np.concatenate(embeddings, axis = 0)
 
@@ -491,7 +658,7 @@ def embed_batches(args, models, data_loader,
 # def embed_blocks(args, models, shared_dataset_info, missing_embedding_blocks):
 def embed_blocks(args, models, prefix, dataset_info, missing_embedding_blocks):
 
-    # print_seq("%d blocks." % len(missing_embedding_blocks))
+    print_seq("%d blocks." % len(missing_embedding_blocks))
 
     # Iterate blocks.
     for block_index, block_info in enumerate(missing_embedding_blocks):
@@ -509,7 +676,8 @@ def embed_blocks(args, models, prefix, dataset_info, missing_embedding_blocks):
 
             # Data loader.
             data_loader = get_block_data_loader(args,
-                                                dataset_info,
+                                                # dataset_info,
+                                                dataset_info["dataset"],
                                                 *block_info["range"])
 
             embeddings = embed_batches(args, models, data_loader)
@@ -530,8 +698,8 @@ def embed_blocks(args, models, prefix, dataset_info, missing_embedding_blocks):
         torch.distributed.barrier()
 
     # >>>
-    torch.distributed.barrier()
-    print_seq("finished embedding '%s'." % prefix)
+    # torch.distributed.barrier()
+    # print_seq("finished embedding '%s'." % prefix)
     # <<<
 
 
@@ -647,7 +815,8 @@ def embed_chunks(args, timer):
     # Embed each (i.e., full, sampled) dataset.
     for prefix, dataset_info in dataset_info_map.items():
         print_rank_0(" > embed '%s' chunks. [ count %d ]" %
-                     (prefix, len(dataset_info["chunk_index"])))
+                     # (prefix, len(dataset_info["chunk_index"])))
+                     (prefix, len(dataset_info["dataset"])))
         embed_dataset_chunks(args, workdir, models, prefix, dataset_info)
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
