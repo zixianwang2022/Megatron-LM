@@ -5,11 +5,11 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
+NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-NPROCS=16
+# NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -26,8 +26,8 @@ NPROCS=16
 # TASKS="gen-rand-data"
 # TASKS="build-chunk-index"
 # TASKS="preprocess-chunks" # "embed-preprocess"
-TASKS="embed-chunks"
-# TASKS=train-index # train
+# TASKS="embed-chunks"
+TASKS=train-index # train
 # TASKS=add-index # add
 # TASKS="remove-train-outputs,train"
 # TASKS="remove-add-outputs,add"
