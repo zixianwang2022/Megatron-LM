@@ -16,17 +16,16 @@
 """Build an index for similarity search.
 
 Tasks:
-- Embed text.
-- Train index.
-- Add to index.
-- Query index.
-- Verify neighbors.
+- Preprocess chunks
+- Embed chunks.
+- Index : train, add.
+- Neighbors : query, verify.
 """
 
-import argparse
-from datetime import timedelta
-import json
-import os
+# import argparse
+# from datetime import timedelta
+# import json
+# import os
 import torch
 
 from megatron import (
@@ -34,32 +33,31 @@ from megatron import (
     initialize_megatron,
     print_rank_0,
 )
-from tools.retrieval.add import add_to_index, remove_add_outputs
-from tools.retrieval.data import (
-    clean_data,
-    copy_corpus_dirty_data,
-    gen_rand_data,
-    get_all_data_paths,
-    get_nan_stats,
-    get_train_add_data_paths,
-)
-from tools.retrieval.embed import (
-    embed_chunks,
-    run_bert_nan_analysis,
-)
+# from tools.retrieval.add import add_to_index, remove_add_outputs
+from tools.retrieval.chunks import preprocess_chunks
+# from tools.retrieval.data import (
+#     clean_data,
+#     copy_corpus_dirty_data,
+#     gen_rand_data,
+#     get_all_data_paths,
+#     get_nan_stats,
+#     get_train_add_data_paths,
+# )
+from tools.retrieval.embed import embed_chunks #, run_bert_nan_analysis
+from tools.retrieval.index.build import add_to_index, train_index
 from tools.retrieval.index.utils import (
-    get_index_dir_path,
+    # get_index_dir_path,
     get_index_str,
 )
 # from tools.retrieval.query import query_index
-from tools.retrieval.preprocess import preprocess_chunks
-from tools.retrieval.train import train_index
+# from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
-from tools.retrieval.verify import verify_codes, verify_nbrs
+# from tools.retrieval.verify import verify_codes, verify_nbrs
 
 # >>>
 from lutil import pax, print_seq
 # <<<
+
 
 def add_retrieval_args(parser):
     """Retrieval-LM preprocesing arguments."""
@@ -72,8 +70,8 @@ def add_retrieval_args(parser):
     # Args.
     group.add_argument("--tasks", required = True)
     group.add_argument("--nfeats", "-f", type = int, default = 1024)
-    group.add_argument("--ntrain", "-t", type = int, required = True)
-    group.add_argument("--nadd", "-a", type = int, required = True)
+    # group.add_argument("--ntrain", "-t", type = int, required = True)
+    # group.add_argument("--nadd", "-a", type = int, required = True)
     group.add_argument("--ncluster", type = int, required = True)
     group.add_argument("--hnsw-m", type = int, required = True) # hnsw-dim
     group.add_argument("--ivf-dim", type = int, required = True)
@@ -144,53 +142,29 @@ if __name__ == "__main__":
     args.index_str = get_index_str(args)
     args.tasks = args.tasks.split(",")
 
-    # >>>
-    # pax(0, {"args": args})
-    # print_seq("hi.")
-    # <<<
-
-    # >>>
-    # # Torch distributed initialization.
-    # # if "embed-chunks" not in args.tasks:
+    # # Get input data batch paths (for training, adding, querying, verifying).
     # if not any([ k in args.tasks for k in [
-    #         "embed-chunks",
+    #         "copy-corpus-dirty",
     #         "preprocess-chunks",
+    #         # "build-chunk-index",
+    #         "embed-chunks",
     # ]]):
-    #     args.rank = int(os.getenv('RANK', '0'))
-    #     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
-    #     torch.distributed.init_process_group(
-    #         # backend = "nccl",
-    #         backend = "gloo",
-    #         world_size = args.world_size,
-    #         rank = args.rank,
-    #         # timeout = timedelta(minutes = 10),
-    #         timeout = timedelta(days = 1),
-    #     )
-    # <<<
-
-    # Get input data batch paths (for training, adding, querying, verifying).
-    if not any([ k in args.tasks for k in [
-            "copy-corpus-dirty",
-            "preprocess-chunks",
-            # "build-chunk-index",
-            "embed-chunks",
-    ]]):
-        (
-            args.ntrain,
-            args.nadd,
-            args.train_paths,
-            args.add_paths,
-        ) = get_train_add_data_paths(args)
-        args.index_dir_path = get_index_dir_path(args)
-        args.index_empty_path = \
-            os.path.join(args.index_dir_path, "empty.faissindex")
+    #     (
+    #         args.ntrain,
+    #         args.nadd,
+    #         args.train_paths,
+    #         args.add_paths,
+    #     ) = get_train_add_data_paths(args)
+    #     args.index_dir_path = get_index_dir_path(args)
+    #     args.index_empty_path = \
+    #         os.path.join(args.index_dir_path, "empty.faissindex")
 
     # Select task to run.
     timer = Timer()
     for task in args.tasks:
 
-        if torch.distributed.is_initialized():
-            torch.distributed.barrier()
+        # if torch.distributed.is_initialized():
+        torch.distributed.barrier()
 
         timer.push(task)
 
@@ -208,9 +182,9 @@ if __name__ == "__main__":
         #     build_chunk_index(args, timer)
         elif task == "embed-chunks":
             embed_chunks(args, timer)
-        elif task == "train":
+        elif task == "train-index":
             train_index(args, timer)
-        elif task == "add":
+        elif task == "add-index":
             add_to_index(args, timer)
         elif task == "remove-add-outputs":
             remove_add_outputs(args, timer)

@@ -17,6 +17,52 @@ import os
 import shutil
 import torch
 
+from tools.retrieval.index.factory import IndexFactory
+
+# >>>
+from lutil import pax
+# <<<
+
+
+def train_index(args, timer):
+
+    # assert torch.cuda.is_available(), "index requires cuda."
+
+    # Embedding workdir.
+    workdir = os.path.join(args.retrieval_workdir, "index")
+    os.makedirs(workdir, exist_ok = True)
+
+    # Init index.
+    # timer.push("init")
+    index = IndexFactory.get_index(args)
+    # timer.pop()
+
+    # Train index.
+    # timer.push("train")
+    # index.train(args.train_paths, args.index_dir_path, timer)
+    index.train(workdir, timer)
+    # timer.pop()
+
+    pax({"index": index})
+
+
+def add_to_index(args, timer):
+
+    # Init index.
+    timer.push("init")
+    index = IndexFactory.get_index(args)
+    timer.pop()
+
+    pax(0, {"index": index})
+
+    # Add to index.
+    timer.push("add")
+    output_index_path = index.add(args.add_paths, args.index_dir_path, timer)
+    timer.pop()
+
+    return output_index_path
+
+
 def remove_add_outputs(args, timer):
 
     # Single process only.
@@ -39,3 +85,4 @@ def remove_add_outputs(args, timer):
             os.remove(p)
         else:
             raise Exception("specialize for this monster, '%s'." % p)
+

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tools.retrieval.index.index import Index
+from tools.retrieval.index import Index
 import tools.retrieval.utils as utils
 
 from .hnsw import HNSWIndex

@@ -20,8 +20,8 @@ import os
 import re
 import torch
 
-from tools.retrieval.data import load_data, save_data
-from tools.retrieval.index.index import Index
+# from tools.retrieval.data import load_data, save_data
+from tools.retrieval.index import Index
 from tools.retrieval.utils import print_rank
 
 class IVFPQIndex(Index):

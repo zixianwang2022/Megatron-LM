@@ -18,8 +18,8 @@ import faiss
 import os
 import torch
 
-from tools.retrieval.data import load_data
-from tools.retrieval.index.index import Index
+# from tools.retrieval.data import load_data
+from tools.retrieval.index import Index
 from tools.retrieval.utils import print_rank
 
 class FaissBaseIndex(Index):
@@ -79,8 +79,8 @@ class FaissBaseIndex(Index):
         # >>>
         faiss.omp_set_num_threads(64)
 
-        # from lutil import pax
-        # pax({"nthreads": faiss.omp_get_max_threads()})
+        from lutil import pax
+        pax(0, {"nthreads": faiss.omp_get_max_threads()})
         # <<<
 
         assert torch.distributed.get_rank() == 0

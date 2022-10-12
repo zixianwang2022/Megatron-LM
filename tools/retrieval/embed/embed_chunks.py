@@ -37,7 +37,7 @@ from megatron.training import (
     setup_model_and_optimizer,
 )
 
-from ..preprocess.utils import get_chunk_index_path_map
+from ..chunks.utils import get_chunk_index_path_map
 from .chunk_dataset import BertChunkDataset
 from .long_bert_chunks import print_longest_bert_chunks
 

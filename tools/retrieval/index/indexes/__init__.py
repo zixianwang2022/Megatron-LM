@@ -13,5 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .add import add_to_index
-from .remove import remove_add_outputs
+from .faiss_base import FaissBaseIndex
+from .faiss_decomp import FaissDecompIndex
+from .faiss_par_add import FaissParallelAddIndex

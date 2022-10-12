@@ -63,8 +63,10 @@ TASKS=train-index # train
 # NTRAIN=3000000 NADD=100000000 NCLUSTER=1048576 HNSW_M=32
 # NTRAIN=3000000 NADD=$(($NPROCS*1000000)) NCLUSTER=1048576 HNSW_M=32
 # NTRAIN=100000000 NADD=$(($NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
-NTRAIN=100000000 NADD=$((1*$NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
+# NTRAIN=100000000 NADD=$((1*$NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
 
+NCLUSTER=4194304
+HNSW_M=32
 PQ_M=32
 IVF_DIM=256
 
@@ -221,10 +223,10 @@ fi
 #     --retrieval-max-embed-chunk-len ${RETRIEVAL_MAX_EMBED_CHUNK_LEN} \
 #     --embed-start-index ${EMBED_START_INDEX} \
 #     --embed-end-index ${EMBED_END_INDEX} \
+#     --ntrain ${NTRAIN} \
+#     --nadd ${NADD} \
 RETRIEVAL_ARGS=" \
     --tasks ${TASKS} \
-    --ntrain ${NTRAIN} \
-    --nadd ${NADD} \
     --ncluster ${NCLUSTER} \
     --ivf-dim ${IVF_DIM} \
     --hnsw-m ${HNSW_M} \
@@ -235,6 +237,7 @@ RETRIEVAL_ARGS=" \
     --retrieval-chunk-length ${RETRIEVAL_CHUNK_LEN} \
     --retrieval-nchunks-sampled ${RETRIEVAL_NCHUNKS_SAMPLED} \
     --retrieval-block-size ${RETRIEVAL_BLOCK_SIZE} \
+
     --return-doc-ids \
     --neighbors-path ${NEIGHBOR_PATH} \
     --weight 0 \

@@ -20,9 +20,9 @@ import numpy as np
 import os
 import torch
 
-from tools.retrieval.data import load_data
-from tools.retrieval.index.faiss_base import FaissBaseIndex
-from tools.retrieval.index.index import Index
+# from tools.retrieval.data import load_data
+from tools.retrieval.index import Index
+from tools.retrieval.index.indexes.faiss_base import FaissBaseIndex
 from tools.retrieval.utils import print_rank
 
 class FaissParallelAddIndex(Index):
