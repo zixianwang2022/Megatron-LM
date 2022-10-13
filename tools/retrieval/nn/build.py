@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from .embed import embed_pretraining_chunks
 # from .query import query_neighbors
 

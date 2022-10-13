@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-? ? ? unnecessary script ? ? ?
-
 # from functools import partial
 # import h5py
 # import multiprocessing
@@ -38,7 +36,7 @@ from megatron.data.gpt_dataset import build_train_valid_test_datasets
 from megatron.training import (
     # pretrain,
     # print_datetime,
-    build_train_valid_test_data_iterators,
+    build_train_valid_test_data_loaders,
     update_train_iters,
 )
 # from megatron.utils import get_ltor_masks_and_position_ids
@@ -188,25 +186,37 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
 
 # def embed_pretraining_tokens(args, timer):
-def embed_pretraining_chunks(args, timer):
+def embed_pretraining_chunks(args, workdir, timer):
 
     # Update train iters.
     update_train_iters(args)
 
     # pax(0, {"args": args})
 
-    args.start = 0
-    args.end = args.train_samples
-    args.iteration = args.start
-    args.consumed_train_samples = args.start  # consumed samples == iterations (bs=1)
-    # args.iteration = 0
-    # args.consumed_train_samples = 0
+    # args.start = 0
+    # args.end = args.train_samples
+    # args.iteration = args.start
+    # args.consumed_train_samples = args.start  # consumed samples == iterations (bs=1)
+    args.iteration = 0
+    args.consumed_train_samples = 0
 
     # Data stuff.
-    print_rank_0(" > data iterators.")
-    train_data_iterator, valid_data_iterator, test_data_iterator \
-        = build_train_valid_test_data_iterators(
+    print_rank_0(" > data loader.")
+    train_data_loader, valid_data_loader, test_data_loader \
+        = build_train_valid_test_data_loaders(
             train_valid_test_datasets_provider)
+    train_dataset = ChunkDataset(train_data_loader.dataset) \
+        if train_data_loader else None
+    valid_dataset = ChunkDataset(valid_data_loader.dataset) \
+        if valid_data_loader else None
+    test_dataset = ChunkDataset(test_data_loader.dataset) \
+        if test_data_loader else None
+
+    pax(0, {
+        "train_dataset" : train_dataset,
+        "valid_dataset" : valid_dataset,
+        "test_dataset" : test_dataset,
+    })
 
     # # Print setup timing.
     # print_rank_0('done with setup ...')
