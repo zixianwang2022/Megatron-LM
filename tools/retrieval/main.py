@@ -22,10 +22,7 @@ Tasks:
 - Neighbors : query, verify.
 """
 
-# import argparse
-# from datetime import timedelta
-# import json
-# import os
+import json
 import torch
 
 from megatron import (
@@ -33,26 +30,10 @@ from megatron import (
     initialize_megatron,
     print_rank_0,
 )
-# from tools.retrieval.add import add_to_index, remove_add_outputs
 from tools.retrieval.chunks import preprocess_chunks
-# from tools.retrieval.data import (
-#     clean_data,
-#     copy_corpus_dirty_data,
-#     gen_rand_data,
-#     get_all_data_paths,
-#     get_nan_stats,
-#     get_train_add_data_paths,
-# )
-from tools.retrieval.embed import embed_chunks #, run_bert_nan_analysis
+from tools.retrieval.embed import embed_chunks
 from tools.retrieval.index.build import add_to_index, train_index
-from tools.retrieval.index.utils import (
-    # get_index_dir_path,
-    get_index_str,
-)
-# from tools.retrieval.query import query_index
-# from tools.retrieval.train import train_index
 from tools.retrieval.utils import Timer
-# from tools.retrieval.verify import verify_codes, verify_nbrs
 
 # >>>
 from lutil import pax, print_seq
@@ -139,7 +120,7 @@ if __name__ == "__main__":
     )
 
     args = get_args()
-    args.index_str = get_index_str(args)
+    # args.index_str = get_index_str(args)
     args.tasks = args.tasks.split(",")
 
     # # Get input data batch paths (for training, adding, querying, verifying).
@@ -219,6 +200,7 @@ if __name__ == "__main__":
     torch.distributed.barrier()
 
     # Print timing.
+    from index.utils import get_index_str
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
         # print("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
@@ -232,14 +214,16 @@ if __name__ == "__main__":
         timer.print()
         print("~~~~~~~~~~~~~~~~")
         # print("L-RESULT : %s, %s, %s, %d, %d, '%s' ... %s ... [ %s ]." % (
-        print("L-RESULT : %s, %s, %d, %d ... %s ... [ %s ]." % (
+        # print("L-RESULT : %s, %s, %d, %d ... %s ... [ %s ]." % (
+        print("L-RESULT : %s, %s ... %s ... [ %s ]." % (
             args.tasks[-1],
             # args.data_ty,
             args.index_ty,
-            args.ntrain,
-            args.nadd,
+            # args.ntrain,
+            # args.nadd,
             # args.profile_stage_stop,
             timer.get_child_str(args.tasks[-1]),
-            args.index_str,
+            # args.index_str,
+            get_index_str(args),
         ), flush = True)
     torch.distributed.barrier()

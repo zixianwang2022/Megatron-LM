@@ -18,9 +18,15 @@ import faiss
 import os
 import torch
 
-# from tools.retrieval.data import load_data
+from tools.retrieval.embed.utils import load_data
 from tools.retrieval.index import Index
+from tools.retrieval.index.utils import get_index_str
 from tools.retrieval.utils import print_rank
+
+# >>>
+from lutil import pax
+# <<<
+
 
 class FaissBaseIndex(Index):
 
@@ -28,7 +34,6 @@ class FaissBaseIndex(Index):
 
         assert torch.distributed.get_rank() == 0
 
-        # index_str = get_index_str(self.args)
         empty_index_path = self.get_empty_index_path(dir_path)
 
         # Index already exists? -> return.
@@ -42,7 +47,8 @@ class FaissBaseIndex(Index):
 
         # Init index.
         timer.push("init")
-        index = faiss.index_factory(self.args.nfeats, self.args.index_str)
+        index_str = get_index_str(self.args)
+        index = faiss.index_factory(self.args.nfeats, index_str)
         timer.pop()
 
         # Move to GPU.
@@ -65,6 +71,9 @@ class FaissBaseIndex(Index):
         faiss.write_index(index, empty_index_path)
         timer.pop()
 
+
+    # def train(self, input_data_paths, dir_path, timer):
+    # def train(self, workdir, timer):
     def train(self, input_data_paths, dir_path, timer):
 
         if torch.distributed.get_rank() == 0:
@@ -74,19 +83,23 @@ class FaissBaseIndex(Index):
 
         torch.distributed.barrier()
 
+
     def _add(self, input_data_paths, dir_path, timer):
 
-        # >>>
+        # Set num threads (torch.distributed reset it to 1).
         faiss.omp_set_num_threads(64)
 
-        from lutil import pax
-        pax(0, {"nthreads": faiss.omp_get_max_threads()})
-        # <<<
+        # pax(0, {"nthreads": faiss.omp_get_max_threads()})
 
         assert torch.distributed.get_rank() == 0
 
         empty_index_path = self.get_empty_index_path(dir_path)
         added_index_path = self.get_added_index_path(input_data_paths, dir_path)
+
+        # pax(0, {
+        #     "empty_index_path" : empty_index_path,
+        #     "added_index_path" : added_index_path,
+        # })
 
         if os.path.isfile(added_index_path):
             return
@@ -97,7 +110,7 @@ class FaissBaseIndex(Index):
 
         for batch_id, input_data_path in enumerate(input_data_paths):
 
-            print_rank("faiss-mono / add, batch %d / %d." % (
+            print_rank("faiss-base / add ... batch %d / %d." % (
                 batch_id,
                 len(input_data_paths),
             ))
@@ -125,6 +138,7 @@ class FaissBaseIndex(Index):
         faiss.write_index(index, added_index_path)
         timer.pop()
 
+
     def add(self, input_data_paths, dir_path, timer):
 
         if torch.distributed.get_rank() == 0:
@@ -135,3 +149,4 @@ class FaissBaseIndex(Index):
         torch.distributed.barrier()
 
         return self.get_added_index_path(input_data_paths, dir_path)
+

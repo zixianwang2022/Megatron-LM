@@ -17,49 +17,42 @@ import os
 import shutil
 import torch
 
+from tools.retrieval.embed.utils import get_embedding_path_map
 from tools.retrieval.index.factory import IndexFactory
+
+from .utils import get_index_workdir
 
 # >>>
 from lutil import pax
 # <<<
 
 
+# def get_workdir(args):
+#     workdir = os.path.join(args.retrieval_workdir, "index")
+#     os.makedirs(workdir, exist_ok = True)
+#     return workdir
+
+
 def train_index(args, timer):
-
-    # assert torch.cuda.is_available(), "index requires cuda."
-
-    # Embedding workdir.
-    workdir = os.path.join(args.retrieval_workdir, "index")
-    os.makedirs(workdir, exist_ok = True)
-
-    # Init index.
-    # timer.push("init")
+    # workdir = get_workdir(args)
+    workdir = get_index_workdir(args)
+    embedding_path_map = get_embedding_path_map(args.retrieval_workdir)
+    input_data_paths = embedding_path_map["sampled"]["data"]
     index = IndexFactory.get_index(args)
-    # timer.pop()
-
-    # Train index.
-    # timer.push("train")
-    # index.train(args.train_paths, args.index_dir_path, timer)
-    index.train(workdir, timer)
-    # timer.pop()
-
-    pax({"index": index})
+    index.train(input_data_paths, workdir, timer)
 
 
 def add_to_index(args, timer):
-
-    # Init index.
-    timer.push("init")
+    workdir = get_index_workdir(args)
+    embedding_path_map = get_embedding_path_map(args.retrieval_workdir)
+    input_data_paths = embedding_path_map["full"]["data"]
     index = IndexFactory.get_index(args)
-    timer.pop()
-
-    pax(0, {"index": index})
-
-    # Add to index.
-    timer.push("add")
-    output_index_path = index.add(args.add_paths, args.index_dir_path, timer)
-    timer.pop()
-
+    output_index_path = index.add(input_data_paths, workdir, timer)
+    # pax(0, {
+    #     "input_data_paths" : input_data_paths,
+    #     "output_index_path" : output_index_path,
+    #     "index" : index,
+    # })
     return output_index_path
 
 

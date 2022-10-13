@@ -18,6 +18,11 @@ import torch
 
 from tools.retrieval.utils import mkdir
 
+# >>>
+from lutil import pax
+# <<<
+
+
 def get_index_str(args):
     """Faiss notation for index structure."""
     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
@@ -28,19 +33,32 @@ def get_index_str(args):
         args.pq_m,
     )
 
-def get_index_dir_path(args):
+
+# def get_index_dir_path(args):
+def get_index_workdir(args):
     """Create sub-directory for this index."""
     
     index_str = get_index_str(args)
+    # index_dir_path = os.path.join(
+    #     # args.base_dir,
+    #     # "index",
+    #     args.index_dir,
+    #     "%s-%s" % (args.index_ty, args.data_ty),
+    #     "%s__t%d" % (index_str, args.ntrain),
+    # )
     index_dir_path = os.path.join(
-        # args.base_dir,
-        # "index",
-        args.index_dir,
-        "%s-%s" % (args.index_ty, args.data_ty),
-        "%s__t%d" % (index_str, args.ntrain),
+        args.retrieval_workdir,
+        "index",
+        args.index_ty,
+        index_str,
     )
 
-    mkdir(os.path.dirname(index_dir_path))
-    mkdir(index_dir_path)
+    # pax(0, {
+    #     "args" : args,
+    #     "index_str" : index_str,
+    #     "index_dir_path" : index_dir_path,
+    # })
+
+    os.makedirs(index_dir_path, exist_ok = True)
 
     return index_dir_path

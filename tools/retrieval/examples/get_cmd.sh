@@ -27,8 +27,8 @@ NPROCS=1
 # TASKS="build-chunk-index"
 # TASKS="preprocess-chunks" # "embed-preprocess"
 # TASKS="embed-chunks"
-TASKS=train-index # train
-# TASKS=add-index # add
+# TASKS=train-index # train
+TASKS=add-index # add
 # TASKS="remove-train-outputs,train"
 # TASKS="remove-add-outputs,add"
 # TASKS="remove-add-outputs"
@@ -65,7 +65,8 @@ TASKS=train-index # train
 # NTRAIN=100000000 NADD=$(($NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
 # NTRAIN=100000000 NADD=$((1*$NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
 
-NCLUSTER=4194304
+# NCLUSTER=4194304
+NCLUSTER=32768 # for 169320 training samples
 HNSW_M=32
 PQ_M=32
 IVF_DIM=256
