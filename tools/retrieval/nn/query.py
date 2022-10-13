@@ -13,77 +13,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import faiss
-from faiss import ParameterSpace
-import h5py
-import joblib
-import multiprocessing
-import numpy as np
-import os
-import psutil
-import time
-from tqdm import tqdm
+# import argparse
+# import faiss
+# from faiss import ParameterSpace
+# import h5py
+# import joblib
+# import multiprocessing
+# import numpy as np
+# import os
+# import psutil
+# import time
+# from tqdm import tqdm
 
-from tools.retrieval.utils import Timer
+# from tools.retrieval.utils import Timer
 
-timer = Timer()
 
-timer.push("setup")
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('--index-path', type=str, default='',
-                    help='path to load the faiss index')
-parser.add_argument('--feature-path', type=str, default='',
-                    help='path to load the chunk feature hdf5')
-parser.add_argument('--doc-path', type=str, default='',
-                    help='path to load the banned doc id pkl')
-parser.add_argument('--chunk-path', type=str, default='',
-                    help='path to load the chunk doc id pkl')
-# parser.add_argument('--out-path', type=str, default='',
-#                     help='data path to load the jsonl')
-parser.add_argument('--out-dir', type=str, required=True,
-                    help='output dir.')
-parser.add_argument('--out-prefix', type=str, required=True,
-                    help='output prefix.')
-parser.add_argument('--start', type=int, default=0,
-                   help='Number of worker processes to launch')
-parser.add_argument('--offset', type=int, default=0,
-                   help='Number of worker processes to launch')
-parser.add_argument('--split', type=int, default=2,
-                   help='Number of splits of input features')
-parser.add_argument('--target-k', type=int, default=200,
-                   help='Number of neighbors to dump')
-parser.add_argument('--k', type=int, default=2000,
-                   help='Number of neighbors to retrieve')
-parser.add_argument('--workers', type=int, default=20,
-                   help='Number of worker processes to launch')
-# faiss index
-parser.add_argument('--efsearch', type=int, default=256,
-                   help='Number of worker processes to launch')
-parser.add_argument('--nprobe', type=int, default=65536,
-                   help='Number of worker processes to launch')
-parser.add_argument("--zfs", action='store_true', default=False,
-                   help='Use zfs data.')
+# timer = Timer()
 
-args = parser.parse_args()
+# timer.push("setup")
+# parser = argparse.ArgumentParser(description='Process some integers.')
+# parser.add_argument('--index-path', type=str, default='',
+#                     help='path to load the faiss index')
+# parser.add_argument('--feature-path', type=str, default='',
+#                     help='path to load the chunk feature hdf5')
+# parser.add_argument('--doc-path', type=str, default='',
+#                     help='path to load the banned doc id pkl')
+# parser.add_argument('--chunk-path', type=str, default='',
+#                     help='path to load the chunk doc id pkl')
+# # parser.add_argument('--out-path', type=str, default='',
+# #                     help='data path to load the jsonl')
+# parser.add_argument('--out-dir', type=str, required=True,
+#                     help='output dir.')
+# parser.add_argument('--out-prefix', type=str, required=True,
+#                     help='output prefix.')
+# parser.add_argument('--start', type=int, default=0,
+#                    help='Number of worker processes to launch')
+# parser.add_argument('--offset', type=int, default=0,
+#                    help='Number of worker processes to launch')
+# parser.add_argument('--split', type=int, default=2,
+#                    help='Number of splits of input features')
+# parser.add_argument('--target-k', type=int, default=200,
+#                    help='Number of neighbors to dump')
+# parser.add_argument('--k', type=int, default=2000,
+#                    help='Number of neighbors to retrieve')
+# parser.add_argument('--workers', type=int, default=20,
+#                    help='Number of worker processes to launch')
+# # faiss index
+# parser.add_argument('--efsearch', type=int, default=256,
+#                    help='Number of worker processes to launch')
+# parser.add_argument('--nprobe', type=int, default=65536,
+#                    help='Number of worker processes to launch')
+# parser.add_argument("--zfs", action='store_true', default=False,
+#                    help='Use zfs data.')
 
-process = psutil.Process(os.getpid())
-print(process.memory_info().rss / 1024 / 1024 / 1024)  # in bytes
+# args = parser.parse_args()
 
-ngpus = faiss.get_num_gpus()
-print("number of GPUs:", ngpus)
+# process = psutil.Process(os.getpid())
+# print(process.memory_info().rss / 1024 / 1024 / 1024)  # in bytes
 
-# root1 = "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/"
-# root2 = "/home/dcg-adlr-boxinw-data/processed_data/chunks/"
-timer.pop()
+# ngpus = faiss.get_num_gpus()
+# print("number of GPUs:", ngpus)
 
-# print(args.index_path)
+# # root1 = "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/"
+# # root2 = "/home/dcg-adlr-boxinw-data/processed_data/chunks/"
+# timer.pop()
+
+# Load index.
 timer.push("load-index")
-# index database
-# start = time.time()
 index = faiss.read_index(args.index_path)
-# end = time.time()
-# print("Loading data time cost:", end - start)
 timer.pop()
 
 ## load banned document id list

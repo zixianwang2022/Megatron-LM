@@ -21,7 +21,7 @@ import time
 import numpy as np
 import torch
 
-from megatron import get_args, mpu, print_rank_0
+from megatron import mpu, print_rank_0
 from megatron.data.blendable_dataset import BlendableDataset
 from megatron.data.dataset_utils import get_datasets_weights_and_num_samples
 from megatron.data.dataset_utils import get_train_valid_test_split_
@@ -30,6 +30,7 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 # >>>
 from lutil import pax, print_seq
 # <<<
+
 
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
@@ -59,7 +60,10 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     test_datasets = []
     for i in range(len(prefixes)):
         train_ds, valid_ds, test_ds = _build_train_valid_test_datasets(
+            # >>>
             prefixes[i], data_impl, splits_string,
+            # prefixes[i], i, data_impl, splits_string,
+            # <<<
             datasets_train_valid_test_num_samples[i],
             seq_length, seed, skip_warmup)
         if train_ds:
@@ -84,6 +88,8 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             blending_test_dataset)
 
 
+# def _build_train_valid_test_datasets(data_prefix, blend_data_index,
+#                                      data_impl, splits_string,
 def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      train_valid_test_num_samples,
                                      seq_length, seed, skip_warmup):
@@ -114,10 +120,13 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         if splits[index + 1] > splits[index]:
             documents = np.arange(start=splits[index], stop=splits[index + 1],
                                   step=1, dtype=np.int32)
+            # >>>
+            # dataset = GPTDataset(name, data_prefix, blend_data_index,
             dataset = GPTDataset(name, data_prefix,
-                                  documents, indexed_dataset,
-                                  train_valid_test_num_samples[index],
-                                  seq_length, seed)
+                                 documents, indexed_dataset,
+                                 train_valid_test_num_samples[index],
+                                 seq_length, seed)
+            # <<<
         return dataset
 
     train_dataset = build_dataset(0, 'train')
@@ -143,46 +152,157 @@ def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
     return indexed_dataset
 
 
+# class GPTDataset(torch.utils.data.Dataset):
+
+#     # def __init__(self, name, data_prefix, documents, indexed_dataset,
+#     #              num_samples, seq_length, seed):
+
+#     #     self.name = name
+#     #     self.indexed_dataset = indexed_dataset
+
+#     #     # Checks
+#     #     assert np.min(documents) >= 0
+#     #     assert np.max(documents) < indexed_dataset.sizes.shape[0]
+
+#     #     # Build index mappings.
+#     #     self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
+#     #         self.name, data_prefix, documents, self.indexed_dataset.sizes,
+#     #         num_samples, seq_length, seed)
+#     # >>>
+#     # def __init__(self, name, data_prefix, blend_data_index, documents,
+#     #              indexed_dataset, num_samples, seq_length, seed):
+#     def __init__(self, name, data_prefix, documents, indexed_dataset,
+#                  num_samples, seq_length, seed):
+
+#         # >>>
+#         args = get_args()
+#         # self.args = args
+#         # <<<
+
+#         self.name = name
+#         self.indexed_dataset = indexed_dataset
+
+#         # >>>
+#         self.return_doc_ids = args.return_doc_ids   # requires the bs=1
+#         # self.return_neighbor_ids = args.return_neighbor_ids
+#         # self.add_offset_doc_ids = args.add_offset_doc_ids
+#         # if self.add_offset_doc_ids:
+#         #     # import joblib
+#         #     offset_dict = joblib.load(args.offset_dict_path)
+#         #     for k, v in offset_dict.items():
+#         #         if k in data_prefix:
+#         #             self.offset = v
+#         #             break
+#         #     print(data_prefix, "dataset offset", self.offset)
+#         # <<<
+
+#         # Checks
+#         assert np.min(documents) >= 0
+#         assert np.max(documents) < indexed_dataset.sizes.shape[0]
+
+#         # Build index mappings.
+#         self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
+#             self.name, data_prefix, documents, self.indexed_dataset.sizes,
+#             num_samples, seq_length, seed)
+
+#         # >>>
+#         # print(self.doc_idx)
+#         # print(self.sample_idx)
+#         # print(self.shuffle_idx)
+#         # pax(0, {
+#         #     "doc_idx" : self.doc_idx,
+#         #     "sample_idx" : self.sample_idx,
+#         #     "shuffle_idx" : self.shuffle_idx
+#         # })
+#         # <<<
+
+#         # >>>
+#         print("self.sample_idx.shape[0] - 1", self.sample_idx.shape[0] - 1)
+#         print("self.num_samples", num_samples)
+#         self.num_samples = num_samples
+#         self.data_prefix = data_prefix
+#         # self.blend_data_index = blend_data_index
+#         # pax(0, {
+#         #     "data_prefix" : self.data_prefix,
+#         #     "blend_data_index" : self.blend_data_index,
+#         # })
+#         # <<<
+#     # <<<
+
+#     def __len__(self):
+#         # -1 is due to data structure used to retieve the index:
+#         #    sample i --> [sample_idx[i], sample_idx[i+1])
+#         return self.sample_idx.shape[0] - 1
+
+#     def __getitem__(self, idx):
+
+#         # >>>
+#         orig_idx = idx
+#         # <<<
+
+#         # Get the shuffled index.
+#         idx = self.shuffle_idx[idx]
+#         # Start and end documents and offsets.
+#         doc_index_f = self.sample_idx[idx][0]
+#         doc_index_l = self.sample_idx[idx + 1][0]
+#         offset_f = self.sample_idx[idx][1]
+#         offset_l = self.sample_idx[idx + 1][1]
+
+#         # pax(0, {
+#         #     "sample +0" : self.sample_idx[idx],
+#         #     "sample +1" : self.sample_idx[idx + 1],
+#         # })
+
+#         # >>>
+#         doc_ids = []
+#         # <<<
+#         # If we are within the same document, just extract the chunk.
+#         if doc_index_f == doc_index_l:
+#             doc_ids.append(self.doc_idx[doc_index_f].item())
+#             # >>>
+#             # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
+#             # <<<
+#             sample = self.indexed_dataset.get(self.doc_idx[doc_index_f],
+#                                               offset=offset_f,
+#                                               length=offset_l - offset_f + 1)
+#         else:
+#             # Otherwise, get the rest of the initial document.
+#             doc_ids.append(self.doc_idx[doc_index_f].item())
+#             sample_list = [self.indexed_dataset.get(self.doc_idx[doc_index_f],
+#                                                     offset=offset_f)]
+#             # Loop over all in between documents and add the entire document.
+#             for i in range(doc_index_f + 1, doc_index_l):
+#                 doc_ids.append(self.doc_idx[i].item())
+#                 sample_list.append(self.indexed_dataset.get(self.doc_idx[i]))
+#             # >>>
+#             # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
+#             # <<<
+#             # And finally add the relevant portion of last document.
+#             sample_list.append(self.indexed_dataset.get(
+#                 self.doc_idx[doc_index_l],
+#                 length=offset_l + 1))
+#             sample = np.concatenate(sample_list)
+
+#         # >>>
+#         if self.return_doc_ids:
+#             if self.args.add_offset_doc_ids:
+#                 doc_ids = [self.offset + x for x in doc_ids]
+#             data = {'text': np.array(sample, dtype=np.int64),
+#                     'doc_ids': doc_ids,
+#                     'idx': np.int32(orig_idx),
+#                     'dataset_ids': [self.data_prefix]}
+#             # pax(0, {"data": data})
+#             return data
+#         # <<<
+#         else:
+#             return {'text': np.array(sample, dtype=np.int64)}
 class GPTDataset(torch.utils.data.Dataset):
 
-    # def __init__(self, name, data_prefix, documents, indexed_dataset,
-    #              num_samples, seq_length, seed):
-
-    #     self.name = name
-    #     self.indexed_dataset = indexed_dataset
-
-    #     # Checks
-    #     assert np.min(documents) >= 0
-    #     assert np.max(documents) < indexed_dataset.sizes.shape[0]
-
-    #     # Build index mappings.
-    #     self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
-    #         self.name, data_prefix, documents, self.indexed_dataset.sizes,
-    #         num_samples, seq_length, seed)
-    # >>>
     def __init__(self, name, data_prefix, documents, indexed_dataset,
                  num_samples, seq_length, seed):
 
-        # >>>
-        args = get_args()
-        self.args = args
-        # <<<
-
         self.name = name
         self.indexed_dataset = indexed_dataset
-
-        # >>>
-        self.return_doc_ids = args.return_doc_ids   # requires the bs=1
-        self.return_neighbor_ids = args.return_neighbor_ids
-        if args.add_offset_doc_ids:
-            import joblib
-            offset_dict = joblib.load(args.offset_dict_path)
-            for k, v in offset_dict.items():
-                if k in data_prefix:
-                    self.offset = v
-                    break
-            print(data_prefix, "dataset offset", self.offset)
-        # <<<
 
         # Checks
         assert np.min(documents) >= 0
@@ -193,25 +313,12 @@ class GPTDataset(torch.utils.data.Dataset):
             self.name, data_prefix, documents, self.indexed_dataset.sizes,
             num_samples, seq_length, seed)
 
-        # >>>
-        print("self.sample_idx.shape[0] - 1", self.sample_idx.shape[0] - 1)
-        print("self.num_samples", num_samples)
-        self.num_samples = num_samples
-        self.data_prefix = data_prefix
-        # <<<
-    # <<<
-
     def __len__(self):
         # -1 is due to data structure used to retieve the index:
         #    sample i --> [sample_idx[i], sample_idx[i+1])
         return self.sample_idx.shape[0] - 1
 
     def __getitem__(self, idx):
-
-        # >>>
-        orig_idx = idx
-        # <<<
-
         # Get the shuffled index.
         idx = self.shuffle_idx[idx]
         # Start and end documents and offsets.
@@ -219,50 +326,25 @@ class GPTDataset(torch.utils.data.Dataset):
         doc_index_l = self.sample_idx[idx + 1][0]
         offset_f = self.sample_idx[idx][1]
         offset_l = self.sample_idx[idx + 1][1]
-
-        # >>>
-        doc_ids = []
-        # <<<
         # If we are within the same document, just extract the chunk.
         if doc_index_f == doc_index_l:
-            doc_ids.append(self.doc_idx[doc_index_f].item())
-            # >>>
-            # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
-            # <<<
             sample = self.indexed_dataset.get(self.doc_idx[doc_index_f],
                                               offset=offset_f,
                                               length=offset_l - offset_f + 1)
         else:
             # Otherwise, get the rest of the initial document.
-            doc_ids.append(self.doc_idx[doc_index_f].item())
             sample_list = [self.indexed_dataset.get(self.doc_idx[doc_index_f],
                                                     offset=offset_f)]
             # Loop over all in between documents and add the entire document.
             for i in range(doc_index_f + 1, doc_index_l):
-                doc_ids.append(self.doc_idx[i].item())
                 sample_list.append(self.indexed_dataset.get(self.doc_idx[i]))
-            # >>>
-            # pax(0, {"data_prefix": self.data_prefix, "doc_ids": doc_ids})
-            # <<<
             # And finally add the relevant portion of last document.
             sample_list.append(self.indexed_dataset.get(
                 self.doc_idx[doc_index_l],
                 length=offset_l + 1))
             sample = np.concatenate(sample_list)
 
-        # >>>
-        if self.return_doc_ids:
-            if self.args.add_offset_doc_ids:
-                doc_ids = [self.offset + x for x in doc_ids]
-            data = {'text': np.array(sample, dtype=np.int64),
-                    'doc_ids': doc_ids,
-                    'idx': np.int32(orig_idx),
-                    'dataset_ids': [self.data_prefix]}
-            # pax(0, {"data": data})
-            return data
-        # <<<
-        else:
-            return {'text': np.array(sample, dtype=np.int64)}
+        return {'text': np.array(sample, dtype=np.int64)}
 
 
 def _build_index_mappings(name, data_prefix, documents, sizes,

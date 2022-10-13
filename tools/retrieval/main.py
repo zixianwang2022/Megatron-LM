@@ -29,14 +29,12 @@ from megatron import get_args, initialize_megatron, print_rank_0
 from tools.retrieval.chunks import preprocess_chunks
 from tools.retrieval.embed import embed_chunks
 from tools.retrieval.index.build import add_to_index, train_index
-from tools.retrieval.nn.build import build_nn_graph
+from tools.retrieval.nn.build import build_nn_table
 from tools.retrieval.utils import Timer
 
 # >>>
 from lutil import pax, print_seq
 # <<<
-
-pax(0, {"hi": "hi"})
 
 
 def add_retrieval_args(parser):
@@ -84,16 +82,11 @@ def add_retrieval_args(parser):
 
 if __name__ == "__main__":
 
-    pax(0, {"hi": "hi"})
-
     # Initalize Megatron.
     initialize_megatron(extra_args_provider = add_retrieval_args)
-    initialize_megatron()
 
     args = get_args()
     args.tasks = args.tasks.split(",")
-
-    pax(0, {"args": args})
 
     # Select task to run.
     timer = Timer()

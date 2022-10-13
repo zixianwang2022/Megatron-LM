@@ -13,8 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .embed import embed_pretraining_chunks
+# from .query import query_neighbors
+
+
 def build_nn_table(args, timer):
 
-    save_pretraining_tokens(args, timer)
-    embed_pretraining_tokens(args, timer)
-    query_index(args, timer)
+    # Workdir.
+    workdir = os.path.join(args.retrieval_workdir, "nn")
+    os.makedirs(workdir, exist_ok = True)
+
+    # [x] ... save_pretraining_tokens(args, timer)
+    embed_pretraining_chunks(args, workdir, timer) # embed_pretraining_tokens
+    query_neightbors(args, workdir, timer) # query_index

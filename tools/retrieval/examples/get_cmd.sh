@@ -154,7 +154,7 @@ else
     #     --load $CHECKPOINT_PATH \
     #     --log-validation-ppl-to-tensorboard \
     #     --tensorboard-dir ${TENSORBOARD_DIR} \
-    #     --global-batch-size 1 \
+    #     --eval-iters 25600 \
     MEGATRON_ARGS=" \
         --seed ${SEED} \
         --tokenizer-type ${TOKENIZER_TYPE} \
@@ -162,6 +162,7 @@ else
         --hidden-size 1024 \
         --num-attention-heads 16 \
         --micro-batch-size 1 \
+        --global-batch-size 1 \
         --seq-length 2048 \
         --max-position-embeddings 2048 \
         --train-samples 192000000 \
@@ -186,7 +187,7 @@ else
         --log-num-zeros-in-grad \
         --checkpoint-activations \
         --log-interval 100 \
-        --eval-iters 25600 \
+        --eval-iters 50 \
         --eval-interval 2000 \
         --save-interval 10000 \
         --fp16 \
