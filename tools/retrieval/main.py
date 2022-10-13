@@ -25,66 +25,42 @@ Tasks:
 import json
 import torch
 
-from megatron import (
-    get_args,
-    initialize_megatron,
-    print_rank_0,
-)
+from megatron import get_args, initialize_megatron, print_rank_0
 from tools.retrieval.chunks import preprocess_chunks
 from tools.retrieval.embed import embed_chunks
 from tools.retrieval.index.build import add_to_index, train_index
+from tools.retrieval.nn.build import build_nn_graph
 from tools.retrieval.utils import Timer
 
 # >>>
 from lutil import pax, print_seq
 # <<<
 
+pax(0, {"hi": "hi"})
+
 
 def add_retrieval_args(parser):
     """Retrieval-LM preprocesing arguments."""
 
-    # >>>
-    # parser = argparse.ArgumentParser()
     group = parser.add_argument_group(title="Retrieval preprocessing.")
-    # <<<
 
-    # Args.
     group.add_argument("--tasks", required = True)
     group.add_argument("--nfeats", "-f", type = int, default = 1024)
-    # group.add_argument("--ntrain", "-t", type = int, required = True)
-    # group.add_argument("--nadd", "-a", type = int, required = True)
     group.add_argument("--ncluster", type = int, required = True)
-    group.add_argument("--hnsw-m", type = int, required = True) # hnsw-dim
+    group.add_argument("--hnsw-m", type = int, required = True)
     group.add_argument("--ivf-dim", type = int, required = True)
-    group.add_argument("--pq-m", type = int, required = True) # pq-dim
+    group.add_argument("--pq-m", type = int, required = True)
     group.add_argument("--pq-nbits", type = int, default = 8)
-    # group.add_argument("--data-ty", required = True, choices = [
-    #     "corpus-clean",
-    #     "corpus-dirty",
-    #     "wiki",
-    #     "rand-1m",
-    #     "rand-100k",
-    # ])
-    # group.add_argument("--data-dir", required = True)
-    # group.add_argument("--index-dir", required = True)
     group.add_argument("--index-ty", required = True, choices = [
         "faiss-base",
         "faiss-decomp",
         "faiss-par-add",
     ])
-    # group.add_argument("--data-path", required = True)
-    # group.add_argument("--vocab-file", required = True)
-    # group.add_argument("--merge-file", required = True)
-    # group.add_argument("--bert-load-path", required = True)
     group.add_argument("--profile-stage-stop", default = None)
-    # group.add_argument("--local_rank", type = int, default = None)
 
-    # >>>
-    group.add_argument("--retrieval-workdir") # , required = True)
-    group.add_argument("--retrieval-chunk-length", type=int) # or retriever?
-    # group.add_argument("--retrieval-max-embed-chunk-len", type=int)
+    group.add_argument("--retrieval-workdir")
+    group.add_argument("--retrieval-chunk-length", type=int)
     group.add_argument("--retrieval-nchunks-sampled", type=int)
-    # group.add_argument("--retrieval-embed-batch-size", type=int)
     group.add_argument("--retrieval-block-size", type=int)
     group.add_argument('--weight', type=float, default=0.5)
     group.add_argument('--adaptor', action='store_true', default=False)
@@ -102,82 +78,53 @@ def add_retrieval_args(parser):
     #                    help='iteration start')
     # group.add_argument('--embed-end-index', type=int, default=0,
     #                    help='iteration end')
-    # <<<
-
-    # >>>
-    # args = parser.parse_args()
-    # <<<
 
     return parser
 
+
 if __name__ == "__main__":
 
-    # Initalize and get arguments, timers, and Tensorboard writer.
-    initialize_megatron(
-        # ignore_unknown_args = True,
-        extra_args_provider = add_retrieval_args,
-        # args_defaults={"tokenizer_type" : "GPT2BPETokenizer"}, # see get_cmd.sh
-    )
+    pax(0, {"hi": "hi"})
+
+    # Initalize Megatron.
+    initialize_megatron(extra_args_provider = add_retrieval_args)
+    initialize_megatron()
 
     args = get_args()
-    # args.index_str = get_index_str(args)
     args.tasks = args.tasks.split(",")
 
-    # # Get input data batch paths (for training, adding, querying, verifying).
-    # if not any([ k in args.tasks for k in [
-    #         "copy-corpus-dirty",
-    #         "preprocess-chunks",
-    #         # "build-chunk-index",
-    #         "embed-chunks",
-    # ]]):
-    #     (
-    #         args.ntrain,
-    #         args.nadd,
-    #         args.train_paths,
-    #         args.add_paths,
-    #     ) = get_train_add_data_paths(args)
-    #     args.index_dir_path = get_index_dir_path(args)
-    #     args.index_empty_path = \
-    #         os.path.join(args.index_dir_path, "empty.faissindex")
+    pax(0, {"args": args})
 
     # Select task to run.
     timer = Timer()
     for task in args.tasks:
 
-        # if torch.distributed.is_initialized():
-        torch.distributed.barrier()
-
         timer.push(task)
 
-        if task == "copy-corpus-dirty":
-            copy_corpus_dirty_data(args, timer)
-        elif task == "clean-data":
-            clean_data(args, timer)
-        elif task == "split-data":
-            split_data_files(args, timer)
-        elif task == "gen-rand-data":
-            gen_rand_data(args, timer)
-        elif task == "preprocess-chunks":
+        # Main tasks.
+        if task == "chunks-preprocess":
             preprocess_chunks(args, timer)
-        # elif task == "build-chunk-index":
-        #     build_chunk_index(args, timer)
         elif task == "embed-chunks":
             embed_chunks(args, timer)
-        elif task == "train-index":
+        elif task == "index-train":
             train_index(args, timer)
-        elif task == "add-index":
+        elif task == "index-add":
             add_to_index(args, timer)
-        elif task == "remove-add-outputs":
+        elif task == "index-remove-add-outputs":
             remove_add_outputs(args, timer)
-        elif task == "query":
-            query_index(args, timer)
-        elif task == "query-acc":
-            run_query_acc_pipeline(args, timer)
-        elif task == "verify-codes":
+        elif task == "index-build":
+            build_index(args, timer) # train, add
+        elif task == "nn-build":
+            build_nn_table(args, timer)
+        elif task == "nn-plot-acc":
+            plot_nn_acc(args, timer)
+        elif task == "nn-verify-codes":
             verify_codes(args, timer)
-        elif task == "verify-nbrs":
+        elif task == "nn-verify-nbrs":
             verify_nbrs(args, timer)
-        elif task == "time-merge-partials":
+
+        # Misc tasks.
+        elif task == "misc-time-merge-partials":
             from tools.retrieval.index import FaissParallelAddIndex
             # if torch.distributed.get_rank() == 0:
             FaissParallelAddIndex.time_merge_partials(args, timer)
@@ -197,7 +144,7 @@ if __name__ == "__main__":
 
         timer.pop()
 
-    torch.distributed.barrier()
+        torch.distributed.barrier()
 
     # Print timing.
     from index.utils import get_index_str

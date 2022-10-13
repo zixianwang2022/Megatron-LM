@@ -13,6 +13,8 @@ NPROCS=1
 # NPROCS=128
 # >>>
 
+PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
+
 # Data blend.
 # . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
 . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/gpt3_blend.sh
@@ -21,28 +23,25 @@ NPROCS=1
 # PROFILE_STAGE_STOP="preprocess"
 # PROFILE_STAGE_STOP="cluster"
 
-# TASKS="clean-data"
-# TASKS="split-data"
-# TASKS="gen-rand-data"
-# TASKS="build-chunk-index"
-# TASKS="preprocess-chunks" # "embed-preprocess"
+# TASKS="chunks-preprocess"
 # TASKS="embed-chunks"
-# TASKS=train-index # train
-TASKS=add-index # add
-# TASKS="remove-train-outputs,train"
-# TASKS="remove-add-outputs,add"
-# TASKS="remove-add-outputs"
-# TASKS="remove-add-outputs,verify" # "verify-index"
-# TASKS="verify-codes"
-# TASKS="verify-nbrs"
-# TASKS="query"
-# TASKS="plot-acc"
-# TASKS="time-hnsw"
-# TASKS="time-query"
-# TASKS="time-merge-partials"
-# TASKS="copy-corpus-dirty"
-# TASKS="nan-stats"
-# TASKS="bert-nan-analysis"
+# TASKS="index-train"
+# TASKS="index-add"
+# TASKS="index-build"
+# TASKS="index-remove-train-outputs,train"
+# TASKS="index-remove-add-outputs,add"
+# TASKS="index-remove-add-outputs"
+# TASKS="index-remove-add-outputs,verify" # "verify-index"
+# TASKS="index-verify-codes"
+# TASKS="index-verify-nbrs"
+TASKS="nn-build"
+# TASKS="nn-plot-acc"
+# TASKS="misc-time-hnsw"
+# TASKS="misc-time-query"
+# TASKS="misc-time-merge-partials"
+# TASKS="misc-copy-corpus-dirty"
+# TASKS="misc-nan-stats"
+# TASKS="misc-bert-nan-analysis"
 
 # NTRAIN=2048 NCLUSTER=64 HNSW_M=4
 # NTRAIN=131072 NCLUSTER=128 HNSW_M=32
@@ -71,28 +70,16 @@ HNSW_M=32
 PQ_M=32
 IVF_DIM=256
 
-# data_ty=corpus
-# data_ty=corpus-clean
-# data_ty=corpus-dirty
-# data_ty=wiki
-# data_ty=rand-1m
-# data_ty=rand-100k
-
 INDEX_TY=faiss-base
 # INDEX_TY=faiss-par-add
 # INDEX_TY=faiss-decomp
 
-# DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt2_indexed_dataset/sample_dataset/wikidump_10k_text_document
 DATA_PATH=${DATA_BLEND}
 VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
 MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
 TOKENIZER_TYPE=GPT2BPETokenizer
-# <<<
-# data_dir=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/data/$data_ty
-# INDEX_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/index
+
 RETRIEVAL_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/workdirs/1
-# PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-index-add
-PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preprocess
 
 RETRIEVAL_CHUNK_LEN=64
 # RETRIEVAL_MAX_EMBED_CHUNK_LEN=130 # 70 -> 72 -> 80 -> 90 -> 130
@@ -110,16 +97,12 @@ NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/
 
 if [[ "$TASKS" == *"embed-chunks"* ]]; then
 
-    # >>>
-    # >>>
     # BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
     BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
     # DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
     VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
     # TOKENIZER_TYPE=BertWordPieceCase
     TOKENIZER_TYPE=BertWordPieceLowerCase
-    # +++
-    # <<<
 
     # NUM_WORKERS=1
 
@@ -255,4 +238,5 @@ RETRIEVAL_PREPROCESS_CMD=" \
     ${MEGATRON_ARGS} \
     ${RETRIEVAL_ARGS} \
 "
+
 # eof

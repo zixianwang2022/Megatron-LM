@@ -14,6 +14,8 @@ source $PARENT_PATH/get_cmd.sh
 # <<<
 
 unset NCCL_DEBUG
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "PARENT_PATH = '$PARENT_PATH'."
 echo "RETRIEVAL_PREPROCESS_CMD = '$RETRIEVAL_PREPROCESS_CMD'."
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 eval $RETRIEVAL_PREPROCESS_CMD
