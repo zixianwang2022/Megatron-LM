@@ -215,29 +215,29 @@ class SeqToChunkGPTDataset(torch.utils.data.Dataset):
         chunk_idx = idx % self.n_chunk_seq_ratio
 
         seq_token_ids = self.seq_dataset[seq_idx]["text"]
-        pax(0, {
-            "seq_dataset" : self.seq_dataset,
-            "seq_token_ids" : seq_token_ids,
-        })
-        assert len(seq_token_ids) == self.seq_length, \
-            "len(seq_token_ids) == %d." % len(seq_token_ids)
+        # pax(0, {
+        #     "seq_dataset" : self.seq_dataset,
+        #     "seq_token_ids" : seq_token_ids,
+        # })
+        # assert len(seq_token_ids) == self.seq_length, \
+        #     "len(seq_token_ids) == %d." % len(seq_token_ids)
 
         token_start_idx = chunk_idx * self.chunk_length
         token_end_idx = token_start_idx + self.chunk_length
         chunk_token_ids = seq_token_ids[token_start_idx:token_end_idx]
-        chunk_text = self.tokenizer.detokenize(chunk_token_ids)
+        chunk_text = self.gpt_tokenizer.detokenize(chunk_token_ids)
 
-        pax(0, {
-            "seq_token_ids" : seq_token_ids,
-            "chunk_token_ids" : chunk_token_ids,
-            "chunk_text" : chunk_text,
-            "seq_idx" : seq_idx,
-            "chunk_idx" : chunk_idx,
-            "token_start_idx" : token_start_idx,
-            "token_end_idx" : token_end_idx,
-        })
+        # pax(0, {
+        #     "seq_token_ids" : seq_token_ids,
+        #     "chunk_token_ids" : chunk_token_ids,
+        #     "chunk_text" : chunk_text,
+        #     "seq_idx" : seq_idx,
+        #     "chunk_idx" : chunk_idx,
+        #     "token_start_idx" : token_start_idx,
+        #     "token_end_idx" : token_end_idx,
+        # })
 
-        return text
+        return chunk_text
 
 
 # def embed_pretraining_tokens(args, timer):

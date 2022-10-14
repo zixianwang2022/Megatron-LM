@@ -314,13 +314,11 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         # Text.
         text = self.text_dataset[idx]
 
-        pax(0, {"text": text})
-
         # Bert/Wordpiece tokens (+truncate).
         bert_token_ids = self.bert_tokenizer.tokenize(text)
         bert_token_ids = bert_token_ids[:self.max_model_seq_length - 2] # cls+sep
 
-        # pax(0, {"bert_token_ids": bert_token_ids})
+        pax(0, {"text": text, "bert_token_ids": bert_token_ids})
 
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
