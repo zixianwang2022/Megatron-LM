@@ -358,7 +358,9 @@ def embed_batches(args, models, data_loader):
 
 
 # def embed_blocks(args, models, prefix, dataset, missing_embedding_blocks):
-def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
+# def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
+def embed_blocks(args, models, prefix, workdir, dataset,
+                 missing_embedding_blocks):
 
     # Iterate blocks.
     for block_index, block_info in enumerate(missing_embedding_blocks):
@@ -373,7 +375,8 @@ def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
             #     len(missing_embedding_blocks),
             #     os.path.basename(block_info["path"]),
             # ))
-            print_rank_0("embed block %d / %d ... %s." % (
+            print_rank_0("embed '%s' block %d / %d ... %s." % (
+                prefix,
                 block_index,
                 len(missing_embedding_blocks),
                 # workdir + "/" + block_info["path"],
@@ -434,7 +437,7 @@ def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
 #         print_rank_0(" > embed '%s' chunks. [ count %d ]" %
 #                      (prefix, len(dataset)))
 #         embed_dataset_chunks(args, workdir, models, prefix, dataset)
-def embed_text_dataset(args, models, workdir, text_dataset):
+def embed_text_dataset(args, models, prefix, workdir, text_dataset):
 
     # Dataset workdir.
     os.makedirs(workdir, exist_ok = True)
@@ -458,7 +461,7 @@ def embed_text_dataset(args, models, workdir, text_dataset):
     torch.distributed.barrier()
 
     # Embed batches.
-    embed_blocks(args, models, workdir, embedding_dataset,
+    embed_blocks(args, models, prefix, workdir, embedding_dataset,
                  missing_embedding_blocks)
 
 
@@ -469,10 +472,10 @@ def embed_text_datasets(args, text_dataset_map):
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
     # Embed each (i.e., full, sampled) dataset.
-    for workdir, text_dataset in text_dataset_map.items():
-        print_rank_0(" > embed %d seqs ... %s." %
-                     (len(text_dataset), workdir))
-        embed_text_dataset(args, models, workdir, text_dataset)
+    for key, info in text_dataset_map.items():
+        print_rank_0(" > embed '%s' dataset ... %d samples." %
+                     (key, len(info["data"])))
+        embed_text_dataset(args, models, key, info["dir"], info["data"])
 
 
 def embed_corpus_chunks(args, timer):

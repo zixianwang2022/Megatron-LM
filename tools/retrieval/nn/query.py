@@ -30,6 +30,8 @@ import torch
 from tools.retrieval.index.factory import IndexFactory
 from tools.retrieval.index.utils import get_index_workdir
 
+from .dataset import get_dataset_map
+
 # >>>
 from lutil import pax
 # <<<
@@ -38,7 +40,9 @@ from lutil import pax
 def query_neighbors(args, workdir, timer):
 
     # Set num threads (torch.distributed reset it to 1).
-    assert torch.distributed.get_rank() == 0
+    # assert torch.distributed.get_rank() == 0
+    if torch.distributed.get_rank() != 0:
+        return
     faiss.omp_set_num_threads(64)
 
     # Load index.
@@ -60,6 +64,10 @@ def query_neighbors(args, workdir, timer):
         ParameterSpace().set_index_parameter(index, "efSearch", args.efsearch)
         ParameterSpace().set_index_parameter(index, "nprobe", args.nprobe)
 
+
+    dataset_map = get_dataset_map(args, workdir)
+
+    pax(0, {"dataset_map": dataset_map})
 
     
     for data_start in range(args.start, args.split):

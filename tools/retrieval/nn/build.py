@@ -26,6 +26,6 @@ def build_nn_table(args, timer):
     os.makedirs(workdir, exist_ok = True)
 
     # [x] ... save_pretraining_tokens(args, timer)
-    embed_pretraining_chunks(args, workdir, timer) # embed_pretraining_tokens
+    # embed_pretraining_chunks(args, workdir, timer) # embed_pretraining_tokens
     query_neighbors(args, workdir, timer) # query_index
 
