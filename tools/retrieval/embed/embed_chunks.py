@@ -38,7 +38,7 @@ from megatron.training import (
 )
 
 from ..chunks.utils import get_chunk_index_path_map
-from .chunk_dataset import BertChunkDataset
+from .chunk_dataset import BertEmbeddingDataset # BertChunkDataset
 from .long_bert_chunks import print_longest_bert_chunks
 
 # >>>
@@ -66,7 +66,7 @@ def model_provider(pre_process=True, post_process=True):
 def get_dataset_map(args):
 
     # Load dataset metadata.
-    with open(os.path.join(args.retrieval_workdir, "order.json")) as f:
+    with open(os.path.join(args.retro_workdir, "order.json")) as f:
         data_metas = json.load(f)
 
     # Token datasets.
@@ -74,7 +74,7 @@ def get_dataset_map(args):
         [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
 
     # Chunk index.
-    chunk_index_path_map = get_chunk_index_path_map(args.retrieval_workdir)
+    chunk_index_path_map = get_chunk_index_path_map(args.retro_workdir)
     dataset_map = {}
     for key, chunk_index_path in chunk_index_path_map.items():
 
@@ -95,7 +95,7 @@ def get_dataset_map(args):
             indexed_datasets = indexed_datasets,
             dataset_ids = dataset_ids,
             chunk_index = chunk_index,
-            max_chunk_length = args.retrieval_chunk_length,
+            max_chunk_length = args.retro_chunk_length,
             max_model_seq_length = args.seq_length,
             masked_lm_prob = args.mask_prob,
             seed = args.seed,
@@ -111,7 +111,7 @@ def get_missing_embedding_blocks(args, workdir, dataset):
     n_chunks = len(dataset)
 
     # Block ranges.
-    block_size = args.retrieval_block_size
+    block_size = args.retro_block_size
     block_start_idxs = list(range(0, n_chunks, block_size))
     block_end_idxs = [ min(n_chunks, i + block_size) for i in block_start_idxs ]
     block_ranges = list(zip(block_start_idxs, block_end_idxs))
@@ -347,7 +347,8 @@ def embed_batches(args, models, data_loader):
     return np.concatenate(embeddings, axis = 0)
 
 
-def embed_blocks(args, models, prefix, dataset, missing_embedding_blocks):
+# def embed_blocks(args, models, prefix, dataset, missing_embedding_blocks):
+def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
 
     # Iterate blocks.
     for block_index, block_info in enumerate(missing_embedding_blocks):
@@ -356,11 +357,16 @@ def embed_blocks(args, models, prefix, dataset, missing_embedding_blocks):
         # lists. Skip the Nones.
         if block_info is not None:
 
-            print_rank_0("embed '%s' block %d / %d ... %s." % (
-                prefix,
+            # print_rank_0("embed '%s' block %d / %d ... %s." % (
+            #     prefix,
+            #     block_index,
+            #     len(missing_embedding_blocks),
+            #     os.path.basename(block_info["path"]),
+            # ))
+            print_rank_0("embed block %d / %d ... %s." % (
                 block_index,
                 len(missing_embedding_blocks),
-                os.path.basename(block_info["path"]),
+                workdir,
             ))
 
             # Data loader.
@@ -379,42 +385,90 @@ def embed_blocks(args, models, prefix, dataset, missing_embedding_blocks):
         torch.distributed.barrier()
 
 
-def embed_dataset_chunks(args, workdir, models, prefix, dataset):
+# def embed_dataset_chunks(args, workdir, models, prefix, dataset):
+
+#     # Dataset workdir.
+#     workdir = os.path.join(workdir, prefix)
+#     os.makedirs(workdir, exist_ok = True)
+
+#     # Missing embedding blocks (stored on disk).
+#     missing_embedding_blocks = get_missing_embedding_blocks(args,workdir,dataset)
+
+#     # Prevent missing file race condition.
+#     torch.distributed.barrier()
+
+#     # Embed batches.
+#     embed_blocks(args, models, prefix, dataset, missing_embedding_blocks)
+
+
+# def embed_chunks(args, timer):
+
+#     # Embedding workdir.
+#     workdir = os.path.join(args.retro_workdir, "embed")
+#     os.makedirs(workdir, exist_ok = True)
+
+#     # Load model.
+#     models, optimizer, opt_param_scheduler = \
+#         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
+
+#     # Dataset infos (indexed datasets, chunk index, etc.).
+#     dataset_map = get_dataset_map(args)
+
+#     # >>>
+#     # del dataset_map["full"]
+#     # <<<
+
+#     # Embed each (i.e., full, sampled) dataset.
+#     for prefix, dataset in dataset_map.items():
+#         print_rank_0(" > embed '%s' chunks. [ count %d ]" %
+#                      (prefix, len(dataset)))
+#         embed_dataset_chunks(args, workdir, models, prefix, dataset)
+def embed_text_dataset(args, models, workdir, text_dataset):
 
     # Dataset workdir.
-    workdir = os.path.join(workdir, prefix)
     os.makedirs(workdir, exist_ok = True)
 
+    # Bert embedding dataset.
+    embedding_dataset = BertEmbeddingDataset(text_dataset)
+
     # Missing embedding blocks (stored on disk).
-    missing_embedding_blocks = get_missing_embedding_blocks(args,workdir,dataset)
+    missing_embedding_blocks = get_missing_embedding_blocks(args,
+                                                            workdir,
+                                                            embedding_dataset)
+
+    # pax(0, {
+    #     "missing_embedding_blocks" : missing_embedding_blocks,
+    #     "workdir" : workdir,
+    #     "text_dataset" : text_dataset,
+    #     "embedding_dataset" : embedding_dataset,
+    # })
 
     # Prevent missing file race condition.
     torch.distributed.barrier()
 
     # Embed batches.
-    embed_blocks(args, models, prefix, dataset, missing_embedding_blocks)
+    embed_blocks(args, models, workdir, embedding_dataset,
+                 missing_embedding_blocks)
 
 
-def embed_chunks(args, timer):
-
-    # Embedding workdir.
-    workdir = os.path.join(args.retrieval_workdir, "embed")
-    os.makedirs(workdir, exist_ok = True)
+def embed_text_datasets(args, text_dataset_map):
 
     # Load model.
     models, optimizer, opt_param_scheduler = \
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
+    # Embed each (i.e., full, sampled) dataset.
+    for workdir, text_dataset in text_dataset_map.items():
+        print_rank_0(" > embed %d seqs ... %s." %
+                     (len(text_dataset), workdir))
+        embed_text_dataset(args, models, workdir, text_dataset)
+
+
+def embed_corpus_chunks(args, timer):
+
+    raise Exception("call embed_text_datasets().")
+
     # Dataset infos (indexed datasets, chunk index, etc.).
     dataset_map = get_dataset_map(args)
 
-    # >>>
-    # del dataset_map["full"]
-    # <<<
-
-    # Embed each (i.e., full, sampled) dataset.
-    for prefix, dataset in dataset_map.items():
-        print_rank_0(" > embed '%s' chunks. [ count %d ]" %
-                     (prefix, len(dataset)))
-        embed_dataset_chunks(args, workdir, models, prefix, dataset)
-
+    # embed_text_datasets

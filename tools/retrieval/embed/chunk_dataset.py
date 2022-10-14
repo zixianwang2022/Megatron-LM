@@ -16,7 +16,7 @@
 import numpy as np
 import torch
 
-from megatron import get_tokenizer, print_rank_0
+from megatron import get_args, get_tokenizer, print_rank_0
 from megatron.data.bert_dataset import build_training_sample
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
@@ -201,23 +201,85 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 #                                      self.masked_lm_prob, np_rng,
 #                                      # add_binary_head = self.binary_head,
 #                                      add_binary_head = False) # allows single sent
-class BertChunkDataset(GPTChunkDataset):
+# class BertChunkDataset(GPTChunkDataset):
 
-    def __init__(self,
-                 indexed_datasets,
-                 dataset_ids,
-                 chunk_index,
-                 max_chunk_length,
-                 max_model_seq_length,
-                 masked_lm_prob,
-                 seed):
+#     def __init__(self,
+#                  indexed_datasets,
+#                  dataset_ids,
+#                  chunk_index,
+#                  max_chunk_length,
+#                  max_model_seq_length,
+#                  masked_lm_prob,
+#                  seed):
 
-        super().__init__(
-            indexed_datasets,
-            dataset_ids,
-            chunk_index,
-            max_chunk_length,
-        )
+#         super().__init__(
+#             indexed_datasets,
+#             dataset_ids,
+#             chunk_index,
+#             max_chunk_length,
+#         )
+
+#         # >>>
+#         # self.bert_tokenizer = get_tokenizer()
+#         self.bert_tokenizer = _BertWordPieceTokenizer(
+#             vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
+#             lower_case = True,
+#         )
+#         # <<<
+
+#         self.max_model_seq_length = max_model_seq_length
+
+#         # Params to store.
+#         self.seed = seed
+#         self.masked_lm_prob = masked_lm_prob
+
+#         # Vocab stuff.
+#         self.vocab_id_list = list(self.bert_tokenizer.inv_vocab.keys())
+#         self.vocab_id_to_token_dict = self.bert_tokenizer.inv_vocab
+#         self.cls_id = self.bert_tokenizer.cls
+#         self.sep_id = self.bert_tokenizer.sep
+#         self.mask_id = self.bert_tokenizer.mask
+#         self.pad_id = self.bert_tokenizer.pad
+
+
+#     def __getitem__(self, chunk_id):
+
+#         # GPT/BPE tokens.
+#         gpt_token_ids = super().__getitem__(chunk_id)["text"]
+#         gpt_token_ids = [t for t in gpt_token_ids.tolist()
+#                          if t != self.gpt_tokenizer.eod]
+#         text = self.gpt_tokenizer.detokenize(gpt_token_ids)
+
+#         # Bert/Wordpiece tokens (+truncate).
+#         bert_token_ids = self.bert_tokenizer.tokenize(text)
+#         bert_token_ids = bert_token_ids[:self.max_model_seq_length - 2] # cls+sep
+
+#         # pax(0, {"bert_token_ids": bert_token_ids})
+
+#         # Note that this rng state should be numpy and not python since
+#         # python randint is inclusive whereas the numpy one is exclusive.
+#         # We % 2**32 since numpy requres the seed to be between 0 and 2**32 - 1
+#         np_rng = np.random.RandomState(seed=((self.seed + chunk_id) % 2**32))
+
+#         # Build sample.
+#         sample = build_training_sample([bert_token_ids],
+#                                        len(bert_token_ids),
+#                                        len(bert_token_ids) + 2, # for cls+sep
+#                                        self.vocab_id_list,
+#                                        self.vocab_id_to_token_dict,
+#                                        self.cls_id, self.sep_id,
+#                                        self.mask_id, self.pad_id,
+#                                        self.masked_lm_prob, np_rng,
+#                                        binary_head = False)
+#         sample["seq_length"] = len(sample["text"])
+#         return sample
+class BertEmbeddingDataset(torch.utils.data.Dataset):
+
+    def __init__(self, text_dataset):
+
+        super().__init__()
+
+        self.text_dataset = text_dataset
 
         # >>>
         # self.bert_tokenizer = get_tokenizer()
@@ -227,11 +289,12 @@ class BertChunkDataset(GPTChunkDataset):
         )
         # <<<
 
-        self.max_model_seq_length = max_model_seq_length
+        args = get_args()
 
         # Params to store.
-        self.seed = seed
-        self.masked_lm_prob = masked_lm_prob
+        self.max_model_seq_length = args.seq_length
+        self.seed = args.seed
+        self.masked_lm_prob = args.mask_prob
 
         # Vocab stuff.
         self.vocab_id_list = list(self.bert_tokenizer.inv_vocab.keys())
@@ -242,13 +305,16 @@ class BertChunkDataset(GPTChunkDataset):
         self.pad_id = self.bert_tokenizer.pad
 
 
-    def __getitem__(self, chunk_id):
+    def __len__(self):
+        return len(self.text_dataset)
 
-        # GPT/BPE tokens.
-        gpt_token_ids = super().__getitem__(chunk_id)["text"]
-        gpt_token_ids = [t for t in gpt_token_ids.tolist()
-                         if t != self.gpt_tokenizer.eod]
-        text = self.gpt_tokenizer.detokenize(gpt_token_ids)
+
+    def __getitem__(self, idx):
+
+        # Text.
+        text = self.text_dataset[idx]
+
+        pax(0, {"text": text})
 
         # Bert/Wordpiece tokens (+truncate).
         bert_token_ids = self.bert_tokenizer.tokenize(text)

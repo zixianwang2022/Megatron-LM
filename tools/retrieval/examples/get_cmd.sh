@@ -83,72 +83,66 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/workdirs/1
 
 RETRO_SEQ_LENGTH=2048
 RETRO_CHUNK_LENGTH=64
-# RETRO_MAX_EMBED_CHUNK_LEN=130 # 70 -> 72 -> 80 -> 90 -> 130
 # RETRO_NCHUNKS_SAMPLED=300000000
 RETRO_NCHUNKS_SAMPLED=3000000
 SEED=1001
-# EMBED_START_INDEX=0
-# EMBED_END_INDEX=100 # 000
-# RETRO_EMBED_MODEL="bert"
 RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
-# RETRO_EMBED_POOLING_METHOD="avg"
-# RETRO_EMBED_POOLING_METHOD="avg-padding-aware"
-NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/neighbors.hdf5
+# NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/neighbors.hdf5
 # OFFSET_DICT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/offset_dict.pkl
 
 # if [[ "$TASKS" == *"embed-chunks"* ]]; then
-if [[ "0" == "0" ]]; then
+# if [[ "0" == "0" ]]; then
 
-    # BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
-    BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
-    # DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
-    VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
-    # TOKENIZER_TYPE=BertWordPieceCase
-    TOKENIZER_TYPE=BertWordPieceLowerCase
+#     # BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
+#     BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+#     # DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
+#     VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
+#     # TOKENIZER_TYPE=BertWordPieceCase
+#     TOKENIZER_TYPE=BertWordPieceLowerCase
 
-    # NUM_WORKERS=1
+#     # NUM_WORKERS=1
 
-    # MICRO_BATCH_SIZE=1024 # oom
-    MICRO_BATCH_SIZE=512
-    # MICRO_BATCH_SIZE=16 # good
+#     # MICRO_BATCH_SIZE=1024 # oom
+#     MICRO_BATCH_SIZE=512
+#     # MICRO_BATCH_SIZE=16 # good
 
-    # --save ${BERT_LOAD_PATH} \
-    # --merge-file ${MERGE_FILE} \
-    # --num-workers ${NUM_WORKERS} \
-    # --micro-batch-size 2 \
-    # --global-batch-size 16 \
-    # --use-checkpoint-args \
-    MEGATRON_ARGS=" \
-        --seed ${SEED} \
-        --tokenizer-type ${TOKENIZER_TYPE} \
-        --tensor-model-parallel-size 1 \
-        --pipeline-model-parallel-size 1 \
-        --num-layers 24 \
-        --hidden-size 1024 \
-        --num-attention-heads 16 \
-        --micro-batch-size ${MICRO_BATCH_SIZE} \
-        --seq-length 512 \
-        --max-position-embeddings 512 \
-        --train-iters 1000000 \
-        --load ${BERT_LOAD_PATH} \
-        --data-path ${DATA_PATH} \
-        --vocab-file ${VOCAB_FILE} \
-        --data-impl mmap \
-        --split 949,50,1 \
-        --distributed-backend nccl \
-        --lr 0.0001 \
-        --lr-decay-style linear \
-        --min-lr 1.0e-5 \
-        --lr-decay-iters 990000 \
-        --weight-decay 1e-2 \
-        --clip-grad 1.0 \
-        --lr-warmup-fraction .01 \
-        --log-interval 100 \
-        --save-interval 10000 \
-        --eval-interval 1000 \
-        --eval-iters 10 \
-        --fp16 \
-        "
+#     # --save ${BERT_LOAD_PATH} \
+#     # --merge-file ${MERGE_FILE} \
+#     # --num-workers ${NUM_WORKERS} \
+#     # --micro-batch-size 2 \
+#     # --global-batch-size 16 \
+#     # --use-checkpoint-args \
+#     MEGATRON_ARGS=" \
+#         --seed ${SEED} \
+#         --tokenizer-type ${TOKENIZER_TYPE} \
+#         --tensor-model-parallel-size 1 \
+#         --pipeline-model-parallel-size 1 \
+#         --num-layers 24 \
+#         --hidden-size 1024 \
+#         --num-attention-heads 16 \
+#         --micro-batch-size ${MICRO_BATCH_SIZE} \
+#         --seq-length 512 \
+#         --max-position-embeddings 512 \
+#         --train-iters 1000000 \
+#         --load ${BERT_LOAD_PATH} \
+#         --data-path ${DATA_PATH} \
+#         --vocab-file ${VOCAB_FILE} \
+#         --data-impl mmap \
+#         --split 949,50,1 \
+#         --distributed-backend nccl \
+#         --lr 0.0001 \
+#         --lr-decay-style linear \
+#         --min-lr 1.0e-5 \
+#         --lr-decay-iters 990000 \
+#         --weight-decay 1e-2 \
+#         --clip-grad 1.0 \
+#         --lr-warmup-fraction .01 \
+#         --log-interval 100 \
+#         --save-interval 10000 \
+#         --eval-interval 1000 \
+#         --eval-iters 10 \
+#         --fp16 \
+#         "
 
 # else
 
@@ -198,7 +192,51 @@ if [[ "0" == "0" ]]; then
 #         --no-load-optim \
 #     "
 
-fi
+# fi
+
+BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
+TOKENIZER_TYPE=BertWordPieceLowerCase
+
+# MICRO_BATCH_SIZE=1024 # oom
+MICRO_BATCH_SIZE=512
+# MICRO_BATCH_SIZE=16 # good
+
+#     --train-iters 1000000 \
+#     --split 949,50,1 \
+#     --lr-decay-iters 990000 \
+#     --lr-warmup-fraction .01 \
+MEGATRON_ARGS=" \
+    --seed ${SEED} \
+    --tokenizer-type ${TOKENIZER_TYPE} \
+    --tensor-model-parallel-size 1 \
+    --pipeline-model-parallel-size 1 \
+    --num-layers 24 \
+    --hidden-size 1024 \
+    --num-attention-heads 16 \
+    --micro-batch-size ${MICRO_BATCH_SIZE} \
+    --seq-length 512 \
+    --max-position-embeddings 512 \
+    --train-samples 192000000 \
+    --load ${BERT_LOAD_PATH} \
+    --data-path ${DATA_PATH} \
+    --vocab-file ${VOCAB_FILE} \
+    --data-impl mmap \
+    --split 98,2,0 \
+    --distributed-backend nccl \
+    --lr 0.0001 \
+    --lr-decay-style linear \
+    --min-lr 1.0e-5 \
+    --lr-decay-samples 166400000 \
+    --lr-warmup-samples 162761 \
+    --weight-decay 1e-2 \
+    --clip-grad 1.0 \
+    --log-interval 100 \
+    --save-interval 10000 \
+    --eval-interval 1000 \
+    --eval-iters 10 \
+    --fp16 \
+"
 
 #     --bert-load-path ${bert_load_path} \
 #     --data-ty ${data_ty} \
@@ -212,6 +250,9 @@ fi
 #     --embed-end-index ${EMBED_END_INDEX} \
 #     --ntrain ${NTRAIN} \
 #     --nadd ${NADD} \
+#     --return-doc-ids \
+#     --neighbors-path ${NEIGHBOR_PATH} \
+#     --weight 0 \
 RETRO_ARGS=" \
     --tasks ${TASKS} \
     --ncluster ${NCLUSTER} \
@@ -225,10 +266,6 @@ RETRO_ARGS=" \
     --retro-chunk-length ${RETRO_CHUNK_LENGTH} \
     --retro-nchunks-sampled ${RETRO_NCHUNKS_SAMPLED} \
     --retro-block-size ${RETRO_BLOCK_SIZE} \
-
-    --return-doc-ids \
-    --neighbors-path ${NEIGHBOR_PATH} \
-    --weight 0 \
 "
 
 RETRO_PREPROCESS_CMD=" \

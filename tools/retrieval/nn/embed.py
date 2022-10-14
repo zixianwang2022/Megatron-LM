@@ -22,25 +22,14 @@ import os
 import torch
 from tqdm import tqdm
 
-from megatron import (
-    get_args,
-    # get_timers,
-    # get_tokenizer,
-    # initialize_megatron,
-    # mpu,
-    print_rank_0,
-)
-# from megatron.data.blendable_dataset import BlendableDataset
+from megatron import get_args, print_rank_0
 from megatron.data.gpt_dataset import build_train_valid_test_datasets
-# from megatron.model import GPTModel, ModelType
+from megatron.tokenizer.tokenizer import _GPT2BPETokenizer
 from megatron.training import (
-    # pretrain,
-    # print_datetime,
     build_train_valid_test_data_loaders,
     update_train_iters,
 )
-# from megatron.utils import get_ltor_masks_and_position_ids
-# from megatron.utils import average_losses_across_data_parallel_group
+from tools.retrieval.embed import embed_text_datasets
 
 # >>>
 from lutil import pax
@@ -174,7 +163,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         data_impl=args.data_impl,
         splits_string=args.split,
         train_valid_test_num_samples=train_val_test_num_samples,
-        seq_length=args.retrieval_seq_length,
+        seq_length=args.retro_seq_length,
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup))
     print_rank_0("> finished creating pretrained GPT datasets ...")
@@ -194,8 +183,8 @@ class SeqToChunkGPTDataset(torch.utils.data.Dataset):
 
         self.seq_dataset = seq_dataset
 
-        self.seq_length = args.seq_length
-        self.chunk_length = args.retrieval_chunk_length
+        self.seq_length = args.retro_seq_length
+        self.chunk_length = args.retro_chunk_length
         assert self.seq_length % self.chunk_length == 0
         self.n_chunk_seq_ratio = int(self.seq_length / self.chunk_length)
 
@@ -218,7 +207,6 @@ class SeqToChunkGPTDataset(torch.utils.data.Dataset):
         # })
 
     def __len__(self):
-        raise Exception("hi.")
         return self.n_chunks
 
     def __getitem__(self, idx):
@@ -226,11 +214,30 @@ class SeqToChunkGPTDataset(torch.utils.data.Dataset):
         seq_idx = idx // self.n_chunk_seq_ratio
         chunk_idx = idx % self.n_chunk_seq_ratio
 
-        seq_token_ids = self.seq_dataset[seq_idx]
+        seq_token_ids = self.seq_dataset[seq_idx]["text"]
+        pax(0, {
+            "seq_dataset" : self.seq_dataset,
+            "seq_token_ids" : seq_token_ids,
+        })
+        assert len(seq_token_ids) == self.seq_length, \
+            "len(seq_token_ids) == %d." % len(seq_token_ids)
 
-        pax(0, {"seq_token_ids": seq_token_ids})
+        token_start_idx = chunk_idx * self.chunk_length
+        token_end_idx = token_start_idx + self.chunk_length
+        chunk_token_ids = seq_token_ids[token_start_idx:token_end_idx]
+        chunk_text = self.tokenizer.detokenize(chunk_token_ids)
 
-        text = self.tokenizer.detokenize(chunk_token_ids)
+        pax(0, {
+            "seq_token_ids" : seq_token_ids,
+            "chunk_token_ids" : chunk_token_ids,
+            "chunk_text" : chunk_text,
+            "seq_idx" : seq_idx,
+            "chunk_idx" : chunk_idx,
+            "token_start_idx" : token_start_idx,
+            "token_end_idx" : token_end_idx,
+        })
+
+        return text
 
 
 # def embed_pretraining_tokens(args, timer):
@@ -253,35 +260,24 @@ def embed_pretraining_chunks(args, workdir, timer):
     train_data_loader, valid_data_loader, test_data_loader \
         = build_train_valid_test_data_loaders(
             train_valid_test_datasets_provider)
-    train_dataset = SeqToChunkGPTDataset(args, train_data_loader.dataset) \
-        if train_data_loader else None
-    valid_dataset = SeqToChunkGPTDataset(args, valid_data_loader.dataset) \
-        if valid_data_loader else None
-    test_dataset = SeqToChunkGPTDataset(args, test_data_loader.dataset) \
-        if test_data_loader else None
+    data_loader_map = {
+        "train" : train_data_loader,
+        "valid" : valid_data_loader,
+        "test" : test_data_loader,
+    }
+    dataset_map = {
+        os.path.join(workdir, "embed", key) :
+        SeqToChunkGPTDataset(args, loader.dataset)
+        for key, loader in data_loader_map.items()
+        if loader
+    }
 
-    pax(0, {
-        "train_dataset" : train_dataset,
-        "valid_dataset" : valid_dataset,
-        "test_dataset" : test_dataset,
-    })
+    # pax(0, {"dataset_map": dataset_map})
 
-    if args.do_train and args.train_iters > 0:
-        for iteration in tqdm(range(args.start, args.end)):
-            # timers('batch-generator').start()
-            tokens, doc_ids, data_idx = get_batch_for_preprocess(train_data_iterator)
-            # if iteration - args.start < 10:
-            #     print(tokens, doc_ids, data_idx)
-            pax(0, {"tokens": tokens, "doc_ids": doc_ids, "data_idx": data_idx})
-            output[iteration - args.start] = tokens[0].numpy()
-            doc_ids_list.append(doc_ids)
-            # timers('batch-generator').stop()
+    # for key, dataset in dataset_map.items():
+    #     embed_workdir = os.path.join(workdir, "embed", key)
+    #     os.makedirs(embed_workdir, exist_ok = True)
+    #     embed_dataset(args, embed_workdir, key, dataset)
+    embed_text_datasets(args, dataset_map)
 
-        print_datetime('after training is done')
-
-    output_file = h5py.File(output_file, "w")
-    output_file.create_dataset("tokens", data=output)
-    output_file.close()
-    import joblib
-    joblib.dump(doc_ids_list, doc_ids_file)
-
+    raise Exception("finished embedding.")

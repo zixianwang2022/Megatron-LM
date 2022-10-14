@@ -22,7 +22,7 @@ from .embed import embed_pretraining_chunks
 def build_nn_table(args, timer):
 
     # Workdir.
-    workdir = os.path.join(args.retrieval_workdir, "nn")
+    workdir = os.path.join(args.retro_workdir, "nn")
     os.makedirs(workdir, exist_ok = True)
 
     # [x] ... save_pretraining_tokens(args, timer)
