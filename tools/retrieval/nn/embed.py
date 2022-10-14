@@ -19,7 +19,7 @@
 # import numpy as np
 import os
 # import time
-# import torch
+import torch
 from tqdm import tqdm
 
 from megatron import (
@@ -74,93 +74,93 @@ from lutil import pax
 #     return parser
 
 
-def model_provider(pre_process=True, post_process=True):
-    """Build the model."""
+# def model_provider(pre_process=True, post_process=True):
+#     """Build the model."""
 
-    print_rank_0('building GPT model ...')
-    model = GPTModel(
-        num_tokentypes=0,
-        parallel_output=True,
-        pre_process=pre_process,
-        post_process=post_process
-    )
-    return model
-
-
-def get_batch(data_iterator):
-    """Generate a batch"""
-    args = get_args()
-    tokenizer = get_tokenizer()
-
-    # Items and their type.
-    keys = ['text']
-    datatype = torch.int64
-
-    # Broadcast data.
-    if data_iterator is not None:
-        data = next(data_iterator)
-    else:
-        data = None
-    data_b = mpu.broadcast_data(keys, data, datatype)
-
-    # Unpack.
-    tokens_ = data_b['text'].long()
-    labels = tokens_[:, 1:].contiguous()
-    tokens = tokens_[:, :-1].contiguous()
-
-    # Get the masks and postition ids.
-    attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
-        tokens,
-        tokenizer.eod,
-        args.reset_position_ids,
-        args.reset_attention_mask,
-        args.eod_mask_loss)
-
-    return tokens, labels, loss_mask, attention_mask, position_ids
-
-def get_batch_for_preprocess(data_iterator):
-    if data_iterator is not None:
-        data = next(data_iterator)
-    else:
-        data = None
-    pax(0, {"data": data})
-    tokens_ = data['text']
-    tokens = tokens_[:, :-1].contiguous()
-    return tokens, [doc.item() for doc in data["doc_ids"]], data['idx']
-
-def get_batch_for_preprocess_by_data(data):
-    tokens_ = data['text']
-    tokens = tokens_[:, :-1].contiguous()
-    return tokens, [doc.item() for doc in data["doc_ids"]]
+#     print_rank_0('building GPT model ...')
+#     model = GPTModel(
+#         num_tokentypes=0,
+#         parallel_output=True,
+#         pre_process=pre_process,
+#         post_process=post_process
+#     )
+#     return model
 
 
+# def get_batch(data_iterator):
+#     """Generate a batch"""
+#     args = get_args()
+#     tokenizer = get_tokenizer()
 
-def loss_func(loss_mask, output_tensor):
-    losses = output_tensor.float()
-    loss_mask = loss_mask.view(-1).float()
-    loss = torch.sum(losses.view(-1) * loss_mask) / loss_mask.sum()
+#     # Items and their type.
+#     keys = ['text']
+#     datatype = torch.int64
 
-    # Reduce loss for logging.
-    averaged_loss = average_losses_across_data_parallel_group([loss])
+#     # Broadcast data.
+#     if data_iterator is not None:
+#         data = next(data_iterator)
+#     else:
+#         data = None
+#     data_b = mpu.broadcast_data(keys, data, datatype)
 
-    return loss, {'lm loss': averaged_loss[0]}
+#     # Unpack.
+#     tokens_ = data_b['text'].long()
+#     labels = tokens_[:, 1:].contiguous()
+#     tokens = tokens_[:, :-1].contiguous()
+
+#     # Get the masks and postition ids.
+#     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
+#         tokens,
+#         tokenizer.eod,
+#         args.reset_position_ids,
+#         args.reset_attention_mask,
+#         args.eod_mask_loss)
+
+#     return tokens, labels, loss_mask, attention_mask, position_ids
+
+# def get_batch_for_preprocess(data_iterator):
+#     if data_iterator is not None:
+#         data = next(data_iterator)
+#     else:
+#         data = None
+#     pax(0, {"data": data})
+#     tokens_ = data['text']
+#     tokens = tokens_[:, :-1].contiguous()
+#     return tokens, [doc.item() for doc in data["doc_ids"]], data['idx']
+
+# def get_batch_for_preprocess_by_data(data):
+#     tokens_ = data['text']
+#     tokens = tokens_[:, :-1].contiguous()
+#     return tokens, [doc.item() for doc in data["doc_ids"]]
 
 
-def forward_step(data_iterator, model):
-    """Forward step."""
-    args = get_args()
-    timers = get_timers()
 
-    # Get the batch.
-    timers('batch-generator').start()
-    tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
-        data_iterator)
-    timers('batch-generator').stop()
+# def loss_func(loss_mask, output_tensor):
+#     losses = output_tensor.float()
+#     loss_mask = loss_mask.view(-1).float()
+#     loss = torch.sum(losses.view(-1) * loss_mask) / loss_mask.sum()
 
-    output_tensor = model(tokens, position_ids, attention_mask,
-                          labels=labels)
+#     # Reduce loss for logging.
+#     averaged_loss = average_losses_across_data_parallel_group([loss])
 
-    return output_tensor, partial(loss_func, loss_mask)
+#     return loss, {'lm loss': averaged_loss[0]}
+
+
+# def forward_step(data_iterator, model):
+#     """Forward step."""
+#     args = get_args()
+#     timers = get_timers()
+
+#     # Get the batch.
+#     timers('batch-generator').start()
+#     tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
+#         data_iterator)
+#     timers('batch-generator').stop()
+
+#     output_tensor = model(tokens, position_ids, attention_mask,
+#                           labels=labels)
+
+#     return output_tensor, partial(loss_func, loss_mask)
 
 
 def train_valid_test_datasets_provider(train_val_test_num_samples):
@@ -174,7 +174,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         data_impl=args.data_impl,
         splits_string=args.split,
         train_valid_test_num_samples=train_val_test_num_samples,
-        seq_length=args.seq_length,
+        seq_length=args.retrieval_seq_length,
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup))
     print_rank_0("> finished creating pretrained GPT datasets ...")
@@ -183,6 +183,54 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     # train_ds = BlendableDataset([train_ds1, train_ds2], [args.weight, 1 - args.weight])
 
     return train_ds, valid_ds, test_ds
+
+
+# class TextChunkDataset(torch.utils.data.Dataset):
+class SeqToChunkGPTDataset(torch.utils.data.Dataset):
+
+    def __init__(self, args, seq_dataset):
+
+        super().__init__()
+
+        self.seq_dataset = seq_dataset
+
+        self.seq_length = args.seq_length
+        self.chunk_length = args.retrieval_chunk_length
+        assert self.seq_length % self.chunk_length == 0
+        self.n_chunk_seq_ratio = int(self.seq_length / self.chunk_length)
+
+        self.n_seqs = len(seq_dataset)
+        self.n_chunks = self.n_seqs * self.n_chunk_seq_ratio
+
+        # >>>
+        self.gpt_tokenizer = _GPT2BPETokenizer(
+            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
+            merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+        )
+        # <<<
+
+        # pax(0, {
+        #     "seq_length" : self.seq_length,
+        #     "chunk_length" : self.chunk_length,
+        #     "n_chunk_seq_ratio" : self.n_chunk_seq_ratio,
+        #     "n_seqs" : self.n_seqs,
+        #     "n_chunks" : self.n_chunks,
+        # })
+
+    def __len__(self):
+        raise Exception("hi.")
+        return self.n_chunks
+
+    def __getitem__(self, idx):
+
+        seq_idx = idx // self.n_chunk_seq_ratio
+        chunk_idx = idx % self.n_chunk_seq_ratio
+
+        seq_token_ids = self.seq_dataset[seq_idx]
+
+        pax(0, {"seq_token_ids": seq_token_ids})
+
+        text = self.tokenizer.detokenize(chunk_token_ids)
 
 
 # def embed_pretraining_tokens(args, timer):
@@ -205,11 +253,11 @@ def embed_pretraining_chunks(args, workdir, timer):
     train_data_loader, valid_data_loader, test_data_loader \
         = build_train_valid_test_data_loaders(
             train_valid_test_datasets_provider)
-    train_dataset = ChunkDataset(train_data_loader.dataset) \
+    train_dataset = SeqToChunkGPTDataset(args, train_data_loader.dataset) \
         if train_data_loader else None
-    valid_dataset = ChunkDataset(valid_data_loader.dataset) \
+    valid_dataset = SeqToChunkGPTDataset(args, valid_data_loader.dataset) \
         if valid_data_loader else None
-    test_dataset = ChunkDataset(test_data_loader.dataset) \
+    test_dataset = SeqToChunkGPTDataset(args, test_data_loader.dataset) \
         if test_data_loader else None
 
     pax(0, {
@@ -217,35 +265,6 @@ def embed_pretraining_chunks(args, workdir, timer):
         "valid_dataset" : valid_dataset,
         "test_dataset" : test_dataset,
     })
-
-    # # Print setup timing.
-    # print_rank_0('done with setup ...')
-    # print_rank_0('training ...')
-
-    # data_path = args.data_path[0]
-    # print(args.data_path)
-
-    # exit(0)
-
-    # if args.neighbors_path:
-    #     data_path = args.neighbors_path
-
-    # if args.add_offset_doc_ids:
-    #     output_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}_seed_{args.seed}_with_offset.tokens.h5py"
-    #     doc_ids_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}_seed_{args.seed}_with_offset.doc_ids.pkl"
-    # else:
-    #     output_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}_seed_{args.seed}.tokens.h5py"
-    #     doc_ids_file = data_path + f"_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}_seed_{args.seed}.doc_ids.pkl"
-
-    # token_path = os.path.join(workdir, f"tokens_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}_seed_{args.seed}.h5py")
-    doc_ids_path = os.path.join(workdir, f"doc_ids_start_{args.start}_end_{args.end}_ns_{args.train_iters}_sl{args.seq_length}_seed_{args.seed}.pkl")
-
-    # print("Dumping: ", token_path)
-    print("Dumping: ", doc_ids_path)
-
-    # import h5py
-    # output = np.zeros((args.end - args.start, 2048), dtype='uint16')
-    doc_ids_list = []
 
     if args.do_train and args.train_iters > 0:
         for iteration in tqdm(range(args.start, args.end)):
