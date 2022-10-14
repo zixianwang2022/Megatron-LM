@@ -214,10 +214,16 @@ class SeqToChunkGPTDataset(torch.utils.data.Dataset):
         seq_idx = idx // self.n_chunk_seq_ratio
         chunk_idx = idx % self.n_chunk_seq_ratio
 
-        seq_token_ids = self.seq_dataset[seq_idx]["text"]
+        # pax(0, {"seq": self.seq_dataset[seq_idx]})
+
+        seq_sample = self.seq_dataset[seq_idx]
+        seq_token_ids = seq_sample["text"]
+        seq_doc_ids = seq_sample["doc_ids"]
+
         # pax(0, {
-        #     "seq_dataset" : self.seq_dataset,
-        #     "seq_token_ids" : seq_token_ids,
+        #     # "seq_dataset" : self.seq_dataset,
+        #     "seq_token_ids" : str(seq_token_ids),
+        #     "seq_doc_ids" : str(seq_doc_ids),
         # })
         # assert len(seq_token_ids) == self.seq_length, \
         #     "len(seq_token_ids) == %d." % len(seq_token_ids)
@@ -237,7 +243,10 @@ class SeqToChunkGPTDataset(torch.utils.data.Dataset):
         #     "token_end_idx" : token_end_idx,
         # })
 
-        return chunk_text
+        return {
+            "text" : chunk_text,
+            "doc_ids" : seq_doc_ids,
+        }
 
 
 # def embed_pretraining_tokens(args, timer):

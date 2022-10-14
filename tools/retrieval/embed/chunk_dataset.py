@@ -311,21 +311,30 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
+        # >>>
+        # idx = 67655
+        # <<<
+
         # Text.
-        text = self.text_dataset[idx]
+        text_sample = self.text_dataset[idx]
+        # pax(0, {"text_sample": text_sample})
+        text = text_sample["text"]
 
         # Bert/Wordpiece tokens (+truncate).
         bert_token_ids = self.bert_tokenizer.tokenize(text)
-        bert_token_ids = bert_token_ids[:self.max_model_seq_length - 2] # cls+sep
+        bert_token_ids = bert_token_ids[:self.max_model_seq_length - 2] # cls+sep.
+        if not bert_token_ids:
+            bert_token_ids = [ self.bert_tokenizer.pad_id ] # hack when empty seq
 
-        pax(0, {"text": text, "bert_token_ids": bert_token_ids})
+        # pax(0, {"text": text, "bert_token_ids": bert_token_ids})
 
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
         # We % 2**32 since numpy requres the seed to be between 0 and 2**32 - 1
-        np_rng = np.random.RandomState(seed=((self.seed + chunk_id) % 2**32))
+        np_rng = np.random.RandomState(seed=((self.seed + idx) % 2**32))
 
         # Build sample.
+        # try:
         sample = build_training_sample([bert_token_ids],
                                        len(bert_token_ids),
                                        len(bert_token_ids) + 2, # for cls+sep
@@ -336,4 +345,26 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
                                        self.masked_lm_prob, np_rng,
                                        binary_head = False)
         sample["seq_length"] = len(sample["text"])
+        # for key, value in text_sample.items(): # e.g., pass thru doc_ids
+        #     if key != "text":
+        #         sample[key] = value
         return sample
+        # except:
+        #     print("~~~")
+        #     print(text)
+        #     print("~~~")
+        #     pax(0, {
+        #         "idx" : idx,
+        #         "text" : text,
+        #         "bert_token_ids" : bert_token_ids,
+        #         "empty sample" : build_training_sample(
+        #             [[self.bert_tokenizer.pad_id]],
+        #             1,
+        #             3, # for cls+sep
+        #             self.vocab_id_list,
+        #             self.vocab_id_to_token_dict,
+        #             self.cls_id, self.sep_id,
+        #             self.mask_id, self.pad_id,
+        #             self.masked_lm_prob, np_rng,
+        #             binary_head = False),
+        #     })

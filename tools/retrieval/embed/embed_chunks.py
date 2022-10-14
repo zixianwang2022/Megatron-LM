@@ -164,6 +164,14 @@ def get_missing_embedding_blocks(args, workdir, dataset):
     rank_missing_block_items += \
         [None] * (max_n_missing - len(rank_missing_block_items))
 
+    # >>>
+    # print_seq("missing blocks [%d] : %s ... %s." % (
+    #     len(rank_missing_block_items),
+    #     str(rank_missing_block_items[0]["range"]),
+    #     str(rank_missing_block_items[-1]["range"]) if rank_missing_block_items[-1] else str(rank_missing_block_items[-2]["range"]),
+    # ))
+    # <<<
+
     return rank_missing_block_items
 
 
@@ -206,6 +214,8 @@ def collate_batch(samples):
 
     # Build batch with padded samples.
     batch = default_collate(padded_samples)
+
+    # pax(0, {"batch": batch})
 
     return batch
 
@@ -366,7 +376,8 @@ def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
             print_rank_0("embed block %d / %d ... %s." % (
                 block_index,
                 len(missing_embedding_blocks),
-                workdir,
+                # workdir + "/" + block_info["path"],
+                block_info["path"],
             ))
 
             # Data loader.

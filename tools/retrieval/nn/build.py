@@ -16,7 +16,7 @@
 import os
 
 from .embed import embed_pretraining_chunks
-# from .query import query_neighbors
+from .query import query_neighbors
 
 
 def build_nn_table(args, timer):
@@ -27,4 +27,5 @@ def build_nn_table(args, timer):
 
     # [x] ... save_pretraining_tokens(args, timer)
     embed_pretraining_chunks(args, workdir, timer) # embed_pretraining_tokens
-    query_neightbors(args, workdir, timer) # query_index
+    query_neighbors(args, workdir, timer) # query_index
+

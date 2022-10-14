@@ -47,7 +47,7 @@ def get_index_workdir(args):
     #     "%s__t%d" % (index_str, args.ntrain),
     # )
     index_dir_path = os.path.join(
-        args.retrieval_workdir,
+        args.retro_workdir,
         "index",
         args.index_ty,
         index_str,
