@@ -26,7 +26,7 @@ import json
 import torch
 
 from megatron import get_args, initialize_megatron, print_rank_0
-from tools.retrieval.chunks import preprocess_chunks
+from tools.retrieval.db import build_chunk_db
 from tools.retrieval.embed import embed_chunks
 from tools.retrieval.index.build import add_to_index, train_index
 from tools.retrieval.nbr.build import build_neighbor_table
