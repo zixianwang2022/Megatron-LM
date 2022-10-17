@@ -13,6 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# from .embed_chunks import embed_chunks
-from .embed_chunks import embed_text_datasets
-from .nan_analysis import run_bert_nan_analysis
+from .embed import embed_text_datasets
+# from .nan_analysis import run_bert_nan_analysis

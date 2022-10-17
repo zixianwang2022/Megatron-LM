@@ -20,26 +20,43 @@ from lutil import pax
 # <<<
 
 
-def get_chunk_db_workdir(args):
-    return os.path.join(args.retrieval_workdir, "chunk_db")
+# def get_chunk_db_workdir(args):
+def get_base_db_workdir(args):
+    return os.path.join(args.retro_workdir, "db")
 
 
-def get_individual_chunk_db_path(workdir, data_name):
-    return os.path.join(workdir, f"chunk_db.{data_name}.hdf5")
+# def get_individual_chunk_db_path(workdir, data_name):
+#     raise Exception("fix workdir.")
+#     return os.path.join(workdir, f"chunk_db.{data_name}.hdf5")
+def get_individual_db_path(args, data_name):
+    workdir = os.path.join(get_base_db_workdir(args), "individual")
+    return os.path.join(workdir, f"db.{data_name}.hdf5")
 
 
-def get_full_chunk_db_path(workdir):
-    return os.path.join(workdir, f"chunk_db.full.hdf5")
-
-
-def get_sampled_chunk_db_path(workdir):
-    return os.path.join(workdir, f"chunk_db.sampled.hdf5")
-
-
-def get_chunk_db_path_map(workdir):
+# def get_full_chunk_db_path(workdir):
+#     return os.path.join(workdir, f"chunk_db.full.hdf5")
+def get_full_db_info(args):
+    workdir = os.path.join(get_base_db_workdir(args), "full")
     return {
-        "full" : get_full_chunk_db_path(workdir),
-        "sampled" : get_sampled_chunk_db_path(workdir),
+        "db_path" : os.path.join(workdir, "db.hdf5"),
+        "embed_dir" : os.path.join(workdir, "embed"),
+    }
+
+
+# def get_sampled_chunk_db_path(workdir):
+#     return os.path.join(workdir, f"chunk_db.sampled.hdf5")
+def get_sampled_db_info(args):
+    workdir = os.path.join(get_base_db_workdir(args), "sampled")
+    return {
+        "db_path" : os.path.join(workdir, "db.hdf5"),
+        "embed_dir" : os.path.join(workdir, "embed"),
+    }
+
+
+def get_db_info_map(args):
+    return {
+        "full" : get_full_db_info(args),
+        "sampled" : get_sampled_db_info(args),
     }
 
 

@@ -13,33 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import partial
-import h5py
-import json
-import numpy as np
-import os
-import time
-import torch
-from torch.utils.data import BatchSampler, DataLoader, SequentialSampler, Subset
-from torch.utils.data._utils.collate import default_collate
-from tqdm import tqdm
+# from functools import partial
+# import h5py
+# import json
+# import numpy as np
+# import os
+# import time
+# import torch
+# from torch.utils.data import BatchSampler, DataLoader, SequentialSampler, Subset
+# from torch.utils.data._utils.collate import default_collate
+# from tqdm import tqdm
 
-from megatron import (
-    get_args,
-    get_tokenizer,
-    mpu,
-    print_rank_0,
-)
-from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
-from megatron.model import BertModel, ModelType
-from megatron.schedules import get_forward_backward_func
-from megatron.training import (
-    setup_model_and_optimizer,
-)
+# from megatron import (
+#     get_args,
+#     get_tokenizer,
+#     mpu,
+#     print_rank_0,
+# )
+# from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
+# from megatron.model import BertModel, ModelType
+# from megatron.schedules import get_forward_backward_func
+# from megatron.training import (
+#     setup_model_and_optimizer,
+# )
 
-from ..chunks.utils import get_chunk_index_path_map
-from .chunk_dataset import BertEmbeddingDataset # BertChunkDataset
-from .long_bert_chunks import print_longest_bert_chunks
+# from ..chunks.utils import get_chunk_index_path_map
+# from .chunk_dataset import BertEmbeddingDataset # BertChunkDataset
+# from .long_bert_chunks import print_longest_bert_chunks
 
 # >>>
 from lutil import pax, print_seq
@@ -63,51 +63,9 @@ def model_provider(pre_process=True, post_process=True):
     return model
 
 
-def get_dataset_map(args):
-
-    # Load dataset metadata.
-    with open(os.path.join(args.retro_workdir, "order.json")) as f:
-        data_metas = json.load(f)
-
-    # Token datasets.
-    indexed_datasets = \
-        [ make_indexed_dataset(m["prefix"], "mmap", True) for m in data_metas ]
-
-    # Chunk index.
-    chunk_index_path_map = get_chunk_index_path_map(args.retro_workdir)
-    dataset_map = {}
-    for key, chunk_index_path in chunk_index_path_map.items():
-
-        # Load chunk index.
-        f = h5py.File(chunk_index_path, "r")
-        dataset_offsets = np.copy(f["dataset_offsets_valid"])
-        chunk_index = np.copy(f["chunks_valid"])
-        f.close()
-
-        # Dataset ids.
-        dataset_ids = []
-        for i in range(len(dataset_offsets) - 1):
-            dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
-        dataset_ids = [ i for ii in dataset_ids for i in ii ]
-
-        # Dataset.
-        dataset = BertChunkDataset(
-            indexed_datasets = indexed_datasets,
-            dataset_ids = dataset_ids,
-            chunk_index = chunk_index,
-            max_chunk_length = args.retro_chunk_length,
-            max_model_seq_length = args.seq_length,
-            masked_lm_prob = args.mask_prob,
-            seed = args.seed,
-        )
-
-        dataset_map[key] = dataset
-
-    return dataset_map
-
-
 def get_missing_embedding_blocks(args, workdir, dataset):
 
+    raise Exception("rename chunk -> sample.")
     n_chunks = len(dataset)
 
     # Block ranges.
@@ -415,28 +373,6 @@ def embed_blocks(args, models, prefix, workdir, dataset,
 #     embed_blocks(args, models, prefix, dataset, missing_embedding_blocks)
 
 
-# def embed_chunks(args, timer):
-
-#     # Embedding workdir.
-#     workdir = os.path.join(args.retro_workdir, "embed")
-#     os.makedirs(workdir, exist_ok = True)
-
-#     # Load model.
-#     models, optimizer, opt_param_scheduler = \
-#         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
-
-#     # Dataset infos (indexed datasets, chunk index, etc.).
-#     dataset_map = get_dataset_map(args)
-
-#     # >>>
-#     # del dataset_map["full"]
-#     # <<<
-
-#     # Embed each (i.e., full, sampled) dataset.
-#     for prefix, dataset in dataset_map.items():
-#         print_rank_0(" > embed '%s' chunks. [ count %d ]" %
-#                      (prefix, len(dataset)))
-#         embed_dataset_chunks(args, workdir, models, prefix, dataset)
 def embed_text_dataset(args, models, prefix, workdir, text_dataset):
 
     # Dataset workdir.
@@ -477,12 +413,3 @@ def embed_text_datasets(args, text_dataset_map):
                      (key, len(info["data"])))
         embed_text_dataset(args, models, key, info["embed_dir"], info["data"])
 
-
-def embed_corpus_chunks(args, timer):
-
-    raise Exception("call embed_text_datasets().")
-
-    # Dataset infos (indexed datasets, chunk index, etc.).
-    dataset_map = get_dataset_map(args)
-
-    # embed_text_datasets

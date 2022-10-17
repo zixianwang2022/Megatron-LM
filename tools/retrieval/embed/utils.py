@@ -20,7 +20,7 @@ import numpy as np
 import os
 
 from megatron import print_rank_0
-from tools.retrieval.chunks.utils import get_chunk_index_path_map
+# from tools.retrieval.chunks.utils import get_chunk_index_path_map
 
 # >>>
 from lutil import pax

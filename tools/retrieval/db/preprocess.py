@@ -35,9 +35,9 @@ from megatron.tokenizer.tokenizer import (
 )
 
 from .utils import (
-    get_individual_chunk_db_path,
-    get_full_chunk_db_path,
-    get_sampled_chunk_db_path,
+    get_individual_db_path,
+    get_full_db_info,
+    get_sampled_db_info,
 )
 
 # >>>

@@ -23,6 +23,8 @@ PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retrieval-preproces
 # PROFILE_STAGE_STOP="preprocess"
 # PROFILE_STAGE_STOP="cluster"
 
+# TASKS="db-preprocess"
+# TASKS="db-embed"
 # TASKS="db-build"
 # TASKS="embed-chunks"
 # TASKS="index-train"

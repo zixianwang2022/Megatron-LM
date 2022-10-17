@@ -14,8 +14,10 @@
 # limitations under the License.
 
 # import argparse
+from collections import defaultdict
 import faiss
 # from faiss import ParameterSpace
+from functools import reduce
 import glob
 import h5py
 # import joblib
@@ -28,7 +30,7 @@ import torch
 from tqdm import tqdm
 
 from megatron import mpu, print_rank_0
-from tools.retrieval.chunks.utils import get_full_chunk_db_path
+from tools.retrieval.db.utils import get_full_db_info
 from tools.retrieval.index.factory import IndexFactory
 from tools.retrieval.index.utils import get_index_workdir
 
@@ -39,15 +41,28 @@ from lutil import pax, print_seq
 # <<<
 
 
-def get_chunk_db(args):
+# def get_chunk_db(args):
+def get_banned_doc_chunk_id_map(args):
 
-    chunk_db_workdir = os.path.join(args.retro_workdir, "chunks")
-    chunk_db_path = get_full_chunk_db_path(chunk_db_workdir)
+    chunk_db_path = get_full_db_info(args)["db_path"]
+    f = h5py.File(chunk_db_path, "r")
+    doc_ids = np.copy(f["chunks_valid"][:, 0])
+    f.close()
 
-    pax(0, {
-        "chunk_db_workdir" : chunk_db_workdir,
-        "chunk_db_path" : chunk_db_path,
-    })
+    doc_chunk_id_map = defaultdict(set)
+    for chunk_id, doc_id in enumerate(doc_ids):
+        doc_chunk_id_map[doc_id].add(chunk_id)
+
+    # pax(0, {
+    #     "chunk_db_path" : chunk_db_path,
+    #     "doc_chunk_id_map" : {
+    #         d : "%d / %s" % (len(cs), str(cs))
+    #         for d, cs in doc_chunk_id_map.items()
+    #         if d < 20
+    #     },
+    # })
+
+    return doc_chunk_id_map
 
 def get_index(args):
 
@@ -141,8 +156,8 @@ def get_missing_neighbor_blocks(embed_dir, nbr_dir):
 
 
 # def query_neighbors_single(args, workdir, dataset_key, dataset_path):
-def query_dataset_neighbors(args, workdir, index, prefix,
-                            embed_dir, nbr_dir, dataset):
+def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
+                            prefix, embed_dir, nbr_dir, dataset):
 
     missing_nbr_blocks = get_missing_neighbor_blocks(embed_dir, nbr_dir)
 
@@ -159,77 +174,68 @@ def query_dataset_neighbors(args, workdir, index, prefix,
 
     for block_index, block in enumerate(missing_nbr_blocks):
 
-        # Load embeddings.
-        f = h5py.File(block["embed_path"], "r")
-        data = np.copy(f["data"])
-        f.close()
+        if block is not None:
 
-        # Query index.
-        _, query_nbr_ids = index.search(data, args.retro_nnbrs_query)
-        
-        # Banned nbr ids.
-        sample_ids = sorted(list(set(chunk_id // dataset.n_chunk_seq_ratio
-                                     for chunk_id in range(*block["range"]))))
-        # pax(0, {
-        #     "chunk range" : block["range"],
-        #     "sample_ids" : "%d / %s" % (len(sample_ids), str(sample_ids)),
-        # })
-        # for chunk_id in range(*block["range"]):
-        #     sample_id = chunk_id // dataset.n_chunk_seq_ratio
-        #     banned_doc_ids.append(set(dataset[sample_id]["doc_ids"]))
-        sample_banned_doc_id_map = {}
-        for sample_id in sample_ids:
-            sample_banned_doc_id_map[sample_id] = \
-                set(dataset.seq_dataset[sample_id]["doc_ids"])
-        
+            # Progress.
+            print_rank_0("query '%s' block %d / %d ... %s." % (
+                prefix,
+                block_index,
+                len(missing_nbr_blocks),
+                block["nbr_path"],
+            ))
 
-        pax(0, {
-            # "data" : data,
-            # "query_nbr_ids" : query_nbr_ids,
-            "dataset" : dataset,
-            "sample_ids" : "%d / %s" % (len(sample_ids), str(sample_ids)),
-            "sample_banned_doc_id_map" : sample_banned_doc_id_map,
-        })
+            # Load embeddings.
+            f = h5py.File(block["embed_path"], "r")
+            data = np.copy(f["data"])
+            f.close()
 
-        neighbors = np.zeros((len(data), args.target_k), 'uint64')
+            # Query neighbor ids.
+            _, query_nbr_ids = index.search(data, args.retro_nnbrs_query)
 
-        def filter_neighbors(i):
-            chunk_id = i + data_start * split_size
-            sample_id = chunk_id // 32 + args.offset
-            neighbors = I[i]
-            banned_docs = doc_ids[sample_id]
+            # Banned neighbor ids.
+            sample_ids = sorted(list(set(chunk_id // dataset.n_chunk_seq_ratio
+                                         for chunk_id in range(*block["range"]))))
+            sample_banned_chunk_id_map = {}
+            for sample_id in sample_ids:
+                banned_doc_ids = set(dataset.seq_dataset[sample_id]["doc_ids"])
+                banned_chunk_ids = set()
+                for doc_id in banned_doc_ids:
+                    banned_chunk_ids.update(banned_doc_chunk_id_map[doc_id])
+                sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
 
-            filtered_neighbors = []
+            # Filter banned neighbor ids.
+            filtered_nbr_ids = np.full(
+                shape = (len(query_nbr_ids), args.retro_nnbrs_target),
+                fill_value = -1,
+                dtype = "int64",
+            )
+            min_chunk_id, max_chunk_id = block["range"]
+            for chunk_id in range(min_chunk_id, max_chunk_id):
+                sample_id = chunk_id // dataset.n_chunk_seq_ratio
+                query_row = [i for i in query_nbr_ids[chunk_id-min_chunk_id] if i>=0]
+                filtered_row = [i for i in query_row
+                             if i not in sample_banned_chunk_id_map[sample_id]]
+                filtered_row = filtered_row[:200]
+                filtered_row += [-1] * (args.retro_nnbrs_target - len(filtered_row))
+                filtered_nbr_ids[chunk_id-min_chunk_id] = filtered_row
 
-            for neighbor in neighbors:
-                if document_ids[neighbor] not in banned_docs:
-                    filtered_neighbors.append(neighbor)
-                if len(filtered_neighbors) == args.target_k:
-                    return filtered_neighbors
-            return filtered_neighbors
+            # pax(0, {
+            #     # "data" : data,
+            #     # "query_nbr_ids" : query_nbr_ids,
+            #     "dataset" : dataset,
+            #     "sample_ids" : "%d / %s" % (len(sample_ids), str(sample_ids)),
+            #     "sample_banned_chunk_id_map" : sample_banned_chunk_id_map,
+            #     "filtered_nbr_ids" : filtered_nbr_ids.tolist(),
+            # })
 
-        pool = multiprocessing.Pool(args.workers)
+            os.makedirs(os.path.dirname(block["nbr_path"]), exist_ok = True)
+            f = h5py.File(block["nbr_path"], "w")
+            f.create_dataset("neighbors", data = filtered_nbr_ids)
+            f.close()
 
-        neighbor_ind = np.arange(len(data))
-        delayed_neighbors = pool.imap(filter_neighbors, neighbor_ind, 25)
-
-        timer.push("filter-nbrs")
-        tot = 0
-        # start = time.time()
-        for i, filtered_neighbors in enumerate(tqdm(delayed_neighbors, total=len(neighbor_ind))):
-            if len(filtered_neighbors) < args.target_k:
-                filtered_neighbors += [-1] * (args.target_k - len(filtered_neighbors))
-                tot += 1
-            assert len(filtered_neighbors) == args.target_k
-            neighbors[i] = filtered_neighbors
-        # end = time.time()
-        print("Number of neighbors < target k:", tot)
-        # print("time cost:", end - start)
-        timer.pop()
-
-        fout = h5py.File(out_path, "w")
-        fout.create_dataset("neighbors", data=neighbors)
-        fout.close()
+        # Synchronize progress across all ranks. (for easier observation)
+        print_rank_0(" > waiting for other ranks to finish block.")
+        torch.distributed.barrier()
 
 
 def query_neighbors(args, workdir, timer):
@@ -242,16 +248,23 @@ def query_neighbors(args, workdir, timer):
     # faiss.omp_set_num_threads(64)
     # <<<
 
-    # Load chunk db, index.
-    chunk_db = get_chunk_db(args)
+    # Load index, banned chunk ids, datasets.
+    print_rank_0(" > get index.")
     index = get_index(args)
 
-    # Query each (i.e., train, valid, test) dataset.
+    print_rank_0(" > get banned doc-chunk id map.")
+    banned_doc_chunk_id_map = get_banned_doc_chunk_id_map(args)
+
+    print_rank_0(" > get dataset map.")
     dataset_map = get_dataset_map(args, workdir)
+
+    # Query each (i.e., train, valid, test) dataset.
+    print_rank_0(" > query.")
     for prefix, info in dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
-        query_dataset_neighbors(args, workdir, index, prefix,
+        query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
+                                prefix,
                                 info["embed_dir"], info["nbr_dir"],
                                 info["data"])
 
