@@ -29,6 +29,8 @@ from lutil import pax
 
 def get_embedding_path_map(workdir):
 
+    raise Exception("move me to db/.")
+
     # Directory map.
     chunk_index_path_map = get_chunk_index_path_map(workdir)
     embedding_path_map = {}

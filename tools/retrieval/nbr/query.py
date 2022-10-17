@@ -41,6 +41,30 @@ from lutil import pax, print_seq
 # <<<
 
 
+def get_index(args):
+
+    # Load index.
+    index_wrapper = IndexFactory.get_index(args)
+    index_dir = get_index_workdir(args)
+    added_index_path = index_wrapper.get_added_index_path(None, index_dir)
+    index = faiss.read_index(added_index_path)
+
+    # Search parameters.
+    raise Exception("update search params.")
+    if 0:
+        ParameterSpace().set_index_parameter(index, "efSearch", args.efsearch)
+        ParameterSpace().set_index_parameter(index, "nprobe", args.nprobe)
+
+    # pax(0, {
+    #     "index_wrapper" : index_wrapper,
+    #     "index" : index,
+    #     "index_dir" : index_dir,
+    #     "added_index_path" : added_index_path,
+    # })
+
+    return index
+
+
 # def get_chunk_db(args):
 def get_banned_doc_chunk_id_map(args):
 
@@ -64,27 +88,6 @@ def get_banned_doc_chunk_id_map(args):
 
     return doc_chunk_id_map
 
-def get_index(args):
-
-    # Load index.
-    index_wrapper = IndexFactory.get_index(args)
-    index_dir = get_index_workdir(args)
-    added_index_path = index_wrapper.get_added_index_path(None, index_dir)
-    index = faiss.read_index(added_index_path)
-
-    # Search parameters.
-    if 0:
-        ParameterSpace().set_index_parameter(index, "efSearch", args.efsearch)
-        ParameterSpace().set_index_parameter(index, "nprobe", args.nprobe)
-
-    # pax(0, {
-    #     "index_wrapper" : index_wrapper,
-    #     "index" : index,
-    #     "index_dir" : index_dir,
-    #     "added_index_path" : added_index_path,
-    # })
-
-    return index
 
 # def get_missing_neighbor_blocks(args, workdir, dataset_key):
 def get_missing_neighbor_blocks(embed_dir, nbr_dir):

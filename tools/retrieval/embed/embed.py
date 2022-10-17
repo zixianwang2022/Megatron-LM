@@ -13,29 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# from functools import partial
-# import h5py
-# import json
-# import numpy as np
-# import os
-# import time
-# import torch
-# from torch.utils.data import BatchSampler, DataLoader, SequentialSampler, Subset
-# from torch.utils.data._utils.collate import default_collate
-# from tqdm import tqdm
+from functools import partial
+import h5py
+import numpy as np
+import os
+import time
+import torch
+from torch.utils.data import BatchSampler, DataLoader, SequentialSampler, Subset
+from torch.utils.data._utils.collate import default_collate
+from tqdm import tqdm
 
-# from megatron import (
-#     get_args,
-#     get_tokenizer,
-#     mpu,
-#     print_rank_0,
-# )
+from megatron import get_args, get_tokenizer, mpu, print_rank_0
 # from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
-# from megatron.model import BertModel, ModelType
-# from megatron.schedules import get_forward_backward_func
-# from megatron.training import (
-#     setup_model_and_optimizer,
-# )
+from megatron.model import BertModel, ModelType
+from megatron.schedules import get_forward_backward_func
+from megatron.training import setup_model_and_optimizer
 
 # from ..chunks.utils import get_chunk_index_path_map
 # from .chunk_dataset import BertEmbeddingDataset # BertChunkDataset

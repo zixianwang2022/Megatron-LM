@@ -13,15 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import torch
+# import numpy as np
+# import torch
 
-from megatron import get_args, get_tokenizer, print_rank_0
-from megatron.data.bert_dataset import build_training_sample
-from megatron.tokenizer.tokenizer import (
-    _BertWordPieceTokenizer,
-    _GPT2BPETokenizer,
-)
+# from megatron import get_args, get_tokenizer, print_rank_0
+# from megatron.data.bert_dataset import build_training_sample
+# from megatron.tokenizer.tokenizer import (
+#     _BertWordPieceTokenizer,
+#     _GPT2BPETokenizer,
+# )
 
 # >>>
 from lutil import pax, print_seq

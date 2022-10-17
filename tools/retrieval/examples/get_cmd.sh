@@ -6,8 +6,8 @@ set -u
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
 # NPROCS=1
-# NPROCS=2
-NPROCS=4
+NPROCS=2
+# NPROCS=4
 # NPROCS=8
 # NPROCS=16
 # NPROCS=128
@@ -45,6 +45,10 @@ TASKS="nbr-build"
 # TASKS="misc-nan-stats"
 # TASKS="misc-bert-nan-analysis"
 
+INDEX_TY=faiss-base
+# INDEX_TY=faiss-par-add
+# INDEX_TY=faiss-decomp
+
 # NTRAIN=2048 NCLUSTER=64 HNSW_M=4
 # NTRAIN=131072 NCLUSTER=128 HNSW_M=32
 # NTRAIN=5000000 NCLUSTER=100000 HNSW_M=32
@@ -72,9 +76,8 @@ HNSW_M=32
 PQ_M=32
 IVF_DIM=256
 
-INDEX_TY=faiss-base
-# INDEX_TY=faiss-par-add
-# INDEX_TY=faiss-decomp
+EF_SEARCH=256
+N_PROBE=65536
 
 DATA_PATH=${DATA_BLEND}
 VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
@@ -264,6 +267,8 @@ RETRO_ARGS=" \
     --ivf-dim ${IVF_DIM} \
     --hnsw-m ${HNSW_M} \
     --pq-m ${PQ_M} \
+    --ef-search ${EF_SEARCH} \
+    --n-probe ${N_PROBE} \
     --index-ty ${INDEX_TY} \
 
     --retro-workdir ${RETRO_WORKDIR} \

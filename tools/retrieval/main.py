@@ -42,17 +42,19 @@ def add_retrieval_args(parser):
     group = parser.add_argument_group(title="Retrieval preprocessing.")
 
     group.add_argument("--tasks", required = True)
+    group.add_argument("--index-ty", required = True, choices = [
+        "faiss-base",
+        "faiss-decomp",
+        "faiss-par-add",
+    ])
     group.add_argument("--nfeats", "-f", type = int, default = 1024)
     group.add_argument("--ncluster", type = int, required = True)
     group.add_argument("--hnsw-m", type = int, required = True)
     group.add_argument("--ivf-dim", type = int, required = True)
     group.add_argument("--pq-m", type = int, required = True)
     group.add_argument("--pq-nbits", type = int, default = 8)
-    group.add_argument("--index-ty", required = True, choices = [
-        "faiss-base",
-        "faiss-decomp",
-        "faiss-par-add",
-    ])
+    group.add_argument("--ef-search", type = int, default = 256)
+    group.add_argument("--n-probe", type = int, default = 65536)
     # group.add_argument("--profile-stage-stop", default = None)
 
     group.add_argument("--retro-workdir", required = True)
