@@ -396,7 +396,8 @@ def build_sampled_chunk_db(args, workdir, data_metas):
 
 # def dump_document_order():
 # def save_document_order(args, workdir):
-def build_chunk_dbs(args, workdir):
+# def build_chunk_dbs(args, workdir):
+def preprocess_chunk_db(args, workdir):
 
     # >>>
     assert torch.distributed.get_rank() == 0, "single process operation."

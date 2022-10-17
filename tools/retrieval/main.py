@@ -98,8 +98,8 @@ if __name__ == "__main__":
         timer.push(task)
 
         # Main tasks.
-        if task == "chunks-preprocess":
-            preprocess_chunks(args, timer)
+        if task == "db-build":
+            build_chunk_db(args, timer)
         elif task == "embed-chunks":
             embed_chunks(args, timer)
         elif task == "index-train":

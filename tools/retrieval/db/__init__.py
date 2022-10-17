@@ -13,25 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import torch
+# import os
+# import torch
 
-# from .id import save_document_ids
-# from .offset import save_document_offsets
-from .index_chunks import build_chunk_indexes
+from .embed import embed_chunk_db
+from .preprocess import preprocess_chunk_db
 
-def preprocess_chunks(args, timer):
+# def build_db(args, timer):
+def build_chunk_db(args, timer):
 
-    if torch.distributed.get_rank() != 0:
-        return
+    # if torch.distributed.get_rank() != 0:
+    #     return
 
     # # Preprocessing workdir.
     # workdir = os.path.join(args.retrieval_workdir, "preprocess")
     # os.makedirs(workdir, exist_ok = True)
-    workdir = args.retrieval_workdir
+    # workdir = args.retrieval_workdir
 
     # Stages.
-    # build_chunk_indexes(args, workdir)
-    build_chunk_dbs(args, workdir)
-    # save_document_offsets(args, workdir)
-    # save_document_ids(args, workdir, timer)
+    preprocess_chunk_db(args, workdir)
+    embed_chunk_db(args, workdir)
