@@ -150,13 +150,17 @@ def get_dataset_map(args, workdir):
         "valid" : valid_data_loader,
         "test" : test_data_loader,
     }
+    # pax(0, {"data_loader_map": data_loader_map})
     dataset_map = {
         key : {
-            "dir" : os.path.join(workdir, "embed", key),
+            "emb_dir" : os.path.join(workdir, "emb", key),
+            "nbr_dir" : os.path.join(workdir, "nbr", key),
             "data" : SeqToChunkGPTDataset(args, loader.dataset),
         }
         for key, loader in data_loader_map.items() if loader
     }
+
+    # pax({"dataset_map": dataset_map})
 
     return dataset_map
 

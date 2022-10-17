@@ -29,7 +29,7 @@ from megatron import get_args, initialize_megatron, print_rank_0
 from tools.retrieval.chunks import preprocess_chunks
 from tools.retrieval.embed import embed_chunks
 from tools.retrieval.index.build import add_to_index, train_index
-from tools.retrieval.nn.build import build_nn_table
+from tools.retrieval.nbr.build import build_nbr_table
 from tools.retrieval.utils import Timer
 
 # >>>
@@ -108,13 +108,13 @@ if __name__ == "__main__":
             remove_add_outputs(args, timer)
         elif task == "index-build":
             build_index(args, timer) # train, add
-        elif task == "nn-build":
-            build_nn_table(args, timer)
-        elif task == "nn-plot-acc":
-            plot_nn_acc(args, timer)
-        elif task == "nn-verify-codes":
+        elif task == "nbr-build":
+            build_nbr_table(args, timer)
+        elif task == "nbr-plot-acc":
+            plot_nbr_acc(args, timer)
+        elif task == "nbr-verify-codes":
             verify_codes(args, timer)
-        elif task == "nn-verify-nbrs":
+        elif task == "nbr-verify-nbrs":
             verify_nbrs(args, timer)
 
         # Misc tasks.
