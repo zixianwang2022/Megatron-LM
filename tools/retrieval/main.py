@@ -29,7 +29,7 @@ from megatron import get_args, initialize_megatron, print_rank_0
 from tools.retrieval.chunks import preprocess_chunks
 from tools.retrieval.embed import embed_chunks
 from tools.retrieval.index.build import add_to_index, train_index
-from tools.retrieval.nbr.build import build_nbr_table
+from tools.retrieval.nbr.build import build_neighbor_table
 from tools.retrieval.utils import Timer
 
 # >>>
@@ -57,10 +57,12 @@ def add_retrieval_args(parser):
     # group.add_argument("--profile-stage-stop", default = None)
 
     group.add_argument("--retro-workdir", required = True)
-    group.add_argument("--retro-seq-length", type=int, required = True)
-    group.add_argument("--retro-chunk-length", type=int, required = True)
-    group.add_argument("--retro-nchunks-sampled", type=int, required = True)
-    group.add_argument("--retro-block-size", type=int, required = True)
+    group.add_argument("--retro-seq-length", type = int, required = True)
+    group.add_argument("--retro-chunk-length", type = int, required = True)
+    group.add_argument("--retro-nchunks-sampled", type = int, required = True)
+    group.add_argument("--retro-block-size", type = int, required = True)
+    group.add_argument("--retro-nnbrs-query", type = int, required = True)
+    group.add_argument("--retro-nnbrs-target", type = int, required=True)
     # group.add_argument('--weight', type=float, default=0.5)
     # group.add_argument('--adaptor', action='store_true', default=False)
     # group.add_argument('--return-doc-ids', action='store_true', default=False)
@@ -109,7 +111,7 @@ if __name__ == "__main__":
         elif task == "index-build":
             build_index(args, timer) # train, add
         elif task == "nbr-build":
-            build_nbr_table(args, timer)
+            build_neighbor_table(args, timer)
         elif task == "nbr-plot-acc":
             plot_nbr_acc(args, timer)
         elif task == "nbr-verify-codes":

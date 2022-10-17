@@ -31,6 +31,7 @@ def preprocess_chunks(args, timer):
     workdir = args.retrieval_workdir
 
     # Stages.
-    build_chunk_indexes(args, workdir)
+    # build_chunk_indexes(args, workdir)
+    build_chunk_dbs(args, workdir)
     # save_document_offsets(args, workdir)
     # save_document_ids(args, workdir, timer)

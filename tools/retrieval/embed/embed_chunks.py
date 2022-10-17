@@ -475,7 +475,7 @@ def embed_text_datasets(args, text_dataset_map):
     for key, info in text_dataset_map.items():
         print_rank_0(" > embed '%s' dataset ... %d samples." %
                      (key, len(info["data"])))
-        embed_text_dataset(args, models, key, info["dir"], info["data"])
+        embed_text_dataset(args, models, key, info["embed_dir"], info["data"])
 
 
 def embed_corpus_chunks(args, timer):

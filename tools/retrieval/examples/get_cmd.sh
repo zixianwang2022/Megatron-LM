@@ -7,9 +7,9 @@ set -u
 # >>>
 # NPROCS=1
 # NPROCS=2
-# NPROCS=4
+NPROCS=4
 # NPROCS=8
-NPROCS=16
+# NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -85,10 +85,13 @@ RETRO_SEQ_LENGTH=2048
 RETRO_CHUNK_LENGTH=64
 # RETRO_NCHUNKS_SAMPLED=300000000
 RETRO_NCHUNKS_SAMPLED=3000000
-SEED=1001
 RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
+RETRO_NNBRS_QUERY=2000
+RETRO_NNBRS_TARGET=200
 # NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/neighbors.hdf5
 # OFFSET_DICT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retrieval/preprocess/offset_dict.pkl
+
+SEED=1001
 
 # if [[ "$TASKS" == *"embed-chunks"* ]]; then
 # if [[ "0" == "0" ]]; then
@@ -266,6 +269,8 @@ RETRO_ARGS=" \
     --retro-chunk-length ${RETRO_CHUNK_LENGTH} \
     --retro-nchunks-sampled ${RETRO_NCHUNKS_SAMPLED} \
     --retro-block-size ${RETRO_BLOCK_SIZE} \
+    --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \
+    --retro-nnbrs-target ${RETRO_NNBRS_TARGET} \
 "
 
 RETRO_PREPROCESS_CMD=" \

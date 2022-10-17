@@ -20,27 +20,26 @@ from lutil import pax
 # <<<
 
 
-# def get_chunk_index_path(args, data_prefix):
-#     pax({"workdir": args.retrieval_workdir})
-#     return data_prefix + f".chunk_index_n{args.retriever_chunk_len}.hdf5"
-# def get_single_chunk_index_path(workdir, data_name):
-def get_individual_chunk_index_path(workdir, data_name):
-    # return os.path.join(workdir, f"{data_name}.chunk_index.hdf5")
-    return os.path.join(workdir, f"chunk_index.{data_name}.hdf5")
+def get_chunk_db_workdir(args):
+    return os.path.join(args.retrieval_workdir, "chunk_db")
 
 
-def get_full_chunk_index_path(workdir):
-    return os.path.join(workdir, f"chunk_index.full.hdf5")
+def get_individual_chunk_db_path(workdir, data_name):
+    return os.path.join(workdir, f"chunk_db.{data_name}.hdf5")
 
 
-def get_sampled_chunk_index_path(workdir):
-    return os.path.join(workdir, f"chunk_index.sampled.hdf5")
+def get_full_chunk_db_path(workdir):
+    return os.path.join(workdir, f"chunk_db.full.hdf5")
 
 
-def get_chunk_index_path_map(workdir):
+def get_sampled_chunk_db_path(workdir):
+    return os.path.join(workdir, f"chunk_db.sampled.hdf5")
+
+
+def get_chunk_db_path_map(workdir):
     return {
-        "full" : get_full_chunk_index_path(workdir),
-        "sampled" : get_sampled_chunk_index_path(workdir),
+        "full" : get_full_chunk_db_path(workdir),
+        "sampled" : get_sampled_chunk_db_path(workdir),
     }
 
 
