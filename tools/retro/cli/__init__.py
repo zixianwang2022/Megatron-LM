@@ -32,10 +32,15 @@ from tools.retro.db.dataset import \
     get_gpt_chunk_dataset_map as get_db_gpt_chunk_dataset_map
 from tools.retro.main import add_retro_args
 from tools.retro.nbr.dataset import get_dataset_map as get_pretraining_dataset_map
+from tools.retro.utils import get_args_path, get_bert_tokenizer, get_gpt_tokenizer
 
 # >>>
 from lutil import pax
 # <<<
+
+
+def shorten_str(s, n):
+    return s if len(s) <= n else "%s ... %s" % (s[:n//2], s[-n//2:])
 
 
 class retro:
@@ -43,8 +48,7 @@ class retro:
     args = None
 
     @classmethod
-    # def load_full_chunk_db(cls): # args):
-    def load_chunk_db_map(cls): # args):
+    def load_chunk_db_map(cls):
 
         db_info_map = get_db_info_map(cls.args)
 
@@ -61,41 +65,16 @@ class retro:
                 "chunk_index" : chunk_index,
             }
             
-        # pax({
-        #     "db_info_map" : db_info_map,
-        #     "db_map" : db_map,
-        # })
-
         return db_map
 
-    # @classmethod
-    # def init_args(cls, **kwargs):
 
-    #     # assert "RETRO_WORKDIR" in os.environ, "Please set environment variable RETRO_WORKDIR (e.g., /path/to/retro/data/)."
-    #     assert "retro_workdir" in kwargs, "Please set kwargs['retro_workdir'] (e.g., /path/to/retro/data/)."
-
-    #     # Default args.
-    #     cls.args = SimpleNamespace()
-    #     # cls.args.retro_workdir = os.environ["RETRO_WORKDIR"]
-    #     cls.args.retro_workdir = None
-    #     cls.args.retro_chunk_length = 64
-
-    #     # User args.
-    #     for key, value in kwargs.items():
-    #         assert hasattr(cls.args, key)
-    #         setattr(cls.args, key, value)
-
-    #     # pax({"args": cls.args})
-        
-    #     # return cls.args
     @classmethod
     def load_args(cls, workdir):
 
         # initialize_megatron(extra_args_provider = add_retro_args)
 
-
         # Load args.
-        args_path = os.path.join(workdir, "args.json")
+        args_path = get_args_path(workdir)
         assert os.path.exists(args_path), "args.json not found in workdir."
         with open(args_path) as f:
             cls.args = SimpleNamespace(**json.load(f))
@@ -103,16 +82,39 @@ class retro:
             cls.args.rank = 0 # int(os.getenv('RANK', '0'))
             cls.args.world_size = 1 # int(os.getenv("WORLD_SIZE", '1'))
 
-        # pax(0, {"args": cls.args})
-
         set_global_variables(cls.args)
         _initialize_distributed()
         _set_random_seed(cls.args.seed, cls.args.data_parallel_random_init)
 
-        # pax(0, {
-        #     "rank" : torch.distributed.get_rank(),
-        #     "world_size" : torch.distributed.get_world_size(),
-        # })
+
+    @classmethod
+    def print_usage(cls):
+
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print("examples ...")
+        print("~~~~~~~~")
+        for data_key in ("full", "sampled"):
+            print("retro.get_db_n_chunks('%s') : %d." %
+                  (data_key, cls.get_db_n_chunks(data_key)))
+
+        for sq_key in ("seq", "chunk"):
+            for data_key in ("train", "valid"): # , "test"):
+                print("retro.get_pretraining_n_%ss('%s') : %d." % (
+                    sq_key, data_key,
+                    getattr(cls, f"get_pretraining_n_{sq_key}s")(data_key)))
+        print("~~~~~~~~")
+        print("retro.get_db_chunk_tokens_gpt('full', idx) : %s" %
+              shorten_str(str(retro.get_db_chunk_tokens_gpt("full", 0)), 50))
+        print("retro.get_db_chunk_tokens_bert('full', idx) : %s" %
+              shorten_str(str(retro.get_db_chunk_tokens_bert("full", 0)), 50))
+        print("retro.get_db_chunk_text('full', idx) : %s" %
+              shorten_str(retro.get_db_chunk_text("full", 0).strip(), 50))
+        print("~~~~~~~~")
+        print("retro.get_pretraining_seq_tokens")
+        print("retro.get_pretraining_seq_chunk_tokens")
+        print("retro.get_pretraining_seq_text")
+        print("retro.get_pretraining_seq_chunk_text")
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 
     @classmethod
@@ -121,32 +123,62 @@ class retro:
         # Load args.
         cls.load_args(workdir)
 
+        cls.gpt_tokenizer = get_gpt_tokenizer(cls.args)
+        cls.bert_tokenizer = get_bert_tokenizer(cls.args)
+
         # Load chunk db.
-        # cls.db_chunk_map = cls.load_chunk_db_map()
-        # cls.db_gpt_chunk_dataset_map = get_db_gpt_chunk_dataset_map(cls.args)
+        cls.db_gpt_chunk_dataset_map = get_db_gpt_chunk_dataset_map(cls.args)
 
         # Load pretraining dataset.
         cls.pretraining_dataset_map = get_pretraining_dataset_map(cls.args)
 
-        pax(0, {
-            # "db_chunk_map" : cls.db_chunk_map,
-            # "db_gpt_chunk_dataset_map" : cls.db_gpt_chunk_dataset_map,
-            "pretraining_dataset_map" : cls.pretraining_dataset_map,
-        })
+        # Print usage.
+        cls.print_usage()
+
 
     @classmethod
-    def print_stats(cls):
-        # assert_workdir()
-        # workdir = get_workdir()
-        # args = get_args()
+    def get_db_n_chunks(cls, data_key):
+        return len(cls.db_gpt_chunk_dataset_map[data_key].chunk_index)
 
-        full_chunk_db = load_full_chunk_db(args)
-        # sampled_chunk_db = load_sampled_chunk_db(args)
-        # pretraining_dataset = load_pretraining_dataset(args)
 
-        pax({
-            "args" : args,
-            "chunk_db" : chunk_db,
-        })
+    @classmethod
+    def get_pretraining_n_seqs_n_chunks(cls, data_key):
+        assert data_key in cls.pretraining_dataset_map, \
+            "pretraining set '%s' not found (choices: %s)." % (
+                data_key, ", ".join(cls.pretraining_dataset_map.keys()))
+        return (
+            len(cls.pretraining_dataset_map[data_key]["data"].seq_dataset),
+            len(cls.pretraining_dataset_map[data_key]["data"]),
+        )
+
+
+    @classmethod
+    def get_pretraining_n_seqs(cls, data_key):
+        return cls.get_pretraining_n_seqs_n_chunks(data_key)[0]
+
+
+    @classmethod
+    def get_pretraining_n_chunks(cls, data_key):
+        return cls.get_pretraining_n_seqs_n_chunks(data_key)[1]
+
+
+    @classmethod
+    def get_db_chunk_tokens_gpt(cls, data_key, idx):
+        return cls.db_gpt_chunk_dataset_map[data_key][0]["text"].tolist()
+
+
+    @classmethod
+    def get_db_chunk_text(cls, data_key, idx):
+        # return cls.db_gpt_chunk_dataset_map[data_key].gpt_tokenizer.detokenize(
+        return cls.gpt_tokenizer.detokenize(
+            cls.get_db_chunk_tokens_gpt(data_key, idx))
+
+    
+    @classmethod
+    def get_db_chunk_tokens_bert(cls, data_key, idx):
+        return cls.bert_tokenizer.tokenize(
+            cls.gpt_tokenizer.detokenize(
+                cls.get_db_chunk_tokens_gpt(data_key, idx)))
+
 
 # eof

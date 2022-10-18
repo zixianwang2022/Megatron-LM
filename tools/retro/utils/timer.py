@@ -17,6 +17,7 @@ from collections import defaultdict
 import time
 import torch
 
+
 class Timer:
 
     def __init__(self):

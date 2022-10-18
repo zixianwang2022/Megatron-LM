@@ -221,17 +221,18 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
 
         super().__init__()
 
+        args = get_args()
+
         self.text_dataset = text_dataset
 
         # >>>
         # self.bert_tokenizer = get_tokenizer()
-        self.bert_tokenizer = _BertWordPieceTokenizer(
-            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
-            lower_case = True,
-        )
+        # self.bert_tokenizer = _BertWordPieceTokenizer(
+        #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
+        #     lower_case = True,
+        # )
+        self.bert_tokenizer = get_bert_tokenizer(args)
         # <<<
-
-        args = get_args()
 
         # Params to store.
         self.max_model_seq_length = args.seq_length

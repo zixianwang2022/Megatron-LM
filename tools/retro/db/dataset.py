@@ -13,15 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import numpy as np
+import h5py
+import json
+import numpy as np
 import torch
 
+from megatron import get_args
 # from megatron import get_args, get_tokenizer, print_rank_0
 # from megatron.data.bert_dataset import build_training_sample
-from megatron.tokenizer.tokenizer import (
-    # _BertWordPieceTokenizer,
-    _GPT2BPETokenizer,
-)
+from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
+# from megatron.tokenizer.tokenizer import _GPT2BPETokenizer
+from tools.retro.utils import get_gpt_tokenizer
+
+from .utils import get_dataset_metas_path, get_db_info_map
 
 # >>>
 from lutil import pax, print_seq
@@ -32,22 +36,28 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
     def __init__(
             self,
+            # args,
             indexed_datasets,
             dataset_ids,
             chunk_index,
-            max_chunk_length,
+            # max_chunk_length,
     ):
+
+        args = get_args()
 
         self.indexed_datasets = indexed_datasets
         self.dataset_ids = dataset_ids
         self.chunk_index = chunk_index
-        self.max_gpt_chunk_length = max_chunk_length
+        # self.max_gpt_chunk_length = max_chunk_length
+
+        self.gpt_tokenizer = get_gpt_tokenizer(args)
+        self.max_gpt_chunk_length = args.retro_chunk_length
 
         # >>>
-        self.gpt_tokenizer = _GPT2BPETokenizer(
-            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-            merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
-        )
+        # self.gpt_tokenizer = _GPT2BPETokenizer(
+        #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
+        #     merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+        # )
         # <<<
 
 
@@ -124,10 +134,11 @@ def get_gpt_chunk_dataset_map(args):
 
         # Dataset.
         dataset_map[db_key] = GPTChunkDataset(
+            # args = args,
             indexed_datasets = indexed_datasets,
             dataset_ids = dataset_ids,
             chunk_index = chunk_index,
-            max_chunk_length = args.retro_chunk_length,
+            # max_chunk_length = args.retro_chunk_length,
         )
 
     return dataset_map

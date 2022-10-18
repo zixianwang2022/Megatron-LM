@@ -24,6 +24,8 @@ from megatron.training import (
     update_train_iters,
 )
 
+from .utils import get_base_nbr_workdir
+
 # >>>
 from lutil import pax
 # <<<
@@ -159,6 +161,8 @@ def get_dataset_map(args):
         "test" : test_data_loader,
     }
     # pax(0, {"data_loader_map": data_loader_map})
+    workdir = get_base_nbr_workdir(args)
+    # pax(0, {"workdir": workdir})
     dataset_map = {
         key : {
             "embed_dir" : os.path.join(workdir, "embed", key),

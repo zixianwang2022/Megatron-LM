@@ -15,18 +15,10 @@
 
 import os
 
-# from . import *
-from . import retro
+# >>>
+from lutil import pax
+# <<<
 
 
-if __name__ == "__main__":
-
-    # os.environ["RETRO_WORKDIR"] = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1"
-
-    # retro.init(
-    #     retro_workdir = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1",
-    #     # retro_chunk_length = 64,
-    # )
-    retro.init("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1")
-
-    # retro.print_usage()
+def get_base_nbr_workdir(args):
+    return os.path.join(args.retro_workdir, "nbr")
