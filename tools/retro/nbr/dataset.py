@@ -104,9 +104,15 @@ class SeqToChunkGPTDataset(torch.utils.data.Dataset):
         }
 
 
+# def train_valid_test_datasets_provider(train_val_test_num_samples, args = None):
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
+    # >>>
     args = get_args()
+    # +++
+    # if not args:
+    #     args = get_args()
+    # <<<
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
@@ -126,7 +132,8 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
-def get_dataset_map(args, workdir):
+# def get_dataset_map(args, workdir):
+def get_dataset_map(args):
 
     # Update train iters.
     update_train_iters(args)
@@ -145,6 +152,7 @@ def get_dataset_map(args, workdir):
     train_data_loader, valid_data_loader, test_data_loader \
         = build_train_valid_test_data_loaders(
             train_valid_test_datasets_provider)
+            # args = args)
     data_loader_map = {
         "train" : train_data_loader,
         "valid" : valid_data_loader,

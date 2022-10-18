@@ -875,10 +875,18 @@ def cyclic_iter(iter):
             yield x
 
 # >>>
+# def build_train_valid_test_data_loaders(
+#         build_train_valid_test_datasets_provider,
+#         args = None): 
 def build_train_valid_test_data_loaders(
         build_train_valid_test_datasets_provider):
     """XXX"""
+    # >>>
     args = get_args()
+    # +++
+    # if not args:
+    #     args = get_args()
+    # <<<
 
     (train_dataloader, valid_dataloader, test_dataloader) = (None, None, None)
 
@@ -895,6 +903,12 @@ def build_train_valid_test_data_loaders(
                 args.eval_iters * args.global_batch_size
 
     # Data loader only on rank 0 of each model parallel group.
+    # >>>
+    # from lutil import pax
+    # pax(0, {"mpu.unitialized": mpu.is_unitialized()})
+    # <<<
+    # *Note*: 'mpu.is_unitialized' for building dataset in tools/retro/cli
+    # if mpu.is_unitialized() \
     if mpu.get_tensor_model_parallel_rank() == 0:
 
         # Number of train/valid/test samples.
@@ -914,8 +928,18 @@ def build_train_valid_test_data_loaders(
         print_rank_0('    test:       {}'.format(train_val_test_num_samples[2]))
 
         # Build the datasets.
+        # >>>
         train_ds, valid_ds, test_ds = build_train_valid_test_datasets_provider(
             train_val_test_num_samples)
+        # +++
+        # if mpu.is_unitialized():
+        #     train_ds, valid_ds, test_ds =build_train_valid_test_datasets_provider(
+        #         train_val_test_num_samples,
+        #         args = args) # for building dataset in tools/retro/cli
+        # else:
+        #     train_ds, valid_ds, test_ds =build_train_valid_test_datasets_provider(
+        #         train_val_test_num_samples)
+        # <<<
 
         # Build dataloders.
         train_dataloader = build_pretraining_data_loader(

@@ -23,6 +23,7 @@ Tasks:
 """
 
 import json
+import os
 import torch
 
 from megatron import get_args, initialize_megatron, print_rank_0
@@ -84,6 +85,16 @@ def add_retro_args(parser):
     return parser
 
 
+def save_args(args):
+
+    if torch.distributed.get_rank() == 0:
+        arg_path = os.path.join(args.retro_workdir, "args.json")
+        with open(arg_path, "w") as f:
+            json.dump(vars(args), f, indent = 4, default = lambda o : "<skipped>")
+
+    torch.distributed.barrier()
+
+
 if __name__ == "__main__":
 
     # Initalize Megatron.
@@ -91,6 +102,8 @@ if __name__ == "__main__":
 
     args = get_args()
     args.tasks = args.tasks.split(",")
+
+    save_args(args)
 
     # Select task to run.
     timer = Timer()

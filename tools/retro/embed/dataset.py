@@ -28,64 +28,6 @@ from lutil import pax, print_seq
 # <<<
 
 
-class GPTChunkDataset(torch.utils.data.Dataset):
-
-    def __init__(
-            self,
-            indexed_datasets,
-            dataset_ids,
-            chunk_index,
-            max_chunk_length,
-    ):
-
-        self.indexed_datasets = indexed_datasets
-        self.dataset_ids = dataset_ids
-        self.chunk_index = chunk_index
-        self.max_gpt_chunk_length = max_chunk_length
-
-        # >>>
-        self.gpt_tokenizer = _GPT2BPETokenizer(
-            vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-            merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
-        )
-        # <<<
-
-
-    def __len__(self):
-        return len(self.chunk_index)
-
-
-    def __getitem__(self, chunk_id):
-
-        dataset_id = self.dataset_ids[chunk_id]
-        doc_id, token_start_idx, token_end_idx, _ = \
-            [ value.item() for value in self.chunk_index[chunk_id] ]
-        chunk_length = token_end_idx - token_start_idx
-        indexed_dataset = self.indexed_datasets[dataset_id]
-
-        token_ids = indexed_dataset.get(doc_id,
-                                        offset = token_start_idx,
-                                        length = chunk_length)
-
-        if chunk_length != self.max_gpt_chunk_length:
-            assert chunk_length < self.max_gpt_chunk_length, "invalid chunk len."
-            token_ids = token_ids.tolist()
-            token_ids += [self.gpt_tokenizer.eod_id] * \
-                (self.max_gpt_chunk_length - chunk_length)
-
-        # pax({
-        #     # "indexed_dataset" : indexed_dataset,
-        #     "chunk_id" : chunk_id,
-        #     "dataset_id" : dataset_id,
-        #     "doc_id" : doc_id,
-        #     "token_start_idx" : token_start_idx,
-        #     "token_end_idx" : token_end_idx,
-        #     "chunk" : chunk,
-        # })
-
-        return {'text': np.array(token_ids, dtype=np.int64)}
-
-
 # class BertChunkDataset(GPTChunkDataset):
 
 #     def __init__(self,
