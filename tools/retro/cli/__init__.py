@@ -224,7 +224,7 @@ class retro:
 
         print()
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
-        print("examples ... [ *note*: 'db' = chunk db; 'pt' = pretraining. ]")
+        print("examples ... [ *note*: 'db' = chunk db; 'pt' = pretraining corpus. ]")
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
 
         print()
@@ -255,13 +255,13 @@ class retro:
 
         print()
         print("~~~~ tokens, text ~~~~")
-        print("retro.get_db_chunk_gpt('full', idx) : %s" %
+        print("retro.get_db_chunk_gpt('full', chunk_id) : %s" %
               shorten_str(str(retro.get_db_chunk_gpt("full", 0)), 50))
-        print("retro.get_db_chunk_bert('full', idx) : %s" %
+        print("retro.get_db_chunk_bert('full', chunk_id) : %s" %
               shorten_str(str(retro.get_db_chunk_bert("full", 0)), 50))
-        print("retro.get_db_chunk_text('full', idx) : %s" %
+        print("retro.get_db_chunk_text('full', chunk_id) : %s" %
               shorten_str(retro.get_db_chunk_text("full", 0).strip(), 50))
-        print("retro.get_db_chunk_and_continuation_text('full', idx) :")
+        print("retro.get_db_chunk_and_continuation_text('full', chunk_id) :")
         for i, t in enumerate(retro.get_db_chunk_and_continuation_text("full",0)):
             print("  %s'%s'%s" % (
                 "[" if i == 0 else " ",
