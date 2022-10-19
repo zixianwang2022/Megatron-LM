@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 
 # >>>
@@ -25,8 +26,23 @@ def get_base_db_workdir(args):
     return os.path.join(args.retro_workdir, "db")
 
 
-def get_dataset_metas_path(args):
-    return os.path.join(get_base_db_workdir(args), "order.json")
+# def get_dataset_metas_path(args):
+#     return os.path.join(get_base_db_workdir(args), "order.json")
+def get_indexed_dataset_infos_path(args):
+    return os.path.join(get_base_db_workdir(args), "indexed_dataset_infos.json")
+
+
+# def save_dataset_metadatas(workdir, data_metas):
+def save_indexed_dataset_infos(args, indexed_dataset_infos):
+    """Save dataset order."""
+    with open(get_indexed_dataset_infos_path(args), "w") as f:
+        json.dump(data_metas, f, indent = 4)
+
+
+def get_indexed_dataset_infos(args):
+    path = get_indexed_dataset_infos_path(args)
+    with open(path) as f:
+        return json.load(f)
 
 
 # def get_individual_chunk_db_path(workdir, data_name):

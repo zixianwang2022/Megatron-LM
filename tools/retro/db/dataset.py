@@ -25,7 +25,11 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 # from megatron.tokenizer.tokenizer import _GPT2BPETokenizer
 from tools.retro.utils import get_gpt_tokenizer
 
-from .utils import get_dataset_metas_path, get_db_info_map
+from .utils import (
+    # get_dataset_metas_path,
+    get_db_info_map,
+    get_indexed_dataset_infos,
+)    
 
 # >>>
 from lutil import pax, print_seq
@@ -38,7 +42,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
             self,
             # args,
             indexed_datasets,
-            dataset_ids,
+            indexed_dataset_ids,
             chunk_index,
             # max_chunk_length,
     ):
@@ -46,7 +50,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         args = get_args()
 
         self.indexed_datasets = indexed_datasets
-        self.dataset_ids = dataset_ids
+        self.indexed_dataset_ids = indexed_dataset_ids
         self.chunk_index = chunk_index
         # self.max_gpt_chunk_length = max_chunk_length
 
@@ -67,11 +71,11 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, chunk_id):
 
-        dataset_id = self.dataset_ids[chunk_id]
+        indexed_dataset_id = self.indexed_dataset_ids[chunk_id]
         doc_id, token_start_idx, token_end_idx, _ = \
             [ value.item() for value in self.chunk_index[chunk_id] ]
         chunk_length = token_end_idx - token_start_idx
-        indexed_dataset = self.indexed_datasets[dataset_id]
+        indexed_dataset = self.indexed_datasets[indexed_dataset_id]
 
         token_ids = indexed_dataset.get(doc_id,
                                         offset = token_start_idx,
@@ -99,22 +103,20 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 # def get_dataset_map(args):
 def get_gpt_chunk_dataset_map(args):
 
-    # Load dataset metadata.
-    data_metas_path = get_dataset_metas_path(args)
-    with open(data_metas_path) as f:
-        data_metas = json.load(f)
+    # Load indexed dataset infos.
+    indexed_dataset_infos = get_indexed_dataset_infos(args)
 
-    # Token datasets.
+    # Indexed datasets.
     indexed_datasets = []
-    for index, data_meta in enumerate(data_metas):
+    for index, indexed_dataset_info in enumerate(indexed_dataset_infos):
         print("indexed dataset %d / %d [ %s ]." %
-              (index, len(data_metas), data_meta["prefix"]))
+              (index, len(indexed_dataset_infos), indexed_dataset_info["prefix"]))
         indexed_datasets.append(
-            make_indexed_dataset(data_meta["prefix"], "mmap", True))
+            make_indexed_dataset(indexed_dataset_info["prefix"], "mmap", True))
 
     # Chunk index.
     db_info_map = get_db_info_map(args)
-    dataset_map = {}
+    chunk_dataset_map = {}
     for db_index, (db_key, db_info) in enumerate(db_info_map.items()):
 
         print("init gpt chunk dataset %d / %d [ %s ]." %
@@ -122,24 +124,25 @@ def get_gpt_chunk_dataset_map(args):
 
         # Load chunk index.
         f = h5py.File(db_info["db_path"], "r")
-        dataset_offsets = np.copy(f["dataset_offsets_valid"])
+        indexed_dataset_offsets = np.copy(f["dataset_offsets_valid"])
         chunk_index = np.copy(f["chunks_valid"])
         f.close()
 
-        # Dataset ids.
-        dataset_ids = []
-        for i in range(len(dataset_offsets) - 1):
-            dataset_ids.append([i] * (dataset_offsets[i+1] - dataset_offsets[i]))
-        dataset_ids = [ i for ii in dataset_ids for i in ii ]
+        # Indexed dataset ids.
+        indexed_dataset_ids = []
+        for i in range(len(indexed_dataset_offsets) - 1):
+            indexed_dataset_ids.append(
+                [i] * (indexed_dataset_offsets[i+1] - indexed_dataset_offsets[i]))
+        indexed_dataset_ids = [ i for ii in indexed_dataset_ids for i in ii ]
 
-        # Dataset.
-        dataset_map[db_key] = GPTChunkDataset(
+        # Chunk dataset.
+        chunk_dataset_map[db_key] = GPTChunkDataset(
             # args = args,
             indexed_datasets = indexed_datasets,
-            dataset_ids = dataset_ids,
+            indexed_dataset_ids = indexed_dataset_ids,
             chunk_index = chunk_index,
             # max_chunk_length = args.retro_chunk_length,
         )
 
-    return dataset_map
+    return chunk_dataset_map
 

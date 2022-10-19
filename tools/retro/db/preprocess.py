@@ -16,7 +16,6 @@
 import concurrent.futures
 from functools import reduce
 import h5py
-import json
 import numpy as np
 import os
 from pathlib import Path
@@ -48,7 +47,8 @@ from lutil import pax
 # see: notebook/faiss/create_chunks.ipynb
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-def get_sorted_dataset_metadatas(args, workdir):
+# def get_sorted_dataset_metadatas(args, workdir):
+def get_sorted_indexed_dataset_infos(args):
 
     assert len(args.data_path) % 2 == 0, \
         "currently, only blendable dataset is supported."
@@ -73,14 +73,6 @@ def get_sorted_dataset_metadatas(args, workdir):
     data_metas.sort(key = lambda m : m["prefix"])
 
     return data_metas
-
-
-def save_dataset_metadatas(workdir, data_metas):
-    """Save dataset order."""
-
-    order_path = os.path.join(workdir, "order.json")
-    with open(order_path, "w") as f:
-        json.dump(data_metas, f, indent = 4) # remove 'indent', once debugged.
 
 
 def build_partial_chunk_db(
