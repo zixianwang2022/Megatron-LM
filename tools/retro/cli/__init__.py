@@ -53,7 +53,8 @@ class retro:
     ##############################################
 
     @classmethod
-    def load_args(cls, workdir):
+    # def load_args(cls, workdir):
+    def init_megatron(cls, workdir):
 
         # initialize_megatron(extra_args_provider = add_retro_args)
 
@@ -75,7 +76,7 @@ class retro:
     def init(cls, workdir):
 
         # Load args.
-        cls.load_args(workdir)
+        cls.init_megatron(workdir)
 
         cls.gpt_tokenizer = get_gpt_tokenizer(cls.args)
         cls.bert_tokenizer = get_bert_tokenizer(cls.args)
@@ -116,7 +117,6 @@ class retro:
 
     @classmethod
     def get_db_indexed_dataset_infos(cls):
-        #pax(0, {"db_indexed_dataset_infos / 0": cls.db_indexed_dataset_infos[0]})
         return [(info["ratio"], info["name"])
                 for info in cls.db_indexed_dataset_infos]
 
@@ -126,31 +126,25 @@ class retro:
 
 
     @classmethod
-    def get_db_chunk_tokens_gpt(cls, data_key, idx):
+    def get_db_chunk_gpt(cls, data_key, idx):
         return cls.db_gpt_chunk_dataset_map[data_key][idx]["text"].tolist()
 
 
     @classmethod
-    def get_db_chunk_tokens_bert(cls, data_key, idx):
-        # return cls.bert_tokenizer.tokenize(
-        #     cls.gpt_tokenizer.detokenize(
-        #         cls.get_db_chunk_tokens_gpt(data_key, idx)))
+    def get_db_chunk_bert(cls, data_key, idx):
         return cls.text_to_bert(cls.get_db_chunk_text(data_key, idx))
 
 
     @classmethod
     def get_db_chunk_text(cls, data_key, idx):
-        # return cls.db_gpt_chunk_dataset_map[data_key].gpt_tokenizer.detokenize(
-        # return cls.gpt_tokenizer.detokenize(
-        #     cls.get_db_chunk_tokens_gpt(data_key, idx))
-        return cls.gpt_to_text(cls.get_db_chunk_tokens_gpt(data_key, idx))
+        return cls.gpt_to_text(cls.get_db_chunk_gpt(data_key, idx))
 
 
     @classmethod
     def get_db_chunk_and_continuation_text(cls, data_key, idx):
         gpt_chunks = [
-            cls.get_db_chunk_tokens_gpt(data_key, idx),
-            cls.get_db_chunk_tokens_gpt(data_key, idx + 1),
+            cls.get_db_chunk_gpt(data_key, idx),
+            cls.get_db_chunk_gpt(data_key, idx + 1),
         ]
         text_chunks = [ cls.gpt_to_text(g) for g in gpt_chunks ]
         # pax(0, {
@@ -186,18 +180,25 @@ class retro:
 
 
     @classmethod
-    def get_pt_seq_tokens_gpt(cls, data_key, idx):
+    def get_pt_seq_gpt(cls, data_key, idx):
         return cls.pt_dataset_map[data_key]["data"]. \
             seq_dataset[idx]["text"].tolist()
 
 
     @classmethod
-    # def get_pt_seq_chunk_tokens_gpt(cls, data_key, si, ci):
-    def get_pt_chunk_tokens_gpt(cls, data_key, si, ci):
+    # def get_pt_seq_chunk_gpt(cls, data_key, si, ci):
+    def get_pt_chunk_gpt(cls, data_key, si, ci):
         chunk_start_idx = cls.args.retro_chunk_length * ci
         chunk_end_idx = cls.args.retro_chunk_length * (ci + 1)
-        return cls.get_pt_seq_tokens_gpt(data_key, si) \
+        return cls.get_pt_seq_gpt(data_key, si) \
             [chunk_start_idx:chunk_end_idx]
+
+
+    @classmethod
+    def get_pt_chunks_gpt(cls, data_key, si):
+        n_chunks_per_seq = cls.args.retro_seq_length//cls.args.retro_chunk_length
+        return [cls.get_pt_chunk_gpt(data_key, si, ci)
+                for ci in range(n_chunks_per_seq) ]
 
 
     @classmethod
@@ -245,6 +246,7 @@ class retro:
             print("retro.get_db_n_chunks('%s') : %d." %
                   (data_key, cls.get_db_n_chunks(data_key)))
 
+        print()
         for sq_key in ("seq", "chunk"):
             for data_key in ("train", "valid"): # , "test"):
                 print("retro.get_pt_n_%ss('%s') : %d." % (
@@ -253,10 +255,10 @@ class retro:
 
         print()
         print("~~~~ tokens, text ~~~~")
-        print("retro.get_db_chunk_tokens_gpt('full', idx) : %s" %
-              shorten_str(str(retro.get_db_chunk_tokens_gpt("full", 0)), 50))
-        print("retro.get_db_chunk_tokens_bert('full', idx) : %s" %
-              shorten_str(str(retro.get_db_chunk_tokens_bert("full", 0)), 50))
+        print("retro.get_db_chunk_gpt('full', idx) : %s" %
+              shorten_str(str(retro.get_db_chunk_gpt("full", 0)), 50))
+        print("retro.get_db_chunk_bert('full', idx) : %s" %
+              shorten_str(str(retro.get_db_chunk_bert("full", 0)), 50))
         print("retro.get_db_chunk_text('full', idx) : %s" %
               shorten_str(retro.get_db_chunk_text("full", 0).strip(), 50))
         print("retro.get_db_chunk_and_continuation_text('full', idx) :")
@@ -266,10 +268,22 @@ class retro:
                 shorten_str(t.strip().replace("\n", " "), 50),
                 "]" if i == 1 else ",",
             ))
-        print("retro.get_pt_seq_tokens_gpt('train', si) : %s" %
-              shorten_str(str(retro.get_pt_seq_tokens_gpt("train", 0)), 50))
-        print("retro.get_pt_chunk_tokens_gpt('train', si, ci) : %s" %
-              shorten_str(str(retro.get_pt_chunk_tokens_gpt("train",0,7)),50))
+
+        print()
+        print("retro.get_pt_seq_gpt('train', si) : %s" %
+              shorten_str(str(retro.get_pt_seq_gpt("train", 0)), 50))
+        print("retro.get_pt_chunk_gpt('train', si, ci) : %s" %
+              shorten_str(str(retro.get_pt_chunk_gpt("train", 0, 7)),50))
+        print("retro.get_pt_chunks_gpt('train', si) :")
+        chunks_gpt = retro.get_pt_chunks_gpt("train", 0)
+        for i, token_ids in enumerate(chunks_gpt[:2]):
+            print("  %s%s," % (
+                "[" if i == 0 else " ",
+                shorten_str(str(token_ids), 50),
+                # "]" if cls.args.retro_seq_length // args.retro_chunk_length - 1 else ",",
+            ))
+        print("   ...")
+        print("   %s]" % shorten_str(str(chunks_gpt[-1]), 50))
         # print("retro.get_pt_seq_text")
         # print("retro.get_pt_seq_chunk_text")
 
@@ -278,7 +292,7 @@ class retro:
         print("retro.get_pt_chunk_nbrs('train', si, ci) : %s" %
               shorten_str(str(cls.get_pt_chunk_nbrs("train", 0, 0)), 50))
         print("retro.get_pt_chunk_banned_doc_ids('train', si, ci) : %s" %
-              shorten_str(str(cls.get_pt_chunk_banned_doc_ids("train",0,0)), 50))
+              shorten_str(str(cls.get_pt_chunk_banned_doc_ids("train", 0, 0)),50))
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 
