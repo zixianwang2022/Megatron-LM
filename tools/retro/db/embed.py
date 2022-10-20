@@ -58,8 +58,10 @@ def embed_db(args, timer):
 
     # GPT, text datasets.
     gpt_dataset_map = get_gpt_chunk_dataset_map(args)
-    text_dataset_map = {key:{"data": GPTToTextDataset(gpt_dataset)}
-                        for key, gpt_dataset in gpt_dataset_map.items()}
+    text_dataset_map = {key:{
+        "data" : GPTToTextDataset(info["data"]),
+        "embed_dir" : info["embed_dir"],
+    } for key, info in gpt_dataset_map.items()}
 
     # pax(0, {
     #     "gpt_dataset_map" : gpt_dataset_map,
@@ -67,4 +69,4 @@ def embed_db(args, timer):
     # })
 
     # Embed text datasets.
-    embed_text_datasets(text_dataset_map)
+    embed_text_datasets(text_dataset_map, args.retro_block_size)

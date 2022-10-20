@@ -18,7 +18,7 @@ import json
 import numpy as np
 import torch
 
-from megatron import get_args
+# from megatron import get_args
 # from megatron import get_args, get_tokenizer, print_rank_0
 # from megatron.data.bert_dataset import build_training_sample
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
@@ -35,22 +35,21 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
     def __init__(
             self,
-            # args,
             indexed_datasets,
             indexed_dataset_ids,
             chunk_index,
-            # max_chunk_length,
+            max_gpt_chunk_length,
     ):
 
-        args = get_args()
+        # args = get_args()
 
         self.indexed_datasets = indexed_datasets
         self.indexed_dataset_ids = indexed_dataset_ids
         self.chunk_index = chunk_index
-        # self.max_gpt_chunk_length = max_chunk_length
 
-        self.gpt_tokenizer = get_gpt_tokenizer(args)
-        self.max_gpt_chunk_length = args.retro_chunk_length
+        # self.max_gpt_chunk_length = args.retro_chunk_length
+        self.max_gpt_chunk_length = max_gpt_chunk_length
+        self.gpt_tokenizer = get_gpt_tokenizer()
 
 
     def __len__(self):
@@ -90,14 +89,23 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
 class GPTToTextDataset(torch.utils.data.Dataset):
 
+
     def __init__(self, gpt_dataset):
+
         super().__init__()
 
+        self.gpt_dataset = gpt_dataset
+        self.gpt_tokenizer = get_gpt_tokenizer()
+
+
     def __len__(self):
-        raise Exception("hi.")
+        return len(self.gpt_dataset)
+
 
     def __getitem__(self, idx):
-        pax(0, {"idx": idx})
+        gpt_token_ids = self.gpt_dataset[idx]["text"].tolist()
+        text = self.gpt_tokenizer.detokenize(gpt_token_ids)
+        return {"text": text}
 
 
 # def get_dataset_map(args):
@@ -136,13 +144,15 @@ def get_gpt_chunk_dataset_map(args):
         indexed_dataset_ids = [ i for ii in indexed_dataset_ids for i in ii ]
 
         # Chunk dataset.
-        chunk_dataset_map[db_key] = GPTChunkDataset(
-            # args = args,
-            indexed_datasets = indexed_datasets,
-            indexed_dataset_ids = indexed_dataset_ids,
-            chunk_index = chunk_index,
-            # max_chunk_length = args.retro_chunk_length,
-        )
+        chunk_dataset_map[db_key] = {
+            "data" : GPTChunkDataset(
+                indexed_datasets = indexed_datasets,
+                indexed_dataset_ids = indexed_dataset_ids,
+                chunk_index = chunk_index,
+                max_gpt_chunk_length = args.retro_chunk_length,
+            ),
+            "embed_dir" : db_info["embed_dir"],
+        }
 
     return chunk_dataset_map
 

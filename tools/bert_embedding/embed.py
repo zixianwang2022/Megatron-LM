@@ -24,17 +24,15 @@ from torch.utils.data._utils.collate import default_collate
 from tqdm import tqdm
 
 from megatron import get_args, get_tokenizer, mpu, print_rank_0
-# from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from megatron.model import BertModel, ModelType
 from megatron.schedules import get_forward_backward_func
 from megatron.training import setup_model_and_optimizer
 
-# from ..chunks.utils import get_chunk_index_path_map
-# from .chunk_dataset import BertEmbeddingDataset # BertChunkDataset
-# from .long_bert_chunks import print_longest_bert_chunks
+from .dataset import BertEmbeddingDataset
 
 # >>>
 from lutil import pax, print_seq
+from lutil.pax import get_mem_stats_str
 # <<<
 
 
@@ -55,19 +53,19 @@ def model_provider(pre_process=True, post_process=True):
     return model
 
 
-def get_missing_embedding_blocks(args, workdir, dataset):
+# def get_missing_embedding_blocks(args, workdir, dataset):
+def get_missing_embedding_blocks(workdir, dataset, block_size):
 
-    raise Exception("rename chunk -> sample.")
-    n_chunks = len(dataset)
+    n_samples = len(dataset)
 
     # Block ranges.
-    block_size = args.retro_block_size
-    block_start_idxs = list(range(0, n_chunks, block_size))
-    block_end_idxs = [ min(n_chunks, i + block_size) for i in block_start_idxs ]
+    # block_size = args.retro_block_size
+    block_start_idxs = list(range(0, n_samples, block_size))
+    block_end_idxs = [ min(n_samples, i + block_size) for i in block_start_idxs ]
     block_ranges = list(zip(block_start_idxs, block_end_idxs))
 
     # All block files (existing + missing).
-    n_digits = int(np.ceil(np.log(n_chunks) / np.log(10)) + 1)
+    n_digits = int(np.ceil(np.log(n_samples) / np.log(10)) + 1)
     all_block_items = [{
         "range" : r,
         "path" : os.path.join(
@@ -170,15 +168,18 @@ def collate_batch(samples):
     return batch
 
 
-def get_block_data_loader(args, full_dataset, chunk_start_idx, chunk_end_idx):
+# def get_block_data_loader(args, full_dataset, sample_start_idx, sample_end_idx):
+def get_block_data_loader(full_dataset, sample_start_idx, sample_end_idx):
     """Build data loader over data subset.
 
     Get a subset of the dataset (from start_idx -> end_idx), and wrap it in
     a sequential sampler and data loader.
     """
 
+    args = get_args()
+
     # Dataset subset.
-    block_dataset = Subset(full_dataset, range(chunk_start_idx, chunk_end_idx))
+    block_dataset = Subset(full_dataset, range(sample_start_idx, sample_end_idx))
 
     # Sequential & batch samplers.
     batch_sampler = BatchSampler(
@@ -245,14 +246,17 @@ def forward_step(data_iterator, model):
         types = None
 
     # Forward pass through the model.
+    print("BEFORE ... %s" % get_mem_stats_str())
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
+    print("AFTER ... %s" % get_mem_stats_str())
 
     return output_tensor, partial(loss_func, loss_mask, sentence_order,
                                   seq_lengths)
 
 
-def embed_batches(args, models, data_loader):
+# def embed_batches(args, models, data_loader):
+def embed_batches(models, data_loader):
 
     # Data iterator.
     data_iterator = iter(data_loader)
@@ -274,15 +278,18 @@ def embed_batches(args, models, data_loader):
 
             # Forward pass.
             batch_start_time = time.time()
-            results = forward_backward_func(
-                forward_step,
-                data_iterator,
-                models,
-                optimizer = None,
-                timers = None,
-                forward_only = True,
-                collect_non_loss_data = True,
-            )
+            try:
+                results = forward_backward_func(
+                    forward_step,
+                    data_iterator,
+                    models,
+                    optimizer = None,
+                    timers = None,
+                    forward_only = True,
+                    collect_non_loss_data = True,
+                )
+            except:
+                pax({"batch_index": batch_index})
             batch_end_time = time.time()
             batch_times.append(batch_end_time - batch_start_time)
             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
@@ -309,8 +316,8 @@ def embed_batches(args, models, data_loader):
 
 # def embed_blocks(args, models, prefix, dataset, missing_embedding_blocks):
 # def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
-def embed_blocks(args, models, prefix, workdir, dataset,
-                 missing_embedding_blocks):
+# def embed_blocks(args, models, prefix, workdir, dataset,
+def embed_blocks(models, prefix, workdir, dataset, missing_embedding_blocks):
 
     # Iterate blocks.
     for block_index, block_info in enumerate(missing_embedding_blocks):
@@ -334,10 +341,10 @@ def embed_blocks(args, models, prefix, workdir, dataset,
             ))
 
             # Data loader.
-            data_loader = get_block_data_loader(args,dataset,*block_info["range"])
+            data_loader = get_block_data_loader(dataset,*block_info["range"])
 
             # Embed block.
-            embeddings = embed_batches(args, models, data_loader)
+            embeddings = embed_batches(models, data_loader)
 
             # Save embeddings.
             f = h5py.File(block_info["path"], "w")
@@ -349,23 +356,7 @@ def embed_blocks(args, models, prefix, workdir, dataset,
         torch.distributed.barrier()
 
 
-# def embed_dataset_chunks(args, workdir, models, prefix, dataset):
-
-#     # Dataset workdir.
-#     workdir = os.path.join(workdir, prefix)
-#     os.makedirs(workdir, exist_ok = True)
-
-#     # Missing embedding blocks (stored on disk).
-#     missing_embedding_blocks = get_missing_embedding_blocks(args,workdir,dataset)
-
-#     # Prevent missing file race condition.
-#     torch.distributed.barrier()
-
-#     # Embed batches.
-#     embed_blocks(args, models, prefix, dataset, missing_embedding_blocks)
-
-
-def embed_text_dataset(args, models, prefix, workdir, text_dataset):
+def embed_text_dataset(models, prefix, workdir, text_dataset, block_size):
 
     # Dataset workdir.
     os.makedirs(workdir, exist_ok = True)
@@ -374,9 +365,9 @@ def embed_text_dataset(args, models, prefix, workdir, text_dataset):
     embedding_dataset = BertEmbeddingDataset(text_dataset)
 
     # Missing embedding blocks (stored on disk).
-    missing_embedding_blocks = get_missing_embedding_blocks(args,
-                                                            workdir,
-                                                            embedding_dataset)
+    missing_embedding_blocks = get_missing_embedding_blocks(workdir,
+                                                            embedding_dataset,
+                                                            block_size)
 
     # pax(0, {
     #     "missing_embedding_blocks" : missing_embedding_blocks,
@@ -389,19 +380,22 @@ def embed_text_dataset(args, models, prefix, workdir, text_dataset):
     torch.distributed.barrier()
 
     # Embed batches.
-    embed_blocks(args, models, prefix, workdir, embedding_dataset,
+    embed_blocks(models, prefix, workdir, embedding_dataset,
                  missing_embedding_blocks)
 
 
-def embed_text_datasets(args, text_dataset_map):
+# def embed_text_datasets(args, text_dataset_map):
+def embed_text_datasets(text_dataset_map, block_size):
 
     # Load model.
     models, optimizer, opt_param_scheduler = \
         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
 
     # Embed each (i.e., full, sampled) dataset.
-    for key, info in text_dataset_map.items():
+    for prefix, info in text_dataset_map.items():
         print_rank_0(" > embed '%s' dataset ... %d samples." %
-                     (key, len(info["data"])))
-        embed_text_dataset(args, models, key, info["embed_dir"], info["data"])
+                     (prefix, len(info["data"])))
+        embed_text_dataset(models, prefix,
+                           info["embed_dir"], info["data"],
+                           block_size)
 
