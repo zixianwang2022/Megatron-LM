@@ -750,6 +750,10 @@ def _add_distributed_args(parser):
     group.add_argument('--distributed-backend', default='nccl',
                        choices=['nccl', 'gloo'],
                        help='Which backend to use for distributed training.')
+    # >>>
+    group.add_argument('--distributed-timeout-minutes', type=int, default=10,
+                       help='Timeout minutes for torch.distributed.')
+    # <<<
     group.add_argument('--DDP-impl', default='local',
                        choices=['local', 'torch'],
                        help='which DistributedDataParallel implementation '

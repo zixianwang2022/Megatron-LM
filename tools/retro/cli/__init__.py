@@ -64,8 +64,8 @@ class retro:
         with open(args_path) as f:
             cls.args = SimpleNamespace(**json.load(f))
             cls.args.retro_workdir = workdir # just in case workdir moved
-            cls.args.rank = 0 # int(os.getenv('RANK', '0'))
-            cls.args.world_size = 1 # int(os.getenv("WORLD_SIZE", '1'))
+            cls.args.rank = 0 # override env
+            cls.args.world_size = 1 # override env
 
         set_global_variables(cls.args)
         _initialize_distributed()

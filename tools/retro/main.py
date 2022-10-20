@@ -27,10 +27,11 @@ import os
 import torch
 
 from megatron import get_args, initialize_megatron, print_rank_0
-from tools.retro.db import build_chunk_db, preprocess_chunk_db, embed_chunk_db
-from tools.retro.index.build import add_to_index, train_index
-from tools.retro.nbr.build import build_neighbor_table
-from tools.retro.utils import Timer
+from megatron.arguments import _print_args
+from tools.retro.db import build_db, preprocess_db, embed_db
+# from tools.retro.index.build import add_to_index, train_index
+# from tools.retro.nbr.build import build_neighbor_table
+from tools.retro.utils import get_args_path, Timer
 
 # >>>
 from lutil import pax, print_seq
@@ -40,23 +41,30 @@ from lutil import pax, print_seq
 def add_retro_args(parser):
     """Retrieval-LM ('Retro') preprocesing arguments."""
 
-    group = parser.add_argument_group(title="Retro preprocessing.")
+    group = parser.add_argument_group(title = "Retro preprocessing.")
 
-    group.add_argument("--tasks", required = True)
-    group.add_argument("--index-ty", required = True, choices = [
+    group.add_argument("--retro-gpt-vocab-file", required = True)
+    group.add_argument("--retro-gpt-merge-file", required = True)
+    group.add_argument("--retro-gpt-tokenizer-type", required = True)
+    group.add_argument("--retro-bert-vocab-file", required = True)
+    group.add_argument("--retro-bert-tokenizer-type", required = True)
+    # group.add_argument("--retro-precompute-bert-lengths", action="store_true")
+
+    group.add_argument("--retro-tasks", required = True)
+    group.add_argument("--retro-index-ty", required = True, choices = [
         "faiss-base",
         "faiss-decomp",
         "faiss-par-add",
     ])
-    group.add_argument("--nfeats", "-f", type = int, default = 1024)
-    group.add_argument("--ncluster", type = int, required = True)
-    group.add_argument("--hnsw-m", type = int, required = True)
-    group.add_argument("--ivf-dim", type = int, required = True)
-    group.add_argument("--pq-m", type = int, required = True)
-    group.add_argument("--pq-nbits", type = int, default = 8)
-    group.add_argument("--ef-search", type = int, default = 256)
-    group.add_argument("--n-probe", type = int, default = 65536)
-    # group.add_argument("--profile-stage-stop", default = None)
+    group.add_argument("--retro-nfeats", "-f", type = int, default = 1024)
+    group.add_argument("--retro-nclusters", type = int, required = True)
+    group.add_argument("--retro-hnsw-m", type = int, required = True)
+    group.add_argument("--retro-ivf-dim", type = int, required = True)
+    group.add_argument("--retro-pq-m", type = int, required = True)
+    group.add_argument("--retro-pq-nbits", type = int, default = 8)
+    group.add_argument("--retro-ef-search", type = int, default = 256)
+    group.add_argument("--retro-nprobe", type = int, default = 65536)
+    # group.add_argument("--retro-profile-stage-stop", default = None)
 
     group.add_argument("--retro-workdir", required = True)
     group.add_argument("--retro-seq-length", type = int, required = True)
@@ -65,22 +73,6 @@ def add_retro_args(parser):
     group.add_argument("--retro-block-size", type = int, required = True)
     group.add_argument("--retro-nnbrs-query", type = int, required = True)
     group.add_argument("--retro-nnbrs-target", type = int, required=True)
-    # group.add_argument('--weight', type=float, default=0.5)
-    # group.add_argument('--adaptor', action='store_true', default=False)
-    # group.add_argument('--return-doc-ids', action='store_true', default=False)
-    # group.add_argument('--return-neighbor-ids', action='store_true', default=False)
-    # group.add_argument('--add-offset-doc-ids', action='store_true', default=False)
-    # group.add_argument('--offset-dict-path', type=str, default='')
-    # group.add_argument('--retro-neighbors-path', type=str, required = True) # default='')
-    # group.add_argument('--project-size', type=int, default=256)
-    # group.add_argument('--stored_params', type=dict, default=dict())
-    # group.add_argument('--eval_ppl', action='store_true', default=False)
-    # group.add_argument('--workers', type=int, default=100,
-    #                    help='Number of worker processes to launch')
-    # group.add_argument('--embed-start-index', type=int, default=0,
-    #                    help='iteration start')
-    # group.add_argument('--embed-end-index', type=int, default=0,
-    #                    help='iteration end')
 
     return parser
 
@@ -88,8 +80,8 @@ def add_retro_args(parser):
 def save_args(args):
 
     if torch.distributed.get_rank() == 0:
-        arg_path = os.path.join(args.retro_workdir, "args.json")
-        with open(arg_path, "w") as f:
+        args_path = get_args_path(args.retro_workdir)
+        with open(args_path, "w") as f:
             json.dump(vars(args), f, indent = 4, default = lambda o : "<skipped>")
 
     torch.distributed.barrier()
@@ -101,21 +93,27 @@ if __name__ == "__main__":
     initialize_megatron(extra_args_provider = add_retro_args)
 
     args = get_args()
-    args.tasks = args.tasks.split(",")
+    args.retro_tasks = args.retro_tasks.split(",")
 
+    _print_args(args)
+    os.makedirs(args.retro_workdir, exist_ok = True)
     save_args(args)
 
     # Select task to run.
     timer = Timer()
-    for task in args.tasks:
+    for task in args.retro_tasks:
 
         timer.push(task)
 
-        # Main tasks.
+        # DB (i.e., chunk db).
         if task == "db-build":
-            build_chunk_db(args, timer)
-        elif task == "embed-chunks":
-            embed_chunks(args, timer)
+            build_db(args, timer)
+        elif task == "db-preprocess":
+            preprocess_db(args, timer)
+        elif task == "db-embed":
+            embed_db(args, timer)
+
+        # Index.
         elif task == "index-train":
             train_index(args, timer)
         elif task == "index-add":
@@ -124,6 +122,8 @@ if __name__ == "__main__":
             remove_add_outputs(args, timer)
         elif task == "index-build":
             build_index(args, timer) # train, add
+
+        # Neighbors.
         elif task == "nbr-build":
             build_neighbor_table(args, timer)
         elif task == "nbr-plot-acc":
@@ -160,27 +160,23 @@ if __name__ == "__main__":
     from index.utils import get_index_str
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
-        # print("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
-        # print(json.dumps(vars(args), indent = 4), flush = True) # non-serial
-        print("~~~~~~~~ [ TIMER OBJ ] ~~~~~~~~")
-        print(json.dumps(timer.time_map, indent = 4), flush = True)
-        print("~~~~~~~~~~~~~~~~")
-        # print("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
-        print("[ TIMER STR ] = %s" % json.dumps(timer.time_map), flush = True)
-        print("~~~~~~~~~~~~~~~~")
-        timer.print()
-        print("~~~~~~~~~~~~~~~~")
-        # print("L-RESULT : %s, %s, %s, %d, %d, '%s' ... %s ... [ %s ]." % (
-        # print("L-RESULT : %s, %s, %d, %d ... %s ... [ %s ]." % (
-        print("L-RESULT : %s, %s ... %s ... [ %s ]." % (
+        print_rank_0("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
+        print_rank_0({
+            k : str(v)
+            for k,v in json.dumps(vars(args), indent = 4)
+        })
+        print_rank_0("~~~~~~~~ [ TIMER OBJ ] ~~~~~~~~")
+        print_rank_0(json.dumps(timer.time_map, indent = 4), flush = True)
+        print_rank_0("~~~~~~~~~~~~~~~~")
+        # print_rank_0("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
+        print_rank_0("[ TIMER STR ] = %s" % json.dumps(timer.time_map), flush = True)
+        print_rank_0("~~~~~~~~~~~~~~~~")
+        timer.print_rank_0()
+        print_rank_0("~~~~~~~~~~~~~~~~")
+        print_rank_0("L-RESULT : %s, %s ... %s ... [ %s ]." % (
             args.tasks[-1],
-            # args.data_ty,
             args.index_ty,
-            # args.ntrain,
-            # args.nadd,
-            # args.profile_stage_stop,
             timer.get_child_str(args.tasks[-1]),
-            # args.index_str,
             get_index_str(args),
         ), flush = True)
     torch.distributed.barrier()

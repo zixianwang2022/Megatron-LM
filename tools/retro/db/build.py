@@ -13,6 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .build import build_db
 from .embed import embed_db
 from .preprocess import preprocess_db
+
+
+# def build_db(args, timer):
+# def build_chunk_db(args, timer):
+def build_db(args, timer):
+
+    # if torch.distributed.get_rank() != 0:
+    #     return
+
+    # # Preprocessing workdir.
+    # workdir = os.path.join(args.retro_workdir, "preprocess")
+    # os.makedirs(workdir, exist_ok = True)
+    # workdir = args.retro_workdir
+
+    # Stages.
+    preprocess_chunk_db(args, timer)
+    embed_chunk_db(args, timer)

@@ -18,36 +18,48 @@ PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-preprocess
 # Data blend.
 # . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
 . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend.sh
+DATA_PATH=${DATA_BLEND}
+
+GPT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
+GPT_MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
+GPT_TOKENIZER_TYPE=GPT2BPETokenizer
+
+BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
+BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 
 # >>>>>>>>>>>>>>>>>>>>>>>
-# PROFILE_STAGE_STOP="preprocess"
-# PROFILE_STAGE_STOP="cluster"
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/2
 
-# TASKS="db-preprocess"
-# TASKS="db-embed"
-# TASKS="db-build"
-# TASKS="embed-chunks"
-# TASKS="index-train"
-# TASKS="index-add"
-# TASKS="index-build"
-# TASKS="index-remove-train-outputs,train"
-# TASKS="index-remove-add-outputs,add"
-# TASKS="index-remove-add-outputs"
-# TASKS="index-remove-add-outputs,verify" # "verify-index"
-# TASKS="index-verify-codes"
-# TASKS="index-verify-nbrs"
-TASKS="nbr-build"
-# TASKS="nbr-plot-acc"
-# TASKS="misc-time-hnsw"
-# TASKS="misc-time-query"
-# TASKS="misc-time-merge-partials"
-# TASKS="misc-copy-corpus-dirty"
-# TASKS="misc-nan-stats"
-# TASKS="misc-bert-nan-analysis"
+# RETRO_PROFILE_STAGE_STOP="preprocess"
+# RETRO_PROFILE_STAGE_STOP="cluster"
 
-INDEX_TY=faiss-base
-# INDEX_TY=faiss-par-add
-# INDEX_TY=faiss-decomp
+RETRO_TASKS="db-preprocess"
+# RETRO_TASKS="db-embed"
+# RETRO_TASKS="db-build"
+# RETRO_TASKS="index-train"
+# RETRO_TASKS="index-add"
+# RETRO_TASKS="index-build"
+# RETRO_TASKS="index-remove-train-outputs,train"
+# RETRO_TASKS="index-remove-add-outputs,add"
+# RETRO_TASKS="index-remove-add-outputs"
+# RETRO_TASKS="index-remove-add-outputs,verify" # "verify-index"
+# RETRO_TASKS="index-verify-codes"
+# RETRO_TASKS="index-verify-nbrs"
+# RETRO_TASKS="nbr-build"
+# RETRO_TASKS="nbr-plot-acc"
+# RETRO_TASKS="nbr-verify"
+# RETRO_TASKS="misc-time-hnsw"
+# RETRO_TASKS="misc-time-query"
+# RETRO_TASKS="misc-time-merge-partials"
+# RETRO_TASKS="misc-copy-corpus-dirty"
+# RETRO_TASKS="misc-nan-stats"
+# RETRO_TASKS="misc-bert-nan-analysis"
+# RETRO_TASKS="build" # ... the goal.
+
+RETRO_INDEX_TY=faiss-base
+# RETRO_INDEX_TY=faiss-par-add
+# RETRO_INDEX_TY=faiss-decomp
 
 # NTRAIN=2048 NCLUSTER=64 HNSW_M=4
 # NTRAIN=131072 NCLUSTER=128 HNSW_M=32
@@ -70,22 +82,16 @@ INDEX_TY=faiss-base
 # NTRAIN=100000000 NADD=$(($NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
 # NTRAIN=100000000 NADD=$((1*$NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
 
-# NCLUSTER=4194304
-NCLUSTER=32768 # for 169320 training samples
-HNSW_M=32
-PQ_M=32
-IVF_DIM=256
+# RETRO_NCLUSTERS=4194304
+RETRO_NCLUSTERS=32768 # for 169320 training samples
+RETRO_HNSW_M=32
+RETRO_PQ_M=32
+RETRO_IVF_DIM=256
 
-EF_SEARCH=256
-N_PROBE=65536
+RETRO_EF_SEARCH=256
+RETRO_NPROBE=65536
 
-DATA_PATH=${DATA_BLEND}
-VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
-MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
-TOKENIZER_TYPE=GPT2BPETokenizer
-
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1
-
+# RETRO_PRECOMPUTE_BERT_LENGTHS
 RETRO_SEQ_LENGTH=2048
 RETRO_CHUNK_LENGTH=64
 # RETRO_NCHUNKS_SAMPLED=300000000
@@ -93,11 +99,9 @@ RETRO_NCHUNKS_SAMPLED=3000000
 RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
 RETRO_NNBRS_QUERY=2000
 RETRO_NNBRS_TARGET=200
-# NEIGHBOR_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/neighbors.hdf5
-# OFFSET_DICT_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/offset_dict.pkl
 
 SEED=1001
-
+DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
 # if [[ "$TASKS" == *"embed-chunks"* ]]; then
 # if [[ "0" == "0" ]]; then
 
@@ -202,10 +206,6 @@ SEED=1001
 
 # fi
 
-BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
-VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
-TOKENIZER_TYPE=BertWordPieceLowerCase
-
 # MICRO_BATCH_SIZE=1024 # oom
 MICRO_BATCH_SIZE=512
 # MICRO_BATCH_SIZE=16 # good
@@ -216,7 +216,8 @@ MICRO_BATCH_SIZE=512
 #     --lr-warmup-fraction .01 \
 MEGATRON_ARGS=" \
     --seed ${SEED} \
-    --tokenizer-type ${TOKENIZER_TYPE} \
+    --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \
+    --tokenizer-type ${BERT_TOKENIZER_TYPE} \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 24 \
@@ -228,7 +229,7 @@ MEGATRON_ARGS=" \
     --train-samples 192000000 \
     --load ${BERT_LOAD_PATH} \
     --data-path ${DATA_PATH} \
-    --vocab-file ${VOCAB_FILE} \
+    --vocab-file ${BERT_VOCAB_FILE} \
     --data-impl mmap \
     --split 98,2,0 \
     --distributed-backend nccl \
@@ -246,30 +247,22 @@ MEGATRON_ARGS=" \
     --fp16 \
 "
 
-#     --bert-load-path ${bert_load_path} \
-#     --data-ty ${data_ty} \
-#     --data-dir ${data_dir} \
-#     --profile-stage-stop ${PROFILE_STAGE_STOP} \
-#     --add-offset-doc-ids \
-#     --offset-dict-path ${OFFSET_DICT_PATH} \
-#     --index-dir ${INDEX_DIR} \
-#     --retro-max-embed-chunk-len ${RETRO_MAX_EMBED_CHUNK_LEN} \
-#     --embed-start-index ${EMBED_START_INDEX} \
-#     --embed-end-index ${EMBED_END_INDEX} \
-#     --ntrain ${NTRAIN} \
-#     --nadd ${NADD} \
-#     --return-doc-ids \
-#     --neighbors-path ${NEIGHBOR_PATH} \
-#     --weight 0 \
+# --retro-precompute-bert-lengths \
 RETRO_ARGS=" \
-    --tasks ${TASKS} \
-    --ncluster ${NCLUSTER} \
-    --ivf-dim ${IVF_DIM} \
-    --hnsw-m ${HNSW_M} \
-    --pq-m ${PQ_M} \
-    --ef-search ${EF_SEARCH} \
-    --n-probe ${N_PROBE} \
-    --index-ty ${INDEX_TY} \
+    --retro-gpt-vocab-file ${GPT_VOCAB_FILE} \
+    --retro-gpt-merge-file ${GPT_MERGE_FILE} \
+    --retro-gpt-tokenizer-type ${GPT_TOKENIZER_TYPE} \
+    --retro-bert-vocab-file ${BERT_VOCAB_FILE} \
+    --retro-bert-tokenizer-type ${BERT_TOKENIZER_TYPE} \
+
+    --retro-tasks ${RETRO_TASKS} \
+    --retro-index-ty ${RETRO_INDEX_TY} \
+    --retro-nclusters ${RETRO_NCLUSTERS} \
+    --retro-ivf-dim ${RETRO_IVF_DIM} \
+    --retro-hnsw-m ${RETRO_HNSW_M} \
+    --retro-pq-m ${RETRO_PQ_M} \
+    --retro-ef-search ${RETRO_EF_SEARCH} \
+    --retro-nprobe ${RETRO_NPROBE} \
 
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-seq-length ${RETRO_SEQ_LENGTH} \

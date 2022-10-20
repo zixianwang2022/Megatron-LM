@@ -23,17 +23,15 @@ import threading
 import torch
 from tqdm import tqdm
 
-# from megatron import (
-#     # get_args,
-#     get_tokenizer,
-# )
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
 )
+from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
 from .utils import (
+    get_individual_db_dir,
     get_individual_db_path,
     get_full_db_info,
     get_sampled_db_info,
@@ -54,28 +52,31 @@ def get_sorted_indexed_dataset_infos(args):
         "currently, only blendable dataset is supported."
 
     # Data metadata.
-    data_metas = []
+    infos = []
     for i in range(0, len(args.data_path), 2):
         ratio = float(args.data_path[i])
         prefix = args.data_path[i + 1]
         path = prefix + ".bin"
         name = os.path.basename(prefix)
         assert os.path.exists(path)
-        data_metas.append({
+        infos.append({
             "ratio" : ratio,
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            "chunk_db_path" : get_individual_chunk_db_path(workdir, name)
+            "db_path" : get_individual_db_path(args, name),
         })
 
     # Deterministic dataset order (alphabetical).
-    data_metas.sort(key = lambda m : m["prefix"])
+    infos.sort(key = lambda m : m["prefix"])
 
-    return data_metas
+    # pax(0, {"infos": infos, "infos / 0": infos[0]})
+
+    return infos
 
 
-def build_partial_chunk_db(
+# def build_partial_chunk_db(
+def build_partial_db(
         args,
         proc_id,
         n_procs,
@@ -104,7 +105,7 @@ def build_partial_chunk_db(
 
     # Progress bars (snapshot of overall progress).
     doc_id_iter = range(doc_start_id, doc_end_id)
-    # doc_id_iter = range(doc_start_id, min(n_docs, doc_start_id+128)) # for debug
+    # doc_id_iter = range(doc_start_id, min(n_docs, doc_start_id+10)) # for debug
     pbar = tqdm(doc_id_iter) \
         if proc_id in progress_proc_ids else \
            doc_id_iter
@@ -123,8 +124,8 @@ def build_partial_chunk_db(
         doc = doc[:-1] # remove 'eod' token
         doc_len = len(doc)
 
-        chunk_start_idxs = list(range(0, doc_len, args.retro_chunk_len))
-        chunk_end_idxs = [min(doc_len, s + args.retro_chunk_len)
+        chunk_start_idxs = list(range(0, doc_len, args.retro_chunk_length))
+        chunk_end_idxs = [min(doc_len, s + args.retro_chunk_length)
                           for s in chunk_start_idxs]
 
         for i, chunk_start_idx in enumerate(chunk_start_idxs):
@@ -157,28 +158,18 @@ def build_partial_chunk_db(
     return proc_id, chunk_db_valid, chunk_db_invalid
 
 
-def build_individual_chunk_db(args, indexed_dataset):
-
-    # >>>
-    gpt_tokenizer = _GPT2BPETokenizer(
-        vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-        merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
-    )
-    bert_tokenizer = _BertWordPieceTokenizer(
-        vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
-        lower_case = True,
-    )
-    # <<<
+# def build_individual_chunk_db(args, indexed_dataset):
+def build_individual_db(args, gpt_tokenizer, bert_tokenizer, indexed_dataset):
 
     n_procs = 128 # 8, 128
 
-    # executor_ty = concurrent.futures.ThreadPoolExecutor
+    # executor_ty = concurrent.futures.ThreadPoolExecutor # slow.
     executor_ty = concurrent.futures.ProcessPoolExecutor
     with executor_ty(max_workers = n_procs) as executor:
         futures = []
         for proc_id in range(n_procs): # not true process id
             futures.append(executor.submit(
-                build_partial_chunk_db,
+                build_partial_db,
                 args,
                 proc_id,
                 n_procs,
@@ -214,31 +205,48 @@ def build_individual_chunk_db(args, indexed_dataset):
     return chunk_db_valid, chunk_db_invalid
 
 
-def build_individual_chunk_dbs(args, workdir, data_metas):
+# def build_individual_chunk_dbs(args, workdir, data_metas):
+def build_individual_dbs(args, indexed_dataset_infos):
 
+    # Individual workdir.
+    individual_dir = get_individual_db_dir(args)
+    os.makedirs(individual_dir, exist_ok = True)
+
+    # Tokenizers.
+    gpt_tokenizer = get_gpt_tokenizer(args)
+    bert_tokenizer = get_bert_tokenizer(args)
+
+    # Build individual dbs.
     print(" > build individual chunk dbs.")
-    for data_index, data_meta in enumerate(data_metas):
+    for dataset_index, indexed_dataset_info in enumerate(indexed_dataset_infos):
 
-        chunk_db_path = data_meta["chunk_db_path"]
+        db_path = indexed_dataset_info["db_path"]
 
-        if os.path.exists(chunk_db_path):
+        if os.path.exists(db_path):
             continue
 
-        print(" > building individual chunk db, dataset %d / %d ... '%s'." %
-              (data_index, len(data_metas), data_meta["name"]))
+        print(" > building individual db, dataset %d / %d ... '%s'." % (
+            dataset_index,
+            len(indexed_dataset_infos),
+            indexed_dataset_info["name"],
+        ))
 
-        indexed_dataset = make_indexed_dataset(data_meta["prefix"], "mmap", True)
-        chunk_db_valid, chunk_db_invalid = \
-            build_individual_chunk_db(args, indexed_dataset)
+        indexed_dataset = make_indexed_dataset(indexed_dataset_info["prefix"],
+                                               "mmap", True)
+        db_valid, db_invalid = build_individual_db(args,
+                                                   gpt_tokenizer,
+                                                   bert_tokenizer,
+                                                   indexed_dataset)
 
-        print(" > saving chunk db.")
-
-        f = h5py.File(chunk_db_path, "w")
-        dset = f.create_dataset("chunks_valid", data = chunk_db_valid)
-        dset = f.create_dataset("chunks_invalid", data = chunk_db_invalid)
+        print(" > saving individual db.")
+        f = h5py.File(db_path, "w")
+        dset = f.create_dataset("chunks_valid", data = db_valid)
+        dset = f.create_dataset("chunks_invalid", data = db_invalid)
         f.close()
 
-        print(" > finished saving chunk db.")
+        print(" > finished saving individual db.")
+
+    raise Exception("yes?")
 
     # Set n_chunks_{valid,invalid}, n_chunks_sampled (for unambiguity).
     print(" > compute n_chunks_all, n_chunks_valid, n_chunks_sampled.")
@@ -389,33 +397,31 @@ def build_sampled_chunk_db(args, workdir, data_metas):
 # def dump_document_order():
 # def save_document_order(args, workdir):
 # def build_chunk_dbs(args, workdir):
-def preprocess_chunk_db(args, workdir):
-
-    # >>>
-    assert torch.distributed.get_rank() == 0, "single process operation."
-    # +++
-    # if torch.distributed.get_rank() == 0:
-    #     return
-    # <<<
-
-    # Dataset metadata. (sorted, official order)
-    individual_workdir = os.path.join(workdir, "chunk_dbs")
-    os.makedirs(individual_workdir, exist_ok = True)
-    data_metas = get_sorted_dataset_metadatas(args, individual_workdir)
-
-    # pax(0, {"data_metas": data_metas})
+# def preprocess_chunk_db(args, workdir):
+def preprocess_db(args, timer):
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # create_data_softlinks(data_files)
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    # Build chunk dbs.
-    build_individual_chunk_dbs(args, workdir, data_metas)
-    build_full_chunk_db(args, workdir, data_metas)
-    build_sampled_chunk_db(args, workdir, data_metas)
+    # Single process here, since we use ProcessPoolExecutor.
+    if torch.distributed.get_rank() != 0: # Process
+        return
 
-    # Save dataset metadata. (fully annotated at this point)
-    save_dataset_metadatas(workdir, data_metas)
+    # Dataset metadata. (sorted, official order)
+    # individual_workdir = os.path.join(workdir, "chunk_dbs")
+    # individual_workdir = get_individual_db_dir(args)
+    # os.makedirs(individual_workdir, exist_ok = True)
+
+    indexed_dataset_infos = get_sorted_indexed_dataset_infos(args)
+
+    # Build dbs.
+    build_individual_dbs(args, indexed_dataset_infos)
+    build_full_db(args, indexed_dataset_infos)
+    build_sampled_db(args, indexed_dataset_infos)
+
+    # Save (fully annotated) indexed dataset infos.
+    save_dataset_metadatas(args, indexed_dataset_infos)
 
     # >>>
     # f = h5py.File(get_full_chunk_db_path(workdir), "r")

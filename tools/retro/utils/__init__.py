@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-import torch
+# import torch
 
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
@@ -24,27 +24,27 @@ from megatron.tokenizer.tokenizer import (
 from .timer import Timer
 
 
-def mkdir(path):
-    try:
-        os.mkdir(path)
-    except FileExistsError as e:
-        pass
-    return path
+# def mkdir(path):
+#     try:
+#         os.mkdir(path)
+#     except FileExistsError as e:
+#         pass
+#     return path
 
 
-def make_sub_dir(top_path, sub_name):
-    sub_path = os.path.join(top_path, sub_name)
-    mkdir(sub_path)
-    return sub_path
+# def make_sub_dir(top_path, sub_name):
+#     sub_path = os.path.join(top_path, sub_name)
+#     mkdir(sub_path)
+#     return sub_path
 
 
-def print_rank(*args):
-    if len(args) == 1:
-        return print_rank(None, *args)
-    assert len(args) == 2
-    r, s = args
-    if r is None or not torch.distributed.is_initialized() or r == torch.distributed.get_rank():
-        print("[r %s] ... %s" % (torch.distributed.get_rank() if torch.distributed.is_initialized() else "--", s), flush = True)
+# def print_rank(*args):
+#     if len(args) == 1:
+#         return print_rank(None, *args)
+#     assert len(args) == 2
+#     r, s = args
+#     if r is None or not torch.distributed.is_initialized() or r == torch.distributed.get_rank():
+#         print("[r %s] ... %s" % (torch.distributed.get_rank() if torch.distributed.is_initialized() else "--", s), flush = True)
 
 
 def get_args_path(workdir):
@@ -52,14 +52,24 @@ def get_args_path(workdir):
 
 
 def get_gpt_tokenizer(args):
+    # raise Exception("use args.retro-gpt-*")
+    # return _GPT2BPETokenizer(
+    #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
+    #     merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+    # )
     return _GPT2BPETokenizer(
-        vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-        merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
+        vocab_file = args.retro_gpt_vocab_file,
+        merge_file = args.retro_gpt_merge_file,
     )
 
 
 def get_bert_tokenizer(args):
+    # raise Exception("use args.retro-bert-*")
+    # return _BertWordPieceTokenizer(
+    #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
+    #     lower_case = True,
+    # )
     return _BertWordPieceTokenizer(
-        vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
+        vocab_file = args.retro_bert_vocab_file,
         lower_case = True,
     )

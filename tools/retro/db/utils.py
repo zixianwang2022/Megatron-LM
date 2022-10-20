@@ -48,9 +48,12 @@ def get_indexed_dataset_infos(args):
 # def get_individual_chunk_db_path(workdir, data_name):
 #     raise Exception("fix workdir.")
 #     return os.path.join(workdir, f"chunk_db.{data_name}.hdf5")
+def get_individual_db_dir(args):
+    return os.path.join(get_base_db_workdir(args), "individual")
+
+
 def get_individual_db_path(args, data_name):
-    workdir = os.path.join(get_base_db_workdir(args), "individual")
-    return os.path.join(workdir, f"db.{data_name}.hdf5")
+    return os.path.join(get_individual_db_dir(args), f"db.{data_name}.hdf5")
 
 
 # def get_full_chunk_db_path(workdir):

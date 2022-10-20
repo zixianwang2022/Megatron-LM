@@ -52,7 +52,8 @@ from lutil import pax
 #                      (prefix, len(dataset)))
 #         embed_dataset_chunks(args, workdir, models, prefix, dataset)
 # def embed_corpus_chunks(args, timer):
-def embed_chunk_db(args, timer):
+# def embed_chunk_db(args, timer):
+def embed_db(args, timer):
 
     raise Exception("call embed_text_datasets().")
 
