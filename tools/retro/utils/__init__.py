@@ -52,11 +52,6 @@ def get_args_path(workdir):
 
 
 def get_gpt_tokenizer(args):
-    # raise Exception("use args.retro-gpt-*")
-    # return _GPT2BPETokenizer(
-    #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-    #     merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
-    # )
     return _GPT2BPETokenizer(
         vocab_file = args.retro_gpt_vocab_file,
         merge_file = args.retro_gpt_merge_file,
@@ -64,11 +59,6 @@ def get_gpt_tokenizer(args):
 
 
 def get_bert_tokenizer(args):
-    # raise Exception("use args.retro-bert-*")
-    # return _BertWordPieceTokenizer(
-    #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt",
-    #     lower_case = True,
-    # )
     return _BertWordPieceTokenizer(
         vocab_file = args.retro_bert_vocab_file,
         lower_case = True,

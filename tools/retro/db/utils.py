@@ -21,22 +21,18 @@ from lutil import pax
 # <<<
 
 
-# def get_chunk_db_workdir(args):
 def get_base_db_workdir(args):
     return os.path.join(args.retro_workdir, "db")
 
 
-# def get_dataset_metas_path(args):
-#     return os.path.join(get_base_db_workdir(args), "order.json")
 def get_indexed_dataset_infos_path(args):
     return os.path.join(get_base_db_workdir(args), "indexed_dataset_infos.json")
 
 
-# def save_dataset_metadatas(workdir, data_metas):
 def save_indexed_dataset_infos(args, indexed_dataset_infos):
     """Save dataset order."""
     with open(get_indexed_dataset_infos_path(args), "w") as f:
-        json.dump(data_metas, f, indent = 4)
+        json.dump(indexed_dataset_infos, f, indent = 4)
 
 
 def get_indexed_dataset_infos(args):
@@ -45,9 +41,6 @@ def get_indexed_dataset_infos(args):
         return json.load(f)
 
 
-# def get_individual_chunk_db_path(workdir, data_name):
-#     raise Exception("fix workdir.")
-#     return os.path.join(workdir, f"chunk_db.{data_name}.hdf5")
 def get_individual_db_dir(args):
     return os.path.join(get_base_db_workdir(args), "individual")
 
@@ -56,8 +49,6 @@ def get_individual_db_path(args, data_name):
     return os.path.join(get_individual_db_dir(args), f"db.{data_name}.hdf5")
 
 
-# def get_full_chunk_db_path(workdir):
-#     return os.path.join(workdir, f"chunk_db.full.hdf5")
 def get_full_db_info(args):
     workdir = os.path.join(get_base_db_workdir(args), "full")
     return {
@@ -66,8 +57,6 @@ def get_full_db_info(args):
     }
 
 
-# def get_sampled_chunk_db_path(workdir):
-#     return os.path.join(workdir, f"chunk_db.sampled.hdf5")
 def get_sampled_db_info(args):
     workdir = os.path.join(get_base_db_workdir(args), "sampled")
     return {

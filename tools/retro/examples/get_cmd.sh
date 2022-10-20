@@ -34,8 +34,8 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/2
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
 
-RETRO_TASKS="db-preprocess"
-# RETRO_TASKS="db-embed"
+# RETRO_TASKS="db-preprocess"
+RETRO_TASKS="db-embed"
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"

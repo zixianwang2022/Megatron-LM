@@ -20,8 +20,9 @@
 # import torch
 
 # from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
+from tools.bert_embedding import embed_text_datasets
 
-# from .dataset import GPTChunkDataset
+from .dataset import GPTToTextDataset, get_gpt_chunk_dataset_map
 # from .utils import get_dataset_metas_path, get_db_info_map
 
 # >>>
@@ -55,10 +56,15 @@ from lutil import pax
 # def embed_chunk_db(args, timer):
 def embed_db(args, timer):
 
-    raise Exception("call embed_text_datasets().")
+    # GPT, text datasets.
+    gpt_dataset_map = get_gpt_chunk_dataset_map(args)
+    text_dataset_map = {key:{"data": GPTToTextDataset(gpt_dataset)}
+                        for key, gpt_dataset in gpt_dataset_map.items()}
 
-    # Dataset infos (indexed datasets, chunk index, etc.).
-    dataset_map = get_dataset_map(args)
+    # pax(0, {
+    #     "gpt_dataset_map" : gpt_dataset_map,
+    #     "text_dataset_map" : text_dataset_map,
+    # })
 
-    embed_text_datasets(texttttttttttttt)
-
+    # Embed text datasets.
+    embed_text_datasets(text_dataset_map)

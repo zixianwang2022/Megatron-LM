@@ -160,16 +160,13 @@ if __name__ == "__main__":
     from index.utils import get_index_str
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
-        print_rank_0("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
-        print_rank_0({
-            k : str(v)
-            for k,v in json.dumps(vars(args), indent = 4)
-        })
+        # print_rank_0("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
+        # print_rank_0({k:str(v) for k,v in vars(args).items()})
         print_rank_0("~~~~~~~~ [ TIMER OBJ ] ~~~~~~~~")
-        print_rank_0(json.dumps(timer.time_map, indent = 4), flush = True)
+        print_rank_0(json.dumps(timer.time_map, indent = 4))
         print_rank_0("~~~~~~~~~~~~~~~~")
         # print_rank_0("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
-        print_rank_0("[ TIMER STR ] = %s" % json.dumps(timer.time_map), flush = True)
+        print_rank_0("[ TIMER STR ] = %s" % json.dumps(timer.time_map))
         print_rank_0("~~~~~~~~~~~~~~~~")
         timer.print_rank_0()
         print_rank_0("~~~~~~~~~~~~~~~~")
@@ -178,5 +175,5 @@ if __name__ == "__main__":
             args.index_ty,
             timer.get_child_str(args.tasks[-1]),
             get_index_str(args),
-        ), flush = True)
+        ))
     torch.distributed.barrier()

@@ -22,14 +22,9 @@ from megatron import get_args
 # from megatron import get_args, get_tokenizer, print_rank_0
 # from megatron.data.bert_dataset import build_training_sample
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
-# from megatron.tokenizer.tokenizer import _GPT2BPETokenizer
 from tools.retro.utils import get_gpt_tokenizer
 
-from .utils import (
-    # get_dataset_metas_path,
-    get_db_info_map,
-    get_indexed_dataset_infos,
-)    
+from .utils import get_db_info_map, get_indexed_dataset_infos
 
 # >>>
 from lutil import pax, print_seq
@@ -56,13 +51,6 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
         self.gpt_tokenizer = get_gpt_tokenizer(args)
         self.max_gpt_chunk_length = args.retro_chunk_length
-
-        # >>>
-        # self.gpt_tokenizer = _GPT2BPETokenizer(
-        #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-        #     merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
-        # )
-        # <<<
 
 
     def __len__(self):
@@ -98,6 +86,18 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         # })
 
         return {'text': np.array(token_ids, dtype=np.int64)}
+
+
+class GPTToTextDataset(torch.utils.data.Dataset):
+
+    def __init__(self, gpt_dataset):
+        super().__init__()
+
+    def __len__(self):
+        raise Exception("hi.")
+
+    def __getitem__(self, idx):
+        pax(0, {"idx": idx})
 
 
 # def get_dataset_map(args):

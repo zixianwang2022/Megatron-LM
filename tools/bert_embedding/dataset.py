@@ -260,7 +260,7 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
 
         # Text.
         text_sample = self.text_dataset[idx]
-        # pax(0, {"text_sample": text_sample})
+        pax(0, {"text_sample": text_sample})
         text = text_sample["text"]
 
         # Bert/Wordpiece tokens (+truncate).
