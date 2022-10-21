@@ -66,6 +66,11 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         if not bert_token_ids:
             bert_token_ids = [ self.bert_tokenizer.pad_id ] # hack when empty seq
 
+        # >>> debug.
+        # bert_token_ids = [self.bert_tokenizer.pad_id] * 200
+        bert_token_ids = bert_token_ids[:128]
+        # <<<
+
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
         # We % 2**32 since numpy requres the seed to be between 0 and 2**32 - 1

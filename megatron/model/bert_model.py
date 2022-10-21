@@ -29,6 +29,11 @@ from megatron.model.utils import init_method_normal
 from megatron.model.utils import scaled_init_method_normal
 from .module import MegatronModule
 
+# >>>
+from lutil.pax import print_mem_stats
+# <<<
+
+
 def bert_extended_attention_mask(attention_mask):
     # We create a 3D attention mask from a 2D tensor mask.
     # [b, 1, s]
@@ -185,16 +190,25 @@ class BertModel(MegatronModule):
     def forward(self, bert_model_input, attention_mask,
                 tokentype_ids=None, lm_labels=None):
 
+        # >>>
+        # print_mem_stats("bert 0")
+        # <<<
         extended_attention_mask = bert_extended_attention_mask(attention_mask)
         input_ids = bert_model_input
         position_ids = bert_position_ids(input_ids)
 
+        # >>>
+        # print_mem_stats("bert 1")
+        # <<<
         lm_output = self.language_model(
             input_ids,
             position_ids,
             extended_attention_mask,
             tokentype_ids=tokentype_ids
         )
+        # >>>
+        # print_mem_stats("bert 2")
+        # <<<
 
         # >>>
         # from lutil import pax

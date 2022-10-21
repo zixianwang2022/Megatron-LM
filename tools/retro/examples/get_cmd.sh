@@ -5,8 +5,8 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
-NPROCS=2
+NPROCS=1
+# NPROCS=2
 # NPROCS=4
 # NPROCS=8
 # NPROCS=16
@@ -102,6 +102,11 @@ RETRO_NNBRS_TARGET=200
 
 SEED=1001
 DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
+# MICRO_BATCH_SIZE=1024 # oom
+MICRO_BATCH_SIZE=512
+# MICRO_BATCH_SIZE=256
+# MICRO_BATCH_SIZE=16 # good
+
 # if [[ "$TASKS" == *"embed-chunks"* ]]; then
 # if [[ "0" == "0" ]]; then
 
@@ -206,14 +211,13 @@ DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
 
 # fi
 
-# MICRO_BATCH_SIZE=1024 # oom
-MICRO_BATCH_SIZE=512
-# MICRO_BATCH_SIZE=16 # good
-
 #     --train-iters 1000000 \
 #     --split 949,50,1 \
 #     --lr-decay-iters 990000 \
 #     --lr-warmup-fraction .01 \
+#     --sequence-parallel \
+#     --recompute-activations \
+#     --no-persist-layer-norm \
 MEGATRON_ARGS=" \
     --seed ${SEED} \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \

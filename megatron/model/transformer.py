@@ -28,6 +28,13 @@ from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu
 
+# >>>
+from lutil.pax import print_mem_stats as _print_mem_stats
+def print_mem_stats(s):
+    _print_mem_stats(s)
+    # pass
+# <<<
+
 
 """ We use the following notation throughout this file:
      h: hidden size
@@ -221,24 +228,41 @@ class CoreAttention(MegatronModule):
         # ===================================
 
         # [b, np, sq, sk]
+        # >>>
+        # print_mem_stats("core 0a")
+        # <<<
         output_size = (query_layer.size(1),
                        query_layer.size(2),
                        query_layer.size(0),
                        key_layer.size(0))
 
         # [sq, b, np, hn] -> [sq, b * np, hn]
+        # >>>
+        # print_mem_stats("core 0b")
+        # <<<
         query_layer = query_layer.view(output_size[2],
                                        output_size[0] * output_size[1], -1)
         # [sk, b, np, hn] -> [sk, b * np, hn]
+        # >>>
+        # print_mem_stats("core 0c")
+        # <<<
         key_layer = key_layer.view(output_size[3],
                                    output_size[0] * output_size[1], -1)
 
         # preallocting input tensor: [b * np, sq, sk]
+        # >>>
+        # print_mem_stats("core 0d")
+        # return None
+        # <<<
         matmul_input_buffer = get_global_memory_buffer().get_tensor(
             (output_size[0]*output_size[1], output_size[2], output_size[3]),
             query_layer.dtype, "mpu")
 
         # Raw attention scores. [b * np, sq, sk]
+        # >>>
+        # print_mem_stats("core 0e")
+        # return None
+        # <<<
         matmul_result = torch.baddbmm(
             matmul_input_buffer,
             query_layer.transpose(0, 1),   # [b * np, sq, hn]
@@ -246,6 +270,9 @@ class CoreAttention(MegatronModule):
             beta=0.0, alpha=(1.0/self.norm_factor))
 
         # change view to [b, np, sq, sk]
+        # >>>
+        # print_mem_stats("core 0f")
+        # <<<
         attention_scores = matmul_result.view(*output_size)
 
         # ===========================
@@ -253,12 +280,18 @@ class CoreAttention(MegatronModule):
         # ===========================
 
         # attention scores and attention mask [b, np, sq, sk]
+        # >>>
+        # print_mem_stats("core 1a")
+        # <<<
         attention_probs = self.scale_mask_softmax(attention_scores,
                                                   attention_mask)
 
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
 
+        # >>>
+        # print_mem_stats("core 1b")
+        # <<<
         if not self.sequence_parallel:
             with mpu.get_cuda_rng_tracker().fork():
                 attention_probs = self.attention_dropout(attention_probs)
@@ -273,6 +306,9 @@ class CoreAttention(MegatronModule):
         # [sk, b, np, hn] --> [b, np, sq, hn]
 
         # context layer shape: [b, np, sq, hn]
+        # >>>
+        # print_mem_stats("core 2")
+        # <<<
         output_size = (value_layer.size(1),
                        value_layer.size(2),
                        query_layer.size(0),
@@ -300,6 +336,9 @@ class CoreAttention(MegatronModule):
             (self.hidden_size_per_partition,)
         context_layer = context_layer.view(*new_context_layer_shape)
 
+        # >>>
+        # print_mem_stats("core 3")
+        # <<<
         return context_layer
 
 
@@ -397,6 +436,11 @@ class ParallelAttention(MegatronModule):
         # =================================================
         # Pre-allocate memory for key-values for inference.
         # =================================================
+
+        # >>>
+        # print_mem_stats("attn 0")
+        # return None, None
+        # <<<
         if inference_params:
             if self.layer_number not in inference_params.key_value_memory_dict:
                 inf_max_seq_len = inference_params.max_sequence_len
@@ -415,6 +459,10 @@ class ParallelAttention(MegatronModule):
         # Query, Key, and Value
         # =====================
 
+        # >>>
+        # print_mem_stats("attn 1")
+        # return None, None
+        # <<<
         if self.attention_type == AttnType.self_attn:
             # Attention heads [sq, b, h] --> [sq, b, (np * 3 * hn)]
             mixed_x_layer, _ = self.query_key_value(hidden_states)
@@ -455,6 +503,10 @@ class ParallelAttention(MegatronModule):
         # Adjust key and value for inference
         # ==================================
 
+        # >>>
+        # print_mem_stats("attn 2")
+        # return None, None
+        # <<<
         if inference_params:
             batch_start = inference_params.batch_size_offset
             batch_end = batch_start + key_layer.size(1)
@@ -476,6 +528,10 @@ class ParallelAttention(MegatronModule):
         # core attention computation
         # ==================================
 
+        # >>>
+        # print_mem_stats("attn 3")
+        # return None, None
+        # <<<
         if self.checkpoint_core_attention:
             context_layer = self._checkpointed_attention_forward(
                 query_layer, key_layer, value_layer, attention_mask)
@@ -487,8 +543,15 @@ class ParallelAttention(MegatronModule):
         # Output. [sq, b, h]
         # =================
 
+        # >>>
+        # print_mem_stats("attn 4")
+        # return None, None
+        # <<<
         output, bias = self.dense(context_layer)
 
+        # >>>
+        # print_mem_stats("attn 5")
+        # <<<
         return output, bias
 
 
@@ -601,8 +664,16 @@ class ParallelTransformerLayer(MegatronModule):
         # hidden_states: [s, b, h]
 
         # Layer norm at the beginning of the transformer layer.
+        # >>>
+        # print_mem_stats("layer 0a")
+        # return hidden_states
+        # <<<
         layernorm_output = self.input_layernorm(hidden_states)
         # Self attention.
+        # >>>
+        # print_mem_stats("layer 0b")
+        # return hidden_states
+        # <<<
         attention_output, attention_bias = \
             self.self_attention(
                 layernorm_output,
@@ -610,11 +681,19 @@ class ParallelTransformerLayer(MegatronModule):
                 inference_params=inference_params)
 
         # Residual connection.
+        # >>>
+        # print_mem_stats("layer 1")
+        # return hidden_states
+        # <<<
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = hidden_states
 
+        # >>>
+        # print_mem_stats("layer 2")
+        # return hidden_states
+        # <<<
         if self.drop_path is None:
             # jit scripting for a nn.module (with dropout) is not
             # trigerring the fusion kernel. For now, we use two
@@ -641,8 +720,14 @@ class ParallelTransformerLayer(MegatronModule):
             layernorm_input = residual + self.drop_path(out)
 
         # Layer norm post the self attention.
+        # >>>
+        # print_mem_stats("layer 3")
+        # <<<
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
+        # >>>
+        # print_mem_stats("layer 4")
+        # <<<
         if self.layer_type == LayerType.decoder:
             attention_output, attention_bias = \
                 self.inter_attention(layernorm_output,
@@ -664,15 +749,24 @@ class ParallelTransformerLayer(MegatronModule):
             # Layer norm post the decoder attention
             layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
 
+        # >>>
+        # print_mem_stats("layer 5")
+        # <<<
         # MLP.
         mlp_output, mlp_bias = self.mlp(layernorm_output)
 
         # Second residual connection.
+        # >>>
+        # print_mem_stats("layer 6")
+        # <<<
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = layernorm_input
 
+        # >>>
+        # print_mem_stats("layer 7")
+        # <<<
         if self.drop_path is None:
             with self.bias_dropout_add_exec_handler():
                 output = bias_dropout_add_func(
@@ -697,6 +791,10 @@ class ParallelTransformerLayer(MegatronModule):
                                               training=self.training)
             output = residual + self.drop_path(out)
 
+        # >>>
+        # print_mem_stats("layer 8")
+        # return hidden_states
+        # <<<
         return output
 
 
@@ -891,6 +989,9 @@ class ParallelTransformer(MegatronModule):
         # hidden_states: [s, b, h]
 
         # Checks.
+        # >>>
+        # print_mem_stats("tf 0")
+        # <<<
         if inference_params:
             assert self.recompute_granularity is None, \
                 'inference does not work with activation checkpointing'
@@ -914,17 +1015,27 @@ class ParallelTransformer(MegatronModule):
         #   likely redundant, since p2p_communication.py (likely originator)
         #   already creates viewless tensors. That said, make_viewless_tensor()
         #   is called here to be future-proof and corner-case-proof.
+        # >>>
+        # print_mem_stats("tf 1")
+        # <<<
         hidden_states = mpu.make_viewless_tensor(
             hidden_states,
             requires_grad=True,
             keep_graph=True,
         )
 
+        # >>>
+        # print_mem_stats("tf 2")
+        # <<<
         if self.sequence_parallel:
             rng_context = mpu.get_cuda_rng_tracker().fork()
         else:
             rng_context = nullcontext()
 
+        # >>>
+        # print_mem_stats("tf 3")
+        # return hidden_states
+        # <<<
         with rng_context:
             # Forward pass.
             if self.recompute_granularity == 'full':
@@ -943,7 +1054,14 @@ class ParallelTransformer(MegatronModule):
                         inference_params=inference_params)
 
         # Final layer norm.
+        # >>>
+        # print_mem_stats("tf 4")
+        # return hidden_states
+        # <<<
         if self.post_process and self.post_layer_norm:
             hidden_states = self.final_layernorm(hidden_states)
 
+        # >>>
+        # print_mem_stats("tf 5")
+        # <<<
         return hidden_states

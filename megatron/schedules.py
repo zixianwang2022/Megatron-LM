@@ -30,6 +30,7 @@ from megatron.model import ModelType
 
 # >>>
 from lutil import pax
+from lutil.pax import print_mem_stats
 # <<<
 
 

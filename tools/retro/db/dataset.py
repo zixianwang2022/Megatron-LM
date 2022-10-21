@@ -20,6 +20,7 @@ import torch
 
 # from megatron import get_args
 # from megatron import get_args, get_tokenizer, print_rank_0
+from megatron import print_rank_0
 # from megatron.data.bert_dataset import build_training_sample
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from tools.retro.utils import get_gpt_tokenizer
@@ -117,8 +118,11 @@ def get_gpt_chunk_dataset_map(args):
     # Indexed datasets.
     indexed_datasets = []
     for index, indexed_dataset_info in enumerate(indexed_dataset_infos):
-        print("indexed dataset %d / %d [ %s ]." %
-              (index, len(indexed_dataset_infos), indexed_dataset_info["prefix"]))
+        print_rank_0("indexed dataset %d / %d [ %s ]." % (
+            index,
+            len(indexed_dataset_infos),
+            indexed_dataset_info["prefix"],
+        ))
         indexed_datasets.append(
             make_indexed_dataset(indexed_dataset_info["prefix"], "mmap", True))
 
@@ -127,7 +131,7 @@ def get_gpt_chunk_dataset_map(args):
     chunk_dataset_map = {}
     for db_index, (db_key, db_info) in enumerate(db_info_map.items()):
 
-        print("init gpt chunk dataset %d / %d [ %s ]." %
+        print_rank_0("init gpt chunk dataset %d / %d [ %s ]." %
               (db_index, len(db_info_map), db_key))
 
         # Load chunk index.

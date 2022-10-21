@@ -26,6 +26,10 @@ from megatron.model.transformer import ParallelTransformer
 from megatron.model.utils import get_linear_layer
 from megatron.model.utils import init_method_normal, scaled_init_method_normal
 
+# >>>
+from lutil.pax import print_mem_stats
+# <<<
+
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
                        bias=None):
@@ -426,6 +430,9 @@ class TransformerLanguageModel(MegatronModule):
                 enc_hidden_states=None, output_enc_hidden=False):
 
         # Encoder embedding.
+        # >>>
+        # print_mem_stats("lm 0")
+        # <<<
         if self.pre_process:
             encoder_input = self.embedding(enc_input_ids, enc_position_ids,
                                            tokentype_ids=tokentype_ids)
@@ -433,6 +440,16 @@ class TransformerLanguageModel(MegatronModule):
             encoder_input = None
 
         # Run encoder.
+        # >>>
+        # from lutil import pax
+        # pax(0, {
+        #     "encoder_input" : encoder_input,
+        #     "pooled_output" : encoder_input[0],
+        # })
+        # return encoder_input, encoder_input[0]
+
+        # print_mem_stats("lm 1")
+        # <<<
         if enc_hidden_states is None:
             if self.encoder is not None:
                 encoder_output = self.encoder(
@@ -444,6 +461,10 @@ class TransformerLanguageModel(MegatronModule):
         else:
             encoder_output = enc_hidden_states.to(encoder_input.dtype)
 
+        # >>>
+        # print_mem_stats("lm 2")
+        # print_mem_stats("lm 2 [%s, %s]" % (enc_hidden_states is None, self.encoder is not None))
+        # <<<
         if self.post_process:
             if self.add_pooler:
                 pooled_output = self.pooler(encoder_output,
@@ -452,6 +473,9 @@ class TransformerLanguageModel(MegatronModule):
         # output_enc_hidden refers to when we just need the encoder's
         # output. For example, it is helpful to compute
         # similarity between two sequences by average pooling
+        # >>>
+        # print_mem_stats("lm 3")
+        # <<<
         if not self.add_decoder or output_enc_hidden:
             if self.add_pooler and self.post_process:
                 return encoder_output, pooled_output

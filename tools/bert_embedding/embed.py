@@ -32,7 +32,7 @@ from .dataset import BertEmbeddingDataset
 
 # >>>
 from lutil import pax, print_seq
-from lutil.pax import get_mem_stats_str
+from lutil.pax import print_mem_stats, get_mem_stats_str
 # <<<
 
 
@@ -163,7 +163,10 @@ def collate_batch(samples):
     # Build batch with padded samples.
     batch = default_collate(padded_samples)
 
-    # pax(0, {"batch": batch})
+    # >>>
+    # if batch["text"].shape[1] > 400:
+    #     pax(0, {"batch": batch})
+    # <<<
 
     return batch
 
@@ -227,10 +230,12 @@ def get_batch(data_iterator):
 
 
 def loss_func(loss_mask, sentence_order, seq_lengths,
+              # input_tensor, # ** temporary **
               output_tensor, non_loss_data):
     """Loss function. Sequence lengths returned here for progress print-outs."""
     assert non_loss_data
     return seq_lengths, output_tensor
+    # return seq_lengths, input_tensor, output_tensor
 
 
 def forward_step(data_iterator, model):
@@ -246,10 +251,10 @@ def forward_step(data_iterator, model):
         types = None
 
     # Forward pass through the model.
-    print("BEFORE ... %s" % get_mem_stats_str())
+    # print_mem_stats("BEFORE")
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
-    print("AFTER ... %s" % get_mem_stats_str())
+    # print_mem_stats("AFTER")
 
     return output_tensor, partial(loss_func, loss_mask, sentence_order,
                                   seq_lengths)
@@ -278,38 +283,56 @@ def embed_batches(models, data_loader):
 
             # Forward pass.
             batch_start_time = time.time()
-            try:
-                results = forward_backward_func(
-                    forward_step,
-                    data_iterator,
-                    models,
-                    optimizer = None,
-                    timers = None,
-                    forward_only = True,
-                    collect_non_loss_data = True,
-                )
-            except:
-                pax({"batch_index": batch_index})
+            results = forward_backward_func(
+                forward_step,
+                data_iterator,
+                models,
+                optimizer = None,
+                timers = None,
+                forward_only = True,
+                collect_non_loss_data = True,
+            )
+            # >>>
+            # print_mem_stats("batch %d / %d [ sq %d ]" % (
+            #     batch_index,
+            #     n_batches,
+            #     results[0][0].max().item(),
+            #     # results[0][1].shape[1],
+            # ))
+            # if batch_index == 30:
+            #     exit(0)
+            # continue
+            # <<<
             batch_end_time = time.time()
             batch_times.append(batch_end_time - batch_start_time)
             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
 
             assert len(results) == 1, "assert len(models) == 1 before this"
             seq_lengths, output_tensor = results[0]
+            # seq_lengths, input_tensor, output_tensor = results[0]
             embeddings.append(output_tensor.cpu().numpy())
 
             # Progress.
-            if batch_index % 5 == 0:
+            if batch_index % 1 == 0:
                 est_dataset_time = (batch_end_time - dataset_start_time) + \
                     (n_batches - batch_index - 1) * mean_batch_time
                 samples_per_sec = len(data_loader.dataset) / est_dataset_time
-                print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ]." % (
+                print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ] ... %s" % (
                     batch_index,
                     n_batches,
                     seq_lengths.max().item(),
                     samples_per_sec,
                     (47e9 / samples_per_sec) / 16 / (24 * 3600),
+                    get_mem_stats_str(),
                 ))
+                # >>>
+                # if batch_index == 6:
+                #     pax(0, {
+                #         "seq_lengths" : str(seq_lengths),
+                #         "input_tensor" : str(input_tensor.shape),
+                #         "output_tensor" : str(output_tensor.shape),
+                #     })
+                # <<<
 
     return np.concatenate(embeddings, axis = 0)
 

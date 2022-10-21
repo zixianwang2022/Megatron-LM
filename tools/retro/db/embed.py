@@ -63,6 +63,10 @@ def embed_db(args, timer):
         "embed_dir" : info["embed_dir"],
     } for key, info in gpt_dataset_map.items()}
 
+    # >>>
+    del text_dataset_map["full"]
+    # <<<
+
     # pax(0, {
     #     "gpt_dataset_map" : gpt_dataset_map,
     #     "text_dataset_map" : text_dataset_map,
