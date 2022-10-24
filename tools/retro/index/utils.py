@@ -26,11 +26,11 @@ from lutil import pax
 def get_index_str(args):
     """Faiss notation for index structure."""
     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
-        args.pq_m,
-        args.ivf_dim,
-        args.ncluster,
-        args.hnsw_m,
-        args.pq_m,
+        args.retro_pq_m,
+        args.retro_ivf_dim,
+        args.retro_nclusters,
+        args.retro_hnsw_m,
+        args.retro_pq_m,
     )
 
 
@@ -42,14 +42,14 @@ def get_index_workdir(args):
     # index_dir_path = os.path.join(
     #     # args.base_dir,
     #     # "index",
-    #     args.index_dir,
-    #     "%s-%s" % (args.index_ty, args.data_ty),
-    #     "%s__t%d" % (index_str, args.ntrain),
+    #     args.retro_index_dir,
+    #     "%s-%s" % (args.retro_index_ty, args.retro_data_ty),
+    #     "%s__t%d" % (index_str, args.retro_ntrain),
     # )
     index_dir_path = os.path.join(
         args.retro_workdir,
         "index",
-        args.index_ty,
+        args.retro_index_ty,
         index_str,
     )
 

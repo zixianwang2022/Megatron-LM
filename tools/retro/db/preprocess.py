@@ -33,8 +33,9 @@ from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 from .utils import (
     get_individual_db_dir,
     get_individual_db_path,
-    get_full_db_info,
-    get_sampled_db_info,
+    # get_full_db_info,
+    # get_sampled_db_info,
+    get_db_info_map,
     save_indexed_dataset_infos,
 )
 
@@ -286,7 +287,8 @@ def build_full_db(args, indexed_dataset_infos):
     #     "ds_infos / 1" : indexed_dataset_infos[1],
     # })
 
-    full_db_path = get_full_db_info(args)["db_path"]
+    # full_db_path = get_full_db_info(args)["db_path"]
+    full_db_path = get_db_info_map(args)["full"]["db_path"]
     n_chunks = {
         "valid" : sum(m["n_chunks_valid"] for m in indexed_dataset_infos),
         "invalid" : sum(m["n_chunks_invalid"] for m in indexed_dataset_infos),
@@ -388,7 +390,8 @@ def build_sampled_db(args, indexed_dataset_infos):
 
     print(" > build sampled chunk db.")
 
-    sampled_db_path = get_sampled_db_info(args)["db_path"]
+    # sampled_db_path = get_sampled_db_info(args)["db_path"]
+    sampled_db_path = get_db_info_map(args)["sampled"]["db_path"]
     n_chunks = sum(m["n_chunks_sampled"] for m in indexed_dataset_infos)
 
     # Delete existing chunk db if incorrect size.

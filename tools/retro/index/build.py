@@ -17,7 +17,7 @@ import os
 import shutil
 import torch
 
-from tools.retro.embed.utils import get_embedding_path_map
+from tools.retro.db.utils import get_db_info_map
 from tools.retro.index.factory import IndexFactory
 
 from .utils import get_index_workdir
@@ -36,16 +36,20 @@ from lutil import pax
 def train_index(args, timer):
     # workdir = get_workdir(args)
     workdir = get_index_workdir(args)
-    embedding_path_map = get_embedding_path_map(args.retro_workdir)
-    input_data_paths = embedding_path_map["sampled"]["data"]
+    # embedding_path_map = get_embedding_path_map(args.retro_workdir)
+    # input_data_paths = embedding_path_map["sampled"]["data"]
+    input_data_paths = get_db_info_map(args)["sampled"]["embed_paths"]
+    # pax(0, {"input_data_paths": input_data_paths})
     index = IndexFactory.get_index(args)
     index.train(input_data_paths, workdir, timer)
 
 
 def add_to_index(args, timer):
     workdir = get_index_workdir(args)
-    embedding_path_map = get_embedding_path_map(args.retro_workdir)
-    input_data_paths = embedding_path_map["full"]["data"]
+    # embedding_path_map = get_embedding_path_map(args.retro_workdir)
+    # input_data_paths = embedding_path_map["full"]["data"]
+    input_data_paths = get_db_info_map(args)["full"]["embed_paths"]
+    # pax(0, {"input_data_paths": input_data_paths})
     index = IndexFactory.get_index(args)
     output_index_path = index.add(input_data_paths, workdir, timer)
     # pax(0, {
@@ -56,7 +60,14 @@ def add_to_index(args, timer):
     return output_index_path
 
 
-def remove_add_outputs(args, timer):
+def build_index(args, timer):
+    raise Exception("hi.")
+    train_index(args, timer)
+    add_to_index(args, timer)
+
+
+# def remove_add_outputs(args, timer):
+def remove_add_files(args, timer):
 
     # Single process only.
     if torch.distributed.get_rank() != 0:

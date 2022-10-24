@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-# import torch
+import torch
 
 from megatron import get_args
 from megatron.tokenizer.tokenizer import (
@@ -25,34 +25,10 @@ from megatron.tokenizer.tokenizer import (
 from .timer import Timer
 
 
-# def mkdir(path):
-#     try:
-#         os.mkdir(path)
-#     except FileExistsError as e:
-#         pass
-#     return path
-
-
-# def make_sub_dir(top_path, sub_name):
-#     sub_path = os.path.join(top_path, sub_name)
-#     mkdir(sub_path)
-#     return sub_path
-
-
-# def print_rank(*args):
-#     if len(args) == 1:
-#         return print_rank(None, *args)
-#     assert len(args) == 2
-#     r, s = args
-#     if r is None or not torch.distributed.is_initialized() or r == torch.distributed.get_rank():
-#         print("[r %s] ... %s" % (torch.distributed.get_rank() if torch.distributed.is_initialized() else "--", s), flush = True)
-
-
 def get_args_path(workdir):
     return os.path.join(workdir, "args.json")
 
 
-# def get_gpt_tokenizer(args):
 def get_gpt_tokenizer():
     args = get_args()
     return _GPT2BPETokenizer(
@@ -61,10 +37,29 @@ def get_gpt_tokenizer():
     )
 
 
-# def get_bert_tokenizer(args):
 def get_bert_tokenizer():
     args = get_args()
     return _BertWordPieceTokenizer(
         vocab_file = args.retro_bert_vocab_file,
         lower_case = True,
     )
+
+
+class GPTToTextDataset(torch.utils.data.Dataset):
+
+    def __init__(self, gpt_dataset):
+
+        super().__init__()
+
+        self.gpt_dataset = gpt_dataset
+        self.gpt_tokenizer = get_gpt_tokenizer()
+
+
+    def __len__(self):
+        return len(self.gpt_dataset)
+
+
+    def __getitem__(self, idx):
+        gpt_token_ids = self.gpt_dataset[idx]["text"].tolist()
+        text = self.gpt_tokenizer.detokenize(gpt_token_ids)
+        return {"text": text}

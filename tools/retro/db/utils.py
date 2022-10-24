@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
 import json
 import os
 
@@ -49,27 +50,72 @@ def get_individual_db_path(args, data_name):
     return os.path.join(get_individual_db_dir(args), f"db.{data_name}.hdf5")
 
 
-def get_full_db_info(args):
-    workdir = os.path.join(get_base_db_workdir(args), "full")
-    return {
-        "db_path" : os.path.join(workdir, "db.hdf5"),
-        "embed_dir" : os.path.join(workdir, "embed"),
-    }
+# def get_full_db_info(args):
+#     workdir = os.path.join(get_base_db_workdir(args), "full")
+#     return {
+#         "db_path" : os.path.join(workdir, "db.hdf5"),
+#         "embed_dir" : os.path.join(workdir, "embed"),
+#         # "embed_paths" : sorted(glob.glob(embedding_dir + "/*.hdf5")),
+#     }
 
 
-def get_sampled_db_info(args):
-    workdir = os.path.join(get_base_db_workdir(args), "sampled")
+# def get_sampled_db_info(args):
+#     workdir = os.path.join(get_base_db_workdir(args), "sampled")
+#     return {
+#         "db_path" : os.path.join(workdir, "db.hdf5"),
+#         "embed_dir" : os.path.join(workdir, "embed"),
+#         # "embed_paths" : sorted(glob.glob(embedding_dir + "/*.hdf5")),
+#     }
+
+
+# def get_db_info_map(args):
+#     return {
+#         "full" : get_full_db_info(args),
+#         "sampled" : get_sampled_db_info(args),
+#     }
+def get_db_info(args, key):
+    workdir = os.path.join(get_base_db_workdir(args), key)
+    db_path = os.path.join(workdir, "db.hdf5")
+    embed_dir = os.path.join(workdir, "embed")
+    embed_paths = sorted(glob.glob(embed_dir + "/*.hdf5")) \
+        if os.path.isdir(embed_dir) else []
     return {
-        "db_path" : os.path.join(workdir, "db.hdf5"),
-        "embed_dir" : os.path.join(workdir, "embed"),
+        "db_path" : db_path,
+        "embed_dir" : embed_dir,
+        "embed_paths" : embed_paths,
     }
 
 
 def get_db_info_map(args):
-    return {
-        "full" : get_full_db_info(args),
-        "sampled" : get_sampled_db_info(args),
-    }
+    return {key:get_db_info(args, key) for key in ("full", "sampled")}
+
+
+# def get_embedding_path_map(workdir):
+
+#     raise Exception("move me to db/.")
+
+#     # Directory map.
+#     chunk_index_path_map = get_chunk_index_path_map(workdir)
+#     embedding_path_map = {}
+#     for key, chunk_index_path in chunk_index_path_map.items():
+
+#         # Embedding sub-directory.
+#         embedding_dir = os.path.join(workdir, "embed", key)
+#         os.makedirs(embedding_dir, exist_ok = True)
+
+#         # Sort data paths for reproducibility.
+#         embedding_path_map[key] = {
+#             "dir" : embedding_dir,
+#             "data" : sorted(glob.glob(embedding_dir + "/*.hdf5")),
+#         }
+
+#     # pax(0, {
+#     #     "chunk_index_path_map" : chunk_index_path_map,
+#     #     "embedding_path_map" : embedding_path_map,
+#     #     "workdir" : workdir,
+#     # })
+
+#     return embedding_path_map
 
 
 # def get_chunk_embedding_path(args, data_prefix):

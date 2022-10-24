@@ -16,7 +16,7 @@
 # import argparse
 from collections import defaultdict
 import faiss
-# from faiss import ParameterSpace
+from faiss import ParameterSpace
 from functools import reduce
 import glob
 import h5py
@@ -30,11 +30,11 @@ import torch
 from tqdm import tqdm
 
 from megatron import mpu, print_rank_0
-from tools.retro.db.utils import get_full_db_info
+from tools.retro.db.utils import get_db_info_map # get_full_db_info
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_workdir
 
-from .dataset import get_dataset_map
+from .dataset import get_text_chunk_dataset_map
 
 # >>>
 from lutil import pax, print_seq
@@ -50,10 +50,9 @@ def get_index(args):
     index = faiss.read_index(added_index_path)
 
     # Search parameters.
-    raise Exception("update search params.")
     if 0:
-        ParameterSpace().set_index_parameter(index, "efSearch", args.efsearch)
-        ParameterSpace().set_index_parameter(index, "nprobe", args.nprobe)
+        ParameterSpace().set_index_parameter(index, "efSearch", args.retro_ef_search)
+        ParameterSpace().set_index_parameter(index, "nprobe", args.retro_nprobe)
 
     # pax(0, {
     #     "index_wrapper" : index_wrapper,
@@ -68,11 +67,15 @@ def get_index(args):
 # def get_chunk_db(args):
 def get_banned_doc_chunk_id_map(args):
 
-    chunk_db_path = get_full_db_info(args)["db_path"]
+    # Load chunk db.
+    print_rank_0("load chunk db.")
+    chunk_db_path = get_db_info_map(args)["full"]["db_path"]
     f = h5py.File(chunk_db_path, "r")
     doc_ids = np.copy(f["chunks_valid"][:, 0])
     f.close()
 
+    # Map docs to chunks.
+    print_rank_0("build doc-chunk-id-map.")
     doc_chunk_id_map = defaultdict(set)
     for chunk_id, doc_id in enumerate(doc_ids):
         doc_chunk_id_map[doc_id].add(chunk_id)
@@ -93,23 +96,26 @@ def get_banned_doc_chunk_id_map(args):
 def get_missing_neighbor_blocks(embed_dir, nbr_dir):
 
     # Delete corrupt files.
+    print_rank_0("delete corrupt neighbor blocks.")
     if torch.distributed.get_rank() == 0:
         existing_block_paths = glob.glob(nbr_dir + "/*.hdf5")
+        # pax(0, {"existing_block_paths": existing_block_paths})
         pbar = tqdm(existing_block_paths)
         for index, path in enumerate(pbar):
             pbar.set_description("verifying neighbor block.")
             f = h5py.File(path, "r")
             try:
                 assert len(f["data"].shape) == 2
-            except:
-                raise Exception("delete block file.")
-            finally:
                 f.close()
+            except Exception as e:
+                raise e
+                os.remove(path)
 
     # Wait for files to be deleted.
     torch.distributed.barrier()
 
     # Missing files.
+    print_rank_0("all missing neighbor blocks.")
     all_files = set(os.path.basename(f)
                     for f in glob.glob(embed_dir + "/*.hdf5"))
     existing_files = set(os.path.basename(f)
@@ -125,6 +131,7 @@ def get_missing_neighbor_blocks(embed_dir, nbr_dir):
     # })
 
     # This rank's missing files.
+    print_rank_0("rank's missing neighbor blocks.")
     data_parallel_rank = mpu.get_data_parallel_rank()
     data_parallel_world_size = mpu.get_data_parallel_world_size()
     rank_missing_files = missing_files[data_parallel_rank:len(missing_files):data_parallel_world_size]
@@ -141,6 +148,7 @@ def get_missing_neighbor_blocks(embed_dir, nbr_dir):
 
     # Extend rank's missing items (with None) such that all ranks have equal
     # length lists. This allows for easier tracking of global progress.
+    print_rank_0("synchronize missing block count.")
     n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_blocks)])
     torch.distributed.all_reduce(n_missing_tensor,
                                  op = torch.distributed.ReduceOp.MAX)
@@ -159,7 +167,8 @@ def get_missing_neighbor_blocks(embed_dir, nbr_dir):
 
 
 # def query_neighbors_single(args, workdir, dataset_key, dataset_path):
-def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
+# def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
+def query_dataset_neighbors(args, index, banned_doc_chunk_id_map,
                             prefix, embed_dir, nbr_dir, dataset):
 
     missing_nbr_blocks = get_missing_neighbor_blocks(embed_dir, nbr_dir)
@@ -188,14 +197,17 @@ def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
             ))
 
             # Load embeddings.
+            print_rank_0("load embeddings.")
             f = h5py.File(block["embed_path"], "r")
             data = np.copy(f["data"])
             f.close()
 
             # Query neighbor ids.
+            print_rank_0("search.")
             _, query_nbr_ids = index.search(data, args.retro_nnbrs_query)
 
             # Banned neighbor ids.
+            print_rank_0("get banned neighbor ids.")
             sample_ids = sorted(list(set(chunk_id // dataset.n_chunk_seq_ratio
                                          for chunk_id in range(*block["range"]))))
             sample_banned_chunk_id_map = {}
@@ -207,6 +219,7 @@ def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
                 sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
 
             # Filter banned neighbor ids.
+            print_rank_0("filter banned neighbor ids.")
             filtered_nbr_ids = np.full(
                 shape = (len(query_nbr_ids), args.retro_nnbrs_target),
                 fill_value = -1,
@@ -231,6 +244,7 @@ def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
             #     "filtered_nbr_ids" : filtered_nbr_ids.tolist(),
             # })
 
+            print_rank_0("save neighbors.")
             os.makedirs(os.path.dirname(block["nbr_path"]), exist_ok = True)
             f = h5py.File(block["nbr_path"], "w")
             f.create_dataset("neighbors", data = filtered_nbr_ids)
@@ -241,7 +255,8 @@ def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
         torch.distributed.barrier()
 
 
-def query_neighbors(args, workdir, timer):
+# def query_neighbors(args, workdir, timer):
+def query_pretraining_neighbors(args, timer):
 
     # >>>
     # # Set num threads (torch.distributed reset it to 1).
@@ -259,15 +274,16 @@ def query_neighbors(args, workdir, timer):
     banned_doc_chunk_id_map = get_banned_doc_chunk_id_map(args)
 
     print_rank_0(" > get dataset map.")
-    dataset_map = get_dataset_map(args, workdir)
+    text_dataset_map = get_text_chunk_dataset_map(args)
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")
-    for prefix, info in dataset_map.items():
+    for prefix, info in text_dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
-        query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
+        # query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
+        query_dataset_neighbors(args, index, banned_doc_chunk_id_map,
                                 prefix,
                                 info["embed_dir"], info["nbr_dir"],
-                                info["data"])
+                                info["data"].gpt_dataset)
 

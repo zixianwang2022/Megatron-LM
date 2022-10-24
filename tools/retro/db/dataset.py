@@ -23,7 +23,7 @@ import torch
 from megatron import print_rank_0
 # from megatron.data.bert_dataset import build_training_sample
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
-from tools.retro.utils import get_gpt_tokenizer
+# from tools.retro.utils import get_gpt_tokenizer
 
 from .utils import get_db_info_map, get_indexed_dataset_infos
 
@@ -50,7 +50,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
         # self.max_gpt_chunk_length = args.retro_chunk_length
         self.max_gpt_chunk_length = max_gpt_chunk_length
-        self.gpt_tokenizer = get_gpt_tokenizer()
+        # self.gpt_tokenizer = get_gpt_tokenizer()
 
 
     def __len__(self):
@@ -86,27 +86,6 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         # })
 
         return {'text': np.array(token_ids, dtype=np.int64)}
-
-
-class GPTToTextDataset(torch.utils.data.Dataset):
-
-
-    def __init__(self, gpt_dataset):
-
-        super().__init__()
-
-        self.gpt_dataset = gpt_dataset
-        self.gpt_tokenizer = get_gpt_tokenizer()
-
-
-    def __len__(self):
-        return len(self.gpt_dataset)
-
-
-    def __getitem__(self, idx):
-        gpt_token_ids = self.gpt_dataset[idx]["text"].tolist()
-        text = self.gpt_tokenizer.detokenize(gpt_token_ids)
-        return {"text": text}
 
 
 # def get_dataset_map(args):

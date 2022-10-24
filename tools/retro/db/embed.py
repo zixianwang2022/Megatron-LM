@@ -13,47 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import h5py
-# import json
-# import numpy as np
-# import os
-# import torch
-
-# from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from tools.bert_embedding import embed_text_datasets
+from tools.retro.utils import GPTToTextDataset
 
-from .dataset import GPTToTextDataset, get_gpt_chunk_dataset_map
-# from .utils import get_dataset_metas_path, get_db_info_map
+from .dataset import get_gpt_chunk_dataset_map
 
 # >>>
 from lutil import pax
 # <<<
 
 
-# def embed_chunks(args, timer):
-
-#     # Embedding workdir.
-#     workdir = os.path.join(args.retro_workdir, "embed")
-#     os.makedirs(workdir, exist_ok = True)
-
-#     # Load model.
-#     models, optimizer, opt_param_scheduler = \
-#         setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
-
-#     # Dataset infos (indexed datasets, chunk index, etc.).
-#     dataset_map = get_dataset_map(args)
-
-#     # >>>
-#     # del dataset_map["full"]
-#     # <<<
-
-#     # Embed each (i.e., full, sampled) dataset.
-#     for prefix, dataset in dataset_map.items():
-#         print_rank_0(" > embed '%s' chunks. [ count %d ]" %
-#                      (prefix, len(dataset)))
-#         embed_dataset_chunks(args, workdir, models, prefix, dataset)
-# def embed_corpus_chunks(args, timer):
-# def embed_chunk_db(args, timer):
 def embed_db(args, timer):
 
     # GPT, text datasets.
@@ -74,5 +43,5 @@ def embed_db(args, timer):
 
     # Embed text datasets.
     embed_text_datasets(text_dataset_map,
-                        args.retro_bert_seq_length,
+                        args.retro_bert_max_chunk_length,
                         args.retro_block_size)

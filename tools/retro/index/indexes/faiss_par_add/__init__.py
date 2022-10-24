@@ -23,7 +23,7 @@ import torch
 # from tools.retro.data import load_data
 from tools.retro.index import Index
 from tools.retro.index.indexes.faiss_base import FaissBaseIndex
-from tools.retro.utils import print_rank
+# from tools.retro.utils import print_rank
 
 class FaissParallelAddIndex(Index):
 

@@ -29,8 +29,12 @@ import torch
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import _print_args
 from tools.retro.db import build_db, preprocess_db, embed_db
-# from tools.retro.index.build import add_to_index, train_index
-# from tools.retro.nbr.build import build_neighbor_table
+from tools.retro.index.build import add_to_index, build_index, train_index
+from tools.retro.nbr.build import (
+    build_pretraining_neighbors,
+    embed_pretraining_chunks,
+    query_pretraining_neighbors,
+)
 from tools.retro.utils import get_args_path, Timer
 
 # >>>
@@ -46,9 +50,12 @@ def add_retro_args(parser):
     group.add_argument("--retro-gpt-vocab-file", required = True)
     group.add_argument("--retro-gpt-merge-file", required = True)
     group.add_argument("--retro-gpt-tokenizer-type", required = True)
+    group.add_argument("--retro-gpt-seq-length", type = int, required = True)
+    group.add_argument("--retro-gpt-chunk-length", type = int, required = True)
     group.add_argument("--retro-bert-vocab-file", required = True)
     group.add_argument("--retro-bert-tokenizer-type", required = True)
     # group.add_argument("--retro-precompute-bert-lengths", action="store_true")
+    group.add_argument("--retro-bert-max-chunk-length", type = int, required = True)
 
     group.add_argument("--retro-tasks", required = True)
     group.add_argument("--retro-index-ty", required = True, choices = [
@@ -67,9 +74,6 @@ def add_retro_args(parser):
     # group.add_argument("--retro-profile-stage-stop", default = None)
 
     group.add_argument("--retro-workdir", required = True)
-    group.add_argument("--retro-bert-seq-length", type = int, required = True)
-    group.add_argument("--retro-gpt-seq-length", type = int, required = True)
-    group.add_argument("--retro-gpt-chunk-length", type = int, required = True)
     group.add_argument("--retro-nchunks-sampled", type = int, required = True)
     group.add_argument("--retro-block-size", type = int, required = True)
     group.add_argument("--retro-nnbrs-query", type = int, required = True)
@@ -115,18 +119,25 @@ if __name__ == "__main__":
             embed_db(args, timer)
 
         # Index.
+        elif task == "index-build":
+            build_index(args, timer) # train, add
         elif task == "index-train":
             train_index(args, timer)
         elif task == "index-add":
             add_to_index(args, timer)
-        elif task == "index-remove-add-outputs":
-            remove_add_outputs(args, timer)
-        elif task == "index-build":
-            build_index(args, timer) # train, add
+        # elif task == "index-remove-add-outputs":
+        elif task == "index-remove-train-files":
+            remove_train_files(args, timer)
+        elif task == "index-remove-add-files":
+            remove_add_files(args, timer)
 
         # Neighbors.
         elif task == "nbr-build":
-            build_neighbor_table(args, timer)
+            build_pretraining_neighbors(args, timer)
+        elif task == "nbr-embed":
+            embed_pretraining_chunks(args, timer)
+        elif task == "nbr-query":
+            query_pretraining_neighbors(args, timer)
         elif task == "nbr-plot-acc":
             plot_nbr_acc(args, timer)
         elif task == "nbr-verify-codes":
@@ -169,12 +180,12 @@ if __name__ == "__main__":
         # print_rank_0("[ ARG STR ] = %s" % json.dumps(vars(args)), flush = True)
         print_rank_0("[ TIMER STR ] = %s" % json.dumps(timer.time_map))
         print_rank_0("~~~~~~~~~~~~~~~~")
-        timer.print_rank_0()
+        timer.print()
         print_rank_0("~~~~~~~~~~~~~~~~")
         print_rank_0("L-RESULT : %s, %s ... %s ... [ %s ]." % (
-            args.tasks[-1],
-            args.index_ty,
-            timer.get_child_str(args.tasks[-1]),
+            args.retro_tasks[-1],
+            args.retro_index_ty,
+            timer.get_child_str(args.retro_tasks[-1]),
             get_index_str(args),
         ))
     torch.distributed.barrier()

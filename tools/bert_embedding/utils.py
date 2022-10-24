@@ -14,45 +14,15 @@
 # limitations under the License.
 
 from collections import defaultdict
-import glob
 import h5py
 import numpy as np
 import os
 
 from megatron import print_rank_0
-# from tools.retro.chunks.utils import get_chunk_index_path_map
 
 # >>>
 from lutil import pax
 # <<<
-
-
-def get_embedding_path_map(workdir):
-
-    raise Exception("move me to db/.")
-
-    # Directory map.
-    chunk_index_path_map = get_chunk_index_path_map(workdir)
-    embedding_path_map = {}
-    for key, chunk_index_path in chunk_index_path_map.items():
-
-        # Embedding sub-directory.
-        embedding_dir = os.path.join(workdir, "embed", key)
-        os.makedirs(embedding_dir, exist_ok = True)
-
-        # Sort data paths for reproducibility.
-        embedding_path_map[key] = {
-            "dir" : embedding_dir,
-            "data" : sorted(glob.glob(embedding_dir + "/*.hdf5")),
-        }
-
-    # pax(0, {
-    #     "chunk_index_path_map" : chunk_index_path_map,
-    #     "embedding_path_map" : embedding_path_map,
-    #     "workdir" : workdir,
-    # })
-
-    return embedding_path_map
 
 
 def save_data(data_map, *args):

@@ -5,11 +5,11 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
+NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-NPROCS=16
+# NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -34,19 +34,20 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/2
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
 
-# RETRO_TASKS="db-preprocess"
-RETRO_TASKS="db-embed"
 # RETRO_TASKS="db-build"
+# RETRO_TASKS="db-preprocess"
+# RETRO_TASKS="db-embed"
+# RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-# RETRO_TASKS="index-build"
-# RETRO_TASKS="index-remove-train-outputs,train"
-# RETRO_TASKS="index-remove-add-outputs,add"
-# RETRO_TASKS="index-remove-add-outputs"
-# RETRO_TASKS="index-remove-add-outputs,verify" # "verify-index"
+# RETRO_TASKS="index-remove-train-files,train"
+# RETRO_TASKS="index-remove-add-files,add"
+# RETRO_TASKS="index-verify"
 # RETRO_TASKS="index-verify-codes"
 # RETRO_TASKS="index-verify-nbrs"
 # RETRO_TASKS="nbr-build"
+# RETRO_TASKS="nbr-embed"
+RETRO_TASKS="nbr-query"
 # RETRO_TASKS="nbr-plot-acc"
 # RETRO_TASKS="nbr-verify"
 # RETRO_TASKS="misc-time-hnsw"
@@ -94,7 +95,7 @@ RETRO_NPROBE=65536
 # RETRO_PRECOMPUTE_BERT_LENGTHS
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
-RETRO_BERT_SEQ_LENGTH=256
+RETRO_BERT_MAX_CHUNK_LENGTH=256
 # RETRO_NCHUNKS_SAMPLED=300000000
 RETRO_NCHUNKS_SAMPLED=3000000
 RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
@@ -106,7 +107,7 @@ DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
 # MICRO_BATCH_SIZE=1024 # oom
 # MICRO_BATCH_SIZE=512
 # MICRO_BATCH_SIZE=256
-MICRO_BATCH_SIZE=128
+MICRO_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
 # MICRO_BATCH_SIZE=64
 # MICRO_BATCH_SIZE=32
 # MICRO_BATCH_SIZE=16 # good
@@ -262,8 +263,11 @@ RETRO_ARGS=" \
     --retro-gpt-vocab-file ${GPT_VOCAB_FILE} \
     --retro-gpt-merge-file ${GPT_MERGE_FILE} \
     --retro-gpt-tokenizer-type ${GPT_TOKENIZER_TYPE} \
+    --retro-gpt-seq-length ${RETRO_GPT_SEQ_LENGTH} \
+    --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-bert-vocab-file ${BERT_VOCAB_FILE} \
     --retro-bert-tokenizer-type ${BERT_TOKENIZER_TYPE} \
+    --retro-bert-max-chunk-length ${RETRO_BERT_MAX_CHUNK_LENGTH} \
 
     --retro-tasks ${RETRO_TASKS} \
     --retro-index-ty ${RETRO_INDEX_TY} \
@@ -275,9 +279,6 @@ RETRO_ARGS=" \
     --retro-nprobe ${RETRO_NPROBE} \
 
     --retro-workdir ${RETRO_WORKDIR} \
-    --retro-bert-seq-length ${RETRO_BERT_SEQ_LENGTH} \
-    --retro-gpt-seq-length ${RETRO_GPT_SEQ_LENGTH} \
-    --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-nchunks-sampled ${RETRO_NCHUNKS_SAMPLED} \
     --retro-block-size ${RETRO_BLOCK_SIZE} \
     --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \

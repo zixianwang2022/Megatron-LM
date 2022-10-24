@@ -18,10 +18,11 @@ import faiss
 import os
 import torch
 
-from tools.retro.embed.utils import load_data
+from megatron import print_rank_0
+from tools.bert_embedding.utils import load_data
 from tools.retro.index import Index
 from tools.retro.index.utils import get_index_str
-from tools.retro.utils import print_rank
+# from tools.retro.utils import print_rank
 
 # >>>
 from lutil import pax
@@ -48,7 +49,7 @@ class FaissBaseIndex(Index):
         # Init index.
         timer.push("init")
         index_str = get_index_str(self.args)
-        index = faiss.index_factory(self.args.nfeats, index_str)
+        index = faiss.index_factory(self.args.retro_nfeats, index_str)
         timer.pop()
 
         # Move to GPU.
@@ -108,9 +109,20 @@ class FaissBaseIndex(Index):
         index = faiss.read_index(empty_index_path)
         timer.pop()
 
+        # >>>
+        # index_ivf = faiss.extract_index_ivf(index)
+        # # clustering_index = \
+        # #     faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+        # # index_ivf.clustering_index = clustering_index
+        # self.c_verbose(index, True)
+        # self.c_verbose(index_ivf, True)
+        # self.c_verbose(index_ivf.quantizer, True)
+        # # self.c_verbose(index_ivf.clustering_index, True)
+        # <<<
+
         for batch_id, input_data_path in enumerate(input_data_paths):
 
-            print_rank("faiss-base / add ... batch %d / %d." % (
+            print_rank_0("faiss-base / add ... batch %d / %d." % (
                 batch_id,
                 len(input_data_paths),
             ))
@@ -118,17 +130,6 @@ class FaissBaseIndex(Index):
             timer.push("load-data")
             inp = load_data([ input_data_path ], timer)["data"]
             timer.pop()
-
-            # >>>
-            index_ivf = faiss.extract_index_ivf(index)
-            # clustering_index = \
-            #     faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-            # index_ivf.clustering_index = clustering_index
-            self.c_verbose(index, True)
-            self.c_verbose(index_ivf, True)
-            self.c_verbose(index_ivf.quantizer, True)
-            # self.c_verbose(index_ivf.clustering_index, True)
-            # <<<
 
             timer.push("add")
             index.add(inp)

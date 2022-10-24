@@ -22,7 +22,7 @@ import torch
 
 # from tools.retro.data import load_data, save_data
 from tools.retro.index import Index
-from tools.retro.utils import print_rank
+# from tools.retro.utils import print_rank
 
 class IVFPQIndex(Index):
 

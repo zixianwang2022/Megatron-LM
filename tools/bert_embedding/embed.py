@@ -390,13 +390,13 @@ def embed_blocks(models, prefix, workdir, dataset, missing_embedding_blocks):
 
 def embed_text_dataset(models, prefix,
                        workdir, text_dataset,
-                       max_seq_length, block_size):
+                       max_bert_seq_length, block_size):
 
     # Dataset workdir.
     os.makedirs(workdir, exist_ok = True)
 
     # Bert embedding dataset.
-    embedding_dataset = BertEmbeddingDataset(text_dataset, max_seq_length)
+    embedding_dataset = BertEmbeddingDataset(text_dataset, max_bert_seq_length)
 
     # Missing embedding blocks (stored on disk).
     missing_embedding_blocks = get_missing_embedding_blocks(workdir,
@@ -420,7 +420,7 @@ def embed_text_dataset(models, prefix,
 
 # def embed_text_datasets(args, text_dataset_map):
 # def embed_text_datasets(text_dataset_map, block_size):
-def embed_text_datasets(text_dataset_map, max_seq_length, block_size):
+def embed_text_datasets(text_dataset_map, max_bert_seq_length, block_size):
 
     # Load model.
     models, optimizer, opt_param_scheduler = \
@@ -432,5 +432,5 @@ def embed_text_datasets(text_dataset_map, max_seq_length, block_size):
                      (prefix, len(info["data"])))
         embed_text_dataset(models, prefix,
                            info["embed_dir"], info["data"],
-                           max_seq_length, block_size)
+                           max_bert_seq_length, block_size)
 
