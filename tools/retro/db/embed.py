@@ -64,7 +64,7 @@ def embed_db(args, timer):
     } for key, info in gpt_dataset_map.items()}
 
     # >>>
-    del text_dataset_map["full"]
+    # del text_dataset_map["full"]
     # <<<
 
     # pax(0, {
@@ -73,4 +73,6 @@ def embed_db(args, timer):
     # })
 
     # Embed text datasets.
-    embed_text_datasets(text_dataset_map, args.retro_block_size)
+    embed_text_datasets(text_dataset_map,
+                        args.retro_bert_seq_length,
+                        args.retro_block_size)

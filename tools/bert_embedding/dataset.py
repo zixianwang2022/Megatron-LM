@@ -26,7 +26,7 @@ from lutil import pax, print_seq
 
 class BertEmbeddingDataset(torch.utils.data.Dataset):
 
-    def __init__(self, text_dataset):
+    def __init__(self, text_dataset, max_seq_length):
 
         super().__init__()
 
@@ -37,7 +37,8 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         self.bert_tokenizer = get_tokenizer()
 
         # Params to store.
-        self.max_model_seq_length = args.seq_length
+        # self.max_model_seq_length = args.seq_length
+        self.max_seq_length = max_seq_length
         self.seed = args.seed
         self.masked_lm_prob = args.mask_prob
 
@@ -62,14 +63,9 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
 
         # Bert/Wordpiece tokens (+truncate).
         bert_token_ids = self.bert_tokenizer.tokenize(text)
-        bert_token_ids = bert_token_ids[:self.max_model_seq_length - 2] # cls+sep.
+        bert_token_ids = bert_token_ids[:self.max_seq_length - 2] # cls+sep.
         if not bert_token_ids:
             bert_token_ids = [ self.bert_tokenizer.pad_id ] # hack when empty seq
-
-        # >>> debug.
-        # bert_token_ids = [self.bert_tokenizer.pad_id] * 200
-        bert_token_ids = bert_token_ids[:128]
-        # <<<
 
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.

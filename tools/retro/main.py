@@ -67,8 +67,9 @@ def add_retro_args(parser):
     # group.add_argument("--retro-profile-stage-stop", default = None)
 
     group.add_argument("--retro-workdir", required = True)
-    group.add_argument("--retro-seq-length", type = int, required = True)
-    group.add_argument("--retro-chunk-length", type = int, required = True)
+    group.add_argument("--retro-bert-seq-length", type = int, required = True)
+    group.add_argument("--retro-gpt-seq-length", type = int, required = True)
+    group.add_argument("--retro-gpt-chunk-length", type = int, required = True)
     group.add_argument("--retro-nchunks-sampled", type = int, required = True)
     group.add_argument("--retro-block-size", type = int, required = True)
     group.add_argument("--retro-nnbrs-query", type = int, required = True)

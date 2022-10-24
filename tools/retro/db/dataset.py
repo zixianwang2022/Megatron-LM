@@ -153,7 +153,7 @@ def get_gpt_chunk_dataset_map(args):
                 indexed_datasets = indexed_datasets,
                 indexed_dataset_ids = indexed_dataset_ids,
                 chunk_index = chunk_index,
-                max_gpt_chunk_length = args.retro_chunk_length,
+                max_gpt_chunk_length = args.retro_gpt_chunk_length,
             ),
             "embed_dir" : db_info["embed_dir"],
         }

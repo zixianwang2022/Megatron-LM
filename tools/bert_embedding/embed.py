@@ -82,7 +82,12 @@ def get_missing_embedding_blocks(workdir, dataset, block_size):
         pbar = tqdm(existing_block_paths)
         for index, path in enumerate(pbar):
             pbar.set_description("verifying embedding block.")
-            f = h5py.File(path, "r")
+
+            try:
+                f = h5py.File(path, "r")
+            except:
+                raise Exception("unable to open/verify '%s'." % path)
+
             try:
                 assert f["data"].shape[1] == 1024
             except:
@@ -275,11 +280,20 @@ def embed_batches(models, data_loader):
     with torch.no_grad():
 
         # Iterate batches.
+        # n_consumed = 0
         n_batches = len(data_iterator)
         dataset_start_time = time.time()
         batch_times = []
+        max_seq_lengths = []
         embeddings = []
         for batch_index in range(n_batches):
+
+            # >>>
+            # args = get_args()
+            # if batch_index == int(75 * 1024 / args.micro_batch_size):
+            #     torch.distributed.barrier()
+            #     exit(0)
+            # <<<
 
             # Forward pass.
             batch_start_time = time.time()
@@ -292,35 +306,30 @@ def embed_batches(models, data_loader):
                 forward_only = True,
                 collect_non_loss_data = True,
             )
-            # >>>
-            # print_mem_stats("batch %d / %d [ sq %d ]" % (
-            #     batch_index,
-            #     n_batches,
-            #     results[0][0].max().item(),
-            #     # results[0][1].shape[1],
-            # ))
-            # if batch_index == 30:
-            #     exit(0)
-            # continue
-            # <<<
             batch_end_time = time.time()
             batch_times.append(batch_end_time - batch_start_time)
             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
 
             assert len(results) == 1, "assert len(models) == 1 before this"
             seq_lengths, output_tensor = results[0]
-            # seq_lengths, input_tensor, output_tensor = results[0]
+            max_seq_lengths.append(seq_lengths.max().item())
             embeddings.append(output_tensor.cpu().numpy())
+            # n_consumed += output_tensor.shape[0]
+
+            # pax(0, {"output_tensor": str(output_tensor)})
 
             # Progress.
-            if batch_index % 1 == 0:
+            if batch_index % 10 == 0:
                 est_dataset_time = (batch_end_time - dataset_start_time) + \
                     (n_batches - batch_index - 1) * mean_batch_time
                 samples_per_sec = len(data_loader.dataset) / est_dataset_time
-                print_rank_0("batch %d / %d [%d] ... %.3f samples/sec [ 47b = %.1f node days ] ... %s" % (
+                print_rank_0("batch %d / %d [%d] ... sq %.1f, %.3f samples/sec [ 47b = %.1f node days ] ... %s" % (
+                # print_rank_0("batch %d / %d [%d] ... sq %.1f, %.3f samples/sec ... %s" % (
                     batch_index,
                     n_batches,
-                    seq_lengths.max().item(),
+                    # seq_lengths.max().item(),
+                    max_seq_lengths[-1],
+                    sum(max_seq_lengths) / len(max_seq_lengths),
                     samples_per_sec,
                     (47e9 / samples_per_sec) / 16 / (24 * 3600),
                     get_mem_stats_str(),
@@ -379,13 +388,15 @@ def embed_blocks(models, prefix, workdir, dataset, missing_embedding_blocks):
         torch.distributed.barrier()
 
 
-def embed_text_dataset(models, prefix, workdir, text_dataset, block_size):
+def embed_text_dataset(models, prefix,
+                       workdir, text_dataset,
+                       max_seq_length, block_size):
 
     # Dataset workdir.
     os.makedirs(workdir, exist_ok = True)
 
     # Bert embedding dataset.
-    embedding_dataset = BertEmbeddingDataset(text_dataset)
+    embedding_dataset = BertEmbeddingDataset(text_dataset, max_seq_length)
 
     # Missing embedding blocks (stored on disk).
     missing_embedding_blocks = get_missing_embedding_blocks(workdir,
@@ -408,7 +419,8 @@ def embed_text_dataset(models, prefix, workdir, text_dataset, block_size):
 
 
 # def embed_text_datasets(args, text_dataset_map):
-def embed_text_datasets(text_dataset_map, block_size):
+# def embed_text_datasets(text_dataset_map, block_size):
+def embed_text_datasets(text_dataset_map, max_seq_length, block_size):
 
     # Load model.
     models, optimizer, opt_param_scheduler = \
@@ -420,5 +432,5 @@ def embed_text_datasets(text_dataset_map, block_size):
                      (prefix, len(info["data"])))
         embed_text_dataset(models, prefix,
                            info["embed_dir"], info["data"],
-                           block_size)
+                           max_seq_length, block_size)
 
