@@ -25,7 +25,7 @@ from megatron.training import (
 )
 from tools.retro.utils import GPTToTextDataset
 
-from .utils import get_base_nbr_workdir
+from .utils import get_base_pretraining_workdir
 
 # >>>
 from lutil import pax
@@ -165,7 +165,7 @@ def get_text_chunk_dataset_map(args):
     }
 
     # Info dict.
-    workdir = get_base_nbr_workdir(args)
+    workdir = get_base_pretraining_workdir(args)
     text_dataset_map = {
         key : {
             # "embed_dir" : os.path.join(workdir, "embed", key),

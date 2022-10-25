@@ -13,12 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from tools.bert_embedding import embed_text_datasets
+
+from .chunk_dataset import get_text_chunk_dataset_map
 
 # >>>
 from lutil import pax
 # <<<
 
 
-def get_base_nbr_workdir(args):
-    return os.path.join(args.retro_workdir, "nbr")
+def embed_pretraining_chunks(args, timer):
+
+    # Data stuff.
+    text_dataset_map = get_text_chunk_dataset_map(args)
+    
+    # Embed.
+    embed_text_datasets(text_dataset_map,
+                        args.retro_bert_max_chunk_length,
+                        args.retro_block_size)

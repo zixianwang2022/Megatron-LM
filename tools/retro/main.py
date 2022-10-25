@@ -30,7 +30,7 @@ from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import _print_args
 from tools.retro.db import build_db, preprocess_db, embed_db
 from tools.retro.index.build import add_to_index, build_index, train_index
-from tools.retro.nbr.build import (
+from tools.retro.pretraining.build import (
     build_pretraining_neighbors,
     embed_pretraining_chunks,
     query_pretraining_neighbors,
@@ -131,12 +131,12 @@ if __name__ == "__main__":
         elif task == "index-remove-add-files":
             remove_add_files(args, timer)
 
-        # Neighbors.
-        elif task == "nbr-build":
+        # Pretraining.
+        elif task == "pretraining-build":
             build_pretraining_neighbors(args, timer)
-        elif task == "nbr-embed":
+        elif task == "pretraining-embed-chunks":
             embed_pretraining_chunks(args, timer)
-        elif task == "nbr-query":
+        elif task == "pretraining-query-nbrs":
             query_pretraining_neighbors(args, timer)
         elif task == "nbr-plot-acc":
             plot_nbr_acc(args, timer)

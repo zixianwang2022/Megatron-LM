@@ -34,7 +34,7 @@ from tools.retro.db.utils import get_db_info_map # get_full_db_info
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_workdir
 
-from .dataset import get_text_chunk_dataset_map
+from .chunk_dataset import get_text_chunk_dataset_map
 
 # >>>
 from lutil import pax, print_seq
@@ -105,10 +105,12 @@ def get_missing_neighbor_blocks(embed_dir, nbr_dir):
             pbar.set_description("verifying neighbor block.")
             f = h5py.File(path, "r")
             try:
-                assert len(f["data"].shape) == 2
+                assert len(f["neighbors"].shape) == 2
                 f.close()
             except Exception as e:
-                raise e
+                # >>>
+                raise Exception("corrupt neighbors?")
+                # <<<
                 os.remove(path)
 
     # Wait for files to be deleted.
