@@ -79,6 +79,7 @@ def add_retro_args(parser):
     group.add_argument("--retro-block-size", type = int, required = True)
     group.add_argument("--retro-nnbrs-query", type = int, required = True)
     group.add_argument("--retro-nnbrs-target", type = int, required=True)
+    group.add_argument("--retro-nnbrs-pretraining", type = int, required=True)
 
     return parser
 

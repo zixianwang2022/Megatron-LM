@@ -15,6 +15,8 @@
 
 from collections import defaultdict
 import glob
+import h5py
+import numpy as np
 import os
 import torch
 
@@ -48,9 +50,19 @@ class IdPathMap:
         self.id_index_map[id] = self.path_index_map[path]
 
 
+    def __contains__(self, idx):
+        return idx in self.id_index_map
+
+
+    def __getitem__(self, idx):
+        return self.paths[self.id_index_map[idx]]
+
+
 class RetroDataset(torch.utils.data.Dataset):
 
     def __init__(self,
+                 n_pretraining_nbrs,
+                 block_size,
                  db_embed_path_map,
                  pretraining_seq_dataset,
                  pretraining_nbr_path_map,
@@ -58,6 +70,8 @@ class RetroDataset(torch.utils.data.Dataset):
 
         super().__init__()
 
+        self.n_pretraining_nbrs = n_pretraining_nbrs
+        self.block_size = block_size
         self.n_chunks_per_seq = get_num_chunks_per_seq()
         self.db_embed_path_map = db_embed_path_map
         self.pretraining_seq_dataset = pretraining_seq_dataset
@@ -70,21 +84,91 @@ class RetroDataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, sample_idx):
-        pax(0, {"idx": idx})
 
-        sample_token_ids = self.pretraining_seq_dataset[idx]
+        sample = self.pretraining_seq_dataset[sample_idx]
+
         chunk_idxs = list(range(
             sample_idx * self.n_chunks_per_seq,
             (sample_idx + 1) * self.n_chunks_per_seq,
         ))
 
-        return {
-            "text" : seq_token_ids,
-            "neighbor_embeddings" : neighbor_embeddings,
-            "sample_token_ids" : sample_token_ids,
-            "chunks_idxs" : chunks_idxs,
+        chunk_nbr_embeds = []
+        for chunk_idx in chunk_idxs:
+
+            # DB neighbor ids.
+            nbr_path = self.pretraining_nbr_path_map[chunk_idx]
+            f = h5py.File(nbr_path, "r")
+            db_nbr_chunk_ids = f["neighbors"][chunk_idx % self.block_size, :self.n_pretraining_nbrs].tolist()
+            f.close()
+
+            # DB neighbor embeds.
+            db_nbr_embeds = []
+            for db_nbr_chunk_id in db_nbr_chunk_ids:
+
+                # >>>
+                # ni = db_nbr_chunk_id
+                # ci = db_nbr_chunk_id + 1
+                # np = self.db_embed_path_map[ni]
+                # cp = self.db_embed_path_map[ci]
+                # pax(0, {
+                #     "ni" : ni,
+                #     "ci" : ci,
+                #     "np" : np,
+                #     "cp" : cp,
+                #     "ni?" : ni in self.db_embed_path_map,
+                # })
+                # <<<
+
+                # Neighbor + continuation embed paths.
+                db_nbr_cont_ids = db_nbr_chunk_id, db_nbr_chunk_id + 1
+                # db_nbr_cont_embed_paths = [
+                #     self.db_embed_path_map[ci]
+                #     if ci in self.db_embed_path_map else None
+                #     for ci in db_nbr_cont_ids]
+                db_nbr_cont_embeds = []
+                for ci in db_nbr_cont_ids:
+                    if ci in self.db_embed_path_map:
+                        # pax(0, {"ci": ci})
+                        embed_path = self.db_embed_path_map[ci]
+                        f = h5py.File(embed_path, "r")
+                        embed = np.copy(f["data"][ci % self.block_size])
+                        db_nbr_cont_embeds.append(embed)
+                        f.close()
+                    else:
+                        db_nbr_cont_embeds.append(None)
+
+                db_nbr_embeds.append({
+                    "neighbor" : db_nbr_cont_embeds[0],
+                    "continuation" : db_nbr_cont_embeds[1],
+                })
+
+                # pax(0, {
+                #     "db_nbr_cont_ids" : db_nbr_cont_ids,
+                #     "db_nbr_cont_embeds" : db_nbr_cont_embeds,
+                # })
+
+            chunk_nbr_embeds.append(db_nbr_embeds)
+
+            # pax(0, {
+            #     "db_nbr_chunk_ids" : db_nbr_chunk_ids,
+            #     "db_nbr_embeds" : db_nbr_embeds,
+            # })
+
+        sample = {
+            "text" : sample["text"],
+            "neighbor_embeddings" : chunk_nbr_embeds,
+            # "sample_token_ids" : sample_token_ids,
+            # "chunks_idxs" : chunks_idxs,
         }
 
+        # pax(0, {
+        #     "sample_idx" : sample_idx,
+        #     "sample" : sample,
+        #     # "chunk_idxs" : chunk_idxs,
+        #     # "chunk_nbr_embeds" : chunk_nbr_embeds,
+        # })
+
+        return sample
 
 def path_to_chunk_idxs(path):
     return tuple([
@@ -198,9 +282,6 @@ def get_valid_pretraining_seq_idxs(nbr_dir):
 
 def test_retro_dataset(args, timer):
 
-    # cls.gpt_tokenizer = get_gpt_tokenizer(cls.args)
-    # cls.bert_tokenizer = get_bert_tokenizer(cls.args)
-
     # Load chunk db.
     # cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos(cls.args)
     # db_chunk_dataset = get_db_gpt_chunk_dataset_map()["full"]["data"]
@@ -217,6 +298,8 @@ def test_retro_dataset(args, timer):
         get_valid_pretraining_seq_idxs(pretraining_nbr_dir)
 
     retro_dataset = RetroDataset(
+        n_pretraining_nbrs = args.retro_nnbrs_pretraining,
+        block_size = args.retro_block_size,
         db_embed_path_map = db_embed_path_map,
         pretraining_seq_dataset = pretraining_seq_dataset,
         pretraining_nbr_path_map = pretraining_nbr_path_map,
@@ -224,10 +307,13 @@ def test_retro_dataset(args, timer):
     )
 
 
+    # >>>
     n_samples = 3
+    samples = []
     for sample_idx in range(0, len(retro_dataset), len(retro_dataset)//n_samples):
-        sample = retro_dataset[sample_idx]
-
+        samples.append(retro_dataset[sample_idx])
+    pax(0, {"samples": samples})
+    # <<<
 
     pax(0, {
         "db_embed_dir" : db_embed_dir,
