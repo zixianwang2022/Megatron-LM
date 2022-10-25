@@ -29,6 +29,12 @@ def get_args_path(workdir):
     return os.path.join(workdir, "args.json")
 
 
+def get_num_chunks_per_seq():
+    args = get_args()
+    assert args.retro_gpt_seq_length % args.retro_gpt_chunk_length == 0
+    return args.retro_gpt_seq_length // args.retro_gpt_chunk_length
+
+
 def get_gpt_tokenizer():
     args = get_args()
     return _GPT2BPETokenizer(

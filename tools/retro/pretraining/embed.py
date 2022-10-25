@@ -14,8 +14,9 @@
 # limitations under the License.
 
 from tools.bert_embedding import embed_text_datasets
+from tools.retro.utils import GPTToTextDataset
 
-from .chunk_dataset import get_text_chunk_dataset_map
+from .chunk_dataset import get_gpt_chunk_dataset_map
 
 # >>>
 from lutil import pax
@@ -25,8 +26,17 @@ from lutil import pax
 def embed_pretraining_chunks(args, timer):
 
     # Data stuff.
-    text_dataset_map = get_text_chunk_dataset_map(args)
+    gpt_dataset_map = get_gpt_chunk_dataset_map(args)
+    text_dataset_map = {key : {
+        **info,
+        "data" : GPTToTextDataset(info["data"]),
+    } for key, info in gpt_dataset_map.items()}
     
+    pax(0, {
+        "gpt_dataset_map": gpt_dataset_map,
+        "text_dataset_map": text_dataset_map,
+    })
+
     # Embed.
     embed_text_datasets(text_dataset_map,
                         args.retro_bert_max_chunk_length,

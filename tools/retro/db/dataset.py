@@ -20,7 +20,7 @@ import torch
 
 # from megatron import get_args
 # from megatron import get_args, get_tokenizer, print_rank_0
-from megatron import print_rank_0
+from megatron import get_args, print_rank_0
 # from megatron.data.bert_dataset import build_training_sample
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 # from tools.retro.utils import get_gpt_tokenizer
@@ -89,7 +89,10 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
 
 # def get_dataset_map(args):
-def get_gpt_chunk_dataset_map(args):
+# def get_gpt_chunk_dataset_map(args):
+def get_gpt_chunk_dataset_map():
+
+    args = get_args()
 
     # Load indexed dataset infos.
     indexed_dataset_infos = get_indexed_dataset_infos(args)

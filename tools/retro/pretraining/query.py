@@ -34,7 +34,7 @@ from tools.retro.db.utils import get_db_info_map # get_full_db_info
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_workdir
 
-from .chunk_dataset import get_text_chunk_dataset_map
+from .chunk_dataset import get_gpt_chunk_dataset_map
 
 # >>>
 from lutil import pax, print_seq
@@ -276,7 +276,8 @@ def query_pretraining_neighbors(args, timer):
     banned_doc_chunk_id_map = get_banned_doc_chunk_id_map(args)
 
     print_rank_0(" > get dataset map.")
-    text_dataset_map = get_text_chunk_dataset_map(args)
+    # text_dataset_map = get_text_chunk_dataset_map(args)
+    chunk_dataset_map = get_gpt_chunk_dataset_map(args)
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")
@@ -287,5 +288,6 @@ def query_pretraining_neighbors(args, timer):
         query_dataset_neighbors(args, index, banned_doc_chunk_id_map,
                                 prefix,
                                 info["embed_dir"], info["nbr_dir"],
-                                info["data"].gpt_dataset)
+                                # info["data"].gpt_dataset)
+                                info["data"])
 

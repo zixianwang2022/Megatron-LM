@@ -5,11 +5,11 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
+NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-NPROCS=16
+# NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -51,9 +51,9 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/2
 # RETRO_TASKS="nbr-plot-acc"
 # RETRO_TASKS="nbr-verify"
 # RETRO_TASKS="pretraining-build-nbrs"
-RETRO_TASKS="pretraining-embed-chunks"
+# RETRO_TASKS="pretraining-embed-chunks"
 # RETRO_TASKS="pretraining-query-nbrs"
-# RETRO_TASKS="pretraining-dataset-test"
+RETRO_TASKS="pretraining-test-retro-dataset"
 # RETRO_TASKS="misc-time-hnsw"
 # RETRO_TASKS="misc-time-query"
 # RETRO_TASKS="misc-time-merge-partials"

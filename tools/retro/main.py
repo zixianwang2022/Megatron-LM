@@ -35,6 +35,7 @@ from tools.retro.pretraining.build import (
     embed_pretraining_chunks,
     query_pretraining_neighbors,
 )
+from tools.retro.pretraining.retro_dataset import test_retro_dataset
 from tools.retro.utils import get_args_path, Timer
 
 # >>>
@@ -138,6 +139,8 @@ if __name__ == "__main__":
             embed_pretraining_chunks(args, timer)
         elif task == "pretraining-query-nbrs":
             query_pretraining_neighbors(args, timer)
+        elif task == "pretraining-test-retro-dataset":
+            test_retro_dataset(args, timer)
         elif task == "nbr-plot-acc":
             plot_nbr_acc(args, timer)
         elif task == "nbr-verify-codes":

@@ -18,12 +18,11 @@ import torch
 
 from megatron import get_args, print_rank_0
 from megatron.data.gpt_dataset import build_train_valid_test_datasets
-# from megatron.tokenizer.tokenizer import _GPT2BPETokenizer
 from megatron.training import (
     build_train_valid_test_data_loaders,
     update_train_iters,
 )
-from tools.retro.utils import GPTToTextDataset
+from tools.retro.utils import get_num_chunks_per_seq
 
 from .utils import get_base_pretraining_workdir
 
@@ -32,97 +31,63 @@ from lutil import pax
 # <<<
 
 
-# class TextChunkDataset(torch.utils.data.Dataset):
-# class SeqToChunkGPTDataset(torch.utils.data.Dataset):
-# class GPTSeqToTextChunkDataset(torch.utils.data.Dataset):
-# class GPTChunkTextDataset(torch.utils.data.Dataset):
 class GPTChunkDataset(torch.utils.data.Dataset):
 
+    # def __init__(self, args, seq_dataset):
+
+    #     super().__init__()
+
+    #     self.seq_dataset = seq_dataset
+
+    #     self.seq_length = args.retro_gpt_seq_length
+    #     self.chunk_length = args.retro_gpt_chunk_length
+    #     assert self.seq_length % self.chunk_length == 0
+    #     self.n_chunk_seq_ratio = int(self.seq_length / self.chunk_length)
+    #     # self.n_chunks_per_seq = int(self.seq_length / self.chunk_length)
+
+    #     self.n_seqs = len(seq_dataset)
+    #     self.n_chunks = self.n_seqs * self.n_chunk_seq_ratio
     def __init__(self, args, seq_dataset):
 
         super().__init__()
 
         self.seq_dataset = seq_dataset
 
-        self.seq_length = args.retro_gpt_seq_length
-        self.chunk_length = args.retro_gpt_chunk_length
-        assert self.seq_length % self.chunk_length == 0
-        self.n_chunk_seq_ratio = int(self.seq_length / self.chunk_length)
-
+        self.n_chunks_per_seq = get_num_chunks_per_seq()
         self.n_seqs = len(seq_dataset)
-        self.n_chunks = self.n_seqs * self.n_chunk_seq_ratio
+        self.n_chunks = self.n_seqs * self.n_chunks_per_seq
 
-        # >>>
-        # self.gpt_tokenizer = _GPT2BPETokenizer(
-        #     vocab_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json",
-        #     merge_file = "/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt",
-        # )
-        # <<<
-        # self.gpt_
-
-        # pax(0, {
-        #     "seq_length" : self.seq_length,
-        #     "chunk_length" : self.chunk_length,
-        #     "n_chunk_seq_ratio" : self.n_chunk_seq_ratio,
-        #     "n_seqs" : self.n_seqs,
-        #     "n_chunks" : self.n_chunks,
-        # })
 
     def __len__(self):
         return self.n_chunks
+
 
     def __getitem__(self, idx):
 
         seq_idx = idx // self.n_chunk_seq_ratio
         chunk_idx = idx % self.n_chunk_seq_ratio
 
-        # pax(0, {"seq": self.seq_dataset[seq_idx]})
-
         seq_sample = self.seq_dataset[seq_idx]
         seq_token_ids = seq_sample["text"]
         seq_doc_ids = seq_sample["doc_ids"]
 
-        # pax(0, {
-        #     # "seq_dataset" : self.seq_dataset,
-        #     "seq_token_ids" : str(seq_token_ids),
-        #     "seq_doc_ids" : str(seq_doc_ids),
-        # })
         # assert len(seq_token_ids) == self.seq_length, \
         #     "len(seq_token_ids) == %d." % len(seq_token_ids)
 
         token_start_idx = chunk_idx * self.chunk_length
         token_end_idx = token_start_idx + self.chunk_length
         chunk_token_ids = seq_token_ids[token_start_idx:token_end_idx]
-        # chunk_text = self.gpt_tokenizer.detokenize(chunk_token_ids)
-
-        # pax(0, {
-        #     "seq_token_ids" :
-        #     "%d / %s" % (len(seq_token_ids), str(seq_token_ids)),
-        #     "chunk_token_ids" :
-        #     "%d / %s" % (len(chunk_token_ids), str(chunk_token_ids)),
-        #     # "chunk_text" : chunk_text,
-        #     "seq_idx" : seq_idx,
-        #     "chunk_idx" : chunk_idx,
-        #     "token_start_idx" : token_start_idx,
-        #     "token_end_idx" : token_end_idx,
-        # })
 
         return {
-            # "text" : chunk_text,
             "text" : chunk_token_ids,
             "doc_ids" : seq_doc_ids,
         }
 
 
-# def train_valid_test_datasets_provider(train_val_test_num_samples, args = None):
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
-    # >>>
+
     args = get_args()
-    # +++
-    # if not args:
-    #     args = get_args()
-    # <<<
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
@@ -136,16 +101,13 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         skip_warmup=(not args.mmap_warmup))
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
-    # train_ds = train_ds1
-    # train_ds = BlendableDataset([train_ds1, train_ds2], [args.weight, 1 - args.weight])
-
     return train_ds, valid_ds, test_ds
 
 
-# def get_dataset_map(args, workdir):
-# def get_dataset_map(args):
-# def get_chunk_text_dataset_map(args):
-def get_text_chunk_dataset_map(args):
+# def get_text_chunk_dataset_map(args):
+def get_gpt_chunk_dataset_map():
+
+    args = get_args()
 
     # Update train iters.
     update_train_iters(args)
@@ -166,25 +128,16 @@ def get_text_chunk_dataset_map(args):
 
     # Info dict.
     workdir = get_base_pretraining_workdir(args)
-    text_dataset_map = {
+    # text_dataset_map = {
+    dataset_map = {
         key : {
-            # "embed_dir" : os.path.join(workdir, "embed", key),
-            # "nbr_dir" : os.path.join(workdir, "nbr", key),
             "embed_dir" : os.path.join(workdir, key, "embed"),
             "nbr_dir" : os.path.join(workdir, key, "nbr"),
-            # "data" : ChunkTextDataset(args, loader.dataset),
-            "data" : GPTToTextDataset(GPTChunkDataset(args, loader.dataset)),
+            # "data" : GPTToTextDataset(GPTChunkDataset(args, loader.dataset)),
+            "data" : GPTChunkDataset(args, loader.dataset),
         }
         for key, loader in data_loader_map.items() if loader
     }
 
-    # pax({
-    #     "text_dataset_map" : text_dataset_map,
-    #     "text_dataset_map / train" : text_dataset_map["train"],
-    #     "text_dataset_map / train / data" : text_dataset_map["train"]["data"],
-    #     "text_dataset_map / train / data / gpt_dataset" :
-    #     text_dataset_map["train"]["data"].gpt_dataset,
-    # })
-
-    return text_dataset_map
-
+    # return text_dataset_map
+    return dataset_map

@@ -26,11 +26,10 @@ from megatron.initialize import (
     _initialize_distributed,
     _set_random_seed,
 )
-# from megatron import get_args, initialize_megatron, print_rank_0
-from tools.retro.db.utils import get_db_info_map, \
-    get_indexed_dataset_infos as get_db_indexed_dataset_infos
 from tools.retro.db.dataset import \
     get_gpt_chunk_dataset_map as get_db_gpt_chunk_dataset_map
+from tools.retro.db.utils import get_db_info_map, \
+    get_indexed_dataset_infos as get_db_indexed_dataset_infos
 from tools.retro.main import add_retro_args
 from tools.retro.nbr.dataset import get_dataset_map as get_pt_dataset_map
 from tools.retro.utils import get_args_path, get_bert_tokenizer, get_gpt_tokenizer
