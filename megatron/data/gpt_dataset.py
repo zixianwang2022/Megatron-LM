@@ -53,6 +53,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     output = get_datasets_weights_and_num_samples(data_prefix,
                                                   train_valid_test_num_samples)
     prefixes, weights, datasets_train_valid_test_num_samples = output
+    pax(0, {"data_prefix": data_prefix})
 
     # Build individual datasets.
     train_datasets = []
@@ -205,9 +206,11 @@ class GPTDataset(torch.utils.data.Dataset):
                 length=offset_l + 1))
             sample = np.concatenate(sample_list)
 
+        # >>>
         # return {'text': np.array(sample, dtype=np.int64)}
         return {'text': np.array(sample, dtype=np.int64),
                 'doc_ids': np.array(doc_ids, dtype=np.int64)}
+        # <<<
 
 
 def _build_index_mappings(name, data_prefix, documents, sizes,

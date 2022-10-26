@@ -26,16 +26,17 @@ from lutil import pax
 def embed_pretraining_chunks(args, timer):
 
     # Data stuff.
-    gpt_dataset_map = get_gpt_chunk_dataset_map(args)
+    gpt_dataset_map = get_gpt_chunk_dataset_map()
     text_dataset_map = {key : {
         **info,
         "data" : GPTToTextDataset(info["data"]),
     } for key, info in gpt_dataset_map.items()}
     
-    pax(0, {
-        "gpt_dataset_map": gpt_dataset_map,
-        "text_dataset_map": text_dataset_map,
-    })
+    # pax(0, {
+    #     "gpt_dataset_map": gpt_dataset_map,
+    #     "text_dataset_map": text_dataset_map,
+    #     "text_dataset_map / train": text_dataset_map["train"],
+    # })
 
     # Embed.
     embed_text_datasets(text_dataset_map,

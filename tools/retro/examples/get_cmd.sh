@@ -5,11 +5,11 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
+NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-NPROCS=16
+# NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -36,7 +36,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/3
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="db-preprocess"
-RETRO_TASKS="db-embed"
+# RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
@@ -51,7 +51,7 @@ RETRO_TASKS="db-embed"
 # RETRO_TASKS="nbr-plot-acc"
 # RETRO_TASKS="nbr-verify"
 # RETRO_TASKS="pretraining-build-nbrs"
-# RETRO_TASKS="pretraining-embed-chunks"
+RETRO_TASKS="pretraining-embed-chunks"
 # RETRO_TASKS="pretraining-query-nbrs"
 # RETRO_TASKS="pretraining-test-retro-dataset"
 # RETRO_TASKS="misc-time-hnsw"
@@ -65,27 +65,6 @@ RETRO_TASKS="db-embed"
 RETRO_INDEX_TY=faiss-base
 # RETRO_INDEX_TY=faiss-par-add
 # RETRO_INDEX_TY=faiss-decomp
-
-# NTRAIN=2048 NCLUSTER=64 HNSW_M=4
-# NTRAIN=131072 NCLUSTER=128 HNSW_M=32
-# NTRAIN=5000000 NCLUSTER=100000 HNSW_M=32
-# NTRAIN=15000000 NCLUSTER=500000 HNSW_M=32
-# NTRAIN=20000000 NCLUSTER=4194304 HNSW_M=32
-# NTRAIN=50000000 NADD=200000000 NCLUSTER=4194304 HNSW_M=32
-# NTRAIN=300000000 NCLUSTER=4194304 HNSW_M=32
-# NTRAIN=50000 NADD=20000000 NCLUSTER=16384 HNSW_M=32
-# NTRAIN=50000 NADD=8000000 NCLUSTER=16384 HNSW_M=32
-# NTRAIN=2500000 NADD=20000000 NCLUSTER=262144 HNSW_M=32
-# NTRAIN=2500000 NADD=100000000 NCLUSTER=262144 HNSW_M=32
-# NTRAIN=2500000 NADD=20000000 NCLUSTER=262144 HNSW_M=32
-# NTRAIN=2500000 NADD=$(($NPROCS*1000000)) NCLUSTER=262144 HNSW_M=32
-# NTRAIN=2500000 NADD=4000000 NCLUSTER=262144 HNSW_M=32
-# NTRAIN=500000 NADD=10000000 NCLUSTER=262144 HNSW_M=32
-# NTRAIN=10000000 NADD=20000000 NCLUSTER=1048576 HNSW_M=32
-# NTRAIN=3000000 NADD=100000000 NCLUSTER=1048576 HNSW_M=32
-# NTRAIN=3000000 NADD=$(($NPROCS*1000000)) NCLUSTER=1048576 HNSW_M=32
-# NTRAIN=100000000 NADD=$(($NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
-# NTRAIN=100000000 NADD=$((1*$NPROCS*1000000)) NCLUSTER=4194304 HNSW_M=32
 
 # RETRO_NCLUSTERS=4194304
 RETRO_NCLUSTERS=32768 # for 169320 training samples
@@ -119,117 +98,6 @@ MICRO_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
 # MICRO_BATCH_SIZE=8
 # MICRO_BATCH_SIZE=4
 
-# if [[ "$TASKS" == *"embed-chunks"* ]]; then
-# if [[ "0" == "0" ]]; then
-
-#     # BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
-#     BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
-#     # DATA_PATH=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/bc_rn_owt_sto_wiki_dedup_shuf_cleaned_0.7_mmap
-#     VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
-#     # TOKENIZER_TYPE=BertWordPieceCase
-#     TOKENIZER_TYPE=BertWordPieceLowerCase
-
-#     # NUM_WORKERS=1
-
-#     # MICRO_BATCH_SIZE=1024 # oom
-#     MICRO_BATCH_SIZE=512
-#     # MICRO_BATCH_SIZE=16 # good
-
-#     # --save ${BERT_LOAD_PATH} \
-#     # --merge-file ${MERGE_FILE} \
-#     # --num-workers ${NUM_WORKERS} \
-#     # --micro-batch-size 2 \
-#     # --global-batch-size 16 \
-#     # --use-checkpoint-args \
-#     MEGATRON_ARGS=" \
-#         --seed ${SEED} \
-#         --tokenizer-type ${TOKENIZER_TYPE} \
-#         --tensor-model-parallel-size 1 \
-#         --pipeline-model-parallel-size 1 \
-#         --num-layers 24 \
-#         --hidden-size 1024 \
-#         --num-attention-heads 16 \
-#         --micro-batch-size ${MICRO_BATCH_SIZE} \
-#         --seq-length 512 \
-#         --max-position-embeddings 512 \
-#         --train-iters 1000000 \
-#         --load ${BERT_LOAD_PATH} \
-#         --data-path ${DATA_PATH} \
-#         --vocab-file ${VOCAB_FILE} \
-#         --data-impl mmap \
-#         --split 949,50,1 \
-#         --distributed-backend nccl \
-#         --lr 0.0001 \
-#         --lr-decay-style linear \
-#         --min-lr 1.0e-5 \
-#         --lr-decay-iters 990000 \
-#         --weight-decay 1e-2 \
-#         --clip-grad 1.0 \
-#         --lr-warmup-fraction .01 \
-#         --log-interval 100 \
-#         --save-interval 10000 \
-#         --eval-interval 1000 \
-#         --eval-iters 10 \
-#         --fp16 \
-#         "
-
-# else
-
-#     #     --save $FINETUNED_PATH \
-#     #     --load $CHECKPOINT_PATH \
-#     #     --log-validation-ppl-to-tensorboard \
-#     #     --tensorboard-dir ${TENSORBOARD_DIR} \
-#     #     --eval-iters 25600 \
-#     MEGATRON_ARGS=" \
-#         --seed ${SEED} \
-#         --tokenizer-type ${TOKENIZER_TYPE} \
-#         --num-layers 24 \
-#         --hidden-size 1024 \
-#         --num-attention-heads 16 \
-#         --micro-batch-size 1 \
-#         --global-batch-size 1 \
-#         --seq-length 2048 \
-#         --max-position-embeddings 2048 \
-#         --train-samples 192000000 \
-#         --lr-decay-samples 166400000 \
-#         --lr-warmup-samples 162761 \
-#         --data-path ${DATA_PATH} \
-#         --vocab-file ${VOCAB_FILE} \
-#         --merge-file ${MERGE_FILE} \
-#         --data-impl mmap \
-#         --split 98,2,0 \
-#         --distributed-backend nccl \
-#         --lr-warmup-samples 162761 \
-#         --lr-decay-style cosine \
-#         --lr 3.0e-4 \
-#         --min-lr 3.0e-5 \
-#         --clip-grad 1.0 \
-#         --weight-decay 0.1 \
-#         --adam-beta1 0.9 \
-#         --adam-beta2 0.95 \
-#         --init-method-std 0.02 \
-#         --log-params-norm \
-#         --log-num-zeros-in-grad \
-#         --checkpoint-activations \
-#         --log-interval 100 \
-#         --eval-iters 50 \
-#         --eval-interval 2000 \
-#         --save-interval 10000 \
-#         --fp16 \
-#         --DDP-impl local \
-#         --finetune \
-#         --no-load-optim \
-#     "
-
-# fi
-
-#     --train-iters 1000000 \
-#     --split 949,50,1 \
-#     --lr-decay-iters 990000 \
-#     --lr-warmup-fraction .01 \
-#     --sequence-parallel \
-#     --recompute-activations \
-#     --no-persist-layer-norm \
 MEGATRON_ARGS=" \
     --seed ${SEED} \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \

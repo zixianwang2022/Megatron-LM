@@ -42,13 +42,10 @@ class GPTChunkDataset(torch.utils.data.Dataset):
             max_gpt_chunk_length,
     ):
 
-        # args = get_args()
-
         self.indexed_datasets = indexed_datasets
         self.indexed_dataset_ids = indexed_dataset_ids
         self.chunk_index = chunk_index
 
-        # self.max_gpt_chunk_length = args.retro_chunk_length
         self.max_gpt_chunk_length = max_gpt_chunk_length
         self.gpt_tokenizer = get_gpt_tokenizer()
 
@@ -88,6 +85,14 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         return {'text': np.array(token_ids, dtype=np.int64)}
 
 
+def dataset_offsets_to_ids(offsets):
+    ids = []
+    for i in range(len(offsets) - 1):
+        ids.append([i] * (offsets[i+1] - offsets[i]))
+    ids = [ i for ii in ids for i in ii ]
+    # pax(0, {"offsets": str(offsets), "ids": str(ids)})
+    return ids
+
 # def get_dataset_map(args):
 # def get_gpt_chunk_dataset_map(args):
 def get_gpt_chunk_dataset_map():
@@ -123,11 +128,7 @@ def get_gpt_chunk_dataset_map():
         f.close()
 
         # Indexed dataset ids.
-        indexed_dataset_ids = []
-        for i in range(len(indexed_dataset_offsets) - 1):
-            indexed_dataset_ids.append(
-                [i] * (indexed_dataset_offsets[i+1] - indexed_dataset_offsets[i]))
-        indexed_dataset_ids = [ i for ii in indexed_dataset_ids for i in ii ]
+        indexed_dataset_ids = dataset_offsets_to_ids(indexed_dataset_offsets)
 
         # Chunk dataset.
         chunk_dataset_map[db_key] = {

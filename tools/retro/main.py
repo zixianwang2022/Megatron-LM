@@ -110,17 +110,16 @@ if __name__ == "__main__":
 
     # >>>
     # from megatron import mpu
-    # # print_seq("hi.")
     # print_seq("d %d, t %d, p %d." % (
     #     mpu.get_data_parallel_rank(),
     #     mpu.get_tensor_model_parallel_rank(),
     #     mpu.get_pipeline_model_parallel_rank(),
     # ))
-    # pax(0, {
-    #     "args" : args,
-    #     "rank" : torch.distributed.get_rank(),
-    #     "world_size" : torch.distributed.get_world_size(),
-    # })
+    pax(0, {
+        "args" : args,
+        "rank" : torch.distributed.get_rank(),
+        "world_size" : torch.distributed.get_world_size(),
+    })
     # <<<
 
     _print_args(args)

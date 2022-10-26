@@ -22,6 +22,7 @@ from megatron.training import (
     build_train_valid_test_data_loaders,
     update_train_iters,
 )
+from tools.retro.db.utils import get_indexed_dataset_infos
 from tools.retro.utils import get_num_chunks_per_seq
 
 from .utils import get_base_pretraining_workdir
@@ -47,12 +48,14 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
     #     self.n_seqs = len(seq_dataset)
     #     self.n_chunks = self.n_seqs * self.n_chunk_seq_ratio
-    def __init__(self, args, seq_dataset):
+    # def __init__(self, args, seq_dataset):
+    def __init__(self, seq_dataset, chunk_length):
 
         super().__init__()
 
         self.seq_dataset = seq_dataset
 
+        self.chunk_length = chunk_length
         self.n_chunks_per_seq = get_num_chunks_per_seq()
         self.n_seqs = len(seq_dataset)
         self.n_chunks = self.n_seqs * self.n_chunks_per_seq
@@ -64,8 +67,12 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
-        seq_idx = idx // self.n_chunk_seq_ratio
-        chunk_idx = idx % self.n_chunk_seq_ratio
+        # >>>
+        # seq_idx = idx // self.n_chunk_seq_ratio
+        # chunk_idx = idx % self.n_chunk_seq_ratio
+        seq_idx = idx // self.n_chunks_per_seq
+        chunk_idx = idx % self.n_chunks_per_seq
+        # <<<
 
         seq_sample = self.seq_dataset[seq_idx]
         seq_token_ids = seq_sample["text"]
@@ -82,6 +89,19 @@ class GPTChunkDataset(torch.utils.data.Dataset):
             "text" : chunk_token_ids,
             "doc_ids" : seq_doc_ids,
         }
+
+
+def verify_indexed_dataset_order():
+
+    args = get_args()
+
+    assert len(args.data_path) >= 2, "blendable dataset supported only."
+
+    indexed_dataset_infos = get_indexed_dataset_infos()
+
+    pax(0, {
+        "indexed_dataset_infos" : indexed_dataset_infos,
+    })
 
 
 def train_valid_test_datasets_provider(train_val_test_num_samples):
@@ -115,6 +135,9 @@ def get_gpt_chunk_dataset_map():
     args.iteration = 0
     args.consumed_train_samples = 0
 
+    # Verify dataset order.
+    verify_dataset_order()
+
     # Datasets.
     print_rank_0(" > data loader.")
     train_data_loader, valid_data_loader, test_data_loader \
@@ -134,7 +157,8 @@ def get_gpt_chunk_dataset_map():
             "embed_dir" : os.path.join(workdir, key, "embed"),
             "nbr_dir" : os.path.join(workdir, key, "nbr"),
             # "data" : GPTToTextDataset(GPTChunkDataset(args, loader.dataset)),
-            "data" : GPTChunkDataset(args, loader.dataset),
+            # "data" : GPTChunkDataset(args, loader.dataset),
+            "data" : GPTChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
         }
         for key, loader in data_loader_map.items() if loader
     }
