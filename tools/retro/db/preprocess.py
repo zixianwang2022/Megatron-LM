@@ -126,8 +126,8 @@ def build_partial_db(
         doc = doc[:-1] # remove 'eod' token
         doc_len = len(doc)
 
-        chunk_start_idxs = list(range(0, doc_len, args.retro_chunk_length))
-        chunk_end_idxs = [min(doc_len, s + args.retro_chunk_length)
+        chunk_start_idxs = list(range(0, doc_len, args.retro_gpt_chunk_length))
+        chunk_end_idxs = [min(doc_len, s + args.retro_gpt_chunk_length)
                           for s in chunk_start_idxs]
 
         for i, chunk_start_idx in enumerate(chunk_start_idxs):
@@ -215,8 +215,8 @@ def build_individual_dbs(args, indexed_dataset_infos):
     os.makedirs(individual_dir, exist_ok = True)
 
     # Tokenizers.
-    gpt_tokenizer = get_gpt_tokenizer(args)
-    bert_tokenizer = get_bert_tokenizer(args)
+    gpt_tokenizer = get_gpt_tokenizer()
+    bert_tokenizer = get_bert_tokenizer()
 
     # Build individual dbs.
     print(" > build individual chunk dbs.")

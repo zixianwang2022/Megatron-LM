@@ -306,7 +306,6 @@ def test_retro_dataset(args, timer):
         pretraining_valid_seq_idxs = pretraining_valid_seq_idxs,
     )
 
-
     # >>>
     n_samples = 3
     samples = []

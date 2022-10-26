@@ -26,7 +26,7 @@ from lutil import pax
 def embed_db(args, timer):
 
     # GPT, text datasets.
-    gpt_dataset_map = get_gpt_chunk_dataset_map(args)
+    gpt_dataset_map = get_gpt_chunk_dataset_map()
     text_dataset_map = {key:{
         "data" : GPTToTextDataset(info["data"]),
         "embed_dir" : info["embed_dir"],

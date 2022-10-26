@@ -80,14 +80,14 @@ def get_banned_doc_chunk_id_map(args):
     for chunk_id, doc_id in enumerate(doc_ids):
         doc_chunk_id_map[doc_id].add(chunk_id)
 
-    # pax(0, {
-    #     "chunk_db_path" : chunk_db_path,
-    #     "doc_chunk_id_map" : {
-    #         d : "%d / %s" % (len(cs), str(cs))
-    #         for d, cs in doc_chunk_id_map.items()
-    #         if d < 20
-    #     },
-    # })
+    pax(0, {
+        "chunk_db_path" : chunk_db_path,
+        "doc_chunk_id_map" : {
+            d : "%d / %s" % (len(cs), str(cs))
+            for d, cs in doc_chunk_id_map.items()
+            if d < 20
+        },
+    })
 
     return doc_chunk_id_map
 

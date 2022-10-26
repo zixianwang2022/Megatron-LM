@@ -53,13 +53,11 @@ def model_provider(pre_process=True, post_process=True):
     return model
 
 
-# def get_missing_embedding_blocks(args, workdir, dataset):
 def get_missing_embedding_blocks(workdir, dataset, block_size):
 
     n_samples = len(dataset)
 
     # Block ranges.
-    # block_size = args.retro_block_size
     block_start_idxs = list(range(0, n_samples, block_size))
     block_end_idxs = [ min(n_samples, i + block_size) for i in block_start_idxs ]
     block_ranges = list(zip(block_start_idxs, block_end_idxs))
@@ -168,15 +166,9 @@ def collate_batch(samples):
     # Build batch with padded samples.
     batch = default_collate(padded_samples)
 
-    # >>>
-    # if batch["text"].shape[1] > 400:
-    #     pax(0, {"batch": batch})
-    # <<<
-
     return batch
 
 
-# def get_block_data_loader(args, full_dataset, sample_start_idx, sample_end_idx):
 def get_block_data_loader(full_dataset, sample_start_idx, sample_end_idx):
     """Build data loader over data subset.
 
@@ -235,12 +227,10 @@ def get_batch(data_iterator):
 
 
 def loss_func(loss_mask, sentence_order, seq_lengths,
-              # input_tensor, # ** temporary **
               output_tensor, non_loss_data):
     """Loss function. Sequence lengths returned here for progress print-outs."""
     assert non_loss_data
     return seq_lengths, output_tensor
-    # return seq_lengths, input_tensor, output_tensor
 
 
 def forward_step(data_iterator, model):
@@ -256,16 +246,13 @@ def forward_step(data_iterator, model):
         types = None
 
     # Forward pass through the model.
-    # print_mem_stats("BEFORE")
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
-    # print_mem_stats("AFTER")
 
     return output_tensor, partial(loss_func, loss_mask, sentence_order,
                                   seq_lengths)
 
 
-# def embed_batches(args, models, data_loader):
 def embed_batches(models, data_loader):
 
     # Data iterator.
@@ -275,25 +262,21 @@ def embed_batches(models, data_loader):
     for m in models:
         m.eval()
 
+    # World info (for printing progress).
+    n_gpus_world = torch.distributed.get_world_size()
+    n_samples_world = len(data_loader.dataset.dataset) # i.e., subset.dataset
+
     # Compute embeddings.
     forward_backward_func = get_forward_backward_func()
     with torch.no_grad():
 
         # Iterate batches.
-        # n_consumed = 0
         n_batches = len(data_iterator)
         dataset_start_time = time.time()
         batch_times = []
         max_seq_lengths = []
         embeddings = []
         for batch_index in range(n_batches):
-
-            # >>>
-            # args = get_args()
-            # if batch_index == int(75 * 1024 / args.micro_batch_size):
-            #     torch.distributed.barrier()
-            #     exit(0)
-            # <<<
 
             # Forward pass.
             batch_start_time = time.time()
@@ -310,45 +293,31 @@ def embed_batches(models, data_loader):
             batch_times.append(batch_end_time - batch_start_time)
             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
 
+            # Collect embeddings.
             assert len(results) == 1, "assert len(models) == 1 before this"
             seq_lengths, output_tensor = results[0]
             max_seq_lengths.append(seq_lengths.max().item())
             embeddings.append(output_tensor.cpu().numpy())
-            # n_consumed += output_tensor.shape[0]
-
-            # pax(0, {"output_tensor": str(output_tensor)})
 
             # Progress.
             if batch_index % 10 == 0:
                 est_dataset_time = (batch_end_time - dataset_start_time) + \
                     (n_batches - batch_index - 1) * mean_batch_time
                 samples_per_sec = len(data_loader.dataset) / est_dataset_time
-                print_rank_0("batch %d / %d [%d] ... sq %.1f, %.3f samples/sec [ 47b = %.1f node days ] ... %s" % (
-                # print_rank_0("batch %d / %d [%d] ... sq %.1f, %.3f samples/sec ... %s" % (
+                print_rank_0("batch %d / %d [%d] ... sq %.1f, %.3f samples/sec [ full dataset w/ %d gpu(s): %.3f hours ] ... %s." % (
                     batch_index,
                     n_batches,
-                    # seq_lengths.max().item(),
                     max_seq_lengths[-1],
                     sum(max_seq_lengths) / len(max_seq_lengths),
                     samples_per_sec,
-                    (47e9 / samples_per_sec) / 16 / (24 * 3600),
+                    n_gpus_world,
+                    (n_samples_world / samples_per_sec) / n_gpus_world / 3600,
                     get_mem_stats_str(),
                 ))
-                # >>>
-                # if batch_index == 6:
-                #     pax(0, {
-                #         "seq_lengths" : str(seq_lengths),
-                #         "input_tensor" : str(input_tensor.shape),
-                #         "output_tensor" : str(output_tensor.shape),
-                #     })
-                # <<<
 
     return np.concatenate(embeddings, axis = 0)
 
 
-# def embed_blocks(args, models, prefix, dataset, missing_embedding_blocks):
-# def embed_blocks(args, models, workdir, dataset, missing_embedding_blocks):
-# def embed_blocks(args, models, prefix, workdir, dataset,
 def embed_blocks(models, prefix, workdir, dataset, missing_embedding_blocks):
 
     # Iterate blocks.
@@ -358,17 +327,10 @@ def embed_blocks(models, prefix, workdir, dataset, missing_embedding_blocks):
         # lists. Skip the Nones.
         if block_info is not None:
 
-            # print_rank_0("embed '%s' block %d / %d ... %s." % (
-            #     prefix,
-            #     block_index,
-            #     len(missing_embedding_blocks),
-            #     os.path.basename(block_info["path"]),
-            # ))
             print_rank_0("embed '%s' block %d / %d ... %s." % (
                 prefix,
                 block_index,
                 len(missing_embedding_blocks),
-                # workdir + "/" + block_info["path"],
                 block_info["path"],
             ))
 
@@ -403,13 +365,6 @@ def embed_text_dataset(models, prefix,
                                                             embedding_dataset,
                                                             block_size)
 
-    # pax(0, {
-    #     "missing_embedding_blocks" : missing_embedding_blocks,
-    #     "workdir" : workdir,
-    #     "text_dataset" : text_dataset,
-    #     "embedding_dataset" : embedding_dataset,
-    # })
-
     # Prevent missing file race condition.
     torch.distributed.barrier()
 
@@ -418,8 +373,6 @@ def embed_text_dataset(models, prefix,
                  missing_embedding_blocks)
 
 
-# def embed_text_datasets(args, text_dataset_map):
-# def embed_text_datasets(text_dataset_map, block_size):
 def embed_text_datasets(text_dataset_map, max_bert_seq_length, block_size):
 
     # Load model.
@@ -433,4 +386,3 @@ def embed_text_datasets(text_dataset_map, max_bert_seq_length, block_size):
         embed_text_dataset(models, prefix,
                            info["embed_dir"], info["data"],
                            max_bert_seq_length, block_size)
-

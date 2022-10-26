@@ -5,11 +5,11 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=1
+# NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-# NPROCS=16
+NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -29,14 +29,14 @@ BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
 BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 
 # >>>>>>>>>>>>>>>>>>>>>>>
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/2
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/3
 
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="db-preprocess"
-# RETRO_TASKS="db-embed"
+RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
@@ -53,7 +53,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/2
 # RETRO_TASKS="pretraining-build-nbrs"
 # RETRO_TASKS="pretraining-embed-chunks"
 # RETRO_TASKS="pretraining-query-nbrs"
-RETRO_TASKS="pretraining-test-retro-dataset"
+# RETRO_TASKS="pretraining-test-retro-dataset"
 # RETRO_TASKS="misc-time-hnsw"
 # RETRO_TASKS="misc-time-query"
 # RETRO_TASKS="misc-time-merge-partials"

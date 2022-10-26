@@ -26,6 +26,12 @@ import json
 import os
 import torch
 
+# >>>
+# print("~~~~~~~~~~~~~~~~~~~~~")
+# print("PYTHONPATH = %s" % str(os.environ["PYTHONPATH"]))
+# print("~~~~~~~~~~~~~~~~~~~~~")
+# <<<
+
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import _print_args
 from tools.retro.db import build_db, preprocess_db, embed_db
@@ -101,6 +107,21 @@ if __name__ == "__main__":
 
     args = get_args()
     args.retro_tasks = args.retro_tasks.split(",")
+
+    # >>>
+    # from megatron import mpu
+    # # print_seq("hi.")
+    # print_seq("d %d, t %d, p %d." % (
+    #     mpu.get_data_parallel_rank(),
+    #     mpu.get_tensor_model_parallel_rank(),
+    #     mpu.get_pipeline_model_parallel_rank(),
+    # ))
+    # pax(0, {
+    #     "args" : args,
+    #     "rank" : torch.distributed.get_rank(),
+    #     "world_size" : torch.distributed.get_world_size(),
+    # })
+    # <<<
 
     _print_args(args)
     os.makedirs(args.retro_workdir, exist_ok = True)
