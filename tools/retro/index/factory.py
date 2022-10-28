@@ -15,6 +15,7 @@
 
 from .indexes import FaissBaseIndex, FaissDecompIndex, FaissParallelAddIndex
 
+
 class IndexFactory:
 
     @classmethod

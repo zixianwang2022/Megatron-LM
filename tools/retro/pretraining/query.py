@@ -13,25 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import argparse
 from collections import defaultdict
 import faiss
 from faiss import ParameterSpace
 from functools import reduce
 import glob
 import h5py
-# import joblib
-# import multiprocessing
 import numpy as np
 import os
-# import psutil
-# import time
 import torch
 from tqdm import tqdm
 
 from megatron import get_args, mpu, print_rank_0
 from tools.retro.db.dataset import dataset_offsets_to_ids
-from tools.retro.db.utils import get_db_info_map # get_full_db_info
+from tools.retro.db.utils import get_db_info_map
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_workdir
 
@@ -193,27 +188,12 @@ def get_missing_neighbor_blocks(embed_dir, nbr_dir):
     return rank_missing_blocks
 
 
-# def query_neighbors_single(args, workdir, dataset_key, dataset_path):
-# def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
-# def query_dataset_neighbors(args, index, banned_doc_chunk_id_map,
-# def query_dataset_neighbors(args, index, banned_chunk_map,
 def query_dataset_neighbors(index, banned_chunk_map,
                             prefix, embed_dir, nbr_dir, dataset):
 
     args = get_args()
 
     missing_nbr_blocks = get_missing_neighbor_blocks(embed_dir, nbr_dir)
-
-    # pax(0, {
-    #     "workdir" : workdir,
-    #     "index" : index,
-    #     "prefix" : prefix,
-    #     "embed_dir" : embed_dir,
-    #     "nbr_dir" : nbr_dir,
-    #     "dataset" : dataset,
-    #     "missing_nbr_blocks" : missing_nbr_blocks,
-    #     "missing_nbr_blocks / 0" : missing_nbr_blocks[0],
-    # })
 
     for block_index, block in enumerate(missing_nbr_blocks):
 
@@ -309,8 +289,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
         torch.distributed.barrier()
 
 
-# def query_neighbors(args, workdir, timer):
-def query_pretraining_neighbors(args, timer):
+def query_pretraining_neighbors(timer):
 
     # >>>
     # Set num threads (torch.distributed reset it to 1).
@@ -340,4 +319,3 @@ def query_pretraining_neighbors(args, timer):
                                 prefix,
                                 info["embed_dir"], info["nbr_dir"],
                                 info["data"])
-

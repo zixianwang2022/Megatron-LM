@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from megatron import get_args
 from tools.bert_embedding import embed_text_datasets
 from tools.retro.utils import GPTToTextDataset
 
@@ -23,7 +24,9 @@ from lutil import pax
 # <<<
 
 
-def embed_pretraining_chunks(args, timer):
+def embed_pretraining_chunks(timer):
+
+    args = get_args()
 
     # Data stuff.
     gpt_dataset_map = get_gpt_chunk_dataset_map()
@@ -32,12 +35,6 @@ def embed_pretraining_chunks(args, timer):
         "data" : GPTToTextDataset(info["data"]),
     } for key, info in gpt_dataset_map.items()}
     
-    # pax(0, {
-    #     "gpt_dataset_map": gpt_dataset_map,
-    #     "text_dataset_map": text_dataset_map,
-    #     "text_dataset_map / train": text_dataset_map["train"],
-    # })
-
     # Embed.
     embed_text_datasets(text_dataset_map,
                         args.retro_bert_max_chunk_length,

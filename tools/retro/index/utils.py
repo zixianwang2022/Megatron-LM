@@ -38,15 +38,9 @@ def get_index_str():
 def get_index_workdir():
     """Create sub-directory for this index."""
     
+    # Directory path.
     args = get_args()
     index_str = get_index_str()
-    # index_dir_path = os.path.join(
-    #     # args.base_dir,
-    #     # "index",
-    #     args.retro_index_dir,
-    #     "%s-%s" % (args.retro_index_ty, args.retro_data_ty),
-    #     "%s__t%d" % (index_str, args.retro_ntrain),
-    # )
     index_dir_path = os.path.join(
         args.retro_workdir,
         "index",
@@ -54,12 +48,7 @@ def get_index_workdir():
         index_str,
     )
 
-    # pax(0, {
-    #     "args" : args,
-    #     "index_str" : index_str,
-    #     "index_dir_path" : index_dir_path,
-    # })
-
+    # Make directory.
     os.makedirs(index_dir_path, exist_ok = True)
 
     return index_dir_path

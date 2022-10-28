@@ -25,21 +25,18 @@ class Timer:
         self.time_map = defaultdict(lambda : {"total": 0, "count": 0})
         self.verbose = True
 
+
     def push(self, key):
         self.active_stack.append((key, time.time()))
+
 
     def pop(self):
         p = "/".join([ a[0] for a in self.active_stack ])
         k, t = self.active_stack.pop(-1)
         m = self.time_map[p]
         m["count"] += 1
-        m["total"] += time.time() - t # 'time'
+        m["total"] += time.time() - t
         m["single"] = m["total"] / m["count"]
-        # print("timer | '%s' ... time %.3f, count %d." % (
-        #     p,
-        #     m["time"] / m["count"],
-        #     m["count"],
-        # ), flush = True)
         if torch.distributed.get_rank() == 0 and self.verbose:
             print("timer | '%s' ... [%d] single %.3f, total %.3f." % (
                 p,
@@ -48,6 +45,7 @@ class Timer:
                 m["total"],
             ), flush = True)
 
+
     def get_total_time(self):
         return sum(
             d["total"]
@@ -55,17 +53,7 @@ class Timer:
             if len(k.split("/")) == 1
         )
 
-    # def get_root_str(self):
-    #     time_map = {
-    #         # k : (d["time"] / d["count"])
-    #         k : d["single"]
-    #         for k, d in self.time_map.items()
-    #         if len(k.split("/")) == 1
-    #     }
-    #     return "%.1f [ %s ]" % (
-    #         sum(time_map.values()),
-    #         ", ".join("%s %.1f" % (k, t) for k, t in time_map.items()),
-    #     )
+
     def get_child_map(self, top_path):
         if top_path is None:
             return {
@@ -87,27 +75,18 @@ class Timer:
             ", ".join("%s %.1f%s" % (k, d["total"], "" if d["count"] == 1 else "[/%d]" % d["count"]) for k, d in child_map.items()),
         )
 
+
     def print(self, depth = None):
-        # >>>
         assert len(self.active_stack) == 0
-        # <<<
         print("~~~~~~~~~~~~~~~~~~~~~", flush = True)
-        # print("[ root = %s. ]" % self.get_root_str(), flush = True)
         max_klen = max(len(k) for k in self.time_map.keys())
         for k, d in self.time_map.items():
             klen = len(k.split("/"))
             if depth is not None and klen > depth:
                 continue
-            # print("%s ... time %.3f, count %d." % (
-            #     k.ljust(max_klen), # 20),
-            #     # d["time"] / d["count"],
-            #     d["single"],
-            #     d["count"],
-            # ), flush = True)
             print("%s : %.3f%s." % (
                 k.ljust(max_klen),
                 d["total"],
                 "" if d["count"] == 1 else " [ %d, %.3f ]" % (d["count"], d["single"]),
             ), flush = True)
         print("~~~~~~~~~~~~~~~~~~~~~", flush = True)
-        # raise Exception("timer.")

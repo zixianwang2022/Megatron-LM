@@ -22,7 +22,6 @@ from megatron import get_args, print_rank_0
 from tools.bert_embedding.utils import load_data
 from tools.retro.index import Index
 from tools.retro.index.utils import get_index_str
-# from tools.retro.utils import print_rank
 
 # >>>
 from lutil import pax
@@ -75,10 +74,9 @@ class FaissBaseIndex(Index):
         timer.pop()
 
 
-    # def train(self, input_data_paths, dir_path, timer):
-    # def train(self, workdir, timer):
     def train(self, input_data_paths, dir_path, timer):
 
+        # Single process only.
         if torch.distributed.get_rank() == 0:
             timer.push("train")
             self._train(input_data_paths, dir_path, timer)
@@ -89,39 +87,24 @@ class FaissBaseIndex(Index):
 
     def _add(self, input_data_paths, dir_path, timer):
 
+        assert torch.distributed.get_rank() == 0
+
         # Set num threads (torch.distributed reset it to 1).
         faiss.omp_set_num_threads(64)
 
-        # pax(0, {"nthreads": faiss.omp_get_max_threads()})
-
-        assert torch.distributed.get_rank() == 0
-
+        # Empty/added index paths.
         empty_index_path = self.get_empty_index_path(dir_path)
         added_index_path = self.get_added_index_path(input_data_paths, dir_path)
-
-        # pax(0, {
-        #     "empty_index_path" : empty_index_path,
-        #     "added_index_path" : added_index_path,
-        # })
 
         if os.path.isfile(added_index_path):
             return
 
+        # Read trained index.
         timer.push("init")
         index = faiss.read_index(empty_index_path)
         timer.pop()
 
-        # >>>
-        # index_ivf = faiss.extract_index_ivf(index)
-        # # clustering_index = \
-        # #     faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-        # # index_ivf.clustering_index = clustering_index
-        # self.c_verbose(index, True)
-        # self.c_verbose(index_ivf, True)
-        # self.c_verbose(index_ivf.quantizer, True)
-        # # self.c_verbose(index_ivf.clustering_index, True)
-        # <<<
-
+        # Iterate data blocks.
         for batch_id, input_data_path in enumerate(input_data_paths):
 
             print_rank_0("faiss-base / add ... batch %d / %d." % (
@@ -129,14 +112,17 @@ class FaissBaseIndex(Index):
                 len(input_data_paths),
             ))
 
+            # Load data.
             timer.push("load-data")
             inp = load_data([ input_data_path ], timer)["data"]
             timer.pop()
 
+            # Add to index.
             timer.push("add")
             index.add(inp)
             timer.pop()
 
+        # Write index.
         timer.push("save")
         faiss.write_index(index, added_index_path)
         timer.pop()
@@ -144,11 +130,13 @@ class FaissBaseIndex(Index):
 
     def add(self, input_data_paths, dir_path, timer):
 
+        # Single process only.
         if torch.distributed.get_rank() == 0:
             timer.push("add")
             self._add(input_data_paths, dir_path, timer)
             timer.pop()
 
+        # Wait for rank 0.
         torch.distributed.barrier()
 
         return self.get_added_index_path(input_data_paths, dir_path)

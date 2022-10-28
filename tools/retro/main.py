@@ -108,6 +108,10 @@ if __name__ == "__main__":
     args = get_args()
     args.retro_tasks = args.retro_tasks.split(",")
 
+    _print_args(args)
+    os.makedirs(args.retro_workdir, exist_ok = True)
+    save_args(args)
+
     # >>>
     # from megatron import mpu
     # print_seq("d %d, t %d, p %d." % (
@@ -122,10 +126,6 @@ if __name__ == "__main__":
     # })
     # <<<
 
-    _print_args(args)
-    os.makedirs(args.retro_workdir, exist_ok = True)
-    save_args(args)
-
     # Select task to run.
     timer = Timer()
     for task in args.retro_tasks:
@@ -134,57 +134,56 @@ if __name__ == "__main__":
 
         # DB (i.e., chunk db).
         if task == "db-build":
-            build_db(args, timer)
+            build_db(timer) # preprocess, embed.
         elif task == "db-preprocess":
-            preprocess_db(args, timer)
+            preprocess_db(timer)
         elif task == "db-embed":
-            embed_db(args, timer)
+            embed_db(timer)
 
         # Index.
         elif task == "index-build":
-            build_index(args, timer) # train, add
+            build_index(timer) # train, add.
         elif task == "index-train":
-            train_index(args, timer)
+            train_index(timer)
         elif task == "index-add":
-            add_to_index(args, timer)
-        # elif task == "index-remove-add-outputs":
+            add_to_index(timer)
         elif task == "index-remove-train-files":
-            remove_train_files(args, timer)
+            remove_train_files(timer)
         elif task == "index-remove-add-files":
-            remove_add_files(args, timer)
+            remove_add_files(timer)
 
         # Pretraining.
         elif task == "pretraining-build":
-            build_pretraining_neighbors(args, timer)
+            build_pretraining_neighbors(timer) # embed, query.
         elif task == "pretraining-embed-chunks":
-            embed_pretraining_chunks(args, timer)
+            embed_pretraining_chunks(timer)
         elif task == "pretraining-query-nbrs":
-            query_pretraining_neighbors(args, timer)
+            query_pretraining_neighbors(timer)
         elif task == "pretraining-test-retro-dataset":
-            test_retro_dataset(args, timer)
+            test_retro_dataset(timer)
         elif task == "nbr-plot-acc":
-            plot_nbr_acc(args, timer)
+            plot_nbr_acc(timer)
         elif task == "nbr-verify-codes":
-            verify_codes(args, timer)
+            verify_codes(timer)
         elif task == "nbr-verify-nbrs":
-            verify_nbrs(args, timer)
+            verify_nbrs(timer)
 
         # Misc tasks.
         elif task == "misc-time-merge-partials":
             from tools.retro.index import FaissParallelAddIndex
             # if torch.distributed.get_rank() == 0:
-            FaissParallelAddIndex.time_merge_partials(args, timer)
+            FaissParallelAddIndex.time_merge_partials(timer)
             torch.distributed.barrier()
         elif task == "time-hnsw":
             from tools.retro.index import FaissParallelAddIndex
-            FaissParallelAddIndex.time_hnsw(args, timer)
+            FaissParallelAddIndex.time_hnsw(timer)
         elif task == "time-query":
             from tools.retro.index import FaissParallelAddIndex
-            FaissParallelAddIndex.time_query(args, timer)
+            FaissParallelAddIndex.time_query(timer)
         elif task == "nan-stats":
-            get_nan_stats(args, timer)
+            get_nan_stats(timer)
         elif task == "bert-nan-analysis":
-            run_bert_nan_analysis(args, timer)
+            run_bert_nan_analysis(timer)
         else:
             raise Exception("specialize for task '%s'." % task)
 

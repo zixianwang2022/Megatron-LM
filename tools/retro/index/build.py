@@ -17,6 +17,7 @@ import os
 import shutil
 import torch
 
+from megatron import get_args
 from tools.retro.db.utils import get_db_info_map
 from tools.retro.index.factory import IndexFactory
 
@@ -27,14 +28,16 @@ from lutil import pax
 # <<<
 
 
-def train_index(args, timer):
+def train_index(timer):
+    args = get_args()
     workdir = get_index_workdir()
     input_data_paths = get_db_info_map()["sampled"]["embed_paths"]
     index = IndexFactory.get_index(args.retro_index_ty)
     index.train(input_data_paths, workdir, timer)
 
 
-def add_to_index(args, timer):
+def add_to_index(timer):
+    args = get_args()
     workdir = get_index_workdir()
     input_data_paths = get_db_info_map()["full"]["embed_paths"]
     index = IndexFactory.get_index(args.retro_index_ty)
@@ -42,14 +45,13 @@ def add_to_index(args, timer):
     return output_index_path
 
 
-def build_index(args, timer):
+def build_index(timer):
     raise Exception("hi.")
-    train_index(args, timer)
-    add_to_index(args, timer)
+    train_index(timer)
+    add_to_index(timer)
 
 
-# def remove_add_outputs(args, timer):
-def remove_add_files(args, timer):
+def remove_add_files(timer):
 
     # Single process only.
     if torch.distributed.get_rank() != 0:
@@ -71,4 +73,3 @@ def remove_add_files(args, timer):
             os.remove(p)
         else:
             raise Exception("specialize for this monster, '%s'." % p)
-

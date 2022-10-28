@@ -17,18 +17,6 @@ from .embed import embed_db
 from .preprocess import preprocess_db
 
 
-# def build_db(args, timer):
-# def build_chunk_db(args, timer):
-def build_db(args, timer):
-
-    # if torch.distributed.get_rank() != 0:
-    #     return
-
-    # # Preprocessing workdir.
-    # workdir = os.path.join(args.retro_workdir, "preprocess")
-    # os.makedirs(workdir, exist_ok = True)
-    # workdir = args.retro_workdir
-
-    # Stages.
-    preprocess_chunk_db(args, timer)
-    embed_chunk_db(args, timer)
+def build_db(timer):
+    preprocess_chunk_db(timer)
+    embed_chunk_db(timer)

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from megatron import get_args
 from tools.bert_embedding import embed_text_datasets
 from tools.retro.utils import GPTToTextDataset
 
@@ -23,7 +24,9 @@ from lutil import pax
 # <<<
 
 
-def embed_db(args, timer):
+def embed_db(timer):
+
+    args = get_args()
 
     # GPT, text datasets.
     gpt_dataset_map = get_gpt_chunk_dataset_map()
@@ -33,7 +36,7 @@ def embed_db(args, timer):
     } for key, info in gpt_dataset_map.items()}
 
     # >>>
-    # del text_dataset_map["full"]
+    # del text_dataset_map["full"] # for embedding much smaller sampled dataset.
     # <<<
 
     # Embed text datasets.
