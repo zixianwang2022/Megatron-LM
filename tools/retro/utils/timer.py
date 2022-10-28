@@ -23,6 +23,7 @@ class Timer:
     def __init__(self):
         self.active_stack = []
         self.time_map = defaultdict(lambda : {"total": 0, "count": 0})
+        self.verbose = True
 
     def push(self, key):
         self.active_stack.append((key, time.time()))
@@ -39,7 +40,7 @@ class Timer:
         #     m["time"] / m["count"],
         #     m["count"],
         # ), flush = True)
-        if torch.distributed.get_rank() == 0:
+        if torch.distributed.get_rank() == 0 and self.verbose:
             print("timer | '%s' ... [%d] single %.3f, total %.3f." % (
                 p,
                 m["count"],

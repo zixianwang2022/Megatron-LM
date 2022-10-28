@@ -16,15 +16,16 @@
 import os
 import torch
 
-# from tools.retro.utils import mkdir
+from megatron import get_args
 
 # >>>
 from lutil import pax
 # <<<
 
 
-def get_index_str(args):
+def get_index_str():
     """Faiss notation for index structure."""
+    args = get_args()
     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
         args.retro_pq_m,
         args.retro_ivf_dim,
@@ -34,11 +35,11 @@ def get_index_str(args):
     )
 
 
-# def get_index_dir_path(args):
-def get_index_workdir(args):
+def get_index_workdir():
     """Create sub-directory for this index."""
     
-    index_str = get_index_str(args)
+    args = get_args()
+    index_str = get_index_str()
     # index_dir_path = os.path.join(
     #     # args.base_dir,
     #     # "index",

@@ -311,19 +311,25 @@ def test_retro_dataset(args, timer):
     samples = []
     for sample_idx in range(0, len(retro_dataset), len(retro_dataset)//n_samples):
         samples.append(retro_dataset[sample_idx])
-    pax(0, {"samples": samples})
+    pax(0, {
+        "samples" : samples,
+        "samples / 0" : samples[0],
+        "samples / 0 / nbrs" : samples[0]["neighbor_embeddings"],
+        "samples / 0 / nbrs / 0" : samples[0]["neighbor_embeddings"][0],
+        "samples / 0 / nbrs / 0 / 0" : samples[0]["neighbor_embeddings"][0][0],
+    })
     # <<<
 
-    pax(0, {
-        "db_embed_dir" : db_embed_dir,
-        "db_embed_path_map" : db_embed_path_map,
-        "pretraining_seq_dataset" : pretraining_seq_dataset,
-        "pretraining_nbr_dir" : pretraining_nbr_dir,
-        "pretraining_nbr_path_map" : pretraining_nbr_path_map,
-        "pretraining_valid_seq_idxs" : "%d / %s" % (
-            len(pretraining_valid_seq_idxs),
-            str(pretraining_valid_seq_idxs),
-        ),
-        "retro_dataset" : retro_dataset,
-        "retro_dataset / len" : len(retro_dataset),
-    })
+    # pax(0, {
+    #     "db_embed_dir" : db_embed_dir,
+    #     "db_embed_path_map" : db_embed_path_map,
+    #     "pretraining_seq_dataset" : pretraining_seq_dataset,
+    #     "pretraining_nbr_dir" : pretraining_nbr_dir,
+    #     "pretraining_nbr_path_map" : pretraining_nbr_path_map,
+    #     "pretraining_valid_seq_idxs" : "%d / %s" % (
+    #         len(pretraining_valid_seq_idxs),
+    #         str(pretraining_valid_seq_idxs),
+    #     ),
+    #     "retro_dataset" : retro_dataset,
+    #     "retro_dataset / len" : len(retro_dataset),
+    # })

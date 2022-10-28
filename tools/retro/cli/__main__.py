@@ -13,20 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-# from . import *
 from . import retro
 
 
 if __name__ == "__main__":
-
-    # os.environ["RETRO_WORKDIR"] = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1"
-
-    # retro.init(
-    #     retro_workdir = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1",
-    #     # retro_chunk_length = 64,
-    # )
-    retro.init("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1")
-
-    # retro.print_usage()
+    retro.init("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/0")

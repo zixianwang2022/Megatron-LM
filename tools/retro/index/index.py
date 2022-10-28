@@ -22,8 +22,8 @@ from tools.retro import utils
 
 class Index:
 
-    def __init__(self, args):
-        self.args = args
+    # def __init__(self, args):
+    #     self.args = args
 
     @classmethod
     def c_verbose(cls, index, v):

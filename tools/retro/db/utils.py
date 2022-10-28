@@ -24,69 +24,35 @@ from lutil import pax
 # <<<
 
 
-# def get_base_db_workdir(args):
 def get_base_db_workdir():
     args = get_args()
     return os.path.join(args.retro_workdir, "db")
 
 
-# def get_indexed_dataset_infos_path(args):
 def get_indexed_dataset_infos_path():
-    args = get_args()
-    return os.path.join(get_base_db_workdir(args), "indexed_dataset_infos.json")
+    return os.path.join(get_base_db_workdir(), "indexed_dataset_infos.json")
 
 
-# def save_indexed_dataset_infos(args, indexed_dataset_infos):
 def save_indexed_dataset_infos(indexed_dataset_infos):
     """Save dataset order."""
-    args = get_args()
-    with open(get_indexed_dataset_infos_path(args), "w") as f:
+    with open(get_indexed_dataset_infos_path(), "w") as f:
         json.dump(indexed_dataset_infos, f, indent = 4)
 
 
-# def get_indexed_dataset_infos(args):
 def get_indexed_dataset_infos():
-    args = get_args()
-    path = get_indexed_dataset_infos_path(args)
+    path = get_indexed_dataset_infos_path()
     with open(path) as f:
         return json.load(f)
 
 
-# def get_individual_db_dir(args):
 def get_individual_db_dir():
     return os.path.join(get_base_db_workdir(), "individual")
 
 
-# def get_individual_db_path(args, data_name):
 def get_individual_db_path(data_name):
     return os.path.join(get_individual_db_dir(), f"db.{data_name}.hdf5")
 
 
-# def get_full_db_info(args):
-#     workdir = os.path.join(get_base_db_workdir(args), "full")
-#     return {
-#         "db_path" : os.path.join(workdir, "db.hdf5"),
-#         "embed_dir" : os.path.join(workdir, "embed"),
-#         # "embed_paths" : sorted(glob.glob(embedding_dir + "/*.hdf5")),
-#     }
-
-
-# def get_sampled_db_info(args):
-#     workdir = os.path.join(get_base_db_workdir(args), "sampled")
-#     return {
-#         "db_path" : os.path.join(workdir, "db.hdf5"),
-#         "embed_dir" : os.path.join(workdir, "embed"),
-#         # "embed_paths" : sorted(glob.glob(embedding_dir + "/*.hdf5")),
-#     }
-
-
-# def get_db_info_map(args):
-#     return {
-#         "full" : get_full_db_info(args),
-#         "sampled" : get_sampled_db_info(args),
-#     }
-# def get_db_info(args, key):
-#     workdir = os.path.join(get_base_db_workdir(args), key)
 def get_db_info(key):
     workdir = os.path.join(get_base_db_workdir(), key)
     db_path = os.path.join(workdir, "db.hdf5")
@@ -100,41 +66,8 @@ def get_db_info(key):
     }
 
 
-# def get_db_info_map(args):
 def get_db_info_map():
     return {key:get_db_info(key) for key in ("full", "sampled")}
-
-
-# def get_embedding_path_map(workdir):
-
-#     raise Exception("move me to db/.")
-
-#     # Directory map.
-#     chunk_index_path_map = get_chunk_index_path_map(workdir)
-#     embedding_path_map = {}
-#     for key, chunk_index_path in chunk_index_path_map.items():
-
-#         # Embedding sub-directory.
-#         embedding_dir = os.path.join(workdir, "embed", key)
-#         os.makedirs(embedding_dir, exist_ok = True)
-
-#         # Sort data paths for reproducibility.
-#         embedding_path_map[key] = {
-#             "dir" : embedding_dir,
-#             "data" : sorted(glob.glob(embedding_dir + "/*.hdf5")),
-#         }
-
-#     # pax(0, {
-#     #     "chunk_index_path_map" : chunk_index_path_map,
-#     #     "embedding_path_map" : embedding_path_map,
-#     #     "workdir" : workdir,
-#     # })
-
-#     return embedding_path_map
-
-
-# def get_chunk_embedding_path(args, data_prefix):
-#     return data_prefix + f".chunk_embed_n{args.retriever_chunk_len}.hdf5"
 
 
 # def create_data_softlinks(data_files):

@@ -31,7 +31,8 @@ from tools.retro.db.dataset import \
 from tools.retro.db.utils import get_db_info_map, \
     get_indexed_dataset_infos as get_db_indexed_dataset_infos
 from tools.retro.main import add_retro_args
-from tools.retro.nbr.dataset import get_dataset_map as get_pt_dataset_map
+from tools.retro.pretraining.chunk_dataset import \
+    get_gpt_chunk_dataset_map as get_pt_gpt_chunk_dataset_map
 from tools.retro.utils import get_args_path, get_bert_tokenizer, get_gpt_tokenizer
 
 # >>>
@@ -77,15 +78,20 @@ class retro:
         # Load args.
         cls.init_megatron(workdir)
 
-        cls.gpt_tokenizer = get_gpt_tokenizer(cls.args)
-        cls.bert_tokenizer = get_bert_tokenizer(cls.args)
+        cls.gpt_tokenizer = get_gpt_tokenizer()
+        cls.bert_tokenizer = get_bert_tokenizer()
+
+        # pax(0, {
+        #     "gpt_tokenizer" : cls.gpt_tokenizer,
+        #     "bert_tokenizer" : cls.bert_tokenizer,
+        # })
 
         # Load chunk dbs.
-        cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos(cls.args)
-        cls.db_gpt_chunk_dataset_map = get_db_gpt_chunk_dataset_map(cls.args)
+        cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos()
+        cls.db_gpt_chunk_dataset_map = get_db_gpt_chunk_dataset_map()
 
         # Load pretraining datasets.
-        cls.pt_dataset_map = get_pt_dataset_map(cls.args)
+        cls.pt_gpt_chunk_dataset_map = get_pt_gpt_chunk_dataset_map()
 
         # Print usage.
         cls.print_usage()
@@ -121,12 +127,13 @@ class retro:
 
     @classmethod
     def get_db_n_chunks(cls, data_key):
-        return len(cls.db_gpt_chunk_dataset_map[data_key].chunk_index)
+        return len(cls.db_gpt_chunk_dataset_map[data_key]["data"].chunk_index)
 
 
     @classmethod
     def get_db_chunk_gpt(cls, data_key, idx):
-        return cls.db_gpt_chunk_dataset_map[data_key][idx]["text"].tolist()
+        # pax(0, {"chunky": cls.db_gpt_chunk_dataset_map[data_key]})
+        return cls.db_gpt_chunk_dataset_map[data_key]["data"][idx]["text"].tolist()
 
 
     @classmethod
@@ -159,12 +166,12 @@ class retro:
 
     @classmethod
     def get_pt_n_seqs_n_chunks(cls, data_key):
-        assert data_key in cls.pt_dataset_map, \
+        assert data_key in cls.pt_gpt_chunk_dataset_map, \
             "pretraining set '%s' not found (choices: %s)." % (
                 data_key, ", ".join(cls.pt_dataset_map.keys()))
         return (
-            len(cls.pt_dataset_map[data_key]["data"].seq_dataset),
-            len(cls.pt_dataset_map[data_key]["data"]),
+            len(cls.pt_gpt_chunk_dataset_map[data_key]["data"].seq_dataset),
+            len(cls.pt_gpt_chunk_dataset_map[data_key]["data"]),
         )
 
 
@@ -180,22 +187,23 @@ class retro:
 
     @classmethod
     def get_pt_seq_gpt(cls, data_key, idx):
-        return cls.pt_dataset_map[data_key]["data"]. \
+        return cls.pt_gpt_chunk_dataset_map[data_key]["data"]. \
             seq_dataset[idx]["text"].tolist()
 
 
     @classmethod
     # def get_pt_seq_chunk_gpt(cls, data_key, si, ci):
     def get_pt_chunk_gpt(cls, data_key, si, ci):
-        chunk_start_idx = cls.args.retro_chunk_length * ci
-        chunk_end_idx = cls.args.retro_chunk_length * (ci + 1)
+        chunk_start_idx = cls.args.retro_gpt_chunk_length * ci
+        chunk_end_idx = cls.args.retro_gpt_chunk_length * (ci + 1)
         return cls.get_pt_seq_gpt(data_key, si) \
             [chunk_start_idx:chunk_end_idx]
 
 
     @classmethod
     def get_pt_chunks_gpt(cls, data_key, si):
-        n_chunks_per_seq = cls.args.retro_seq_length//cls.args.retro_chunk_length
+        n_chunks_per_seq = cls.args.retro_gpt_seq_length // \
+            cls.args.retro_gpt_chunk_length
         return [cls.get_pt_chunk_gpt(data_key, si, ci)
                 for ci in range(n_chunks_per_seq) ]
 
@@ -279,7 +287,7 @@ class retro:
             print("  %s%s," % (
                 "[" if i == 0 else " ",
                 shorten_str(str(token_ids), 50),
-                # "]" if cls.args.retro_seq_length // args.retro_chunk_length - 1 else ",",
+                # "]" if cls.args.retro_gpt_seq_length // args.retro_gpt_chunk_length - 1 else ",",
             ))
         print("   ...")
         print("   %s]" % shorten_str(str(chunks_gpt[-1]), 50))

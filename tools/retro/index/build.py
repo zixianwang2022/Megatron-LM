@@ -27,36 +27,18 @@ from lutil import pax
 # <<<
 
 
-# def get_workdir(args):
-#     workdir = os.path.join(args.retro_workdir, "index")
-#     os.makedirs(workdir, exist_ok = True)
-#     return workdir
-
-
 def train_index(args, timer):
-    # workdir = get_workdir(args)
-    workdir = get_index_workdir(args)
-    # embedding_path_map = get_embedding_path_map(args.retro_workdir)
-    # input_data_paths = embedding_path_map["sampled"]["data"]
-    input_data_paths = get_db_info_map(args)["sampled"]["embed_paths"]
-    # pax(0, {"input_data_paths": input_data_paths})
-    index = IndexFactory.get_index(args)
+    workdir = get_index_workdir()
+    input_data_paths = get_db_info_map()["sampled"]["embed_paths"]
+    index = IndexFactory.get_index(args.retro_index_ty)
     index.train(input_data_paths, workdir, timer)
 
 
 def add_to_index(args, timer):
-    workdir = get_index_workdir(args)
-    # embedding_path_map = get_embedding_path_map(args.retro_workdir)
-    # input_data_paths = embedding_path_map["full"]["data"]
-    input_data_paths = get_db_info_map(args)["full"]["embed_paths"]
-    # pax(0, {"input_data_paths": input_data_paths})
-    index = IndexFactory.get_index(args)
+    workdir = get_index_workdir()
+    input_data_paths = get_db_info_map()["full"]["embed_paths"]
+    index = IndexFactory.get_index(args.retro_index_ty)
     output_index_path = index.add(input_data_paths, workdir, timer)
-    # pax(0, {
-    #     "input_data_paths" : input_data_paths,
-    #     "output_index_path" : output_index_path,
-    #     "index" : index,
-    # })
     return output_index_path
 
 

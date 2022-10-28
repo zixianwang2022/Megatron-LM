@@ -29,9 +29,6 @@ class BlendableDataset(torch.utils.data.Dataset):
 
     def __init__(self, datasets, weights):
 
-        # >>>
-        raise Exception("hi.")
-        # <<<
         self.datasets = datasets
         num_datasets = len(datasets)
         assert num_datasets == len(weights)

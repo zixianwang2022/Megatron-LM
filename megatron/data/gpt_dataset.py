@@ -53,7 +53,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     output = get_datasets_weights_and_num_samples(data_prefix,
                                                   train_valid_test_num_samples)
     prefixes, weights, datasets_train_valid_test_num_samples = output
-    pax(0, {"data_prefix": data_prefix})
 
     # Build individual datasets.
     train_datasets = []

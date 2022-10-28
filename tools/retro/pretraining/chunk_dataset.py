@@ -95,13 +95,21 @@ def verify_indexed_dataset_order():
 
     args = get_args()
 
+    db_indexed_dataset_infos = get_indexed_dataset_infos()
+    db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
+
     assert len(args.data_path) >= 2, "blendable dataset supported only."
+    pretraining_prefixes = args.data_path[1:None:2]
 
-    indexed_dataset_infos = get_indexed_dataset_infos()
+    if len(db_prefixes) != len(pretraining_prefixes):
+        raise Exception("inconsistent dataset count between db & pretraining.")
+    if db_prefixes != pretraining_prefixes:
+        raise Exception("inconsistent dataset order between db & pretraining.")
 
-    pax(0, {
-        "indexed_dataset_infos" : indexed_dataset_infos,
-    })
+    # pax(0, {
+    #     "db_prefixes" : db_prefixes,
+    #     "pretraining_prefixes" : pretraining_prefixes,
+    # })
 
 
 def train_valid_test_datasets_provider(train_val_test_num_samples):
@@ -124,7 +132,6 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
-# def get_text_chunk_dataset_map(args):
 def get_gpt_chunk_dataset_map():
 
     args = get_args()
@@ -135,8 +142,8 @@ def get_gpt_chunk_dataset_map():
     args.iteration = 0
     args.consumed_train_samples = 0
 
-    # Verify dataset order.
-    verify_dataset_order()
+    # Verify indexed dataset order.
+    verify_indexed_dataset_order()
 
     # Datasets.
     print_rank_0(" > data loader.")
@@ -151,17 +158,13 @@ def get_gpt_chunk_dataset_map():
 
     # Info dict.
     workdir = get_base_pretraining_workdir(args)
-    # text_dataset_map = {
     dataset_map = {
         key : {
             "embed_dir" : os.path.join(workdir, key, "embed"),
             "nbr_dir" : os.path.join(workdir, key, "nbr"),
-            # "data" : GPTToTextDataset(GPTChunkDataset(args, loader.dataset)),
-            # "data" : GPTChunkDataset(args, loader.dataset),
             "data" : GPTChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
         }
         for key, loader in data_loader_map.items() if loader
     }
 
-    # return text_dataset_map
     return dataset_map

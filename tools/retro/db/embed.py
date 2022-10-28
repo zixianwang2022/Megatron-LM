@@ -36,11 +36,6 @@ def embed_db(args, timer):
     # del text_dataset_map["full"]
     # <<<
 
-    # pax(0, {
-    #     "gpt_dataset_map" : gpt_dataset_map,
-    #     "text_dataset_map" : text_dataset_map,
-    # })
-
     # Embed text datasets.
     embed_text_datasets(text_dataset_map,
                         args.retro_bert_max_chunk_length,

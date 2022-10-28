@@ -115,11 +115,11 @@ if __name__ == "__main__":
     #     mpu.get_tensor_model_parallel_rank(),
     #     mpu.get_pipeline_model_parallel_rank(),
     # ))
-    pax(0, {
-        "args" : args,
-        "rank" : torch.distributed.get_rank(),
-        "world_size" : torch.distributed.get_world_size(),
-    })
+    # pax(0, {
+    #     "args" : args,
+    #     "rank" : torch.distributed.get_rank(),
+    #     "world_size" : torch.distributed.get_world_size(),
+    # })
     # <<<
 
     _print_args(args)
@@ -210,6 +210,6 @@ if __name__ == "__main__":
             args.retro_tasks[-1],
             args.retro_index_ty,
             timer.get_child_str(args.retro_tasks[-1]),
-            get_index_str(args),
+            get_index_str(),
         ))
     torch.distributed.barrier()

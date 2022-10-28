@@ -29,7 +29,7 @@ import os
 import torch
 from tqdm import tqdm
 
-from megatron import mpu, print_rank_0
+from megatron import get_args, mpu, print_rank_0
 from tools.retro.db.dataset import dataset_offsets_to_ids
 from tools.retro.db.utils import get_db_info_map # get_full_db_info
 from tools.retro.index.factory import IndexFactory
@@ -42,11 +42,13 @@ from lutil import pax, print_seq, shorten as shorten_str
 # <<<
 
 
-def get_index(args):
+def get_index():
+
+    args = get_args()
 
     # Load index.
-    index_wrapper = IndexFactory.get_index(args)
-    index_dir = get_index_workdir(args)
+    index_wrapper = IndexFactory.get_index(args.retro_index_ty)
+    index_dir = get_index_workdir()
     added_index_path = index_wrapper.get_added_index_path(None, index_dir)
     index = faiss.read_index(added_index_path)
 
@@ -65,13 +67,11 @@ def get_index(args):
     return index
 
 
-# def get_chunk_db(args):
-# def get_banned_doc_chunk_id_map(args):
-def get_banned_chunk_map(args):
+def get_banned_chunk_map():
 
     # Load chunk db.
     print_rank_0("load chunk db.")
-    chunk_db_path = get_db_info_map(args)["full"]["db_path"]
+    chunk_db_path = get_db_info_map()["full"]["db_path"]
     f = h5py.File(chunk_db_path, "r")
     doc_ids = np.copy(f["chunks_valid"][:, 0]).tolist()
     dataset_offsets = np.copy(f["dataset_offsets_valid"]).tolist()
@@ -81,27 +81,23 @@ def get_banned_chunk_map(args):
     assert len(doc_ids) == len(dataset_ids)
 
     # >>>
-    pax(0, {
-        "doc_ids" : "%d / %s" % (len(doc_ids), str(doc_ids)),
-        "dataset_offsets": "%d / %s"%(len(dataset_offsets), str(dataset_offsets)),
-        "dataset_ids" : "%d / %s" % (len(dataset_ids), str(dataset_ids)),
-        "doc_ids / 836728" : [
-            (dataset_ids[i], doc_id)
-            for i, doc_id in enumerate(doc_ids)
-            if doc_id == 836728
-        ],
-    })
+    # pax(0, {
+    #     "doc_ids" : "%d / %s" % (len(doc_ids), str(doc_ids)),
+    #     "dataset_offsets": "%d / %s"%(len(dataset_offsets), str(dataset_offsets)),
+    #     "dataset_ids" : "%d / %s" % (len(dataset_ids), str(dataset_ids)),
+    #     "doc_ids / 836728" : [
+    #         (dataset_ids[i], doc_id)
+    #         for i, doc_id in enumerate(doc_ids)
+    #         if doc_id == 836728
+    #     ],
+    # })
     # <<<
 
     # Map docs to chunks.
     print_rank_0("build doc-chunk-id-map.")
-    # doc_chunk_id_map = defaultdict(set)
     banned_chunk_map = defaultdict(set)
     for chunk_id, doc_id in enumerate(doc_ids):
-        # doc_chunk_id_map[doc_id].add(chunk_id)
         if chunk_id % 10000000 == 0:
-            # print_rank_0("mapping banned chunk %d / %d." %
-            #              (chunk_id, len(doc_ids)))
             print_rank_0("mapping banned chunks, %.0f%%." %
                          (100 * chunk_id / len(doc_ids)))
         dataset_id = dataset_ids[chunk_id]
@@ -123,14 +119,12 @@ def get_banned_chunk_map(args):
     return banned_chunk_map
 
 
-# def get_missing_neighbor_blocks(args, workdir, dataset_key):
 def get_missing_neighbor_blocks(embed_dir, nbr_dir):
 
     # Delete corrupt files.
     print_rank_0("delete corrupt neighbor blocks.")
     if torch.distributed.get_rank() == 0:
         existing_block_paths = glob.glob(nbr_dir + "/*.hdf5")
-        # pax(0, {"existing_block_paths": existing_block_paths})
         pbar = tqdm(existing_block_paths)
         for index, path in enumerate(pbar):
             pbar.set_description("verifying neighbor block.")
@@ -202,8 +196,11 @@ def get_missing_neighbor_blocks(embed_dir, nbr_dir):
 # def query_neighbors_single(args, workdir, dataset_key, dataset_path):
 # def query_dataset_neighbors(args, workdir, index, banned_doc_chunk_id_map,
 # def query_dataset_neighbors(args, index, banned_doc_chunk_id_map,
-def query_dataset_neighbors(args, index, banned_chunk_map,
+# def query_dataset_neighbors(args, index, banned_chunk_map,
+def query_dataset_neighbors(index, banned_chunk_map,
                             prefix, embed_dir, nbr_dir, dataset):
+
+    args = get_args()
 
     missing_nbr_blocks = get_missing_neighbor_blocks(embed_dir, nbr_dir)
 
@@ -256,19 +253,25 @@ def query_dataset_neighbors(args, index, banned_chunk_map,
                     # banned_chunk_ids.update(banned_doc_chunk_id_map[doc_id])
 
                     current_chunk_ids = banned_chunk_map[(dataset_idx, doc_id)]
-                    if not current_chunk_ids:
-                        pax(0, {
-                            "sample_id" : sample_id,
-                            "sample" : sample,
-                            "dataset_idx" : dataset_idx,
-                            "doc_id" : doc_id,
-                            "current_chunk_ids" : current_chunk_ids,
-                        })
+                    # >>>
+                    # if not current_chunk_ids:
+                    #     pax(0, {
+                    #         "sample_id" : sample_id,
+                    #         "sample" : sample,
+                    #         "dataset_idx" : dataset_idx,
+                    #         "doc_id" : doc_id,
+                    #         "current_chunk_ids" : current_chunk_ids,
+                    #     })
+                    assert current_chunk_ids, "should be >=1 chunk_id."
+                    # <<<
                     banned_chunk_ids.update(current_chunk_ids)
                     # <<<
                 sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
 
-            pax(0, {"sample_banned_chunk_id_map": sample_banned_chunk_id_map})
+            # pax(0, {"sample_banned_chunk_id_map": {
+            #     k : "%d / %s" % (len(v), shorten_str(str(v), 50))
+            #     for k, v in sample_banned_chunk_id_map.items()
+            # }})
 
             # Filter banned neighbor ids.
             print_rank_0("filter banned neighbor ids.")
@@ -279,23 +282,22 @@ def query_dataset_neighbors(args, index, banned_chunk_map,
             )
             min_chunk_id, max_chunk_id = block["range"]
             for chunk_id in range(min_chunk_id, max_chunk_id):
-                sample_id = chunk_id // dataset.n_chunk_seq_ratio
-                query_row = [i for i in query_nbr_ids[chunk_id-min_chunk_id] if i>=0]
+
+                sample_id = chunk_id // dataset.n_chunks_per_seq
+
+                # Get valid neighbors (!= -1).
+                query_row = [i for i in query_nbr_ids[chunk_id-min_chunk_id]
+                             if i>=0]
+
+                # Filter row.
                 filtered_row = [i for i in query_row
-                             if i not in sample_banned_chunk_id_map[sample_id]]
+                                if i not in sample_banned_chunk_id_map[sample_id]]
                 filtered_row = filtered_row[:200]
-                filtered_row += [-1] * (args.retro_nnbrs_target - len(filtered_row))
+                filtered_row += \
+                    [-1] * (args.retro_nnbrs_target - len(filtered_row))
                 filtered_nbr_ids[chunk_id-min_chunk_id] = filtered_row
 
-            pax(0, {
-                # "data" : data,
-                # "query_nbr_ids" : query_nbr_ids,
-                "dataset" : dataset,
-                "sample_ids" : "%d / %s" % (len(sample_ids), str(sample_ids)),
-                "sample_banned_chunk_id_map" : sample_banned_chunk_id_map,
-                "filtered_nbr_ids" : filtered_nbr_ids.tolist(),
-            })
-
+            # Save neighbors.
             print_rank_0("save neighbors.")
             os.makedirs(os.path.dirname(block["nbr_path"]), exist_ok = True)
             f = h5py.File(block["nbr_path"], "w")
@@ -311,19 +313,20 @@ def query_dataset_neighbors(args, index, banned_chunk_map,
 def query_pretraining_neighbors(args, timer):
 
     # >>>
-    # # Set num threads (torch.distributed reset it to 1).
-    # # assert torch.distributed.get_rank() == 0
+    # Set num threads (torch.distributed reset it to 1).
+    # assert torch.distributed.get_rank() == 0
     # if torch.distributed.get_rank() != 0:
     #     return
     # faiss.omp_set_num_threads(64)
+    faiss.omp_set_num_threads(8)
     # <<<
 
     # Load index, banned chunk ids, datasets.
     print_rank_0(" > get index.")
-    index = get_index(args)
+    index = get_index()
 
     print_rank_0(" > get banned doc-chunk id map.")
-    banned_chunk_map = get_banned_chunk_map(args)
+    banned_chunk_map = get_banned_chunk_map()
 
     print_rank_0(" > get dataset map.")
     chunk_dataset_map = get_gpt_chunk_dataset_map()
@@ -333,7 +336,7 @@ def query_pretraining_neighbors(args, timer):
     for prefix, info in chunk_dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
-        query_dataset_neighbors(args, index, banned_chunk_map,
+        query_dataset_neighbors(index, banned_chunk_map,
                                 prefix,
                                 info["embed_dir"], info["nbr_dir"],
                                 info["data"])

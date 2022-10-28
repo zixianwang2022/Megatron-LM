@@ -18,10 +18,7 @@ import json
 import numpy as np
 import torch
 
-# from megatron import get_args
-# from megatron import get_args, get_tokenizer, print_rank_0
 from megatron import get_args, print_rank_0
-# from megatron.data.bert_dataset import build_training_sample
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from tools.retro.utils import get_gpt_tokenizer
 
@@ -93,14 +90,13 @@ def dataset_offsets_to_ids(offsets):
     # pax(0, {"offsets": str(offsets), "ids": str(ids)})
     return ids
 
-# def get_dataset_map(args):
-# def get_gpt_chunk_dataset_map(args):
+
 def get_gpt_chunk_dataset_map():
 
     args = get_args()
 
     # Load indexed dataset infos.
-    indexed_dataset_infos = get_indexed_dataset_infos(args)
+    indexed_dataset_infos = get_indexed_dataset_infos()
 
     # Indexed datasets.
     indexed_datasets = []
@@ -114,7 +110,7 @@ def get_gpt_chunk_dataset_map():
             make_indexed_dataset(indexed_dataset_info["prefix"], "mmap", True))
 
     # Chunk index.
-    db_info_map = get_db_info_map(args)
+    db_info_map = get_db_info_map()
     chunk_dataset_map = {}
     for db_index, (db_key, db_info) in enumerate(db_info_map.items()):
 
@@ -142,4 +138,3 @@ def get_gpt_chunk_dataset_map():
         }
 
     return chunk_dataset_map
-

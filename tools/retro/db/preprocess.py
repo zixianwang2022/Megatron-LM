@@ -23,6 +23,7 @@ import threading
 import torch
 from tqdm import tqdm
 
+from megatron import get_args
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
@@ -33,8 +34,6 @@ from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 from .utils import (
     get_individual_db_dir,
     get_individual_db_path,
-    # get_full_db_info,
-    # get_sampled_db_info,
     get_db_info_map,
     save_indexed_dataset_infos,
 )
@@ -47,8 +46,9 @@ from lutil import pax
 # see: notebook/faiss/create_chunks.ipynb
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-# def get_sorted_dataset_metadatas(args, workdir):
-def get_sorted_indexed_dataset_infos(args):
+def get_sorted_indexed_dataset_infos():
+
+    args = get_args()
 
     assert len(args.data_path) % 2 == 0, \
         "currently, only blendable dataset is supported."
@@ -66,26 +66,28 @@ def get_sorted_indexed_dataset_infos(args):
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            "db_path" : get_individual_db_path(args, name),
+            "db_path" : get_individual_db_path(name),
         })
 
-    # Deterministic dataset order (alphabetical).
-    infos.sort(key = lambda m : m["prefix"])
+    # >>> *note*: args.data_path == ground truth order.
+    # # Deterministic dataset order (alphabetical).
+    # infos.sort(key = lambda m : m["prefix"])
+    # <<<
 
     # pax(0, {"infos": infos, "infos / 0": infos[0]})
 
     return infos
 
 
-# def build_partial_chunk_db(
 def build_partial_db(
-        args,
         proc_id,
         n_procs,
         indexed_dataset,
         gpt_tokenizer,
         bert_tokenizer,
 ):
+
+    args = get_args()
 
     # progress_proc_ids = set(range(0, n_procs, int(n_procs / 8)))
     progress_proc_ids = set(range(n_procs))
@@ -160,8 +162,8 @@ def build_partial_db(
     return proc_id, chunk_db_valid, chunk_db_invalid
 
 
-# def build_individual_chunk_db(args, indexed_dataset):
-def build_individual_db(args, gpt_tokenizer, bert_tokenizer, indexed_dataset):
+# def build_individual_db(args, gpt_tokenizer, bert_tokenizer, indexed_dataset):
+def build_individual_db(gpt_tokenizer, bert_tokenizer, indexed_dataset):
 
     n_procs = 128 # 8, 128
 
@@ -172,7 +174,7 @@ def build_individual_db(args, gpt_tokenizer, bert_tokenizer, indexed_dataset):
         for proc_id in range(n_procs): # not true process id
             futures.append(executor.submit(
                 build_partial_db,
-                args,
+                # args,
                 proc_id,
                 n_procs,
                 indexed_dataset,
@@ -208,10 +210,13 @@ def build_individual_db(args, gpt_tokenizer, bert_tokenizer, indexed_dataset):
 
 
 # def build_individual_chunk_dbs(args, workdir, data_metas):
-def build_individual_dbs(args, indexed_dataset_infos):
+# def build_individual_dbs(args, indexed_dataset_infos):
+def build_individual_dbs(indexed_dataset_infos):
+
+    args = get_args()
 
     # Individual workdir.
-    individual_dir = get_individual_db_dir(args)
+    individual_dir = get_individual_db_dir() # args)
     os.makedirs(individual_dir, exist_ok = True)
 
     # Tokenizers.
@@ -234,8 +239,7 @@ def build_individual_dbs(args, indexed_dataset_infos):
         ))
 
         indexed_dataset = make_indexed_dataset(ds_info["prefix"], "mmap", True)
-        db_valid, db_invalid = build_individual_db(args,
-                                                   gpt_tokenizer,
+        db_valid, db_invalid = build_individual_db(gpt_tokenizer,
                                                    bert_tokenizer,
                                                    indexed_dataset)
 
@@ -277,7 +281,8 @@ def build_individual_dbs(args, indexed_dataset_infos):
 
 
 # def build_full_chunk_db(args, workdir, data_metas):
-def build_full_db(args, indexed_dataset_infos):
+# def build_full_db(args, indexed_dataset_infos):
+def build_full_db(indexed_dataset_infos):
 
     print(" > build full chunk db.")
 
@@ -288,7 +293,7 @@ def build_full_db(args, indexed_dataset_infos):
     # })
 
     # full_db_path = get_full_db_info(args)["db_path"]
-    full_db_path = get_db_info_map(args)["full"]["db_path"]
+    full_db_path = get_db_info_map()["full"]["db_path"]
     n_chunks = {
         "valid" : sum(m["n_chunks_valid"] for m in indexed_dataset_infos),
         "invalid" : sum(m["n_chunks_invalid"] for m in indexed_dataset_infos),
@@ -386,12 +391,13 @@ def build_full_db(args, indexed_dataset_infos):
 
 
 # def build_sampled_chunk_db(args, workdir, data_metas):
-def build_sampled_db(args, indexed_dataset_infos):
+# def build_sampled_db(args, indexed_dataset_infos):
+def build_sampled_db(indexed_dataset_infos):
 
     print(" > build sampled chunk db.")
 
     # sampled_db_path = get_sampled_db_info(args)["db_path"]
-    sampled_db_path = get_db_info_map(args)["sampled"]["db_path"]
+    sampled_db_path = get_db_info_map()["sampled"]["db_path"]
     n_chunks = sum(m["n_chunks_sampled"] for m in indexed_dataset_infos)
 
     # Delete existing chunk db if incorrect size.
@@ -463,13 +469,13 @@ def preprocess_db(args, timer):
     # individual_workdir = get_individual_db_dir(args)
     # os.makedirs(individual_workdir, exist_ok = True)
 
-    indexed_dataset_infos = get_sorted_indexed_dataset_infos(args)
+    indexed_dataset_infos = get_sorted_indexed_dataset_infos()
 
     # Build dbs.
-    build_individual_dbs(args, indexed_dataset_infos)
-    build_full_db(args, indexed_dataset_infos)
-    build_sampled_db(args, indexed_dataset_infos)
+    build_individual_dbs(indexed_dataset_infos)
+    build_full_db(indexed_dataset_infos)
+    build_sampled_db(indexed_dataset_infos)
 
     # Save (fully annotated) indexed dataset infos.
-    save_indexed_dataset_infos(args, indexed_dataset_infos)
+    save_indexed_dataset_infos(indexed_dataset_infos)
 

@@ -18,7 +18,7 @@ import faiss
 import os
 import torch
 
-from megatron import print_rank_0
+from megatron import get_args, print_rank_0
 from tools.bert_embedding.utils import load_data
 from tools.retro.index import Index
 from tools.retro.index.utils import get_index_str
@@ -32,6 +32,8 @@ from lutil import pax
 class FaissBaseIndex(Index):
 
     def _train(self, input_data_paths, dir_path, timer):
+
+        args = get_args()
 
         assert torch.distributed.get_rank() == 0
 
@@ -48,8 +50,8 @@ class FaissBaseIndex(Index):
 
         # Init index.
         timer.push("init")
-        index_str = get_index_str(self.args)
-        index = faiss.index_factory(self.args.retro_nfeats, index_str)
+        index_str = get_index_str()
+        index = faiss.index_factory(args.retro_nfeats, index_str)
         timer.pop()
 
         # Move to GPU.

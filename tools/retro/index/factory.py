@@ -26,7 +26,7 @@ class IndexFactory:
         }[index_ty]
 
     @classmethod
-    def get_index(cls, args):
-        index_ty = cls.get_index_ty(args.retro_index_ty)
-        index = index_ty(args)
+    def get_index(cls, index_ty):
+        index_ty = cls.get_index_ty(index_ty)
+        index = index_ty()
         return index
