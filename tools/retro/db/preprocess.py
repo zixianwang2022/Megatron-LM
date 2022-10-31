@@ -15,6 +15,7 @@
 
 import concurrent.futures
 from functools import reduce
+import glob
 import h5py
 import numpy as np
 import os
@@ -260,12 +261,9 @@ def build_partial_db(
     return proc_id, chunk_db_valid, chunk_db_invalid
 
 
-# def build_individual_db(gpt_tokenizer, bert_tokenizer, indexed_dataset):
-
 def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
 
     args = get_args()
-    n_procs = 8 # 8, 128
 
     # Make directory.
     db_dir = dataset_info["db_dir"]
@@ -275,16 +273,17 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     indexed_dataset = make_indexed_dataset(dataset_info["prefix"], "mmap", True)
 
     # Missing db blocks.
-    missing_db_blocks = get_missing_blocks_by_rank(
+    n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
         db_dir,
         len(indexed_dataset.doc_idx) - 1,
-        args.retro_block_size,
+        args.retro_doc_block_size,
         validate = lambda f : f["chunks_valid"].shape[1] == 4)
 
-    # >>>
+    # Prevent missing-path-write race condition.
+    torch.distributed.barrier()
+
     if not missing_db_blocks:
-        raise Exception("sweet.")
-    # <<<
+        return
 
     # >>>
     # print_seq("missing blocks [%d] : %s ... %s." % (
@@ -295,85 +294,73 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     # pax(0, {"missing_db_blocks": missing_db_blocks})
     # <<<
 
-    # # Build DB.
-    # db_valid, db_invalid = build_individual_db(gpt_tokenizer,
-    #                                            bert_tokenizer,
-    #                                            indexed_dataset)
+    # Num processes.
+    if n_missing_world == 1:
+        n_procs = 128
+    elif n_missing_world <= 2:
+        n_procs = 64
+    elif n_missing_world <= 4:
+        n_procs = 32
+    elif n_missing_world <= 8:
+        n_procs = 16
+    else:
+        n_procs = 8
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # Process documents in parallel.
-
-    # executor_ty = concurrent.futures.ProcessPoolExecutor
-    # with executor_ty(max_workers = n_procs) as executor:
-    #     futures = []
-    #     for proc_id in range(n_procs): # not true process id
-    #         futures.append(executor.submit(
-    #             build_partial_db,
-    #             proc_id,
-    #             n_procs,
-    #             indexed_dataset,
-    #             missing_db_blocks,
-    #             tokenizers,
-    #         ))
-    #     # partial_chunk_dbs = []
-    #     results = []
-    #     for future in concurrent.futures.as_completed(futures):
-    #         # partial_chunk_dbs.append(future.result())
-    #         results.append(future.result())
     with concurrent.futures.ProcessPoolExecutor(max_workers=n_procs) as executor:
         for block_idx, block in enumerate(missing_db_blocks):
 
-            # Build partial dbs.
-            print_rank_0(' > build partial dbs.')
-            futures = []
-            for proc_id in range(n_procs): # not true process id
-                futures.append(executor.submit(
-                    build_partial_db,
-                    dataset_idx,
-                    n_datasets,
-                    indexed_dataset,
-                    block_idx,
-                    len(missing_db_blocks),
-                    block,
-                    proc_id,
-                    n_procs,
-                    tokenizers,
-                ))
-            partial_chunk_dbs = []
-            for future in concurrent.futures.as_completed(futures):
-                partial_chunk_dbs.append(future.result())
+            if block is not None:
 
-            # raise Exception("finished partials.")
-                
-            # Concatenate chunks.
-            partial_chunk_dbs.sort(key = lambda item : item[0]) # sort by proc_id
-            chunk_db_valid = [item
-                              for partial_chunk_db in partial_chunk_dbs
-                              for item in partial_chunk_db[1]]
-            chunk_db_invalid = [item
-                                for partial_chunk_db in partial_chunk_dbs
-                                for item in partial_chunk_db[2]]
+                # Build partial dbs.
+                print_rank_0(' > build partial dbs.')
+                futures = []
+                for proc_id in range(n_procs): # not true process id
+                    futures.append(executor.submit(
+                        build_partial_db,
+                        dataset_idx,
+                        n_datasets,
+                        indexed_dataset,
+                        block_idx,
+                        len(missing_db_blocks),
+                        block,
+                        proc_id,
+                        n_procs,
+                        tokenizers,
+                    ))
+                partial_chunk_dbs = []
+                for future in concurrent.futures.as_completed(futures):
+                    partial_chunk_dbs.append(future.result())
 
-            # Convert to numpy.
-            print_rank_0(' > converting chunk db to numpy.')
-            chunk_db_valid = np.array(chunk_db_valid)
-            chunk_db_invalid = np.array(chunk_db_invalid)
+                # Concatenate chunks.
+                partial_chunk_dbs.sort(key=lambda item:item[0]) # sort by proc_id
+                chunk_db_valid = [item
+                                  for partial_chunk_db in partial_chunk_dbs
+                                  for item in partial_chunk_db[1]]
+                chunk_db_invalid = [item
+                                    for partial_chunk_db in partial_chunk_dbs
+                                    for item in partial_chunk_db[2]]
 
-            # Save DB.
-            print_rank_0(" > saving individual db.")
-            f = h5py.File(block["path"], "w")
-            dset = f.create_dataset("chunks_valid", data = chunk_db_valid)
-            dset = f.create_dataset("chunks_invalid", data = chunk_db_invalid)
-            f.close()
+                # Convert to numpy.
+                print_rank_0(' > converting chunk db to numpy.')
+                chunk_db_valid = np.array(chunk_db_valid)
+                chunk_db_invalid = np.array(chunk_db_invalid)
+
+                # Save DB.
+                print_rank_0(" > saving individual db.")
+                f = h5py.File(block["path"], "w")
+                dset = f.create_dataset("chunks_valid", data = chunk_db_valid)
+                dset = f.create_dataset("chunks_invalid", data = chunk_db_invalid)
+                f.close()
 
             # Wait for all ranks to finish block.
             print_rank_0(" > waiting for all ranks to finish block.")
             torch.distributed.barrier()
 
-    print(" > finished saving individual db.")
+    print_rank_0(" > finished saving individual db.")
 
-    pax(0, {"tokenizers": tokenizers})
-
+    # pax(0, {"tokenizers": tokenizers})
 
 
 # def build_individual_dbs(indexed_dataset_infos):
@@ -456,212 +443,220 @@ def build_individual_dbs(indexed_dataset_infos):
     }
 
     # Build individual DBs.
-    print(" > build individual chunk dbs.")
-    for ds_index, ds_info in enumerate(indexed_dataset_infos):
+    print_rank_0(" > build individual chunk dbs.")
+    for ds_idx, ds_info in enumerate(indexed_dataset_infos):
 
-        print(" > building individual db, dataset %d / %d ... '%s'." % (
-            ds_index,
+        print_rank_0(" > building individual db, dataset %d / %d ... '%s'." % (
+            ds_idx,
             len(indexed_dataset_infos),
             ds_info["name"],
         ))
 
-        build_individual_db(ds_index, len(indexed_dataset_infos),
+        build_individual_db(ds_idx, len(indexed_dataset_infos),
                             ds_info, tokenizers)
 
         # >>>
-        raise Exception("built '%s'." % ds_info["name"])
+        # raise Exception("built '%s'." % ds_info["name"])
         # <<<
 
-    raise Exception("hi.")
+    # >>>
+    # torch.distributed.barrier()
+    # print_rank_0("bye.")
+    # exit()
+    # <<<
+
+def update_chunk_counts(indexed_dataset_infos):
+
+    args = get_args()
+
+    if torch.distributed.get_rank() != 0:
+        return
+
+    print(" > update chunk counts.")
 
     # Set n_chunks_{valid,invalid}, n_chunks_sampled (for unambiguity).
-    print(" > compute n_chunks_all, n_chunks_valid, n_chunks_sampled.")
+    print_rank_0(" > compute n_chunks_all, n_chunks_valid, n_chunks_sampled.")
     for ds_index, ds_info in enumerate(indexed_dataset_infos):
 
-        f = h5py.File(ds_info["db_path"], "r")
-        ds_info["n_chunks_valid"] = len(f["chunks_valid"])
-        ds_info["n_chunks_invalid"] = len(f["chunks_invalid"])
-        f.close()
+        db_dir = ds_info["db_dir"]
+        db_paths = sorted(glob.glob(db_dir + "/*.hdf5"))
+        # pax(0, {"db_paths": db_paths})
+
+        ds_info["n_chunks_valid"] = 0
+        ds_info["n_chunks_invalid"] = 0
+        for db_path in db_paths:
+            f = h5py.File(db_path, "r")
+            ds_info["n_chunks_valid"] += len(f["chunks_valid"])
+            ds_info["n_chunks_invalid"] += len(f["chunks_invalid"])
+            f.close()
+
+        # pax({"ds_info": ds_info})
 
         ds_info["n_chunks_sampled"] = \
             int(round(args.retro_nchunks_sampled * ds_info["ratio"]))
 
         assert ds_info["n_chunks_sampled"] < ds_info["n_chunks_valid"]
-        
-    # Compute document offsets.
-    print(" > compute document offsets.")
-    doc_offset = 0
-    for ds_index, ds_info in enumerate(indexed_dataset_infos):
+    
+    # >>>>>>>>> [ shouldn't need doc offsets. ] >>>>>>>>>
+    # # Compute document offsets.
+    # print_rank_0(" > compute document offsets.")
+    # doc_offset = 0
+    # for ds_index, ds_info in enumerate(indexed_dataset_infos):
 
-        f = h5py.File(ds_info["db_path"], "r")
-        ds_info["doc_offset"] = doc_offset
-        doc_offset += f["chunks_valid"][-1, 0].item()
-        f.close()
-
-
-def build_full_db(indexed_dataset_infos):
-
-    print(" > build full chunk db.")
-
-    # Count chunks.
-    full_db_path = get_db_info_map()["full"]["db_path"]
-    n_chunks = {
-        "valid" : sum(m["n_chunks_valid"] for m in indexed_dataset_infos),
-        "invalid" : sum(m["n_chunks_invalid"] for m in indexed_dataset_infos),
-    }
-
-    # Delete existing chunk db if incorrect size.
-    if os.path.exists(full_db_path):
-
-        try:
-
-            f = h5py.File(full_db_path, "r")
-
-            # Total allocated.
-            n_alloc_valid = len(f["chunks_valid"])
-            n_alloc_invalid = len(f["chunks_invalid"])
-
-            # Total written.
-            n_written_valid = f["n_written_valid"][0].item()
-            n_written_invalid = f["n_written_invalid"][0].item()
-
-            f.close()
-
-            if n_chunks["valid"] != n_alloc_valid or \
-               n_chunks["valid"] != n_written_valid or \
-               n_chunks["invalid"] != n_alloc_invalid or \
-               n_chunks["invalid"] != n_written_invalid:
-                os.remove(full_db_path)
-
-        except Exception as e:
-            if isinstance(e, OSError):
-                os.remove(full_db_path)
-            elif isinstance(e, KeyError):
-                f.close()
-                os.remove(full_db_path)
-            else:
-                raise e
-
-    # >>> how did this near-duplicate appear? >>>
-    # if os.path.exists(full_db_path):
-
-    #     f = h5py.File(full_db_path, "r")
-
-    #     # Total allocated.
-    #     n_alloc_valid = len(f["chunks_valid"])
-    #     n_alloc_invalid = len(f["chunks_invalid"])
-
-    #     # Total written.
-    #     n_written_valid = f["n_written_valid"][0].item()
-    #     n_written_invalid = f["n_written_invalid"][0].item()
-            
+    #     f = h5py.File(ds_info["db_path"], "r")
+    #     ds_info["doc_offset"] = doc_offset
+    #     doc_offset += f["chunks_valid"][-1, 0].item()
     #     f.close()
-
-    #     if n_chunks["valid"] != n_alloc_valid or \
-    #        n_chunks["valid"] != n_written_valid or \
-    #        n_chunks["invalid"] != n_alloc_invalid or \
-    #        n_chunks["invalid"] != n_written_invalid:
-    #         os.remove(full_db_path)
-    # <<<
-
-    # Build full chunk db.
-    if not os.path.exists(full_db_path):
-
-        os.makedirs(os.path.dirname(full_db_path), exist_ok = True)
-        f = h5py.File(full_db_path, "w")
-
-        for validity in "valid", "invalid":
-
-            # Initialize output arrays.
-            chunk_db = f.create_dataset(f"chunks_{validity}",
-                                           (n_chunks[validity], 4),
-                                           dtype = "uint64") # "i8")
-            dataset_offsets = f.create_dataset(f"dataset_offsets_{validity}",
-                                               (len(indexed_dataset_infos) + 1,),
-                                               dtype = "uint64")
-            n_written = f.create_dataset(f"n_written_{validity}",
-                                         (1,),
-                                         dtype = "uint64")
-            n_written[0] = 0
-
-            # Iterate indexed datasets & collect chunks.
-            start_index = 0
-            for ds_index, ds_info in enumerate(indexed_dataset_infos):
-
-                print(" > concatenating (%s) chunks, dataset %d / %d ... '%s'." %
-                      (validity, ds_index,
-                       len(indexed_dataset_infos), ds_info["name"]))
-
-                g = h5py.File(ds_info["db_path"], "r")
-                data = g[f"chunks_{validity}"]
-                chunk_db[start_index:start_index + len(data)] = data
-                start_index += len(data)
-                dataset_offsets[ds_index + 1] = start_index
-                n_written[0] = start_index
-                g.close()
-
-        f.close()
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
-def build_sampled_db(indexed_dataset_infos):
+# def build_full_db(indexed_dataset_infos):
 
-    print(" > build sampled chunk db.")
+#     if torch.distributed.get_rank() != 0:
+#         return
 
-    # Count chunks.
-    sampled_db_path = get_db_info_map()["sampled"]["db_path"]
-    n_chunks = sum(m["n_chunks_sampled"] for m in indexed_dataset_infos)
+#     print(" > build full chunk db.")
 
-    # Delete existing chunk db if incorrect size.
-    if os.path.exists(sampled_db_path):
+#     # Count chunks.
+#     full_db_path = get_db_info_map()["full"]["db_path"]
+#     n_chunks = {
+#         "valid" : sum(m["n_chunks_valid"] for m in indexed_dataset_infos),
+#         "invalid" : sum(m["n_chunks_invalid"] for m in indexed_dataset_infos),
+#     }
 
-        try:
+#     # Delete existing chunk db if incorrect size.
+#     if os.path.exists(full_db_path):
 
-            f = h5py.File(sampled_db_path)
-            n_alloc = len(f["chunks_valid"])           # total allocated
-            n_written = f["n_written_valid"][0].item() # total written
-            f.close()
+#         try:
 
-            if n_chunks != n_alloc or n_chunks != n_written:
-                os.remove(sampled_db_path)
+#             f = h5py.File(full_db_path, "r")
 
-        except Exception as e:
-            if isinstance(e, OSError):
-                os.remove(full_db_path)
-            elif isinstance(e, KeyError):
-                f.close()
-                os.remove(full_db_path)
-            else:
-                raise e
+#             # Total allocated.
+#             n_alloc_valid = len(f["chunks_valid"])
+#             n_alloc_invalid = len(f["chunks_invalid"])
 
-    # Build sampled chunk db.
-    if not os.path.exists(sampled_db_path):
+#             # Total written.
+#             n_written_valid = f["n_written_valid"][0].item()
+#             n_written_invalid = f["n_written_invalid"][0].item()
 
-        os.makedirs(os.path.dirname(sampled_db_path), exist_ok = True)
-        f = h5py.File(sampled_db_path, "w")
+#             f.close()
 
-        # Initialize output arrays.
-        chunk_db = f.create_dataset("chunks_valid", (n_chunks, 4), dtype = "i8")
-        dataset_offsets = f.create_dataset(
-            "dataset_offsets_valid", (len(indexed_dataset_infos) + 1,), dtype = "uint64")
-        n_written = f.create_dataset("n_written_valid", (1,), dtype = "uint64")
-        n_written[0] = 0
+#             if n_chunks["valid"] != n_alloc_valid or \
+#                n_chunks["valid"] != n_written_valid or \
+#                n_chunks["invalid"] != n_alloc_invalid or \
+#                n_chunks["invalid"] != n_written_invalid:
+#                 os.remove(full_db_path)
 
-        # Iterate indexed datasets & collect chunks.
-        start_index = 0
-        for ds_index, ds_info in enumerate(indexed_dataset_infos):
+#         except Exception as e:
+#             if isinstance(e, OSError):
+#                 os.remove(full_db_path)
+#             elif isinstance(e, KeyError):
+#                 f.close()
+#                 os.remove(full_db_path)
+#             else:
+#                 raise e
 
-            print(" > concatenating chunks, dataset %d / %d ... '%s'." %
-                  (ds_index, len(indexed_dataset_infos), ds_info["name"]))
+#     # Build full chunk db.
+#     if not os.path.exists(full_db_path):
 
-            g = h5py.File(ds_info["db_path"], "r")
-            data = g["chunks_valid"][:ds_info["n_chunks_sampled"]]
-            chunk_db[start_index:start_index + len(data)] = data
-            start_index += len(data)
-            dataset_offsets[ds_index + 1] = start_index
-            n_written[0] = start_index
-            g.close()
+#         os.makedirs(os.path.dirname(full_db_path), exist_ok = True)
+#         f = h5py.File(full_db_path, "w")
 
-        f.close()
+#         for validity in "valid", "invalid":
+
+#             # Initialize output arrays.
+#             chunk_db = f.create_dataset(f"chunks_{validity}",
+#                                            (n_chunks[validity], 4),
+#                                            dtype = "uint64") # "i8")
+#             dataset_offsets = f.create_dataset(f"dataset_offsets_{validity}",
+#                                                (len(indexed_dataset_infos) + 1,),
+#                                                dtype = "uint64")
+#             n_written = f.create_dataset(f"n_written_{validity}",
+#                                          (1,),
+#                                          dtype = "uint64")
+#             n_written[0] = 0
+
+#             # Iterate indexed datasets & collect chunks.
+#             start_index = 0
+#             for ds_index, ds_info in enumerate(indexed_dataset_infos):
+
+#                 print(" > concatenating (%s) chunks, dataset %d / %d ... '%s'." %
+#                       (validity, ds_index,
+#                        len(indexed_dataset_infos), ds_info["name"]))
+
+#                 g = h5py.File(ds_info["db_path"], "r")
+#                 data = g[f"chunks_{validity}"]
+#                 chunk_db[start_index:start_index + len(data)] = data
+#                 start_index += len(data)
+#                 dataset_offsets[ds_index + 1] = start_index
+#                 n_written[0] = start_index
+#                 g.close()
+
+#         f.close()
+
+
+# def build_sampled_db(indexed_dataset_infos):
+
+#     if torch.distributed.get_rank() != 0:
+#         return
+
+#     print(" > build sampled chunk db.")
+
+#     # Count chunks.
+#     sampled_db_path = get_db_info_map()["sampled"]["db_path"]
+#     n_chunks = sum(m["n_chunks_sampled"] for m in indexed_dataset_infos)
+
+#     # Delete existing chunk db if incorrect size.
+#     if os.path.exists(sampled_db_path):
+
+#         try:
+
+#             f = h5py.File(sampled_db_path)
+#             n_alloc = len(f["chunks_valid"])           # total allocated
+#             n_written = f["n_written_valid"][0].item() # total written
+#             f.close()
+
+#             if n_chunks != n_alloc or n_chunks != n_written:
+#                 os.remove(sampled_db_path)
+
+#         except Exception as e:
+#             if isinstance(e, OSError):
+#                 os.remove(full_db_path)
+#             elif isinstance(e, KeyError):
+#                 f.close()
+#                 os.remove(full_db_path)
+#             else:
+#                 raise e
+
+#     # Build sampled chunk db.
+#     if not os.path.exists(sampled_db_path):
+
+#         os.makedirs(os.path.dirname(sampled_db_path), exist_ok = True)
+#         f = h5py.File(sampled_db_path, "w")
+
+#         # Initialize output arrays.
+#         chunk_db = f.create_dataset("chunks_valid", (n_chunks, 4), dtype = "i8")
+#         dataset_offsets = f.create_dataset(
+#             "dataset_offsets_valid", (len(indexed_dataset_infos) + 1,), dtype = "uint64")
+#         n_written = f.create_dataset("n_written_valid", (1,), dtype = "uint64")
+#         n_written[0] = 0
+
+#         # Iterate indexed datasets & collect chunks.
+#         start_index = 0
+#         for ds_index, ds_info in enumerate(indexed_dataset_infos):
+
+#             print(" > concatenating chunks, dataset %d / %d ... '%s'." %
+#                   (ds_index, len(indexed_dataset_infos), ds_info["name"]))
+
+#             g = h5py.File(ds_info["db_path"], "r")
+#             data = g["chunks_valid"][:ds_info["n_chunks_sampled"]]
+#             chunk_db[start_index:start_index + len(data)] = data
+#             start_index += len(data)
+#             dataset_offsets[ds_index + 1] = start_index
+#             n_written[0] = start_index
+#             g.close()
+
+#         f.close()
 
 
 def preprocess_db(timer):
@@ -681,9 +676,18 @@ def preprocess_db(timer):
 
     # Build dbs.
     build_individual_dbs(indexed_dataset_infos)
-    raise Exception("built individual.")
-    build_full_db(indexed_dataset_infos)
-    build_sampled_db(indexed_dataset_infos)
+
+    # Single-process going forward.
+    if torch.distributed.get_rank() != 0:
+        return
+
+    update_chunk_counts(indexed_dataset_infos)
+    # pax(0, {
+    #     "indexed_dataset_infos" : indexed_dataset_infos,
+    #     "indexed_dataset_infos / -1" : indexed_dataset_infos[-1],
+    # })
+    # build_full_db(indexed_dataset_infos)
+    # build_sampled_db(indexed_dataset_infos)
 
     # Save (fully annotated) indexed dataset infos.
     save_indexed_dataset_infos(indexed_dataset_infos)

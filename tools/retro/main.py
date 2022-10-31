@@ -82,6 +82,7 @@ def add_retro_args(parser):
 
     group.add_argument("--retro-workdir", required = True)
     group.add_argument("--retro-nchunks-sampled", type = int, required = True)
+    group.add_argument("--retro-doc-block-size", type = int, required = True)
     group.add_argument("--retro-block-size", type = int, required = True)
     group.add_argument("--retro-nnbrs-query", type = int, required = True)
     group.add_argument("--retro-nnbrs-target", type = int, required=True)

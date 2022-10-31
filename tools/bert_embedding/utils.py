@@ -159,4 +159,4 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     # ))
     # <<<
 
-    return rank_missing_block_items
+    return len(missing_block_items), rank_missing_block_items
