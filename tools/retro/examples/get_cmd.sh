@@ -29,13 +29,13 @@ BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
 BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 
 # >>>>>>>>>>>>>>>>>>>>>>>
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/0
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1
 
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
 
 # RETRO_TASKS="db-build"
-# RETRO_TASKS="db-preprocess"
+RETRO_TASKS="db-preprocess"
 # RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
@@ -48,7 +48,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/0
 # RETRO_TASKS="pretraining-build-nbrs"
 # RETRO_TASKS="pretraining-embed-chunks"
 # RETRO_TASKS="pretraining-query-nbrs"
-RETRO_TASKS="pretraining-test-retro-dataset"
+# RETRO_TASKS="pretraining-test-retro-dataset"
 # RETRO_TASKS="pretraining-plot-acc"
 # RETRO_TASKS="pretraining-verify-nbrs"
 # RETRO_TASKS="misc-time-hnsw"

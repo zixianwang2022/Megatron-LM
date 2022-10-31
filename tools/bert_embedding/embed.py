@@ -21,7 +21,6 @@ import time
 import torch
 from torch.utils.data import BatchSampler, DataLoader, SequentialSampler, Subset
 from torch.utils.data._utils.collate import default_collate
-from tqdm import tqdm
 
 from megatron import get_args, get_tokenizer, mpu, print_rank_0
 from megatron.model import BertModel, ModelType
@@ -29,6 +28,7 @@ from megatron.schedules import get_forward_backward_func
 from megatron.training import setup_model_and_optimizer
 
 from .dataset import BertEmbeddingDataset
+from .utils import get_missing_blocks_by_rank
 
 # >>>
 from lutil import pax, print_seq
@@ -51,79 +51,6 @@ def model_provider(pre_process=True, post_process=True):
         post_process=post_process)
 
     return model
-
-
-def get_missing_embedding_blocks(workdir, dataset, block_size):
-
-    n_samples = len(dataset)
-
-    # Block ranges.
-    block_start_idxs = list(range(0, n_samples, block_size))
-    block_end_idxs = [ min(n_samples, i + block_size) for i in block_start_idxs ]
-    block_ranges = list(zip(block_start_idxs, block_end_idxs))
-
-    # All block files (existing + missing).
-    n_digits = int(np.ceil(np.log(n_samples) / np.log(10)) + 1)
-    all_block_items = [{
-        "range" : r,
-        "path" : os.path.join(
-            workdir,
-            "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
-        )
-    } for r in block_ranges]
-
-    # Delete corrupt files.
-    if torch.distributed.get_rank() == 0:
-        existing_block_paths = [item["path"]
-                                for item in all_block_items
-                                if os.path.exists(item["path"])]
-        pbar = tqdm(existing_block_paths)
-        for index, path in enumerate(pbar):
-            pbar.set_description("verifying embedding block.")
-
-            try:
-                f = h5py.File(path, "r")
-            except:
-                raise Exception("unable to open/verify '%s'." % path)
-
-            try:
-                assert f["data"].shape[1] == 1024
-            except:
-                raise Exception("delete block file.")
-            finally:
-                f.close()
-
-    # Wait for files to be deleted.
-    torch.distributed.barrier()
-
-    # Filter missing files.
-    missing_block_items = [item
-                           for item in all_block_items
-                           if not os.path.exists(item["path"])]
-
-    # This rank's missing files.
-    data_parallel_rank = mpu.get_data_parallel_rank()
-    data_parallel_world_size = mpu.get_data_parallel_world_size()
-    rank_missing_block_items = missing_block_items[data_parallel_rank:len(missing_block_items):data_parallel_world_size]
-
-    # Extend rank's missing items (with None) such that all ranks have equal
-    # length lists. This allows for easier tracking of global progress.
-    n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_block_items)])
-    torch.distributed.all_reduce(n_missing_tensor,
-                                 op = torch.distributed.ReduceOp.MAX)
-    max_n_missing = n_missing_tensor.item()
-    rank_missing_block_items += \
-        [None] * (max_n_missing - len(rank_missing_block_items))
-
-    # >>>
-    # print_seq("missing blocks [%d] : %s ... %s." % (
-    #     len(rank_missing_block_items),
-    #     str(rank_missing_block_items[0]["range"]),
-    #     str(rank_missing_block_items[-1]["range"]) if rank_missing_block_items[-1] else str(rank_missing_block_items[-2]["range"]),
-    # ))
-    # <<<
-
-    return rank_missing_block_items
 
 
 def collate_batch(samples):
@@ -361,9 +288,17 @@ def embed_text_dataset(models, prefix,
     embedding_dataset = BertEmbeddingDataset(text_dataset, max_bert_seq_length)
 
     # Missing embedding blocks (stored on disk).
-    missing_embedding_blocks = get_missing_embedding_blocks(workdir,
-                                                            embedding_dataset,
-                                                            block_size)
+    # missing_embedding_blocks = get_missing_embedding_blocks(workdir,
+    #                                                         embedding_dataset,
+    #                                                         block_size)
+    def validate(f):
+        assert f["data"].shape[1] == 1024
+    missing_embedding_blocks = get_missing_blocks_by_rank(
+        workdir,
+        len(embedding_dataset),
+        block_size,
+        validate = validate)
+
 
     # Prevent missing file race condition.
     torch.distributed.barrier()

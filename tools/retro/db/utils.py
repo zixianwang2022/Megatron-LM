@@ -45,12 +45,17 @@ def get_indexed_dataset_infos():
         return json.load(f)
 
 
-def get_individual_db_dir():
-    return os.path.join(get_base_db_workdir(), "individual")
+# def get_individual_db_dir():
+#     return os.path.join(get_base_db_workdir(), "individual")
+# def get_individual_db_base_dir():
+# def get_individual_dbs_dir():
+#     return os.path.join(get_base_db_workdir(), "individual")
+def get_individual_db_dir(name):
+    return os.path.join(get_base_db_workdir(), "individual", name)
 
 
-def get_individual_db_path(data_name):
-    return os.path.join(get_individual_db_dir(), f"db.{data_name}.hdf5")
+# def get_individual_db_path(data_name):
+#     return os.path.join(get_individual_db_dir(), f"db.{data_name}.hdf5")
 
 
 def get_db_info(key):

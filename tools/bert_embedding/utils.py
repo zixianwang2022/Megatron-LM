@@ -17,8 +17,10 @@ from collections import defaultdict
 import h5py
 import numpy as np
 import os
+import torch
+from tqdm import tqdm
 
-from megatron import print_rank_0
+from megatron import mpu, print_rank_0
 
 # >>>
 from lutil import pax
@@ -83,3 +85,78 @@ def load_data(paths, timer):
     
     return data_map
 
+
+# def get_missing_embedding_blocks(workdir, dataset, block_size):
+#     n_samples = len(dataset)
+def get_missing_blocks_by_rank(workdir, n_samples, block_size,
+                               validate = lambda f : None):
+
+    # Block ranges.
+    block_start_idxs = list(range(0, n_samples, block_size))
+    block_end_idxs = [ min(n_samples, i + block_size) for i in block_start_idxs ]
+    block_ranges = list(zip(block_start_idxs, block_end_idxs))
+
+    # All block files (existing + missing).
+    n_digits = int(np.ceil(np.log(n_samples) / np.log(10)) + 1)
+    all_block_items = [{
+        "range" : r,
+        "path" : os.path.join(
+            workdir,
+            "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
+        )
+    } for r in block_ranges]
+
+    # Delete corrupt files.
+    if torch.distributed.get_rank() == 0:
+        existing_block_paths = [item["path"]
+                                for item in all_block_items
+                                if os.path.exists(item["path"])]
+        pbar = tqdm(existing_block_paths)
+        for index, path in enumerate(pbar):
+            pbar.set_description("validating block.")
+
+            try:
+                f = h5py.File(path, "r")
+            except:
+                raise Exception("unable to open/validate '%s'." % path)
+
+            try:
+                # assert f["data"].shape[1] == 1024
+                validate(f)
+            except:
+                raise Exception("delete block file.")
+                os.remove(path)
+            finally:
+                f.close()
+
+    # Wait for files to be deleted.
+    torch.distributed.barrier()
+
+    # Filter missing files.
+    missing_block_items = [item
+                           for item in all_block_items
+                           if not os.path.exists(item["path"])]
+
+    # This rank's missing files.
+    data_parallel_rank = mpu.get_data_parallel_rank()
+    data_parallel_world_size = mpu.get_data_parallel_world_size()
+    rank_missing_block_items = missing_block_items[data_parallel_rank:len(missing_block_items):data_parallel_world_size]
+
+    # Extend rank's missing items (with None) such that all ranks have equal
+    # length lists. This allows for easier tracking of global progress.
+    n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_block_items)])
+    torch.distributed.all_reduce(n_missing_tensor,
+                                 op = torch.distributed.ReduceOp.MAX)
+    max_n_missing = n_missing_tensor.item()
+    rank_missing_block_items += \
+        [None] * (max_n_missing - len(rank_missing_block_items))
+
+    # >>>
+    # print_seq("missing blocks [%d] : %s ... %s." % (
+    #     len(rank_missing_block_items),
+    #     str(rank_missing_block_items[0]["range"]),
+    #     str(rank_missing_block_items[-1]["range"]) if rank_missing_block_items[-1] else str(rank_missing_block_items[-2]["range"]),
+    # ))
+    # <<<
+
+    return rank_missing_block_items

@@ -23,23 +23,23 @@ import threading
 import torch
 from tqdm import tqdm
 
-from megatron import get_args, print_rank_0
+from megatron import get_args
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
 )
-from tools.bert_embedding.utils import get_missing_blocks_by_rank
 from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
 from .utils import (
     get_individual_db_dir,
+    get_individual_db_path,
     get_db_info_map,
     save_indexed_dataset_infos,
 )
 
 # >>>
-from lutil import pax, print_seq
+from lutil import pax
 # <<<
 
 
@@ -63,135 +63,30 @@ def get_indexed_dataset_infos():
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            # "db_path" : get_individual_db_path(name),
-            "db_dir" : get_individual_db_dir(name),
+            "db_path" : get_individual_db_path(name),
         })
 
     return infos
 
 
-# def build_partial_db(
-#         proc_id,
-#         n_procs,
-#         indexed_dataset,
-#         gpt_tokenizer,
-#         bert_tokenizer,
-# ):
-# def build_partial_db(
-#         proc_id,
-#         n_procs,
-#         indexed_dataset,
-#         db_blocks,
-#         tokenizers,
-# ):
-
-#     args = get_args()
-
-#     # Block start/end indexes.
-#     n_blocks = len(db_blocks)
-#     n_blocks_per_proc = int(np.ceil(n_blocks / n_procs))
-#     block_start_id = proc_id * n_blocks_per_proc
-#     block_end_id = min(n_blocks, block_start_id + n_blocks_per_proc)
-
-#     # Print progress.
-#     progress_proc_ids = set(range(n_procs))
-#     if proc_id in progress_proc_ids:
-#         print(" > building partial chunk db, proc %d / %d, blocks %d:%d / %d."%(
-#             proc_id,
-#             n_procs,
-#             block_start_id,
-#             block_end_id,
-#             n_blocks,
-#         ))
-
-#     # Progress bars (snapshot of overall progress).
-#     block_id_iter = range(block_start_id, block_end_id)
-#     pbar = tqdm(block_id_iter) \
-#         if proc_id in progress_proc_ids else \
-#            block_id_iter
-
-#     # Iterate blocks & parse chunks.
-#     for block_id in pbar:
-
-#         # Progress description.
-#         try:
-#             pbar.set_description("proc %d / %d." % (proc_id, n_procs))
-#         except:
-#             pass
-
-#         block = db_blocks[block_id]
-#         # pax({"block": block})
-#         chunks_valid = []
-#         chunks_invalid = []
-#         for doc_id in range(block["range"]):
-
-#             # Remove EOD token.
-#             doc = indexed_dataset.get(doc_id)
-#             eod_id = doc[-1]
-#             doc = doc[:-1] # remove 'eod' token
-#             doc_len = len(doc)
-
-#             # Chunk start/end indexes.
-#             chunk_start_idxs = list(range(0, doc_len, args.retro_gpt_chunk_length))
-#             chunk_end_idxs = [min(doc_len, s + args.retro_gpt_chunk_length)
-#                               for s in chunk_start_idxs]
-
-#             # Re-tokenize each chunk to Bert/Wordpiece (empty bert -> 'invalid').
-#             for i, chunk_start_idx in enumerate(chunk_start_idxs):
-#                 chunk_end_idx = chunk_end_idxs[i]
-#                 gpt_token_ids = indexed_dataset.get(
-#                     idx = doc_id,
-#                     offset = chunk_start_idx,
-#                     length = chunk_end_idx - chunk_start_idx,
-#                 )
-#                 gpt_token_ids = [ t for t in gpt_token_ids.tolist() if t != eod_id ]
-#                 text = gpt_tokenizer.detokenize(gpt_token_ids)
-#                 bert_token_ids = bert_tokenizer.tokenize(text)
-
-#                 _chunks = chunks_invalid \
-#                     if len(bert_token_ids) == 0 else \
-#                        chunks_valid
-#                 _chunks.append((
-#                     doc_id,
-#                     chunk_start_idx,
-#                     chunk_end_idx,
-#                     len(bert_token_ids),
-#                 ))
-
-#         # raise Exception("save db block.")
-#         pax({"chunks_valid": chunks_valid, "chunks_invalid": chunks_invalid})
-
-#     return proc_id, chunk_db_valid, chunk_db_invalid
 def build_partial_db(
-        dataset_idx,
-        n_datasets,
-        indexed_dataset,
-        block_id,
-        n_blocks,
-        block,
         proc_id,
         n_procs,
-        tokenizers,
+        indexed_dataset,
+        gpt_tokenizer,
+        bert_tokenizer,
 ):
 
     args = get_args()
 
     # Document start/end indexes.
-    doc_range = block["range"]
-    n_docs = doc_range[1] - doc_range[0]
+    n_docs = len(indexed_dataset.doc_idx) - 1 # or, len(indexed_dataset)
     n_docs_per_proc = int(np.ceil(n_docs / n_procs))
-    doc_start_id = doc_range[0] + proc_id * n_docs_per_proc
-    doc_end_id = min(doc_range[1], doc_start_id + n_docs_per_proc)
-
-    # pax(0, {
-    #     "doc_range" : doc_range,
-    #     "doc_start_id" : doc_start_id,
-    #     "doc_end_id" : doc_end_id,
-    # })
+    doc_start_id = proc_id * n_docs_per_proc
+    doc_end_id = min(n_docs, doc_start_id + n_docs_per_proc)
 
     # Print progress.
-    progress_proc_ids = set(range(n_procs)) \
-        if torch.distributed.get_rank() == 0 else set()
+    progress_proc_ids = set(range(n_procs))
     if proc_id in progress_proc_ids:
         print(" > building partial chunk db, proc %d / %d, docs %d:%d / %d."%(
             proc_id,
@@ -203,6 +98,7 @@ def build_partial_db(
 
     # Progress bars (snapshot of overall progress).
     doc_id_iter = range(doc_start_id, doc_end_id)
+    # doc_id_iter = range(doc_start_id, min(n_docs, doc_start_id+10)) # for debug
     pbar = tqdm(doc_id_iter) \
         if proc_id in progress_proc_ids else \
            doc_id_iter
@@ -214,13 +110,7 @@ def build_partial_db(
 
         # Progress description.
         try:
-            pbar.set_description("ds %d / %d, block %d / %d, proc %d / %d." % (
-                dataset_idx,
-                n_datasets,
-                block_id,
-                n_blocks,
-                proc_id,
-                n_procs))
+            pbar.set_description("proc %d / %d." % (proc_id, n_procs))
         except:
             pass
 
@@ -244,8 +134,8 @@ def build_partial_db(
                 length = chunk_end_idx - chunk_start_idx,
             )
             gpt_token_ids = [ t for t in gpt_token_ids.tolist() if t != eod_id ]
-            text = tokenizers["gpt"].detokenize(gpt_token_ids)
-            bert_token_ids = tokenizers["bert"].tokenize(text)
+            text = gpt_tokenizer.detokenize(gpt_token_ids)
+            bert_token_ids = bert_tokenizer.tokenize(text)
 
             _chunk_db = chunk_db_invalid \
                 if len(bert_token_ids) == 0 else \
@@ -260,204 +150,65 @@ def build_partial_db(
     return proc_id, chunk_db_valid, chunk_db_invalid
 
 
-# def build_individual_db(gpt_tokenizer, bert_tokenizer, indexed_dataset):
+def build_individual_db(gpt_tokenizer, bert_tokenizer, indexed_dataset):
 
-def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
+    n_procs = 128 # 8, 128
 
-    args = get_args()
-    n_procs = 8 # 8, 128
-
-    # Make directory.
-    db_dir = dataset_info["db_dir"]
-    os.makedirs(db_dir, exist_ok = True)
-
-    # Indexed dataset.
-    indexed_dataset = make_indexed_dataset(dataset_info["prefix"], "mmap", True)
-
-    # Missing db blocks.
-    missing_db_blocks = get_missing_blocks_by_rank(
-        db_dir,
-        len(indexed_dataset.doc_idx) - 1,
-        args.retro_block_size,
-        validate = lambda f : f["chunks_valid"].shape[1] == 4)
-
-    # >>>
-    if not missing_db_blocks:
-        raise Exception("sweet.")
-    # <<<
-
-    # >>>
-    # print_seq("missing blocks [%d] : %s ... %s." % (
-    #     len(missing_db_blocks),
-    #     str(missing_db_blocks[0]["range"]),
-    #     str(missing_db_blocks[-1]["range"]) if missing_db_blocks[-1] else str(missing_db_blocks[-2]["range"]),
-    # ))
-    # pax(0, {"missing_db_blocks": missing_db_blocks})
-    # <<<
-
-    # # Build DB.
-    # db_valid, db_invalid = build_individual_db(gpt_tokenizer,
-    #                                            bert_tokenizer,
-    #                                            indexed_dataset)
-
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # Process documents in parallel.
+    # executor_ty = concurrent.futures.ThreadPoolExecutor # slow.
+    executor_ty = concurrent.futures.ProcessPoolExecutor
+    with executor_ty(max_workers = n_procs) as executor:
+        futures = []
+        for proc_id in range(n_procs): # not true process id
+            futures.append(executor.submit(
+                build_partial_db,
+                proc_id,
+                n_procs,
+                indexed_dataset,
+                gpt_tokenizer,
+                bert_tokenizer,
+            ))
+        partial_chunk_dbs = []
+        for future in concurrent.futures.as_completed(futures):
+            partial_chunk_dbs.append(future.result())
 
-    # executor_ty = concurrent.futures.ProcessPoolExecutor
-    # with executor_ty(max_workers = n_procs) as executor:
-    #     futures = []
-    #     for proc_id in range(n_procs): # not true process id
-    #         futures.append(executor.submit(
-    #             build_partial_db,
-    #             proc_id,
-    #             n_procs,
-    #             indexed_dataset,
-    #             missing_db_blocks,
-    #             tokenizers,
-    #         ))
-    #     # partial_chunk_dbs = []
-    #     results = []
-    #     for future in concurrent.futures.as_completed(futures):
-    #         # partial_chunk_dbs.append(future.result())
-    #         results.append(future.result())
-    with concurrent.futures.ProcessPoolExecutor(max_workers=n_procs) as executor:
-        for block_idx, block in enumerate(missing_db_blocks):
+    # Concatenate chunks.
+    partial_chunk_dbs.sort(key = lambda item : item[0]) # sort by proc_id
+    chunk_db_valid = [item
+                      for partial_chunk_db in partial_chunk_dbs
+                      for item in partial_chunk_db[1]]
+    chunk_db_invalid = [item
+                        for partial_chunk_db in partial_chunk_dbs
+                        for item in partial_chunk_db[2]]
 
-            # Build partial dbs.
-            print_rank_0(' > build partial dbs.')
-            futures = []
-            for proc_id in range(n_procs): # not true process id
-                futures.append(executor.submit(
-                    build_partial_db,
-                    dataset_idx,
-                    n_datasets,
-                    indexed_dataset,
-                    block_idx,
-                    len(missing_db_blocks),
-                    block,
-                    proc_id,
-                    n_procs,
-                    tokenizers,
-                ))
-            partial_chunk_dbs = []
-            for future in concurrent.futures.as_completed(futures):
-                partial_chunk_dbs.append(future.result())
+    # Convert to numpy.
+    print(' > converting chunk db to numpy.')
+    chunk_db_valid = np.array(chunk_db_valid)
+    chunk_db_invalid = np.array(chunk_db_invalid)
 
-            # raise Exception("finished partials.")
-                
-            # Concatenate chunks.
-            partial_chunk_dbs.sort(key = lambda item : item[0]) # sort by proc_id
-            chunk_db_valid = [item
-                              for partial_chunk_db in partial_chunk_dbs
-                              for item in partial_chunk_db[1]]
-            chunk_db_invalid = [item
-                                for partial_chunk_db in partial_chunk_dbs
-                                for item in partial_chunk_db[2]]
-
-            # Convert to numpy.
-            print_rank_0(' > converting chunk db to numpy.')
-            chunk_db_valid = np.array(chunk_db_valid)
-            chunk_db_invalid = np.array(chunk_db_invalid)
-
-            # Save DB.
-            print_rank_0(" > saving individual db.")
-            f = h5py.File(block["path"], "w")
-            dset = f.create_dataset("chunks_valid", data = chunk_db_valid)
-            dset = f.create_dataset("chunks_invalid", data = chunk_db_invalid)
-            f.close()
-
-            # Wait for all ranks to finish block.
-            print_rank_0(" > waiting for all ranks to finish block.")
-            torch.distributed.barrier()
-
-    print(" > finished saving individual db.")
-
-    pax(0, {"tokenizers": tokenizers})
+    return chunk_db_valid, chunk_db_invalid
 
 
-
-# def build_individual_dbs(indexed_dataset_infos):
-
-#     args = get_args()
-
-#     # Individual workdir.
-#     individual_dir = get_individual_db_dir()
-#     os.makedirs(individual_dir, exist_ok = True)
-
-#     # Tokenizers.
-#     gpt_tokenizer = get_gpt_tokenizer()
-#     bert_tokenizer = get_bert_tokenizer()
-
-#     # Build individual DBs.
-#     print(" > build individual chunk dbs.")
-#     for ds_index, ds_info in enumerate(indexed_dataset_infos):
-
-#         db_path = ds_info["db_path"]
-
-#         if os.path.exists(db_path):
-#             continue
-
-#         print(" > building individual db, dataset %d / %d ... '%s'." % (
-#             ds_index,
-#             len(indexed_dataset_infos),
-#             ds_info["name"],
-#         ))
-
-#         # Build DB.
-#         indexed_dataset = make_indexed_dataset(ds_info["prefix"], "mmap", True)
-#         db_valid, db_invalid = build_individual_db(gpt_tokenizer,
-#                                                    bert_tokenizer,
-#                                                    indexed_dataset)
-
-#         # Save DB.
-#         print(" > saving individual db.")
-#         f = h5py.File(db_path, "w")
-#         dset = f.create_dataset("chunks_valid", data = db_valid)
-#         dset = f.create_dataset("chunks_invalid", data = db_invalid)
-#         f.close()
-
-#         print(" > finished saving individual db.")
-
-#     # Set n_chunks_{valid,invalid}, n_chunks_sampled (for unambiguity).
-#     print(" > compute n_chunks_all, n_chunks_valid, n_chunks_sampled.")
-#     for ds_index, ds_info in enumerate(indexed_dataset_infos):
-
-#         f = h5py.File(ds_info["db_path"], "r")
-#         ds_info["n_chunks_valid"] = len(f["chunks_valid"])
-#         ds_info["n_chunks_invalid"] = len(f["chunks_invalid"])
-#         f.close()
-
-#         ds_info["n_chunks_sampled"] = \
-#             int(round(args.retro_nchunks_sampled * ds_info["ratio"]))
-
-#         assert ds_info["n_chunks_sampled"] < ds_info["n_chunks_valid"]
-        
-#     # Compute document offsets.
-#     print(" > compute document offsets.")
-#     doc_offset = 0
-#     for ds_index, ds_info in enumerate(indexed_dataset_infos):
-
-#         f = h5py.File(ds_info["db_path"], "r")
-#         ds_info["doc_offset"] = doc_offset
-#         doc_offset += f["chunks_valid"][-1, 0].item()
-#         f.close()
 def build_individual_dbs(indexed_dataset_infos):
 
     args = get_args()
 
-    # # Individual workdir.
-    # individual_dir = get_individual_db_dir()
-    # os.makedirs(individual_dir, exist_ok = True)
+    # Individual workdir.
+    individual_dir = get_individual_db_dir()
+    os.makedirs(individual_dir, exist_ok = True)
 
     # Tokenizers.
-    tokenizers = {
-        "gpt" : get_gpt_tokenizer(),
-        "bert" : get_bert_tokenizer(),
-    }
+    gpt_tokenizer = get_gpt_tokenizer()
+    bert_tokenizer = get_bert_tokenizer()
 
     # Build individual DBs.
     print(" > build individual chunk dbs.")
     for ds_index, ds_info in enumerate(indexed_dataset_infos):
+
+        db_path = ds_info["db_path"]
+
+        if os.path.exists(db_path):
+            continue
 
         print(" > building individual db, dataset %d / %d ... '%s'." % (
             ds_index,
@@ -465,14 +216,20 @@ def build_individual_dbs(indexed_dataset_infos):
             ds_info["name"],
         ))
 
-        build_individual_db(ds_index, len(indexed_dataset_infos),
-                            ds_info, tokenizers)
+        # Build DB.
+        indexed_dataset = make_indexed_dataset(ds_info["prefix"], "mmap", True)
+        db_valid, db_invalid = build_individual_db(gpt_tokenizer,
+                                                   bert_tokenizer,
+                                                   indexed_dataset)
 
-        # >>>
-        raise Exception("built '%s'." % ds_info["name"])
-        # <<<
+        # Save DB.
+        print(" > saving individual db.")
+        f = h5py.File(db_path, "w")
+        dset = f.create_dataset("chunks_valid", data = db_valid)
+        dset = f.create_dataset("chunks_invalid", data = db_invalid)
+        f.close()
 
-    raise Exception("hi.")
+        print(" > finished saving individual db.")
 
     # Set n_chunks_{valid,invalid}, n_chunks_sampled (for unambiguity).
     print(" > compute n_chunks_all, n_chunks_valid, n_chunks_sampled.")
@@ -670,18 +427,15 @@ def preprocess_db(timer):
     # create_data_softlinks(data_files)
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    # >>>
-    # # Single process here [ using ProcessPoolExecutor ].
-    # if torch.distributed.get_rank() != 0:
-    #     return
-    # <<<
+    # Single process here [ using ProcessPoolExecutor ].
+    if torch.distributed.get_rank() != 0:
+        return
     
     # Indexed dataset info.
     indexed_dataset_infos = get_indexed_dataset_infos()
 
     # Build dbs.
     build_individual_dbs(indexed_dataset_infos)
-    raise Exception("built individual.")
     build_full_db(indexed_dataset_infos)
     build_sampled_db(indexed_dataset_infos)
 
