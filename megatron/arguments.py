@@ -879,9 +879,14 @@ def _add_data_args(parser):
                        help="Maximum decoder sequence length to process.")
     group.add_argument('--retriever-seq-length', type=int, default=256,
                        help='Maximum sequence length for the biencoder model '
-                        ' for retriever')
+                       'for retriever')
     group.add_argument('--variable-seq-lengths', action='store_true',
-                       help='support for variable_sequence lengths across batches')
+                       help='support for variable sequence lengths across'
+                       'batches/microbatches. This should be set when sequence'
+                       'lengths across batches/microbatches vary. Due to'
+                       'additional communication overhead during pipeline'
+                       'parallelism, it should not be enabled if sequence'
+                       'length is constant during training.')
     group.add_argument('--sample-rate', type=float, default=1.0,
                        help='sample rate for training data. Supposed to be 0 '
                             ' < sample_rate < 1')

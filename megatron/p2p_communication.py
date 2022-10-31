@@ -10,6 +10,23 @@ from megatron import mpu
 
 def _communicate_shapes(tensor_send_next, tensor_send_prev,
                         recv_prev, recv_next):
+    """Communicate tensor shapes between stages. Used to communicate 
+    tensor shapes before the actual tensor communication happens.
+    This is required when the sequence lengths across micro batches
+    are not uniform.
+
+    Takes the following arguments:
+        tensor_send_next: tensor to send to next rank (no tensor sent if
+                          set to None).
+        tensor_send_prev: tensor to send to prev rank (no tensor sent if
+                          set to None).
+        recv_prev: boolean for whether tensor should be received from
+                   previous rank.
+        recv_next: boolean for whether tensor should be received from
+                   next rank.
+    Returns:
+        (recv_prev_shape, recv_next_shape)
+    """
 
     args = get_args()
     recv_prev_shape_tensor = None
@@ -65,6 +82,9 @@ def _communicate_shapes(tensor_send_next, tensor_send_prev,
             reqs = torch.distributed.batch_isend_irecv(ops)
             for req in reqs:
                 req.wait()
+
+        # To protect against race condition when using batch_isend_irecv().
+        # should take this out once the bug with batch_isend_irecv is resolved.
         torch.cuda.synchronize()
 
     recv_prev_shape = [0, 0, 0]
