@@ -19,8 +19,10 @@ import json
 import numpy as np
 import os
 
-from megatron import get_args
+from megatron import get_args, print_rank_0
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
+
+from .dataset import GPTChunkDataset
 
 # >>>
 from lutil import pax
@@ -80,30 +82,6 @@ def get_individual_db(ds_id, ds_info):
     return db
 
 
-# def get_sampled_blended_chunk_dataset(indexed_dataset_infos):
-# def get_sampled_blended_dataset(indexed_dataset_infos = None):
-def get_sampled_merged_dataset(indexed_dataset_infos = None):
-
-    if not indexed_dataset_infos:
-        indexed_dataset_infos = get_indexed_dataset_infos()
-
-    indexed_datasets = []
-    chunk_dbs = []
-    for ds_idx, ds_info in enumerate(indexed_dataset_infos):
-        print("individual dataset %d / %d ... '%s'." %
-              (ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-        print("  > indexed dataset.")
-        indexed_datasets.append(make_indexed_dataset(ds_info["prefix"],
-                                                     "mmap",True))
-        print("  > chunk db.")
-        chunk_dbs.append(get_individual_db(ds_idx, ds_info))
-    
-    pax({
-        "indexed_datasets" : indexed_dataset,
-        "chunk_dbs" : chunk_dbs,
-    })
-
-
 # def get_db_info(key):
 #     workdir = os.path.join(get_base_db_workdir(), key)
 #     db_path = os.path.join(workdir, "db.hdf5")
@@ -126,6 +104,54 @@ def get_merged_db_path_map():
         "full" : os.path.join(base_dir, "merged", "full.hdf5"),
         "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
     }
+
+
+# def get_sampled_blended_chunk_dataset(indexed_dataset_infos):
+# def get_sampled_blended_dataset(indexed_dataset_infos = None):
+# def get_sampled_merged_dataset(indexed_dataset_infos = None):
+def get_merged_dataset(db_type, indexed_dataset_infos = None):
+
+    args = get_args()
+
+    if not indexed_dataset_infos:
+        indexed_dataset_infos = get_indexed_dataset_infos()
+
+    # Build indexed datasets.
+    indexed_datasets = []
+    for ds_idx, ds_info in enumerate(indexed_dataset_infos):
+        print_rank_0("indexed dataset %d / %d ... '%s'." %
+              (ds_idx, len(indexed_dataset_infos), ds_info["name"]))
+        indexed_datasets.append(make_indexed_dataset(ds_info["prefix"],
+                                                     "mmap",True))
+
+    # Load chunk db.
+    db_path = get_merged_db_path_map()[db_type]
+    f = h5py.File(db_path, "r")
+    chunk_db = np.copy(f["chunks"])
+    f.close()
+
+    # Chunk dataset.
+    chunk_dataset = GPTChunkDataset(indexed_datasets, chunk_db,
+                                    args.retro_gpt_chunk_length)
+
+    # pax(0, {
+    #     "indexed_datasets" : indexed_datasets,
+    #     "db_path" : db_path,
+    #     "chunk_db" : chunk_db,
+    #     "chunk_dataset" : chunk_dataset,
+    #     "chunk_dataset / len" : len(chunk_dataset),
+    #     "chunk_dataset / 0" : chunk_dataset[0],
+    # })
+
+    return chunk_dataset
+
+
+def get_full_merged_dataset(indexed_dataset_infos = None):
+    return get_merged_dataset("full", indexed_dataset_infos)
+
+
+def get_sampled_merged_dataset(indexed_dataset_infos = None):
+    return get_merged_dataset("sampled", indexed_dataset_infos)
 
 
 # def create_data_softlinks(data_files):
