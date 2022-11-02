@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .embed import embed_db
+# from .embed import embed_db
 from .preprocess import preprocess_db
 
 
 def build_db(timer):
     preprocess_chunk_db(timer)
-    embed_chunk_db(timer)
+    # embed_chunk_db(timer)

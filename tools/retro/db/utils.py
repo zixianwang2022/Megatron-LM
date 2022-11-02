@@ -14,10 +14,13 @@
 # limitations under the License.
 
 import glob
+import h5py
 import json
+import numpy as np
 import os
 
 from megatron import get_args
+from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
 # >>>
 from lutil import pax
@@ -45,34 +48,84 @@ def get_indexed_dataset_infos():
         return json.load(f)
 
 
-# def get_individual_db_dir():
-#     return os.path.join(get_base_db_workdir(), "individual")
-# def get_individual_db_base_dir():
-# def get_individual_dbs_dir():
-#     return os.path.join(get_base_db_workdir(), "individual")
-def get_individual_db_dir(name):
-    return os.path.join(get_base_db_workdir(), "individual", name)
-
-
-# def get_individual_db_path(data_name):
-#     return os.path.join(get_individual_db_dir(), f"db.{data_name}.hdf5")
-
-
-def get_db_info(key):
-    workdir = os.path.join(get_base_db_workdir(), key)
-    db_path = os.path.join(workdir, "db.hdf5")
-    embed_dir = os.path.join(workdir, "embed")
-    embed_paths = sorted(glob.glob(embed_dir + "/*.hdf5")) \
-        if os.path.isdir(embed_dir) else []
+# def get_individual_db_info(name):
+#     base_dir = os.path.join(get_base_db_workdir(), name)
+#     return {
+#         "db_dir" : os.path.join(base_dir, "db"),
+#         "embed_dir" : os.path.join(base_dir, "embed"),
+#     }
+def get_individual_db_info(name):
     return {
-        "db_path" : db_path,
-        "embed_dir" : embed_dir,
-        "embed_paths" : embed_paths,
+        "db_dir" : os.path.join(get_base_db_workdir(), "individual", name, "db"),
     }
 
 
-def get_db_info_map():
-    return {key:get_db_info(key) for key in ("full", "sampled")}
+def get_individual_db(ds_id, ds_info):
+    # pax(0, {"ds_id": ds_id, "ds_info": ds_info})
+    db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
+    db = np.zeros((ds_info["n_chunks_valid"], 5), dtype = "i8")
+    db[:, 0] = ds_id
+    start_idx = 0
+    for db_path in db_paths:
+        f = h5py.File(db_path, "r")
+        n_chunks_current = f["chunks_valid"].shape[0]
+        db[start_idx:(start_idx+n_chunks_current), 1:] = f["chunks_valid"]
+        start_idx += n_chunks_current
+        f.close()
+
+    assert start_idx == ds_info["n_chunks_valid"]
+
+    # pax(0, {"db_paths": db_paths, "ds_info": ds_info, "db": db})
+
+    return db
+
+
+# def get_sampled_blended_chunk_dataset(indexed_dataset_infos):
+# def get_sampled_blended_dataset(indexed_dataset_infos = None):
+def get_sampled_merged_dataset(indexed_dataset_infos = None):
+
+    if not indexed_dataset_infos:
+        indexed_dataset_infos = get_indexed_dataset_infos()
+
+    indexed_datasets = []
+    chunk_dbs = []
+    for ds_idx, ds_info in enumerate(indexed_dataset_infos):
+        print("individual dataset %d / %d ... '%s'." %
+              (ds_idx, len(indexed_dataset_infos), ds_info["name"]))
+        print("  > indexed dataset.")
+        indexed_datasets.append(make_indexed_dataset(ds_info["prefix"],
+                                                     "mmap",True))
+        print("  > chunk db.")
+        chunk_dbs.append(get_individual_db(ds_idx, ds_info))
+    
+    pax({
+        "indexed_datasets" : indexed_dataset,
+        "chunk_dbs" : chunk_dbs,
+    })
+
+
+# def get_db_info(key):
+#     workdir = os.path.join(get_base_db_workdir(), key)
+#     db_path = os.path.join(workdir, "db.hdf5")
+#     embed_dir = os.path.join(workdir, "embed")
+#     embed_paths = sorted(glob.glob(embed_dir + "/*.hdf5")) \
+#         if os.path.isdir(embed_dir) else []
+#     return {
+#         "db_path" : db_path,
+#         "embed_dir" : embed_dir,
+#         "embed_paths" : embed_paths,
+#     }
+
+
+# def get_db_info_map():
+#     return {key:get_db_info(key) for key in ("full", "sampled")}
+# def get_blended_db_path_map():
+def get_merged_db_path_map():
+    base_dir = get_base_db_workdir()
+    return {
+        "full" : os.path.join(base_dir, "merged", "full.hdf5"),
+        "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
+    }
 
 
 # def create_data_softlinks(data_files):

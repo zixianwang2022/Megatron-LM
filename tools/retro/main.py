@@ -34,11 +34,11 @@ import torch
 
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import _print_args
-from tools.retro.db import build_db, preprocess_db, embed_db
+from tools.retro.db import build_db, preprocess_db # , embed_db
 from tools.retro.index.build import add_to_index, build_index, train_index
 from tools.retro.pretraining.build import (
     build_pretraining_neighbors,
-    embed_pretraining_chunks,
+    # embed_pretraining_chunks,
     query_pretraining_neighbors,
 )
 from tools.retro.pretraining.retro_dataset import test_retro_dataset

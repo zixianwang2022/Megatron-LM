@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+? ? ?
+
 from megatron import get_args
 from tools.bert_embedding import embed_text_datasets
 from tools.retro.utils import GPTToTextDataset
@@ -25,6 +27,8 @@ from lutil import pax
 
 
 def embed_pretraining_chunks(timer):
+
+    raise Exception("no standalone embed.")
 
     args = get_args()
 

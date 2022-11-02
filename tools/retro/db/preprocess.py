@@ -34,8 +34,10 @@ from tools.bert_embedding.utils import get_missing_blocks_by_rank
 from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
 from .utils import (
-    get_individual_db_dir,
-    get_db_info_map,
+    # get_db_info_map,
+    get_individual_db,
+    get_individual_db_info,
+    get_merged_db_path_map,
     save_indexed_dataset_infos,
 )
 
@@ -44,7 +46,8 @@ from lutil import pax, print_seq
 # <<<
 
 
-def get_indexed_dataset_infos():
+# def get_indexed_dataset_infos():
+def init_indexed_dataset_infos():
 
     args = get_args()
 
@@ -59,110 +62,19 @@ def get_indexed_dataset_infos():
         path = prefix + ".bin"
         name = os.path.basename(prefix)
         assert os.path.exists(path)
+        db_info = get_individual_db_info(name)
         infos.append({
             "ratio" : ratio,
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            # "db_path" : get_individual_db_path(name),
-            "db_dir" : get_individual_db_dir(name),
+            "db_dir" : db_info["db_dir"],
+            # "embed_dir" : db_info["embed_dir"],
         })
 
     return infos
 
 
-# def build_partial_db(
-#         proc_id,
-#         n_procs,
-#         indexed_dataset,
-#         gpt_tokenizer,
-#         bert_tokenizer,
-# ):
-# def build_partial_db(
-#         proc_id,
-#         n_procs,
-#         indexed_dataset,
-#         db_blocks,
-#         tokenizers,
-# ):
-
-#     args = get_args()
-
-#     # Block start/end indexes.
-#     n_blocks = len(db_blocks)
-#     n_blocks_per_proc = int(np.ceil(n_blocks / n_procs))
-#     block_start_id = proc_id * n_blocks_per_proc
-#     block_end_id = min(n_blocks, block_start_id + n_blocks_per_proc)
-
-#     # Print progress.
-#     progress_proc_ids = set(range(n_procs))
-#     if proc_id in progress_proc_ids:
-#         print(" > building partial chunk db, proc %d / %d, blocks %d:%d / %d."%(
-#             proc_id,
-#             n_procs,
-#             block_start_id,
-#             block_end_id,
-#             n_blocks,
-#         ))
-
-#     # Progress bars (snapshot of overall progress).
-#     block_id_iter = range(block_start_id, block_end_id)
-#     pbar = tqdm(block_id_iter) \
-#         if proc_id in progress_proc_ids else \
-#            block_id_iter
-
-#     # Iterate blocks & parse chunks.
-#     for block_id in pbar:
-
-#         # Progress description.
-#         try:
-#             pbar.set_description("proc %d / %d." % (proc_id, n_procs))
-#         except:
-#             pass
-
-#         block = db_blocks[block_id]
-#         # pax({"block": block})
-#         chunks_valid = []
-#         chunks_invalid = []
-#         for doc_id in range(block["range"]):
-
-#             # Remove EOD token.
-#             doc = indexed_dataset.get(doc_id)
-#             eod_id = doc[-1]
-#             doc = doc[:-1] # remove 'eod' token
-#             doc_len = len(doc)
-
-#             # Chunk start/end indexes.
-#             chunk_start_idxs = list(range(0, doc_len, args.retro_gpt_chunk_length))
-#             chunk_end_idxs = [min(doc_len, s + args.retro_gpt_chunk_length)
-#                               for s in chunk_start_idxs]
-
-#             # Re-tokenize each chunk to Bert/Wordpiece (empty bert -> 'invalid').
-#             for i, chunk_start_idx in enumerate(chunk_start_idxs):
-#                 chunk_end_idx = chunk_end_idxs[i]
-#                 gpt_token_ids = indexed_dataset.get(
-#                     idx = doc_id,
-#                     offset = chunk_start_idx,
-#                     length = chunk_end_idx - chunk_start_idx,
-#                 )
-#                 gpt_token_ids = [ t for t in gpt_token_ids.tolist() if t != eod_id ]
-#                 text = gpt_tokenizer.detokenize(gpt_token_ids)
-#                 bert_token_ids = bert_tokenizer.tokenize(text)
-
-#                 _chunks = chunks_invalid \
-#                     if len(bert_token_ids) == 0 else \
-#                        chunks_valid
-#                 _chunks.append((
-#                     doc_id,
-#                     chunk_start_idx,
-#                     chunk_end_idx,
-#                     len(bert_token_ids),
-#                 ))
-
-#         # raise Exception("save db block.")
-#         pax({"chunks_valid": chunks_valid, "chunks_invalid": chunks_invalid})
-
-#     return proc_id, chunk_db_valid, chunk_db_invalid
 def build_partial_db(
         dataset_idx,
         n_datasets,
@@ -284,6 +196,10 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
 
     if not missing_db_blocks:
         return
+
+    # >>>
+    raise Exception("preprocess individuals again?")
+    # <<<
 
     # >>>
     # print_seq("missing blocks [%d] : %s ... %s." % (
@@ -659,20 +575,89 @@ def update_chunk_counts(indexed_dataset_infos):
 #         f.close()
 
 
+# def build_blended_db(indexed_dataset_infos, db_type):
+# def merge_individual_dbs(indexed_dataset_infos, db_type):
+def merge_dbs(indexed_dataset_infos, db_type):
+
+    if torch.distributed.get_rank() != 0:
+        return
+
+    print(" > build %s chunk db." % db_type)
+
+    # Count chunks.
+    if db_type == "full":
+        n_chunks_key = "n_chunks_valid"
+    elif db_type == "sampled":
+        n_chunks_key = "n_chunks_sampled"
+    else:
+        raise Exception("handle db_type '%s'." % db_type)
+    n_chunks = sum(m[n_chunks_key] for m in indexed_dataset_infos)
+
+    # DB path.
+    db_path = get_merged_db_path_map()[db_type]
+    # [later] ... os.makedirs(os.path.dirname(db_path), exist_ok = True)
+
+    # pax(0, {
+    #     "indexed_dataset_infos / 0" : indexed_dataset_infos[0],
+    #     "n_chunks" : n_chunks,
+    #     "db_path" : db_path,
+    # })
+
+    # Delete existing chunk db if incorrect size.
+    if os.path.exists(db_path):
+
+        try:
+
+            f = h5py.File(db_path)
+            n_alloc = len(f["chunks"])           # total allocated
+            n_written = f["n_written"][0].item() # total written
+            f.close()
+
+            if n_chunks != n_alloc or n_chunks != n_written:
+                os.remove(db_path)
+
+        except Exception as e:
+            if isinstance(e, OSError):
+                os.remove(full_db_path)
+            elif isinstance(e, KeyError):
+                f.close()
+                os.remove(full_db_path)
+            else:
+                raise e
+
+    # Build merged chunk db.
+    if not os.path.exists(db_path):
+
+        os.makedirs(os.path.dirname(db_path), exist_ok = True)
+        f = h5py.File(db_path, "w")
+
+        # Initialize output arrays.
+        merged_db = f.create_dataset("chunks", (n_chunks, 5), dtype = "i8")
+        n_written = f.create_dataset("n_written", (1,), dtype = "uint64")
+        n_written[0] = 0
+
+        # Iterate indexed datasets & collect chunks.
+        start_index = 0
+        for ds_idx, ds_info in enumerate(indexed_dataset_infos):
+            print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
+                  (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
+            individual_db = get_individual_db(ds_idx, ds_info)
+            individual_db = individual_db[:ds_info[n_chunks_key]]
+            merged_db[start_index:start_index+len(individual_db)] = individual_db
+            start_index += len(individual_db)
+            n_written[0] = start_index
+
+        f.close()
+
+
 def preprocess_db(timer):
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # create_data_softlinks(data_files)
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    # >>>
-    # # Single process here [ using ProcessPoolExecutor ].
-    # if torch.distributed.get_rank() != 0:
-    #     return
-    # <<<
-    
     # Indexed dataset info.
-    indexed_dataset_infos = get_indexed_dataset_infos()
+    indexed_dataset_infos = init_indexed_dataset_infos()
 
     # Build dbs.
     build_individual_dbs(indexed_dataset_infos)
@@ -681,13 +666,12 @@ def preprocess_db(timer):
     if torch.distributed.get_rank() != 0:
         return
 
+    # Update n_chunks.
     update_chunk_counts(indexed_dataset_infos)
-    # pax(0, {
-    #     "indexed_dataset_infos" : indexed_dataset_infos,
-    #     "indexed_dataset_infos / -1" : indexed_dataset_infos[-1],
-    # })
-    # build_full_db(indexed_dataset_infos)
-    # build_sampled_db(indexed_dataset_infos)
+
+    # Merge dbs.
+    merge_dbs(indexed_dataset_infos, "full")
+    merge_dbs(indexed_dataset_infos, "sampled")
 
     # Save (fully annotated) indexed dataset infos.
     save_indexed_dataset_infos(indexed_dataset_infos)

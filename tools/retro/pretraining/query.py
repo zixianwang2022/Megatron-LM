@@ -25,8 +25,8 @@ import torch
 from tqdm import tqdm
 
 from megatron import get_args, mpu, print_rank_0
-from tools.retro.db.dataset import dataset_offsets_to_ids
-from tools.retro.db.utils import get_db_info_map
+# from tools.retro.db.dataset import dataset_offsets_to_ids
+# from tools.retro.db.utils import get_db_info_map
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_workdir
 

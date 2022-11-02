@@ -5,11 +5,11 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
+NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-NPROCS=16
+# NPROCS=16
 # NPROCS=128
 # >>>
 
@@ -35,10 +35,10 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1
 # RETRO_PROFILE_STAGE_STOP="cluster"
 
 # RETRO_TASKS="db-build"
-RETRO_TASKS="db-preprocess"
-# RETRO_TASKS="db-embed"
+# RETRO_TASKS="db-preprocess"
+# [x] ... RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
-# RETRO_TASKS="index-train"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="index-remove-train-files,train"
 # RETRO_TASKS="index-remove-add-files,add"

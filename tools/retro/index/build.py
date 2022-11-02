@@ -18,7 +18,8 @@ import shutil
 import torch
 
 from megatron import get_args
-from tools.retro.db.utils import get_db_info_map
+# from tools.retro.db.utils import get_db_info_map
+from tools.retro.db.utils import get_sampled_merged_dataset
 from tools.retro.index.factory import IndexFactory
 
 from .utils import get_index_workdir
@@ -28,7 +29,19 @@ from lutil import pax
 # <<<
 
 
+# def train_index(timer):
+#     args = get_args()
+#     workdir = get_index_workdir()
+#     input_data_paths = get_db_info_map()["sampled"]["embed_paths"]
+#     index = IndexFactory.get_index(args.retro_index_ty)
+#     index.train(input_data_paths, workdir, timer)
 def train_index(timer):
+    gpt_dataset = get_sampled_blended_dataset()
+    text_dataset = GPTToTextDataset(gpt_dataset)
+    pax({
+        "gpt_dataset" : gpt_dataset,
+        "text_dataset" : text_dataset,
+    })
     args = get_args()
     workdir = get_index_workdir()
     input_data_paths = get_db_info_map()["sampled"]["embed_paths"]

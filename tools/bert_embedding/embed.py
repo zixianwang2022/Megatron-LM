@@ -293,12 +293,11 @@ def embed_text_dataset(models, prefix,
     #                                                         block_size)
     def validate(f):
         assert f["data"].shape[1] == 1024
-    missing_embedding_blocks = get_missing_blocks_by_rank(
+    n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
         workdir,
         len(embedding_dataset),
         block_size,
         validate = validate)
-
 
     # Prevent missing file race condition.
     torch.distributed.barrier()

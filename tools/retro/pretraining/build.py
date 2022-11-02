@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .embed import embed_pretraining_chunks
+# from .embed import embed_pretraining_chunks
 from .query import query_pretraining_neighbors
 
 
 def build_pretraining_neighbors(timer):
-    embed_pretraining_chunks(timer)
+    # embed_pretraining_chunks(timer)
     query_pretraining_neighbors(timer)
 

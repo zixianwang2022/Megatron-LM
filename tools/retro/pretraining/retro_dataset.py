@@ -21,8 +21,8 @@ import os
 import torch
 
 from megatron import get_args
-from tools.retro.db.dataset import \
-    get_gpt_chunk_dataset_map as get_db_gpt_chunk_dataset_map
+# from tools.retro.db.dataset import \
+#     get_gpt_chunk_dataset_map as get_db_gpt_chunk_dataset_map
 from tools.retro.pretraining.chunk_dataset import \
     get_gpt_chunk_dataset_map as get_pretraining_gpt_chunk_dataset_map
 from tools.retro.utils import get_num_chunks_per_seq
