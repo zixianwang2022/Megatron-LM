@@ -69,7 +69,6 @@ def get_embedding_paths(sub_dir):
     return sorted(glob.glob(get_embedding_dir(sub_dir) + "/*.hdf5"))
 
 
-# def remove_embeddings():
 def clear_embedding_dir(sub_dir):
 
     if torch.distributed.get_rank() != 0:

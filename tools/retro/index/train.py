@@ -73,6 +73,7 @@ def embed_db():
 
 
 def train_on_embeddings(timer):
+    torch.distributed.barrier()
     args = get_args()
     workdir = get_index_workdir()
     input_data_paths = get_embedding_paths(EMBED_KEY)
@@ -81,6 +82,7 @@ def train_on_embeddings(timer):
 
 
 def remove_embeddings():
+    torch.distributed.barrier()
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
     clear_embedding_dir(EMBED_KEY)

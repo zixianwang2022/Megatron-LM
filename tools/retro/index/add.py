@@ -17,25 +17,41 @@
 # import shutil
 # import torch
 
-# from megatron import get_args
-# from tools.retro.db.utils import get_db_info_map
-# from tools.retro.db.utils import get_full_merged_dataset
-# from tools.retro.index.factory import IndexFactory
-# from tools.retro.utils import GPTToTextDataset
+from megatron import get_args
+from tools.retro.db.utils import get_full_merged_dataset
+from tools.retro.index.factory import IndexFactory
+from tools.retro.utils import GPTToTextDataset
 
-# from .utils import get_index_workdir
+from .utils import get_index_workdir
 
 # >>>
 from lutil import pax
 # <<<
 
 
+# def add_to_index(timer):
+#     args = get_args()
+#     workdir = get_index_workdir()
+#     input_data_paths = get_db_info_map()["full"]["embed_paths"]
+#     index = IndexFactory.get_index(args.retro_index_ty)
+#     output_index_path = index.add(input_data_paths, workdir, timer)
+#     return output_index_path
 def add_to_index(timer):
     args = get_args()
+
     workdir = get_index_workdir()
-    input_data_paths = get_db_info_map()["full"]["embed_paths"]
+    # input_data_paths = get_db_info_map()["full"]["embed_paths"]
     index = IndexFactory.get_index(args.retro_index_ty)
-    output_index_path = index.add(input_data_paths, workdir, timer)
+
+    gpt_dataset = get_full_merged_dataset()
+    text_dataset = GPTToTextDataset(gpt_dataset)
+    # pax(0, {
+    #     "gpt_dataset" : gpt_dataset,
+    #     "text_dataset" : text_dataset,
+    # })
+
+    # output_index_path = index.add(input_data_paths, workdir, timer)
+    output_index_path = index.add(text_dataset, workdir, timer)
     return output_index_path
 
 

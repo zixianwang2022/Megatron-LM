@@ -36,6 +36,9 @@ class FaissBaseIndex(Index):
 
         assert torch.distributed.get_rank() == 0
 
+        # Set num threads (torch.distributed reset it to 1).
+        faiss.omp_set_num_threads(64)
+
         empty_index_path = self.get_empty_index_path(dir_path)
 
         # Index already exists? -> return.

@@ -38,8 +38,8 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1
 # RETRO_TASKS="db-preprocess"
 # [x] ... RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
-RETRO_TASKS="index-train"
-# RETRO_TASKS="index-add"
+# RETRO_TASKS="index-train"
+RETRO_TASKS="index-add"
 # RETRO_TASKS="index-remove-train-files,train"
 # RETRO_TASKS="index-remove-add-files,add"
 # RETRO_TASKS="index-verify"
@@ -59,8 +59,8 @@ RETRO_TASKS="index-train"
 # RETRO_TASKS="misc-bert-nan-analysis"
 # RETRO_TASKS="build" # ... the goal.
 
-RETRO_INDEX_TY=faiss-base
-# RETRO_INDEX_TY=faiss-par-add
+# RETRO_INDEX_TY=faiss-base
+RETRO_INDEX_TY=faiss-par-add
 # RETRO_INDEX_TY=faiss-decomp
 
 # RETRO_NCLUSTERS=4194304
