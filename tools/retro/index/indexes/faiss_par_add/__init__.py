@@ -21,7 +21,8 @@ import os
 import torch
 
 from megatron import get_args, print_rank_0
-from tools.bert_embedding import embed_text_datasets
+# from tools.bert_embedding import embed_text_datasets
+from tools.bert_embedding import BertEmbedder
 # from tools.retro.data import load_data
 from tools.retro.index import Index
 from tools.retro.index.indexes.faiss_base import FaissBaseIndex
@@ -265,41 +266,41 @@ class FaissParallelAddIndex(Index):
         return index_path_map["output_index_path"]
 
 
-    def embed_partial(self, partial_index_path_map, text_dataset, embed_dir):
+    # def embed_partial(self, partial_index_path_map, text_dataset, embed_dir):
+    def embed_partial(self, partial_index_path_map, text_dataset, embedder):
 
-        args = get_args()
+        # args = get_args()
 
-        subset_dataset = torch.utils.data.Subset(
+        sub_dataset = torch.utils.data.Subset(
             text_dataset,
             range(*partial_index_path_map["dataset_sample_range"]),
         )
 
+        # clear_embedding_dir(EMBED_KEY)
+        # embed_text_datasets(
+        #     {"index": {
+        #         "data" : subset_dataset,
+        #         "embed_dir" : embed_dir,
+        #     }},
+        #     args.retro_bert_max_chunk_length,
+        #     args.retro_block_size,
+        #     # len(subset_dataset),
+        # )
+        embeddings = embedder.embed_text_dataset(sub_dataset, len(text_dataset))
+
         # pax(0, {
         #     "partial_index_path_map" : partial_index_path_map,
         #     "text_dataset / len" : len(text_dataset),
-        #     "subset_dataset / len" : len(subset_dataset),
-        #     "embed_dir" : embed_dir,
+        #     "sub_dataset / len" : len(sub_dataset),
+        #     "embedder" : embedder,
+        #     "embeddings" : embeddings,
         # })
 
-        # clear_embedding_dir(EMBED_KEY)
-        embed_text_datasets(
-            {"index": {
-                "data" : subset_dataset,
-                "embed_dir" : embed_dir,
-            }},
-            args.retro_bert_max_chunk_length,
-            args.retro_block_size,
-            # len(subset_dataset),
-        )
-
-        # pax(0, {
-        #     "gpt_dataset" : gpt_dataset,
-        #     "text_dataset" : text_dataset,
-        # })
+        return embeddings
 
 
     def encode_partial(self, partial_index_path_map, dir_path, timer,
-                       text_dataset):
+                       text_dataset, embedder):
         """Encode partial indexes (embarrassingly parallel).
 
         Encode the partial indexes, generally in blocks of 1M vectors each.
@@ -326,19 +327,23 @@ class FaissParallelAddIndex(Index):
         # print_seq("partial_index_path = %s." % partial_index_path)
         # <<<
 
-        # Embed partial.
-        embed_dir = os.path.join(
-            dir_path,
-            "embed_%d" % partial_index_path_map["block_id"],
-        )
-        self.embed_partial(partial_index_path_map, text_dataset, embed_dir)
-
-        raise Exception("embed?")
-
-        # Load data block.
-        timer.push("load-data")
-        input_data = load_data([input_data_path], timer)["data"].astype("f4")
+        # Embed data block.
+        # embed_dir = os.path.join(
+        #     dir_path,
+        #     "embed_%d" % partial_index_path_map["block_id"],
+        # )
+        # self.embed_partial(partial_index_path_map, text_dataset, embed_dir)
+        timer.push("embed-data")
+        input_data = self.embed_partial(partial_index_path_map,
+                                        text_dataset, embedder)
         timer.pop()
+
+        # pax(0, {"input_data": input_data})
+
+        # # Load data block.
+        # timer.push("load-data")
+        # input_data = load_data([input_data_path], timer)["data"].astype("f4")
+        # timer.pop()
 
         nvecs = len(input_data)
         print_rank("ivfpq / add / partial,  block %d / %d. [ %d vecs ]" % (
@@ -472,6 +477,10 @@ class FaissParallelAddIndex(Index):
         # Prevent race condition for missing paths. [ necessary? ]
         torch.distributed.barrier()
 
+        # Bert embedder.
+        embedder = BertEmbedder(args.retro_bert_max_chunk_length)
+        # pax(0, {"embedder": embedder})
+
         # Iterate merge rows.
         for row in range(num_rows):
 
@@ -518,7 +527,7 @@ class FaissParallelAddIndex(Index):
                 if row == 0:
                     timer.push("init-partial")
                     self.encode_partial(partial_index_path_map, dir_path, timer,
-                                        text_dataset)
+                                        text_dataset, embedder)
                     timer.pop()
                 else:
                     timer.push("merge-partial")

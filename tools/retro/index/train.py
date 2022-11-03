@@ -18,7 +18,7 @@ import os
 # import torch
 
 from megatron import get_args
-from tools.bert_embedding import embed_text_datasets
+# from tools.bert_embedding import embed_text_datasets
 from tools.retro.db.utils import get_sampled_merged_dataset
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset

@@ -53,78 +53,6 @@ def model_provider(pre_process=True, post_process=True):
     return model
 
 
-def collate_batch(samples):
-    """Collate samples of various lengths.
-
-    This collate function handles samples with various sequence lengths, by
-    padding 'text' arrays with pad_id, and other arrays with 0.
-    """
-
-    n_samples = len(samples)
-    keys = list(samples[0].keys())
-    tokenizer = get_tokenizer()
-
-    # Max sample length across all samples.
-    max_length_map = { key:0 for key in keys }
-    for sample in samples:
-        for key in keys:
-            value_length = \
-                len(sample[key]) if isinstance(sample[key], np.ndarray) else None
-            max_length_map[key] = None \
-                if value_length is None else \
-                   max(max_length_map[key], value_length)
-
-    # Pad samples.
-    padded_samples = []
-    for sample in samples:
-        padded_sample = {}
-        for key in keys:
-            padded_sample[key] = \
-                np.pad(
-                    sample[key],
-                    (0, max_length_map[key] - len(sample[key])),
-                    mode = "constant",
-                    constant_values = tokenizer.pad_id if key == "text" else 0,
-                ) \
-                if isinstance(sample[key], np.ndarray) else \
-                   sample[key]
-        padded_samples.append(padded_sample)
-
-    # Build batch with padded samples.
-    batch = default_collate(padded_samples)
-
-    return batch
-
-
-def get_block_data_loader(full_dataset, sample_start_idx, sample_end_idx):
-    """Build data loader over data subset.
-
-    Get a subset of the dataset (from start_idx -> end_idx), and wrap it in
-    a sequential sampler and data loader.
-    """
-
-    args = get_args()
-
-    # Dataset subset.
-    block_dataset = Subset(full_dataset, range(sample_start_idx, sample_end_idx))
-
-    # Sequential & batch samplers.
-    batch_sampler = BatchSampler(
-        sampler = SequentialSampler(block_dataset),
-        batch_size = args.micro_batch_size,
-        drop_last = False,
-    )
-
-    # Data loader.
-    data_loader = DataLoader(block_dataset,
-                             batch_sampler = batch_sampler,
-                             num_workers = args.num_workers,
-                             pin_memory = True,
-                             collate_fn = collate_batch)
-
-    return data_loader
-
-
 def get_batch(data_iterator):
     """Build the batch."""
 
@@ -180,7 +108,79 @@ def forward_step(data_iterator, model):
                                   seq_lengths)
 
 
-def embed_batches(models, data_loader):
+def collate_batch(samples):
+    """Collate samples of various lengths.
+
+    This collate function handles samples with various sequence lengths, by
+    padding 'text' arrays with pad_id, and other arrays with 0.
+    """
+
+    n_samples = len(samples)
+    keys = list(samples[0].keys())
+    tokenizer = get_tokenizer()
+
+    # Max sample length across all samples.
+    max_length_map = { key:0 for key in keys }
+    for sample in samples:
+        for key in keys:
+            value_length = \
+                len(sample[key]) if isinstance(sample[key], np.ndarray) else None
+            max_length_map[key] = None \
+                if value_length is None else \
+                   max(max_length_map[key], value_length)
+
+    # Pad samples.
+    padded_samples = []
+    for sample in samples:
+        padded_sample = {}
+        for key in keys:
+            padded_sample[key] = \
+                np.pad(
+                    sample[key],
+                    (0, max_length_map[key] - len(sample[key])),
+                    mode = "constant",
+                    constant_values = tokenizer.pad_id if key == "text" else 0,
+                ) \
+                if isinstance(sample[key], np.ndarray) else \
+                   sample[key]
+        padded_samples.append(padded_sample)
+
+    # Build batch with padded samples.
+    batch = default_collate(padded_samples)
+
+    return batch
+
+
+# def get_block_data_loader(full_dataset, sample_start_idx, sample_end_idx):
+# def get_subset_data_loader(full_dataset, sample_start_idx, sample_end_idx):
+def get_data_loader(dataset):
+    """Build data loader over data subset.
+
+    Get a subset of the dataset (from start_idx -> end_idx), and wrap it in
+    a sequential sampler and data loader.
+    """
+
+    args = get_args()
+
+    # Sequential & batch samplers.
+    batch_sampler = BatchSampler(
+        sampler = SequentialSampler(dataset),
+        batch_size = args.micro_batch_size,
+        drop_last = False,
+    )
+
+    # Data loader.
+    data_loader = DataLoader(dataset,
+                             batch_sampler = batch_sampler,
+                             num_workers = args.num_workers,
+                             pin_memory = True,
+                             collate_fn = collate_batch)
+
+    return data_loader
+
+
+# def embed_batches(models, data_loader):
+def embed_data_loader(models, data_loader, n_samples_world):
 
     # Data iterator.
     data_iterator = iter(data_loader)
@@ -191,7 +191,7 @@ def embed_batches(models, data_loader):
 
     # World info (for printing progress).
     n_gpus_world = torch.distributed.get_world_size()
-    n_samples_world = len(data_loader.dataset.dataset) # i.e., subset.dataset
+    # n_samples_world = len(data_loader.dataset.dataset) # i.e., subset.dataset
 
     # Compute embeddings.
     forward_backward_func = get_forward_backward_func()
@@ -227,7 +227,7 @@ def embed_batches(models, data_loader):
             embeddings.append(output_tensor.cpu().numpy())
 
             # Progress.
-            if batch_index % 10 == 0:
+            if batch_index % 50 == 0:
                 est_dataset_time = (batch_end_time - dataset_start_time) + \
                     (n_batches - batch_index - 1) * mean_batch_time
                 samples_per_sec = len(data_loader.dataset) / est_dataset_time
@@ -245,78 +245,106 @@ def embed_batches(models, data_loader):
     return np.concatenate(embeddings, axis = 0)
 
 
-def embed_blocks(models, prefix, workdir, dataset, missing_embedding_blocks):
+class BertEmbedder:
 
-    # Iterate blocks.
-    for block_index, block_info in enumerate(missing_embedding_blocks):
+    def __init__(self, max_bert_seq_length):
+        self.models, optimizer, opt_param_scheduler = \
+            setup_model_and_optimizer(model_provider,
+                                      ModelType.encoder_or_decoder)
+        self.max_bert_seq_length = max_bert_seq_length
 
-        # Missing block lists are extended with None to have equal-length
-        # lists. Skip the Nones.
-        if block_info is not None:
 
-            print_rank_0("embed '%s' block %d / %d ... %s." % (
-                prefix,
-                block_index,
-                len(missing_embedding_blocks),
-                block_info["path"],
-            ))
+    def embed_text_dataset(self, text_dataset, n_samples_world):
+        bert_dataset = BertEmbeddingDataset(text_dataset,
+                                            self.max_bert_seq_length)
+        data_loader = get_data_loader(bert_dataset)
+        # pax(0, {
+        #     "text_dataset" : text_dataset,
+        #     "bert_dataset" : bert_dataset,
+        #     "data_loader" : data_loader,
+        # })
+        embeddings = embed_data_loader(self.models, data_loader, n_samples_world)
+        # pax(0, {"embeddings": embeddings})
+        return embeddings
 
-            # Data loader.
-            data_loader = get_block_data_loader(dataset,*block_info["range"])
 
-            # Embed block.
-            embeddings = embed_batches(models, data_loader)
+class DataParallelBertEmbedder(BertEmbedder):
 
-            # Save embeddings.
-            f = h5py.File(block_info["path"], "w")
-            f.create_dataset("data", data = embeddings)
-            f.close()
+    def embed_blocks_on_disk(self, models, prefix, workdir, dataset,
+                             missing_embedding_blocks):
 
-        # Synchronize progress across all ranks. (for easier observation)
-        print_rank_0(" > waiting for other ranks to finish block.")
+        # Iterate blocks.
+        for block_index, block_info in enumerate(missing_embedding_blocks):
+
+            # Missing block lists are extended with None to have equal-length
+            # lists. Skip the Nones.
+            if block_info is not None:
+
+                print_rank_0("embed '%s' block %d / %d ... %s." % (
+                    prefix,
+                    block_index,
+                    len(missing_embedding_blocks),
+                    block_info["path"],
+                ))
+
+                # Data loader.
+                # data_loader = get_block_data_loader(dataset, *block_info["range"]))
+                sub_dataset = Subset(full_dataset, range(*block_info["range"]))
+                data_loader = get_data_loader(sub_dataset)
+                pax(0, {"data_loader": data_loader})
+
+                # Embed block.
+                embeddings = embed_batches(models, data_loader, len(full_dataset))
+
+                # Save embeddings.
+                f = h5py.File(block_info["path"], "w")
+                f.create_dataset("data", data = embeddings)
+                f.close()
+
+            # Synchronize progress across all ranks. (for easier observation)
+            print_rank_0(" > waiting for other ranks to finish block.")
+            torch.distributed.barrier()
+
+
+    def embed_text_dataset(models, prefix,
+                           workdir, text_dataset,
+                           max_bert_seq_length, block_size):
+
+        # Dataset workdir.
+        os.makedirs(workdir, exist_ok = True)
+
+        # Bert embedding dataset.
+        embedding_dataset = BertEmbeddingDataset(text_dataset, max_bert_seq_length)
+
+        # Missing embedding blocks (stored on disk).
+        # missing_embedding_blocks = get_missing_embedding_blocks(workdir,
+        #                                                         embedding_dataset,
+        #                                                         block_size)
+        def validate(f):
+            assert f["data"].shape[1] == 1024
+        n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
+            workdir,
+            len(embedding_dataset),
+            block_size,
+            validate = validate)
+
+        # Prevent missing file race condition.
         torch.distributed.barrier()
 
-
-def embed_text_dataset(models, prefix,
-                       workdir, text_dataset,
-                       max_bert_seq_length, block_size):
-
-    # Dataset workdir.
-    os.makedirs(workdir, exist_ok = True)
-
-    # Bert embedding dataset.
-    embedding_dataset = BertEmbeddingDataset(text_dataset, max_bert_seq_length)
-
-    # Missing embedding blocks (stored on disk).
-    # missing_embedding_blocks = get_missing_embedding_blocks(workdir,
-    #                                                         embedding_dataset,
-    #                                                         block_size)
-    def validate(f):
-        assert f["data"].shape[1] == 1024
-    n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
-        workdir,
-        len(embedding_dataset),
-        block_size,
-        validate = validate)
-
-    # Prevent missing file race condition.
-    torch.distributed.barrier()
-
-    # Embed batches.
-    embed_blocks(models, prefix, workdir, embedding_dataset,
-                 missing_embedding_blocks)
+        # Embed batches.
+        self.embed_blocks_on_disk(models, prefix, workdir, embedding_dataset,
+                                  missing_embedding_blocks)
 
 
-def embed_text_datasets(text_dataset_map, max_bert_seq_length, block_size):
+    # def embed_text_datasets(text_dataset_map, max_bert_seq_length, block_size):
+    def embed_text_datasets_on_disk(text_dataset_map,
+                                    max_bert_seq_length,
+                                    block_size):
 
-    # Load model.
-    models, optimizer, opt_param_scheduler = \
-        setup_model_and_optimizer(model_provider, ModelType.encoder_or_decoder)
-
-    # Embed each (i.e., full, sampled) dataset.
-    for prefix, info in text_dataset_map.items():
-        print_rank_0(" > embed '%s' dataset ... %d samples." %
-                     (prefix, len(info["data"])))
-        embed_text_dataset(models, prefix,
-                           info["embed_dir"], info["data"],
-                           max_bert_seq_length, block_size)
+        # Embed each (i.e., full, sampled) dataset.
+        for prefix, info in text_dataset_map.items():
+            print_rank_0(" > embed '%s' dataset ... %d samples." %
+                         (prefix, len(info["data"])))
+            self.embed_text_dataset_on_disk(models, prefix,
+                                            info["embed_dir"], info["data"],
+                                            max_bert_seq_length, block_size)
