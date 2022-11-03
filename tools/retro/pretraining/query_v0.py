@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # from collections import defaultdict
-import faiss
+# import faiss
 # from faiss import ParameterSpace
 # from functools import reduce
 # import glob

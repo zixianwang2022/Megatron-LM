@@ -256,10 +256,12 @@ class FaissParallelAddIndex(Index):
         return missing_index_paths
 
 
-    def get_added_index_path(self, input_data_paths, dir_path):
-        num_rows = self.get_num_rows(len(input_data_paths))
+    # def get_added_index_path(self, input_data_paths, dir_path):
+    #     num_rows = self.get_num_rows(len(input_data_paths))
+    def get_added_index_path(self, dataset_sample_ranges, dir_path):
+        num_rows = self.get_num_rows(len(dataset_sample_ranges))
         index_path_map = self.get_partial_index_path_map(
-            input_data_paths,
+            dataset_sample_ranges,
             dir_path,
             row = num_rows - 1,
             col = 0,
@@ -545,7 +547,9 @@ class FaissParallelAddIndex(Index):
         torch.distributed.barrier()
 
         # Get output index path, for return.
-        output_index_path = self.get_added_index_path(input_data_paths, dir_path)
+        output_index_path = self.get_added_index_path(dataset_sample_ranges,
+                                                      dir_path)
+        # pax(0, {"output_index_path": output_index_path})
 
         return output_index_path
 
