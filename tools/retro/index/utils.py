@@ -15,6 +15,7 @@
 
 import glob
 import os
+import shutil
 import torch
 
 from megatron import get_args
@@ -60,7 +61,7 @@ def get_index_workdir():
 
 
 def get_embedding_dir(sub_dir):
-    embed_dir = os.path.join(get_base_index_workdir(), "embed", sub_dir)
+    embed_dir = os.path.join(get_index_workdir(), "embed", sub_dir)
     os.makedirs(embed_dir, exist_ok = True)
     return embed_dir
 
@@ -69,10 +70,8 @@ def get_embedding_paths(sub_dir):
     return sorted(glob.glob(get_embedding_dir(sub_dir) + "/*.hdf5"))
 
 
-def clear_embedding_dir(sub_dir):
-
+def remove_embedding_dir(sub_dir):
     if torch.distributed.get_rank() != 0:
         return
-
-    paths = get_embedding_paths(sub_dir)
-    [ os.remove(p) for p in paths ]
+    dirname = get_embedding_dir(sub_dir)
+    shutil.rmtree(dirname)

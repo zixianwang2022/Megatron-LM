@@ -34,10 +34,12 @@ from lutil import pax, print_seq
 
 class FaissParallelAddIndex(Index):
 
-    def train(self, input_data_paths, dir_path, timer):
-        # raise Exception("better to inherit from FaissBaseIndex?")
-        index = FaissBaseIndex(self.args)
-        return index.train(input_data_paths, dir_path, timer)
+    # def train(self, input_data_paths, dir_path, timer):
+    #     # raise Exception("better to inherit from FaissBaseIndex?")
+    #     index = FaissBaseIndex() # self.args)
+    #     return index.train(input_data_paths, dir_path, timer)
+    def train(self, *args):
+        return FaissBaseIndex().train(*args)
 
 
     @classmethod
@@ -346,7 +348,7 @@ class FaissParallelAddIndex(Index):
         # timer.pop()
 
         nvecs = len(input_data)
-        print_rank("ivfpq / add / partial,  block %d / %d. [ %d vecs ]" % (
+        print_rank_0("ivfpq / add / partial,  block %d / %d. [ %d vecs ]" % (
             partial_index_path_map["block_id"],
             partial_index_path_map["num_blocks"],
             nvecs,
@@ -403,7 +405,7 @@ class FaissParallelAddIndex(Index):
                 input_invlists = get_invlists(input_index)
                 timer.pop()
 
-                print_rank("ivfpq / add / merge, input %d / %d. [ +%d -> %d ]" % (
+                print_rank_0("ivfpq / add / merge, input %d / %d. [ +%d -> %d ]" % (
                     input_iter,
                     len(input_index_paths),
                     input_index.ntotal,

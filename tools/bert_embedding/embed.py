@@ -268,10 +268,17 @@ class BertEmbedder:
         return embeddings
 
 
-class DataParallelBertEmbedder(BertEmbedder):
+# class DiskDataParallelBertEmbedder(BertEmbedder):
+class DiskDataParallelBertEmbedder:
 
-    def embed_blocks_on_disk(self, models, prefix, workdir, dataset,
-                             missing_embedding_blocks):
+    def __init__(self, max_bert_seq_length, block_size):
+        # super().__init__(max_bert_seq_length)
+        self.embedder = BertEmbedder(max_bert_seq_length)
+        self.block_size = block_size
+
+
+    def embed_text_blocks(self, name, workdir, text_dataset,
+                          missing_embedding_blocks):
 
         # Iterate blocks.
         for block_index, block_info in enumerate(missing_embedding_blocks):
@@ -281,20 +288,16 @@ class DataParallelBertEmbedder(BertEmbedder):
             if block_info is not None:
 
                 print_rank_0("embed '%s' block %d / %d ... %s." % (
-                    prefix,
+                    name,
                     block_index,
                     len(missing_embedding_blocks),
                     block_info["path"],
                 ))
 
-                # Data loader.
-                # data_loader = get_block_data_loader(dataset, *block_info["range"]))
-                sub_dataset = Subset(full_dataset, range(*block_info["range"]))
-                data_loader = get_data_loader(sub_dataset)
-                pax(0, {"data_loader": data_loader})
-
                 # Embed block.
-                embeddings = embed_batches(models, data_loader, len(full_dataset))
+                sub_dataset = Subset(text_dataset, range(*block_info["range"]))
+                embeddings = self.embedder.embed_text_dataset(sub_dataset,
+                                                              len(text_dataset))
 
                 # Save embeddings.
                 f = h5py.File(block_info["path"], "w")
@@ -306,45 +309,32 @@ class DataParallelBertEmbedder(BertEmbedder):
             torch.distributed.barrier()
 
 
-    def embed_text_dataset(models, prefix,
-                           workdir, text_dataset,
-                           max_bert_seq_length, block_size):
+    def embed_text_dataset(self, name, workdir, text_dataset):
 
         # Dataset workdir.
         os.makedirs(workdir, exist_ok = True)
 
-        # Bert embedding dataset.
-        embedding_dataset = BertEmbeddingDataset(text_dataset, max_bert_seq_length)
-
         # Missing embedding blocks (stored on disk).
-        # missing_embedding_blocks = get_missing_embedding_blocks(workdir,
-        #                                                         embedding_dataset,
-        #                                                         block_size)
         def validate(f):
             assert f["data"].shape[1] == 1024
         n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
             workdir,
-            len(embedding_dataset),
-            block_size,
+            len(text_dataset),
+            self.block_size,
             validate = validate)
 
         # Prevent missing file race condition.
         torch.distributed.barrier()
 
         # Embed batches.
-        self.embed_blocks_on_disk(models, prefix, workdir, embedding_dataset,
-                                  missing_embedding_blocks)
+        self.embed_text_blocks(name, workdir, text_dataset,
+                               missing_embedding_blocks)
 
 
-    # def embed_text_datasets(text_dataset_map, max_bert_seq_length, block_size):
-    def embed_text_datasets_on_disk(text_dataset_map,
-                                    max_bert_seq_length,
-                                    block_size):
+    def embed_text_datasets(self, text_dataset_map):
 
         # Embed each (i.e., full, sampled) dataset.
-        for prefix, info in text_dataset_map.items():
+        for name, info in text_dataset_map.items():
             print_rank_0(" > embed '%s' dataset ... %d samples." %
-                         (prefix, len(info["data"])))
-            self.embed_text_dataset_on_disk(models, prefix,
-                                            info["embed_dir"], info["data"],
-                                            max_bert_seq_length, block_size)
+                         (name, len(info["data"])))
+            self.embed_text_dataset_on_disk(name, info["embed_dir"], info["data"])
