@@ -32,6 +32,25 @@ from lutil import pax, print_seq
 # <<<
 
 
+# def get_dataset_sample_ranges(num_samples):
+def get_dataset_block_ranges(num_samples):
+    args = get_args()
+    block_size = args.retro_block_size
+    start_idxs = list(range(0, num_samples, block_size))
+    end_idxs = [min(num_samples, s + block_size) for s in start_idxs]
+    ranges = list(zip(start_idxs, end_idxs))
+    return ranges
+
+
+def get_num_rows(num_blocks):
+    return int(np.ceil(np.log(num_blocks) / np.log(2))) + 1
+
+
+def get_num_cols(num_blocks, row):
+    world_size = torch.distributed.get_world_size()
+    return int(np.ceil(num_blocks / world_size / 2**row))
+
+
 class FaissParallelAddIndex(Index):
 
     # def train(self, input_data_paths, dir_path, timer):
@@ -40,34 +59,6 @@ class FaissParallelAddIndex(Index):
     #     return index.train(input_data_paths, dir_path, timer)
     def train(self, *args):
         return FaissBaseIndex().train(*args)
-
-
-    @classmethod
-    def get_dataset_sample_ranges(cls, num_samples):
-        args = get_args()
-        block_size = args.retro_block_size
-        start_idxs = list(range(0, num_samples, block_size))
-        end_idxs = [min(num_samples, s + block_size) for s in start_idxs]
-        ranges = list(zip(start_idxs, end_idxs))
-        # pax(0, {"ranges": ranges})
-        return ranges
-
-
-    @classmethod
-    def get_num_rows(cls, num_blocks):
-        return int(np.ceil(np.log(num_blocks) / np.log(2))) + 1
-    # @classmethod
-    # def get_num_blocks_and_rows(cls, num_samples):
-    #     args = get_args()
-    #     num_blocks = int(np.ceil(num_samples / args.retro_block_size))
-    #     num_rows = int(np.ceil(np.log(num_blocks) / np.log(2))) + 1
-    #     return num_blocks, num_rows
-
-
-    @classmethod
-    def get_num_cols(cls, num_blocks, row):
-        world_size = torch.distributed.get_world_size()
-        return int(np.ceil(num_blocks / world_size / 2**row))
 
 
     def get_partial_index_path_map(
@@ -157,61 +148,7 @@ class FaissParallelAddIndex(Index):
         return path_map
 
 
-    # def get_missing_index_paths(
-    #         self,
-    #         input_data_paths,
-    #         dir_path,
-    #         timer,
-    #         num_rows,
-    # ):
-
-    #     world_size = torch.distributed.get_world_size()
-    #     num_blocks = len(input_data_paths)
-
-    #     missing_index_paths = set()
-    #     for row in range(num_rows - 1, -1, -1):
-
-    #         num_cols = self.get_num_cols(num_blocks, row)
-    #         for col in range(num_cols):
-
-    #             for rank in range(world_size):
-
-    #                 # Input/output index paths.
-    #                 path_map = self.get_partial_index_path_map(
-    #                     input_data_paths,
-    #                     dir_path,
-    #                     row,
-    #                     col,
-    #                     rank,
-    #                 )
-
-    #                 # Handle edge cases.
-    #                 if path_map is None:
-    #                     continue
-
-    #                 output_path = path_map["output_index_path"]
-    #                 input_paths = path_map.get("input_index_paths", [])
-
-    #                 if row == num_rows - 1 and not os.path.isfile(output_path):
-    #                     missing_index_paths.add(output_path)
-
-    #                 if output_path in missing_index_paths:
-    #                     missing_input_paths = \
-    #                         [ p for p in input_paths if not os.path.isfile(p) ]
-    #                     missing_index_paths.update(missing_input_paths)
-
-    #     return missing_index_paths
-    # def get_missing_index_paths(
-    # def get_missing_blocks(
-    def get_missing_index_paths(
-            self,
-            # num_blocks,
-            # num_rows,
-            # n_samples,
-            dataset_sample_ranges,
-            num_rows,
-            dir_path,
-    ):
+    def get_missing_index_paths(self, dataset_sample_ranges, num_rows, dir_path):
 
         world_size = torch.distributed.get_world_size()
         # num_blocks, num_rows = self.get_num_blocks_and_rows(n_samples)
@@ -220,7 +157,7 @@ class FaissParallelAddIndex(Index):
         missing_index_paths = set()
         for row in range(num_rows - 1, -1, -1):
 
-            num_cols = self.get_num_cols(num_blocks, row)
+            num_cols = get_num_cols(num_blocks, row)
             for col in range(num_cols):
 
                 for rank in range(world_size):
@@ -256,10 +193,8 @@ class FaissParallelAddIndex(Index):
         return missing_index_paths
 
 
-    # def get_added_index_path(self, input_data_paths, dir_path):
-    #     num_rows = self.get_num_rows(len(input_data_paths))
     def get_added_index_path(self, dataset_sample_ranges, dir_path):
-        num_rows = self.get_num_rows(len(dataset_sample_ranges))
+        num_rows = get_num_rows(len(dataset_sample_ranges))
         index_path_map = self.get_partial_index_path_map(
             dataset_sample_ranges,
             dir_path,
@@ -464,9 +399,9 @@ class FaissParallelAddIndex(Index):
         # pax(0, {"nthreads": faiss.omp_get_max_threads()})
 
         # Num blocks & rows.
-        dataset_sample_ranges = self.get_dataset_sample_ranges(len(text_dataset))
+        dataset_sample_ranges = get_dataset_block_ranges(len(text_dataset))
         num_blocks = len(dataset_sample_ranges)
-        num_rows = self.get_num_rows(num_blocks)
+        num_rows = get_num_rows(num_blocks)
 
         # Missing index paths.
         # missing_blocks = self.get_missing_blocks(
@@ -491,7 +426,7 @@ class FaissParallelAddIndex(Index):
             timer.push("row-%d" % row)
 
             # Get number of columns for this merge row.
-            num_cols = self.get_num_cols(num_blocks, row)
+            num_cols = get_num_cols(num_blocks, row)
 
             # Iterate merge columns.
             for col in range(num_cols):
@@ -789,7 +724,7 @@ class FaissParallelAddIndex(Index):
     #     # Num blocks & rows.
     #     block_size = int(1e6)
     #     num_blocks = 8192 # 1024 # 10
-    #     num_rows = cls.get_num_rows(num_blocks)
+    #     num_rows = get_num_rows(num_blocks)
 
     #     raise Exception("switch to IVF4194304.")
     #     empty_index_path = "/mnt/fsx-outputs-chipdesign/lmcafee/retro/index/faiss-decomp-rand-100k/OPQ32_256,IVF1048576_HNSW32,PQ32__t3000000/cluster/ivfpq/empty.faissindex"
@@ -801,7 +736,7 @@ class FaissParallelAddIndex(Index):
 
     #         timer.push("row-%d" % row)
 
-    #         num_cols = cls.get_num_cols(num_blocks, row)
+    #         num_cols = get_num_cols(num_blocks, row)
 
     #         print_rank(0, "r %d / %d, c -- / %d." % (
     #             row,

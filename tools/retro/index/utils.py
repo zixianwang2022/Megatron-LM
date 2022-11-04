@@ -25,11 +25,6 @@ from lutil import pax
 # <<<
 
 
-def get_base_index_workdir():
-    args = get_args()
-    return os.path.join(args.retro_workdir, "index")
-    
-
 def get_index_str():
     """Faiss notation for index structure."""
     args = get_args()
@@ -42,14 +37,23 @@ def get_index_str():
     )
 
 
-def get_index_workdir():
+# def get_base_index_workdir():
+# def get_top_index_workdir():
+def get_common_index_workdir():
+    args = get_args()
+    return os.path.join(args.retro_workdir, "index")
+    
+
+# def get_index_workdir():
+# def get_sub_index_workdir():
+def get_current_index_workdir():
     """Create sub-directory for this index."""
     
     # Directory path.
     args = get_args()
     index_str = get_index_str()
     index_dir_path = os.path.join(
-        get_base_index_workdir(),
+        get_common_index_workdir(),
         args.retro_index_ty,
         index_str,
     )

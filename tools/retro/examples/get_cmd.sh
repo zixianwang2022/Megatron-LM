@@ -13,11 +13,11 @@ NPROCS=16
 # NPROCS=128
 # >>>
 
-PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-preprocess
+PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-preprocess-play
 
 # Data blend.
 # . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
-. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend.sh
+. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_play.sh
 DATA_PATH=${DATA_BLEND}
 
 GPT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
@@ -29,7 +29,7 @@ BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
 BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 
 # >>>>>>>>>>>>>>>>>>>>>>>
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/play
 
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
@@ -46,7 +46,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/1
 # RETRO_TASKS="index-verify-codes"
 # RETRO_TASKS="index-verify-nbrs"
 # RETRO_TASKS="pretraining-build-nbrs"
-# RETRO_TASKS="pretraining-embed-chunks"
+# [x] ... RETRO_TASKS="pretraining-embed-chunks"
 RETRO_TASKS="pretraining-query-nbrs"
 # RETRO_TASKS="pretraining-test-retro-dataset"
 # RETRO_TASKS="pretraining-plot-acc"

@@ -160,7 +160,7 @@ def get_gpt_chunk_dataset_map():
     workdir = get_base_pretraining_workdir(args)
     dataset_map = {
         key : {
-            "embed_dir" : os.path.join(workdir, key, "embed"),
+            # "embed_dir" : os.path.join(workdir, key, "embed"),
             "nbr_dir" : os.path.join(workdir, key, "nbr"),
             "data" : GPTChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
         }

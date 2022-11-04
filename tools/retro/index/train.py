@@ -23,9 +23,9 @@ from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
 
 from .utils import (
+    get_current_index_workdir,
     get_embedding_dir,
     get_embedding_paths,
-    get_index_workdir,
     remove_embedding_dir,
 )
 
@@ -82,4 +82,4 @@ def remove_embeddings():
 def train_index(timer):
     embed_db()
     train_on_embeddings(timer)
-    remove_embeddings()
+    # remove_embeddings()

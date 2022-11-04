@@ -119,6 +119,8 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
                 f = h5py.File(path, "r")
             except:
                 raise Exception("unable to open/validate '%s'." % path)
+                os.remove(path)
+                continue
 
             try:
                 # assert f["data"].shape[1] == 1024
