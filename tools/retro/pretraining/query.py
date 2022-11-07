@@ -28,7 +28,7 @@ from tools.retro.db.utils import get_full_merged_dataset \
     as get_db_full_merged_dataset
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.indexes.faiss_par_add import get_dataset_block_ranges
-from tools.retro.index.utils import get_current_index_workdir
+from tools.retro.index.utils import get_index_dir
 from tools.retro.utils import GPTToTextDataset
 
 from .chunk_dataset import get_gpt_chunk_dataset_map
@@ -48,7 +48,7 @@ def get_index(chunk_db_dataset):
 
     # Load index.
     index_wrapper = IndexFactory.get_index(args.retro_index_ty)
-    index_dir = get_current_index_workdir()
+    index_dir = get_index_dir()
     added_index_path = index_wrapper.get_added_index_path(dataset_block_ranges,
                                                           index_dir)
     # pax(0, {"added_index_path": added_index_path})
@@ -190,8 +190,10 @@ def query_block_neighbors(index, banned_chunk_map, dataset, block, embedder):
         doc_ids = sample["doc_ids"].tolist()
         banned_chunk_ids = set()
         for doc_id in doc_ids:
+            # banned_chunk_ids.update(
+            #     banned_chunk_map.get((dataset_idx, doc_id), set()))
+
             # >>>
-            # banned_chunk_ids.update(banned_doc_chunk_id_map[doc_id])
 
             current_chunk_ids = banned_chunk_map[(dataset_idx, doc_id)]
             # >>>

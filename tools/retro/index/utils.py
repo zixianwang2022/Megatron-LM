@@ -37,25 +37,42 @@ def get_index_str():
     )
 
 
-# def get_base_index_workdir():
-# def get_top_index_workdir():
-def get_common_index_workdir():
-    args = get_args()
-    return os.path.join(args.retro_workdir, "index")
+# # def get_base_index_workdir():
+# # def get_top_index_workdir():
+# def get_common_index_workdir():
+#     args = get_args()
+#     return os.path.join(args.retro_workdir, "index")
     
 
-# def get_index_workdir():
-# def get_sub_index_workdir():
-def get_current_index_workdir():
+# # def get_index_workdir():
+# # def get_sub_index_workdir():
+# def get_current_index_workdir():
+#     """Create sub-directory for this index."""
+    
+#     # Directory path.
+#     args = get_args()
+#     index_str = get_index_str()
+#     index_dir_path = os.path.join(
+#         get_common_index_workdir(),
+#         args.retro_index_ty,
+#         index_str,
+#     )
+
+#     # Make directory.
+#     os.makedirs(index_dir_path, exist_ok = True)
+
+#     return index_dir_path
+def get_index_dir():
     """Create sub-directory for this index."""
     
-    # Directory path.
     args = get_args()
-    index_str = get_index_str()
+
+    # Directory path.
     index_dir_path = os.path.join(
-        get_common_index_workdir(),
+        args.retro_workdir,
+        "index",
         args.retro_index_ty,
-        index_str,
+        get_index_str(),
     )
 
     # Make directory.
@@ -64,18 +81,46 @@ def get_current_index_workdir():
     return index_dir_path
 
 
-def get_embedding_dir(sub_dir):
-    embed_dir = os.path.join(get_index_workdir(), "embed", sub_dir)
-    os.makedirs(embed_dir, exist_ok = True)
-    return embed_dir
+# def get_embedding_dir(sub_dir):
+#     embed_dir = os.path.join(get_index_dir(), "embed", sub_dir)
+#     os.makedirs(embed_dir, exist_ok = True)
+#     return embed_dir
 
 
-def get_embedding_paths(sub_dir):
-    return sorted(glob.glob(get_embedding_dir(sub_dir) + "/*.hdf5"))
+# def get_merged_embedding_path(sub_dir):
+#     return os.path.join(get_embedding_dir(sub_dir), "merged.hdf5")
 
 
-def remove_embedding_dir(sub_dir):
+# def get_embedding_paths(sub_dir):
+#     paths = sorted(glob.glob(get_embedding_dir(sub_dir) + "/*.hdf5"))
+#     merged_path = get_merged_embedding_path(sub_dir)
+#     paths.remove(merged_path)
+#     return paths
+
+
+# def remove_embedding_dir(sub_dir):
+#     if torch.distributed.get_rank() != 0:
+#         return
+#     dirname = get_embedding_dir(sub_dir)
+#     shutil.rmtree(dirname)
+def get_training_data_dir():
+    return os.path.join(get_index_dir(), "training_data_tmp")
+
+
+def get_training_data_block_dir():
+    return os.path.join(get_training_data_dir(), "blocks")
+
+
+def get_training_data_block_paths():
+    return sorted(glob.glob(get_training_data_block_dir() + "/*.hdf5"))
+
+
+def get_training_data_merged_path():
+    return os.path.join(get_training_data_dir(), "merged.hdf5")
+
+
+def remove_training_data():
     if torch.distributed.get_rank() != 0:
         return
-    dirname = get_embedding_dir(sub_dir)
-    shutil.rmtree(dirname)
+    raise Exception("ready to delete?")
+    shutil.rmtree(get_training_data_dir())

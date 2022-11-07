@@ -22,7 +22,7 @@ from tools.retro.db.utils import get_full_merged_dataset
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
 
-from .utils import get_current_index_workdir
+from .utils import get_index_dir
 
 # >>>
 from lutil import pax
@@ -40,7 +40,7 @@ def add_to_index(timer):
 
     args = get_args()
 
-    workdir = get_index_workdir()
+    workdir = get_index_dir()
     index = IndexFactory.get_index(args.retro_index_ty)
 
     gpt_dataset = get_full_merged_dataset()
