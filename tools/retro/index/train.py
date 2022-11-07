@@ -40,7 +40,7 @@ from .utils import (
 )
 
 # >>>
-from lutil import pax
+from lutil import pax, print_seq
 # <<<
 
 # EMBED_KEY = "sampled"
@@ -101,6 +101,7 @@ def merge_embeddings():
     raise Exception("merge again?")
     with h5py.File(merged_path, "w") as merged_f:
 
+        # Initialize empty merged data.
         print_rank_0("initialize empty merged data.")
         merged_data = np.empty((n_merged, args.retro_nfeats), dtype = "f4")
 
@@ -114,6 +115,7 @@ def merge_embeddings():
                 merged_data[start_idx:(start_idx+n_block)] = block_f["data"]
                 start_idx += n_block
 
+        # Write merged data.
         print_rank_0("write merged data.")
         merged_f.create_dataset("data", data = merged_data)
 
@@ -130,7 +132,14 @@ def train_on_embeddings(timer):
     workdir = get_index_dir()
     # input_data_paths = get_embedding_paths(EMBED_KEY)
     # merged_data_path = get_training_data_merged_path()
-    input_data = get_training_data_merged()
+
+    # >>>
+    # import faiss
+    # pax(0, {"threads": faiss.omp_get_max_threads()})
+    # print_seq("hi.")
+    # <<<
+
+    # input_data = get_training_data_merged()
     # >>>
     # pax(0, {
     #     "input_data / shape" : input_data.shape,
@@ -156,7 +165,8 @@ def train_on_embeddings(timer):
     index = IndexFactory.get_index(args.retro_index_ty)
     # index.train(input_data_paths, workdir, timer)
     # index.train([merged_data_path], workdir, timer)
-    index.train(input_data, workdir, timer)
+    # index.train(input_data, workdir, timer)
+    index.train(get_training_data_merged, workdir, timer)
 
 
 def remove_embeddings():
