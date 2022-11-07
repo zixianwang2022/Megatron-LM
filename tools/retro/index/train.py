@@ -35,6 +35,7 @@ from .utils import (
     # remove_embedding_dir,
     get_training_data_block_dir,
     get_training_data_block_paths,
+    get_training_data_merged,
     get_training_data_merged_path,
 )
 
@@ -57,7 +58,6 @@ def embed_db():
     # Skip embedding if merged data exists.
     merged_data_path = get_training_data_merged_path()
     if os.path.exists(merged_data_path):
-        raise Exception("hurrah.")
         return
 
     # Embed only if index not already trained.
@@ -87,43 +87,27 @@ def merge_embeddings():
 
     args = get_args()
 
-    # merged_path = get_merged_embedding_path(EMBED_KEY)
+    # Already merged?
     merged_path = get_training_data_merged_path()
     if os.path.exists(merged_path):
-        raise Exception("hurrah.")
         return
 
+    # Embedding block paths & dataset infos.
     block_paths = get_training_data_block_paths()
     indexed_dataset_infos = get_indexed_dataset_infos()
     n_merged = sum(info["n_chunks_sampled"] for info in indexed_dataset_infos)
 
-    # with h5py.File(merged_path, "w") as merged_f:
-    #     print_rank_0("initialize empty merged data.")
-    #     merged_f.create_dataset("data", data = np.zeros(
-    #         (n_merged, args.retro_nfeats), dtype = "f4"))
-    #     start_idx = 0
-    #     for block_idx, block_path in enumerate(block_paths):
-    #         print_rank_0("merging block %d / %d." % block_idx, len(block_paths))
-    #         with h5py.File(block_path, "r") as block_f:
-    #             n_block = len(block_f["data"])
-    #             merged_f["data"][start_idx:(start_idx+n_block)] = block_f["data"]
-    #             start_idx += n_block
+    # Merge embedding blocks.
     raise Exception("merge again?")
     with h5py.File(merged_path, "w") as merged_f:
 
         print_rank_0("initialize empty merged data.")
         merged_data = np.empty((n_merged, args.retro_nfeats), dtype = "f4")
 
+        # Read each block.
         start_idx = 0
         pbar = tqdm(block_paths)
         for block_idx, block_path in enumerate(pbar):
-            # >>>
-            # if block_idx == 10:
-            #     break
-            # <<<
-            # if block_idx % 50 == 0:
-            #     print_rank_0("merging block %d / %d." %
-            #                  (block_idx, len(block_paths)))
             pbar.set_description("merging blocks")
             with h5py.File(block_path, "r") as block_f:
                 n_block = len(block_f["data"])
@@ -133,20 +117,46 @@ def merge_embeddings():
         print_rank_0("write merged data.")
         merged_f.create_dataset("data", data = merged_data)
 
-    pax(0, {
-        "merged_path" : merged_path,
-        "block_paths" : block_paths,
-        "indexed_dataset_infos" : indexed_dataset_infos,
-        "n_merged" : n_merged,
-    })
+    # pax(0, {
+    #     "merged_path" : merged_path,
+    #     "block_paths" : block_paths,
+    #     "indexed_dataset_infos" : indexed_dataset_infos,
+    #     "n_merged" : n_merged,
+    # })
 
 
 def train_on_embeddings(timer):
     args = get_args()
     workdir = get_index_dir()
-    input_data_paths = get_embedding_paths(EMBED_KEY)
+    # input_data_paths = get_embedding_paths(EMBED_KEY)
+    # merged_data_path = get_training_data_merged_path()
+    input_data = get_training_data_merged()
+    # >>>
+    # pax(0, {
+    #     "input_data / shape" : input_data.shape,
+    #     "input_data / head" : input_data[:10],
+    #     "input_data / tail" : input_data[-10:],
+    # })
+    # <<<
+    # >>>
+    # with h5py.File(merged_data_path, "r") as f:
+    #     import time
+    #     print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    #     t = time.time()
+    #     data = np.copy(f["data"])
+    #     t = time.time() - t
+    #     print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    #     pax(0, {
+    #         "shape" : f["data"].shape,
+    #         # "head" : f["data"][:10],
+    #         # "tail" : f["data"][-10:],
+    #         "t" : t,
+    #     })
+    # <<<
     index = IndexFactory.get_index(args.retro_index_ty)
-    index.train(input_data_paths, workdir, timer)
+    # index.train(input_data_paths, workdir, timer)
+    # index.train([merged_data_path], workdir, timer)
+    index.train(input_data, workdir, timer)
 
 
 def remove_embeddings():

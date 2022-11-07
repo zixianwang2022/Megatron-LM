@@ -19,7 +19,7 @@ import os
 import torch
 
 from megatron import get_args, print_rank_0
-from tools.bert_embedding.utils import load_data
+# from tools.bert_embedding.utils import load_data
 from tools.retro.index import Index
 from tools.retro.index.utils import get_index_str
 
@@ -30,7 +30,8 @@ from lutil import pax
 
 class FaissBaseIndex(Index):
 
-    def _train(self, input_data_paths, dir_path, timer):
+    # def _train(self, input_data_paths, dir_path, timer):
+    def _train(self, inp, dir_path, timer):
 
         args = get_args()
 
@@ -45,10 +46,14 @@ class FaissBaseIndex(Index):
         if os.path.isfile(empty_index_path):
             return
 
-        # Load data.
-        timer.push("load-data")
-        inp = load_data(input_data_paths, timer)["data"]
-        timer.pop()
+        # >>>
+        # # Load data.
+        # timer.push("load-data")
+        # inp = load_data(input_data_paths, timer)["data"]
+        # timer.pop()
+        # <<<
+
+        # pax(0, {"inp": inp})
 
         # Init index.
         timer.push("init")
@@ -77,12 +82,14 @@ class FaissBaseIndex(Index):
         timer.pop()
 
 
-    def train(self, input_data_paths, dir_path, timer):
+    # def train(self, input_data_paths, dir_path, timer):
+    def train(self, input_data, dir_path, timer):
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
             timer.push("train")
-            self._train(input_data_paths, dir_path, timer)
+            # self._train(input_data_paths, dir_path, timer)
+            self._train(input_data, dir_path, timer)
             timer.pop()
 
         torch.distributed.barrier()
