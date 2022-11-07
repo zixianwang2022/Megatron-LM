@@ -176,7 +176,68 @@ def remove_embeddings():
     remove_embedding_dir(EMBED_KEY)
 
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+def time_training():
+
+
+    index_str = "OPQ64_128,IVF4194304_HNSW32,PQ64"
+    index_str = "OPQ32_256,IVF32768_HNSW32,PQ32"
+    args = get_args()
+
+    assert torch.distributed.get_rank() == 0
+
+    # Set num threads (torch.distributed reset it to 1).
+    faiss.omp_set_num_threads(64)
+
+    empty_index_path = self.get_empty_index_path(dir_path)
+
+    # Index already exists? -> return.
+    if os.path.isfile(empty_index_path):
+        return
+
+    # >>>
+    # # Load data.
+    # timer.push("load-data")
+    # inp = load_data(input_data_paths, timer)["data"]
+    # timer.pop()
+    # <<<
+
+    # print_seq("n_threads = %s." % faiss.omp_get_max_threads())
+    inp = input_data_loader()
+    # pax(0, {"inp": inp})
+
+    # Init index.
+    timer.push("init")
+    index_str = get_index_str()
+    index = faiss.index_factory(args.retro_nfeats, index_str)
+    timer.pop()
+
+    # Move to GPU.
+    index_ivf = faiss.extract_index_ivf(index)
+    clustering_index = \
+        faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+    index_ivf.clustering_index = clustering_index
+    self.c_verbose(index, True)
+    self.c_verbose(index_ivf, True)
+    self.c_verbose(index_ivf.quantizer, True)
+    self.c_verbose(index_ivf.clustering_index, True)
+
+    # Train index.
+    timer.push("train")
+    index.train(inp)
+    timer.pop()
+
+    # Save index.
+    timer.push("save")
+    faiss.write_index(index, empty_index_path)
+    timer.pop()
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 def train_index(timer):
+    # >>>
+    # time_training()
+    # raise Exception("hi.")
+    # <<<
     embed_db()
     merge_embeddings()
     train_on_embeddings(timer)

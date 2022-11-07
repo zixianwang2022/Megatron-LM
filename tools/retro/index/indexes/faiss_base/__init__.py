@@ -56,7 +56,7 @@ class FaissBaseIndex(Index):
 
         # print_seq("n_threads = %s." % faiss.omp_get_max_threads())
         inp = input_data_loader()
-        pax(0, {"inp": inp})
+        # pax(0, {"inp": inp})
 
         # Init index.
         timer.push("init")
