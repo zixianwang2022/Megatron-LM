@@ -247,33 +247,42 @@ def embed_data_loader(models, data_loader, n_samples_world):
 
 class BertEmbedder:
 
-    def __init__(self, max_bert_seq_length):
+    def __init__(self, max_bert_seq_length, dump_huggingface_embeddings):
         self.models, optimizer, opt_param_scheduler = \
             setup_model_and_optimizer(model_provider,
                                       ModelType.encoder_or_decoder)
         self.max_bert_seq_length = max_bert_seq_length
+        # >>>
+        from .huggingface import HuggingfaceEmbedder
+        args = get_args()
+        # self.dump_huggingface_embeddings = dump_huggingface_embeddings
+        self.huggingface_embedder = HuggingfaceEmbedder(
+            max_bert_seq_length,
+            args.micro_batch_size,
+        ) if dump_huggingface_embeddings else None
+        # pax(0, {"huggingface_embedder": self.huggingface_embedder})
+        # <<<
 
 
     def embed_text_dataset(self, text_dataset, n_samples_world):
         bert_dataset = BertEmbeddingDataset(text_dataset,
                                             self.max_bert_seq_length)
         data_loader = get_data_loader(bert_dataset)
-        # pax(0, {
-        #     "text_dataset" : text_dataset,
-        #     "bert_dataset" : bert_dataset,
-        #     "data_loader" : data_loader,
-        # })
-        embeddings = embed_data_loader(self.models, data_loader, n_samples_world)
-        # pax(0, {"embeddings": embeddings})
+        # >>>
+        if self.huggingface_embedder:
+            return self.huggingface_embedder.embed_text_dataset(text_dataset)
+        # <<<
+        embeddings = embed_data_loader(self.models, data_loader, n_samples_world,
+                                       self.dump_huggingface_embeddings)
         return embeddings
 
 
-# class DiskDataParallelBertEmbedder(BertEmbedder):
 class DiskDataParallelBertEmbedder:
 
-    def __init__(self, max_bert_seq_length, block_size):
-        # super().__init__(max_bert_seq_length)
-        self.embedder = BertEmbedder(max_bert_seq_length)
+    def __init__(self, max_bert_seq_length, block_size,
+                 dump_huggingface_embeddings):
+        self.embedder = BertEmbedder(max_bert_seq_length,
+                                     dump_huggingface_embeddings)
         self.block_size = block_size
 
 

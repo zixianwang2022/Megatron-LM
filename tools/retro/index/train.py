@@ -73,58 +73,59 @@ def embed_db():
 
     # Embed dataset.
     embedder = DiskDataParallelBertEmbedder(args.retro_bert_max_chunk_length,
-                                            args.retro_block_size)
+                                            args.retro_block_size,
+                                            args.retro_dump_huggingface_embeddings)
     # embedder.embed_text_dataset("index", get_embedding_dir(EMBED_KEY),
     embedder.embed_text_dataset("index", get_training_data_block_dir(),
                                 text_dataset)
 
 
-def merge_embeddings():
+# def merge_embeddings():
 
-    torch.distributed.barrier()
-    if torch.distributed.get_rank() != 0:
-        return
+#     torch.distributed.barrier()
+#     if torch.distributed.get_rank() != 0:
+#         return
 
-    args = get_args()
+#     args = get_args()
 
-    # Already merged?
-    merged_path = get_training_data_merged_path()
-    if os.path.exists(merged_path):
-        return
+#     # Already merged?
+#     merged_path = get_training_data_merged_path()
+#     if os.path.exists(merged_path):
+#         return
 
-    # Embedding block paths & dataset infos.
-    block_paths = get_training_data_block_paths()
-    indexed_dataset_infos = get_indexed_dataset_infos()
-    n_merged = sum(info["n_chunks_sampled"] for info in indexed_dataset_infos)
+#     # Embedding block paths & dataset infos.
+#     block_paths = get_training_data_block_paths()
+#     indexed_dataset_infos = get_indexed_dataset_infos()
+#     n_merged = sum(info["n_chunks_sampled"] for info in indexed_dataset_infos)
 
-    # Merge embedding blocks.
-    raise Exception("merge again?")
-    with h5py.File(merged_path, "w") as merged_f:
+#     # Merge embedding blocks.
+#     raise Exception("merge again?")
+#     with h5py.File(merged_path, "w") as merged_f:
 
-        # Initialize empty merged data.
-        print_rank_0("initialize empty merged data.")
-        merged_data = np.empty((n_merged, args.retro_nfeats), dtype = "f4")
+#         # Initialize empty merged data.
+#         print_rank_0("initialize empty merged data.")
+#         merged_data = np.empty((n_merged, args.retro_nfeats), dtype = "f4")
 
-        # Read each block.
-        start_idx = 0
-        pbar = tqdm(block_paths)
-        for block_idx, block_path in enumerate(pbar):
-            pbar.set_description("merging blocks")
-            with h5py.File(block_path, "r") as block_f:
-                n_block = len(block_f["data"])
-                merged_data[start_idx:(start_idx+n_block)] = block_f["data"]
-                start_idx += n_block
+#         # Read each block.
+#         start_idx = 0
+#         pbar = tqdm(block_paths)
+#         for block_idx, block_path in enumerate(pbar):
+#             pbar.set_description("merging blocks")
+#             with h5py.File(block_path, "r") as block_f:
+#                 n_block = len(block_f["data"])
+#                 merged_data[start_idx:(start_idx+n_block)] = block_f["data"]
+#                 start_idx += n_block
 
-        # Write merged data.
-        print_rank_0("write merged data.")
-        merged_f.create_dataset("data", data = merged_data)
+#         # Write merged data.
+#         print_rank_0("write merged data.")
+#         merged_f.create_dataset("data", data = merged_data)
 
-    # pax(0, {
-    #     "merged_path" : merged_path,
-    #     "block_paths" : block_paths,
-    #     "indexed_dataset_infos" : indexed_dataset_infos,
-    #     "n_merged" : n_merged,
-    # })
+#     # pax(0, {
+#     #     "merged_path" : merged_path,
+#     #     "block_paths" : block_paths,
+#     #     "indexed_dataset_infos" : indexed_dataset_infos,
+#     #     "n_merged" : n_merged,
+#     # })
 
 
 def train_on_embeddings(timer):
@@ -239,6 +240,6 @@ def train_index(timer):
     # raise Exception("hi.")
     # <<<
     embed_db()
-    merge_embeddings()
+    # merge_embeddings()
     train_on_embeddings(timer)
     # remove_embeddings()

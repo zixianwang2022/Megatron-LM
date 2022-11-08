@@ -122,27 +122,45 @@ def get_training_data_merged_path():
     return os.path.join(get_training_data_dir(), "merged.hdf5")
 
 
+# def get_training_data_merged():
+#     with h5py.File(get_training_data_merged_path(), "r") as f:
+#         shape = f["data"].shape
+
+#         # # # >>> **debug**
+#         # # # np.random.default_rng().standard_normal(size = 1, dtype = "f4")
+#         # # np.random.default_rng().random(size = 1, dtype = "f4")
+#         # # return np.random.rand(*shape).astype("f4")
+#         # print_rank_0("rando merged.")
+#         # return np.random.rand(int(1e6), shape[1]).astype("f4")
+#         return np.zeros(shape, dtype = "f4")
+#         # # # <<<
+
+#         data = np.empty(shape, dtype = "f4")
+#         block_size = 10000000
+#         # >>>
+#         # pbar = tqdm(range(0, shape[0], block_size))
+#         # pbar.set_description("loading merged training data")
+#         # for start_idx in pbar:
+#         #     end_idx = min(shape[0], start_idx + block_size)
+#         #     data[start_idx:end_idx] = f["data"][start_idx:end_idx]
+#         # +++
+#         for start_idx in range(0, shape[0], block_size):
+#             print_rank_0("loading merged block %d / %d." % (
+#                 int(start_idx / block_size),
+#                 int(np.ceil(shape[0] / block_size)),
+#             ))
+#             end_idx = min(shape[0], start_idx + block_size)
+#             data[start_idx:end_idx] = f["data"][start_idx:end_idx]
+#         # <<<
+
+#         print_rank_0("finished loading merged data.")
+
+#         return data
 def get_training_data_merged():
-    with h5py.File(get_training_data_merged_path(), "r") as f:
-        shape = f["data"].shape
-
-        # # # >>> **debug**
-        # # # np.random.default_rng().standard_normal(size = 1, dtype = "f4")
-        # # np.random.default_rng().random(size = 1, dtype = "f4")
-        # # return np.random.rand(*shape).astype("f4")
-        # print_rank_0("rando merged.")
-        # return np.random.rand(int(1e6), shape[1]).astype("f4")
-        # # # <<<
-
-        data = np.empty(shape, dtype = "f4")
-        block_size = 10000000
-        pbar = tqdm(range(0, shape[0], block_size))
-        pbar.set_description("loading merged training data")
-        for start_idx in pbar:
-            end_idx = min(shape[0], start_idx + block_size)
-            data[start_idx:end_idx] = f["data"][start_idx:end_idx]
-
-        return data
+    # pax(0, {"block_paths": get_training_data_block_paths()})
+    from tools.bert_embedding.utils import load_data
+    from tools.retro.utils import Timer
+    return load_data(get_training_data_block_paths(), Timer())
 
 
 def remove_training_data():

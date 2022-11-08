@@ -411,7 +411,9 @@ def update_chunk_counts(indexed_dataset_infos):
         ds_info["n_chunks_sampled"] = \
             int(round(args.retro_nchunks_sampled * ds_info["ratio"]))
 
-        assert ds_info["n_chunks_sampled"] < ds_info["n_chunks_valid"]
+        assert ds_info["n_chunks_sampled"] <= ds_info["n_chunks_valid"], \
+            "n_sampled (%d) > n_valid (%d)." % (
+                ds_info["n_chunks_sampled"], ds_info["n_chunks_valid"])
     
     # >>>>>>>>> [ shouldn't need doc offsets. ] >>>>>>>>>
     # # Compute document offsets.

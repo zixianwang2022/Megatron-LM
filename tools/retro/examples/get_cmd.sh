@@ -17,7 +17,8 @@ PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-preprocess-pl
 
 # Data blend.
 # . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
-. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_play.sh
+# . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_play.sh
+. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_wiki.sh
 DATA_PATH=${DATA_BLEND}
 
 GPT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
@@ -30,7 +31,8 @@ BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 
 # >>>>>>>>>>>>>>>>>>>>>>>
 # RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/play
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus
+# RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
 
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
@@ -64,8 +66,8 @@ RETRO_TASKS="index-train"
 RETRO_INDEX_TY=faiss-par-add
 # RETRO_INDEX_TY=faiss-decomp
 
-# RETRO_NCLUSTERS=4194304
-RETRO_NCLUSTERS=32768 # for 169320 training samples
+RETRO_NCLUSTERS=4194304
+# RETRO_NCLUSTERS=32768 # for 169320 training samples
 RETRO_HNSW_M=32
 RETRO_PQ_M=32
 RETRO_IVF_DIM=256
@@ -77,13 +79,16 @@ RETRO_NPROBE=65536
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
 RETRO_BERT_MAX_CHUNK_LENGTH=256
-# RETRO_NCHUNKS_SAMPLED=300000000
-RETRO_NCHUNKS_SAMPLED=3000000
+RETRO_NCHUNKS_SAMPLED=300000000
+# RETRO_NCHUNKS_SAMPLED=3000000
 RETRO_DOC_BLOCK_SIZE=100000
 RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
 RETRO_NNBRS_QUERY=2000
 RETRO_NNBRS_TARGET=200
 RETRO_NNBRS_PRETRAINING=2
+# RETRO_EMBEDDER=megatron
+# RETRO_EMBEDDER=huggingface
+# RETRO_DUMP_HUGGINGFACE_EMBEDDINGS
 
 SEED=1001
 DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
@@ -131,6 +136,7 @@ MEGATRON_ARGS=" \
 "
 
 # --retro-precompute-bert-lengths \
+# --retro-embedder ${RETRO_EMBEDDER} \
 RETRO_ARGS=" \
     --retro-gpt-vocab-file ${GPT_VOCAB_FILE} \
     --retro-gpt-merge-file ${GPT_MERGE_FILE} \
@@ -157,6 +163,7 @@ RETRO_ARGS=" \
     --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \
     --retro-nnbrs-target ${RETRO_NNBRS_TARGET} \
     --retro-nnbrs-pretraining ${RETRO_NNBRS_PRETRAINING} \
+    --retro-dump-huggingface-embeddings \
 "
 
 RETRO_PREPROCESS_CMD=" \

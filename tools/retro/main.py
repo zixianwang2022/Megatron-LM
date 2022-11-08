@@ -33,7 +33,7 @@ import torch
 # <<<
 
 from megatron import get_args, initialize_megatron, print_rank_0
-from megatron.arguments import _print_args
+# from megatron.arguments import _print_args
 from tools.retro.db import build_db, preprocess_db # , embed_db
 from tools.retro.index.build import add_to_index, build_index, train_index
 from tools.retro.pretraining.build import (
@@ -87,6 +87,9 @@ def add_retro_args(parser):
     group.add_argument("--retro-nnbrs-query", type = int, required = True)
     group.add_argument("--retro-nnbrs-target", type = int, required=True)
     group.add_argument("--retro-nnbrs-pretraining", type = int, required=True)
+    # group.add_argument("--retro-embedder", choices = ["megatron", "huggingface"],
+    #                    default = "megatron")
+    group.add_argument("--retro-dump-huggingface-embeddings", action="store_true")
 
     return parser
 
@@ -109,7 +112,7 @@ if __name__ == "__main__":
     args = get_args()
     args.retro_tasks = args.retro_tasks.split(",")
 
-    _print_args(args)
+    # _print_args(args)
     os.makedirs(args.retro_workdir, exist_ok = True)
     save_args(args)
 

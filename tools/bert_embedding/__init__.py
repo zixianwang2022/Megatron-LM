@@ -14,3 +14,4 @@
 # limitations under the License.
 
 from .embed import BertEmbedder, DiskDataParallelBertEmbedder
+# from .huggingface import BertEmbedder, DiskDataParallelBertEmbedder
