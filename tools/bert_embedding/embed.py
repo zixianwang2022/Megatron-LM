@@ -256,10 +256,15 @@ class BertEmbedder:
         from .huggingface import HuggingfaceEmbedder
         args = get_args()
         # self.dump_huggingface_embeddings = dump_huggingface_embeddings
-        self.huggingface_embedder = HuggingfaceEmbedder(
-            max_bert_seq_length,
-            args.micro_batch_size,
-        ) if dump_huggingface_embeddings else None
+        # self.huggingface_embedder = HuggingfaceEmbedder(
+        #     max_bert_seq_length,
+        #     args.micro_batch_size,
+        # ) if dump_huggingface_embeddings else None
+        self.huggingface_embedder = None
+        # self.huggingface_embedder = HuggingfaceEmbedder(
+        #     max_bert_seq_length,
+        #     args.micro_batch_size,
+        # )
         # pax(0, {"huggingface_embedder": self.huggingface_embedder})
         # <<<
 
@@ -272,8 +277,7 @@ class BertEmbedder:
         if self.huggingface_embedder:
             return self.huggingface_embedder.embed_text_dataset(text_dataset)
         # <<<
-        embeddings = embed_data_loader(self.models, data_loader, n_samples_world,
-                                       self.dump_huggingface_embeddings)
+        embeddings = embed_data_loader(self.models, data_loader, n_samples_world)
         return embeddings
 
 
