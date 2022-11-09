@@ -4,6 +4,7 @@
 import faiss
 import glob
 import h5py
+import numpy as np
 import os
 import torch
 
@@ -54,15 +55,21 @@ def get_block_data_dir(model_key):
 def get_block_data_paths(model_key):
     return sorted(glob.glob(get_block_data_dir(model_key) + "/*.hdf5"))
 
-def get_train_valid_data_paths(model_key):
-    return (
-        os.path.join(index_dir, "%s_train_data.hdf5" % model_key),
-        os.path.join(index_dir, "%s_valid_data.hdf5" % model_key),
-    )
+# def get_train_valid_data_paths(model_key):
+#     return (
+#         os.path.join(index_dir, "%s_train_data.hdf5" % model_key),
+#         os.path.join(index_dir, "%s_valid_data.hdf5" % model_key),
+#     )
+def get_train_data_path(model_key):
+    return os.path.join(index_dir, "%s_train_data.hdf5" % model_key)
+def get_valid_data_path(model_key):
+    return os.path.join(index_dir, "%s_valid_data.hdf5" % model_key)
 
 def merge_split_data(model_key):
 
-    train_data_path, valid_data_path = get_train_valid_data_paths(model_key)
+    # train_data_path, valid_data_path = get_train_valid_data_paths(model_key)
+    train_data_path = get_train_data_path(model_key)
+    valid_data_path = get_valid_data_path(model_key)
 
     if os.path.exists(train_data_path) and os.path.exists(valid_data_path):
         return
@@ -91,19 +98,12 @@ def merge_split_data(model_key):
         "valid_data" : str(valid_data.shape),
     })
 
-# def get_all_data(model_key):
+def get_train_data(model_key):
+    path = get_train_data_path(model_key)
+    with h5py.File(path, "r") as f:
+        return np.copy(f["data"])
 
-#     # chunk_db = get_chunk_db()
-#     # pax({"chunk_db": chunk_db})
-
-#     raise Exception("hi.")
-
-def get_training_data(model_key):
-    # all_data = get_all_data(model_key)
-    path = get_train_valid_data_paths(model_key)[0]
-    pax({"path": path})
-
-def get_training_data(model_key):
+def get_valid_data(model_key):
     # all_data = get_all_data(model_key)
     path = get_train_valid_data_paths(model_key)[1]
     pax({"path": path})
@@ -117,11 +117,13 @@ def get_added_index_path(model_key):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def train_index(model_key):
 
-    torch.distributed.init_process_group("gloo", world_size = 1, rank = 0)
+    # torch.distributed.init_process_group("gloo", world_size = 1, rank = 0)
+    torch.distributed.init_process_group("nccl", world_size = 1, rank = 0)
 
     # pax({
     #     "rank" : torch.distributed.get_rank(),
     #     "world_size" : torch.distributed.get_world_size(),
+    #     "n_gpus" : faiss.get_num_gpus(),
     # })
 
     empty_index_path = get_empty_index_path(model_key)
@@ -134,46 +136,56 @@ def train_index(model_key):
         return
 
     # Load data.
-    inp = get_training_data(model_key)
-    pax(0, {"inp": inp})
+    print("load data.")
+    # inp = get_train_data(model_key)
+    # >>>
+    # inp = load_hdf5_data(get_block_data_paths(model_key)[:100], Timer())["data"]
+    inp = load_hdf5_data(get_block_data_paths(model_key), Timer())["data"]
+    inp = inp[:n_chunks_train]
+    # <<<
+    # pax(0, {"inp / shape": str(inp.shape)})
 
     # Init index.
-    index = faiss.index_factory(1024, "OPQ32_256,IVF4194304_HNSW32,PQ32")
+    print("init index.")
+    # >>>
+    # index = faiss.index_factory(1024, "OPQ32_256,IVF4194304_HNSW32,PQ32")
+    index = faiss.index_factory(1024, "IVF262144_HNSW32,Flat")
 
     # Move to GPU.
+    print("move index to gpu.")
     index_ivf = faiss.extract_index_ivf(index)
     clustering_index = \
         faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
     index_ivf.clustering_index = clustering_index
-    self.c_verbose(index, True)
-    self.c_verbose(index_ivf, True)
-    self.c_verbose(index_ivf.quantizer, True)
-    self.c_verbose(index_ivf.clustering_index, True)
+    index.verbose = True
+    index_ivf.verbose = True
+    index_ivf.quantizer.verbose = True
+    index_ivf.clustering_index.verbose = True
+    # +++
+    # index_ivf = faiss.extract_index_ivf(index)
+    # clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+    # index_ivf.clustering_index = clustering_index
+    # <<<
 
     # Train index.
-    timer.push("train")
+    print("train index.")
     index.train(inp)
-    timer.pop()
+    # with h5py.File(get_train_data_path(model_key), "r") as f:
+    #     index.train(f["data"])
 
     # Save index.
-    timer.push("save")
+    print("write index.")
     faiss.write_index(index, empty_index_path)
-    timer.pop()
-    pax({
-        "model_key" : model_key,
-        "empty_index_path" : empty_index_path,
-        "index" : index,
-    })
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
 
     for model_key in [
-            "megatron",
+            # "megatron",
             "huggingface",
     ]:
-        merge_split_data(model_key)
-        train_index(model_key)
+        # merge_split_data(model_key)
+        # train_index(model_key)
         add_to_index(model_key)
 
     print("hi.")
