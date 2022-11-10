@@ -49,7 +49,7 @@ def save_data(data_map, *args):
 
 def load_data(paths, timer):
 
-    timer.push("shape")
+    if timer: timer.push("shape")
     shape_map = defaultdict(lambda : (0, None))
     for p in paths:
         f = h5py.File(p, "r")
@@ -57,14 +57,14 @@ def load_data(paths, timer):
             shape = tuple(f[k].shape)
             shape_map[k] = (shape_map[k][0] + shape[0], shape[1])
         f.close()
-    timer.pop()
+    if timer: timer.pop()
 
-    timer.push("alloc")
+    if timer: timer.push("alloc")
     data_map = { k : np.empty(s, dtype = "f4") for k, s in shape_map.items() }
     start_map = { k : 0 for k in shape_map }
-    timer.pop()
+    if timer: timer.pop()
 
-    timer.push("load")
+    if timer: timer.push("load")
     # for pi, p in enumerate(paths):
     #     print_rank_0("load path %d / %d ... '%s'." %
     #                  (pi, len(paths), os.path.basename(p)))
@@ -78,7 +78,7 @@ def load_data(paths, timer):
             data_map[k][i0:i1] = f[k]
             start_map[k] += len(f[k])
         f.close()
-    timer.pop()
+    if timer: timer.pop()
 
     # pax(0, {
     #     "paths" : paths,
