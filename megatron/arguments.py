@@ -186,6 +186,13 @@ def validate_args(args, defaults={}):
     args.consumed_train_samples = 0
     args.consumed_valid_samples = 0
 
+    # Support for variable sequence lengths across batches/microbatches.
+    # set it if the dataloader supports generation of variable sequence lengths
+    # across batches/microbatches. Due to additional communication overhead
+    # during pipeline parallelism, it should not be set if sequence length
+    # is constant during training.
+    args.variable_seq_length = False
+
     # Iteration-based training.
     if args.train_iters:
         # If we use iteration-based training, make sure the
@@ -884,13 +891,6 @@ def _add_data_args(parser):
     group.add_argument('--retriever-seq-length', type=int, default=256,
                        help='Maximum sequence length for the biencoder model '
                        'for retriever')
-    group.add_argument('--variable-seq-lengths', action='store_true',
-                       help='support for variable sequence lengths across'
-                       'batches/microbatches. This should be set when sequence'
-                       'lengths across batches/microbatches vary. Due to'
-                       'additional communication overhead during pipeline'
-                       'parallelism, it should not be enabled if sequence'
-                       'length is constant during training.')
     group.add_argument('--sample-rate', type=float, default=1.0,
                        help='sample rate for training data. Supposed to be 0 '
                             ' < sample_rate < 1')
