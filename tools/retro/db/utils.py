@@ -40,8 +40,17 @@ def get_indexed_dataset_infos_path():
 
 def save_indexed_dataset_infos(indexed_dataset_infos):
     """Save dataset order."""
+
+    # Remove 'dataset' field.
+    clean_infos = []
+    for info in indexed_dataset_infos:
+        info = dict(info)
+        del info["dataset"]
+        clean_infos.append(info)
+
+    # Save.
     with open(get_indexed_dataset_infos_path(), "w") as f:
-        json.dump(indexed_dataset_infos, f, indent = 4)
+        json.dump(clean_infos, f, indent = 4)
 
 
 def get_indexed_dataset_infos():
@@ -147,6 +156,7 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
 
 
 def get_full_merged_dataset(indexed_dataset_infos = None):
+    raise Exception("only load 'n_chunks_train' chunks.")
     return get_merged_dataset("full", indexed_dataset_infos)
 
 

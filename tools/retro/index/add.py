@@ -38,6 +38,8 @@ from lutil import pax
 #     return output_index_path
 def add_to_index(timer):
 
+    raise Exception("only load 'n_chunks_train' chunks.")
+
     args = get_args()
 
     workdir = get_index_dir()

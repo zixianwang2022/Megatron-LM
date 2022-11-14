@@ -17,11 +17,14 @@ import glob
 import h5py
 import numpy as np
 import os
+import psutil
 import shutil
+import time
 import torch
 from tqdm import tqdm
 
 from megatron import get_args, print_rank_0
+from tools.retro.db.utils import get_indexed_dataset_infos
 
 # >>>
 from lutil import pax
@@ -40,31 +43,6 @@ def get_index_str():
     )
 
 
-# # def get_base_index_workdir():
-# # def get_top_index_workdir():
-# def get_common_index_workdir():
-#     args = get_args()
-#     return os.path.join(args.retro_workdir, "index")
-    
-
-# # def get_index_workdir():
-# # def get_sub_index_workdir():
-# def get_current_index_workdir():
-#     """Create sub-directory for this index."""
-    
-#     # Directory path.
-#     args = get_args()
-#     index_str = get_index_str()
-#     index_dir_path = os.path.join(
-#         get_common_index_workdir(),
-#         args.retro_index_ty,
-#         index_str,
-#     )
-
-#     # Make directory.
-#     os.makedirs(index_dir_path, exist_ok = True)
-
-#     return index_dir_path
 def get_index_dir():
     """Create sub-directory for this index."""
     
@@ -84,28 +62,6 @@ def get_index_dir():
     return index_dir_path
 
 
-# def get_embedding_dir(sub_dir):
-#     embed_dir = os.path.join(get_index_dir(), "embed", sub_dir)
-#     os.makedirs(embed_dir, exist_ok = True)
-#     return embed_dir
-
-
-# def get_merged_embedding_path(sub_dir):
-#     return os.path.join(get_embedding_dir(sub_dir), "merged.hdf5")
-
-
-# def get_embedding_paths(sub_dir):
-#     paths = sorted(glob.glob(get_embedding_dir(sub_dir) + "/*.hdf5"))
-#     merged_path = get_merged_embedding_path(sub_dir)
-#     paths.remove(merged_path)
-#     return paths
-
-
-# def remove_embedding_dir(sub_dir):
-#     if torch.distributed.get_rank() != 0:
-#         return
-#     dirname = get_embedding_dir(sub_dir)
-#     shutil.rmtree(dirname)
 def get_training_data_dir():
     return os.path.join(get_index_dir(), "training_data_tmp")
 
@@ -163,42 +119,31 @@ def get_training_data_merged_path():
 #     return load_data(get_training_data_block_paths(), Timer())
 def get_training_data_merged():
 
-    import psutil
-    import time
-    from tools.retro.db.utils import get_indexed_dataset_infos
-
     args = get_args()
 
+    # Setup.
     block_paths = get_training_data_block_paths()
     ds_infos = get_indexed_dataset_infos()
     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
-    # >>>
-    t = time.time()
-    # data = np.zeros((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
+
+    # Initialize merged data.
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
     # data.fill(0) # ... allocates 1.2TB, for real
-    t = time.time() - t
 
-    # print("%e sec ... mem %.0f gb [ %.1f ]." % (
-    #     t,
-    #     psutil.virtual_memory()[3] / 1024**3,
-    #     psutil.virtual_memory()[2],
-    # ))
-    # exit(0)
-    # <<<
+    # Load data blocks.
     start_idx = 0
     pbar = tqdm(block_paths)
-    for path_index, path in enumerate(pbar): # block_paths):
+    for path_index, path in enumerate(pbar):
         pbar.set_description("mem %.0f gb, %.1f%%" % (
             psutil.virtual_memory()[3] / 1024**3,
             psutil.virtual_memory()[2],
         ))
-        t = time.time()
+        # t = time.time()
         with h5py.File(path, "r") as f:
             n_current = len(f["data"])
             data[start_idx:(start_idx+n_current)] = f["data"]
             start_idx += n_current
-        t = time.time() - t
+        # t = time.time() - t
         # if path_index % 50 == 0:
         #     print("load train block %d / %d ... %s sec, mem %.0f gb [ %.1f ]." % (
         #         path_index,
@@ -207,15 +152,18 @@ def get_training_data_merged():
         #         psutil.virtual_memory()[3] / 1024**3,
         #         psutil.virtual_memory()[2],
         #     ))
+
+    # Verify.
     assert start_idx == n_chunks_sampled
 
-    pax(0, {
-        # "block_paths" : block_paths,
-        "ds_infos" : ds_infos,
-        "n_chunks_sampled" : n_chunks_sampled,
-        "data" : "%s / %s / %s" % (data.shape, data.dtype, str(data)),
-    })
-    return load_data(get_training_data_block_paths(), Timer())
+    # pax(0, {
+    #     # "block_paths" : block_paths,
+    #     "ds_infos" : ds_infos,
+    #     "n_chunks_sampled" : n_chunks_sampled,
+    #     "data" : "%s / %s / %s" % (data.shape, data.dtype, str(data)),
+    # })
+
+    return data
 
 
 def remove_training_data():
