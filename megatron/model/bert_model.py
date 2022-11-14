@@ -155,6 +155,12 @@ class BertModel(MegatronModule):
         self.pre_process = pre_process
         self.post_process = post_process
 
+        # >>>
+        self.return_pooled_output = args.output_bert_embeddings
+        if self.return_pooled_output:
+            assert self.post_process and self.add_binary_head
+        # <<<
+
         init_method = init_method_normal(args.init_method_std)
         scaled_init_method = scaled_init_method_normal(args.init_method_std,
                                                        args.num_layers)
@@ -221,8 +227,14 @@ class BertModel(MegatronModule):
 
         if self.post_process and self.add_binary_head:
             lm_output, pooled_output = lm_output
-            # >>> haaaaaaaaaaaaack. >>>
-            return pooled_output
+
+            # >>>
+            # ... old haaaaaaaaaaaaack ...
+            # return pooled_output
+
+            # Return pooled output (e.g., when computing Bert embeddings).
+            if self.return_pooled_output:
+                return pooled_output
             # <<<
         else:
             pooled_output = None

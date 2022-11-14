@@ -104,6 +104,8 @@ def forward_step(data_iterator, model):
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
 
+    raise Exception("verify pooled output.")
+
     return output_tensor, partial(loss_func, loss_mask, sentence_order,
                                   seq_lengths)
 
@@ -248,13 +250,21 @@ def embed_data_loader(models, data_loader, n_samples_world):
 class BertEmbedder:
 
     def __init__(self, max_bert_seq_length, dump_huggingface_embeddings):
+
+        args = get_args()
+
+        # >>>
+        assert args.output_bert_embeddings
+        # <<<
+
         self.models, optimizer, opt_param_scheduler = \
             setup_model_and_optimizer(model_provider,
                                       ModelType.encoder_or_decoder)
         self.max_bert_seq_length = max_bert_seq_length
+
         # >>>
         from .huggingface import HuggingfaceEmbedder
-        args = get_args()
+
         # self.dump_huggingface_embeddings = dump_huggingface_embeddings
         # self.huggingface_embedder = HuggingfaceEmbedder(
         #     max_bert_seq_length,

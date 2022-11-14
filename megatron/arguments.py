@@ -356,6 +356,12 @@ def _add_inference_args(parser):
                        help='During inference, if batch-size times '
                        'sequence-length is smaller than this threshold '
                        'then we will not use pipelining, otherwise we will.')
+    # >>>
+    group.add_argument('--output-bert-embeddings', action='store_true',
+                       help='Output Bert embeddings directly (i.e., the pooled '
+                       'output), rather than its binary head output or entire '
+                       'hidden batch.')
+    # <<<
 
     return parser
 

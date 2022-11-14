@@ -139,6 +139,8 @@ MEGATRON_ARGS=" \
 # --retro-precompute-bert-lengths \
 # --retro-embedder ${RETRO_EMBEDDER} \
 RETRO_ARGS=" \
+    --output-bert-embeddings \
+
     --retro-gpt-vocab-file ${GPT_VOCAB_FILE} \
     --retro-gpt-merge-file ${GPT_MERGE_FILE} \
     --retro-gpt-tokenizer-type ${GPT_TOKENIZER_TYPE} \
