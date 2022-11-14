@@ -1,6 +1,7 @@
 # lawrence mcafee
 
 # ~~~~~~~~ import ~~~~~~~~
+from collections import defaultdict
 import faiss
 import glob
 import h5py
@@ -10,6 +11,7 @@ import torch
 from tqdm import tqdm
 
 from tools.bert_embedding.utils import load_data as load_hdf5_data
+from tools.retro.pretraining.acc.test_index_acc import rowwise_intersection
 from tools.retro.utils import Timer
 
 from lutil import pax
@@ -61,9 +63,9 @@ def get_block_data_paths(model_key):
 #         os.path.join(index_dir, "%s_train_data.hdf5" % model_key),
 #         os.path.join(index_dir, "%s_valid_data.hdf5" % model_key),
 #     )
-def get_train_data_path(model_key):
-    raise Exception("deprecated; merged train data.")
-    return os.path.join(index_dir, "data", "%s_train_data.hdf5" % model_key)
+# def get_train_data_path(model_key):
+#     raise Exception("deprecated; merged train data.")
+#     return os.path.join(index_dir, "data", "%s_train_data.hdf5" % model_key)
 def get_valid_data_path(model_key):
     return os.path.join(index_dir, "data", "%s_valid_data.hdf5" % model_key)
 
@@ -100,10 +102,10 @@ def merge_split_data(model_key):
         "valid_data" : str(valid_data.shape),
     })
 
-def get_train_data(model_key):
-    path = get_train_data_path(model_key)
-    with h5py.File(path, "r") as f:
-        return np.copy(f["data"])
+# def get_train_data(model_key):
+#     path = get_train_data_path(model_key)
+#     with h5py.File(path, "r") as f:
+#         return np.copy(f["data"])
 
 def get_valid_data(model_key):
     path = get_valid_data_path(model_key)
@@ -116,11 +118,16 @@ def get_empty_index_path(model_key):
 def get_added_index_path(model_key):
     return os.path.join(index_dir, "index", "%s_added.faissindex" % model_key)
 
+def get_nbr_path(model_key, nbr_key):
+    return os.path.join(index_dir, "nbr", f"{model_key}_{nbr_key}.hdf5")
+
 def get_flat_nbr_path(model_key):
-    return os.path.join(index_dir, "nbr", f"{model_key}_flat.hdf5")
+    # return os.path.join(index_dir, "nbr", f"{model_key}_flat.hdf5")
+    return get_nbr_path(model_key, "flat")
 
 def get_hier_nbr_path(model_key):
-    return os.path.join(index_dir, "nbr", f"{model_key}_hier.hdf5")
+    # return os.path.join(index_dir, "nbr", f"{model_key}_hier.hdf5")
+    return get_nbr_path(model_key, "hier")
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def train_index(model_key):
@@ -283,39 +290,6 @@ def query_flat_nbrs(model_key, n_nbrs):
         "nbrs" : nbrs,
     })
 
-# def query_ivf_nbrs(model_key):
-# def query_hier_nbrs(model_key):
-
-#     added_index_path = get_added_index_path(model_key)
-#     ivf_nbr_path = get_ivf_nbr_path(model_key)
-
-#     pax({
-#         "empty_index_path" : empty_index_path,
-#         "added_index_path" : added_index_path,
-#     })
-
-#     # Index already exists? -> return.
-#     if os.path.isfile(added_index_path):
-#         return
-#     assert os.path.isfile(empty_index_path)
-
-#     # # Load data.
-#     # print("load data.")
-#     # inp = get_valid_data(model_key)
-#     # # pax({"inp": inp})
-
-#     # Init index.
-#     print("load index.")
-#     index = faiss.read_index(empty_index_path)
-#     index_ivf = faiss.extract_index_ivf(index)
-#     # index.verbose = True
-#     # index_ivf.verbose = True
-#     # index_ivf.quantizer.verbose = True
-#     # index_ivf.clustering_index.verbose = True
-
-#     # Add to index.
-#     print("add to index.")
-#     # index.add(inp)
 def query_hier_nbrs(model_key, n_nbrs):
 
     timer = Timer()
@@ -356,6 +330,74 @@ def query_hier_nbrs(model_key, n_nbrs):
         "hier_nbr_path" : hier_nbr_path,
         "index" : index,
         "nbrs" : nbrs,
+    })
+
+def compare_nbrs():
+
+    # def load_nbrs(path):
+    #     with h5py.File(path, "r") as f:
+    #         return np.copy(f["neighbors"])
+
+    # (
+    #     megatron_flat_nbrs,
+    #     megatron_hier_nbrs,
+    #     huggingface_flat_nbrs,
+    #     huggingface_hier_nbrs,
+    # ) = [load_nbrs(path) for path in [
+    #     get_flat_nbr_path("megatron"),
+    #     get_hier_nbr_path("megatron"),
+    #     get_flat_nbr_path("huggingface"),
+    #     get_hier_nbr_path("huggingface"),
+    # ]]
+
+    def load_nbrs(model_key, nbr_key):
+        with h5py.File(get_nbr_path(model_key, nbr_key), "r") as f:
+            return np.copy(f["neighbors"])
+
+    model_keys = "megatron", "huggingface"
+    nbr_keys = "flat", "hier"
+
+    nbr_map = defaultdict(dict)
+    for model_key in model_keys:
+        for nbr_key in nbr_keys:
+            nbr_map[model_key][nbr_key] = load_nbrs(model_key, nbr_key)
+
+    # pax({f"{m}-{n}" : str(nbr_map[m][n]) for m in model_keys for n in nbr_keys})
+
+    # ~~~~~~~~ acc map ~~~~~~~~
+    nnbrs_list = [ 1, 2, 5, 10, 20, 200 ]
+    for key0, key1 in [
+            # (("megatron", "flat"), ("huggingface", "flat")),
+            # (("megatron", "flat"), ("megatron", "hier")),
+            # (("huggingface", "flat"), ("huggingface", "hier")),
+            (("megatron", "hier"), ("huggingface", "hier")),
+    ]:
+        nbrs0 = nbr_map[key0[0]][key0[1]]
+        nbrs1 = nbr_map[key1[0]][key1[1]]
+
+        acc_map = {}
+        for nnbrs_index, nnbrs in enumerate(nnbrs_list):
+            print("  nnbrs %d [ %d / %d ]." % (nnbrs, nnbrs_index, len(nnbrs_list)))
+            overlaps = rowwise_intersection(nbrs0[:, :nnbrs], nbrs1[:, :nnbrs])
+            acc_map[nnbrs] = np.mean(overlaps) / nnbrs
+        # pax({
+        #     "key0" : key0,
+        #     "key1" : key1,
+        #     "acc_map" : acc_map,
+        # })
+        print("%s/%s, %s/%s ... %s." % (
+            *key0,
+            *key1,
+            ", ".join("%d [%.3f]" % (k, v) for k, v in acc_map.items()),
+        ))
+
+    exit(0)
+
+    pax({
+        "megatron_flat_nbrs" : str(megatron_flat_nbrs),
+        "megatron_hier_nbrs" : str(megatron_hier_nbrs),
+        "huggingface_flat_nbrs" : str(huggingface_flat_nbrs),
+        "huggingface_hier_nbrs" : str(huggingface_hier_nbrs),
     })
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
