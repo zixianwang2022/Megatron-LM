@@ -156,10 +156,65 @@ def get_training_data_merged_path():
 #         print_rank_0("finished loading merged data.")
 
 #         return data
+# def get_training_data_merged():
+#     # pax(0, {"block_paths": get_training_data_block_paths()})
+#     from tools.bert_embedding.utils import load_data
+#     from tools.retro.utils import Timer
+#     return load_data(get_training_data_block_paths(), Timer())
 def get_training_data_merged():
-    # pax(0, {"block_paths": get_training_data_block_paths()})
-    from tools.bert_embedding.utils import load_data
-    from tools.retro.utils import Timer
+
+    import psutil
+    import time
+    from tools.retro.db.utils import get_indexed_dataset_infos
+
+    args = get_args()
+
+    block_paths = get_training_data_block_paths()
+    ds_infos = get_indexed_dataset_infos()
+    n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
+    # >>>
+    t = time.time()
+    # data = np.zeros((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
+    data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
+    # data.fill(0) # ... allocates 1.2TB, for real
+    t = time.time() - t
+
+    # print("%e sec ... mem %.0f gb [ %.1f ]." % (
+    #     t,
+    #     psutil.virtual_memory()[3] / 1024**3,
+    #     psutil.virtual_memory()[2],
+    # ))
+    # exit(0)
+    # <<<
+    start_idx = 0
+    pbar = tqdm(block_paths)
+    for path_index, path in enumerate(pbar): # block_paths):
+        pbar.set_description("mem %.0f gb, %.1f%%" % (
+            psutil.virtual_memory()[3] / 1024**3,
+            psutil.virtual_memory()[2],
+        ))
+        t = time.time()
+        with h5py.File(path, "r") as f:
+            n_current = len(f["data"])
+            data[start_idx:(start_idx+n_current)] = f["data"]
+            start_idx += n_current
+        t = time.time() - t
+        # if path_index % 50 == 0:
+        #     print("load train block %d / %d ... %s sec, mem %.0f gb [ %.1f ]." % (
+        #         path_index,
+        #         len(block_paths),
+        #         t,
+        #         psutil.virtual_memory()[3] / 1024**3,
+        #         psutil.virtual_memory()[2],
+        #     ))
+    assert start_idx == n_chunks_sampled
+
+    pax(0, {
+        # "block_paths" : block_paths,
+        "ds_infos" : ds_infos,
+        "n_chunks_sampled" : n_chunks_sampled,
+        "data" : "%s / %s / %s" % (data.shape, data.dtype, str(data)),
+    })
     return load_data(get_training_data_block_paths(), Timer())
 
 

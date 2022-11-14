@@ -68,9 +68,10 @@ def load_data(paths, timer):
     # for pi, p in enumerate(paths):
     #     print_rank_0("load path %d / %d ... '%s'." %
     #                  (pi, len(paths), os.path.basename(p)))
-    pbar = tqdm(paths)
-    pbar.set_description("load data")
-    for pi, p in enumerate(pbar):
+    # pbar = tqdm(paths)
+    # pbar.set_description("load data")
+    # for pi, p in enumerate(pbar):
+    for pi, p in enumerate(tqdm(paths), "load data"):
         f = h5py.File(p, "r")
         for k in f.keys():
             i0 = start_map[k]

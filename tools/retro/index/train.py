@@ -180,8 +180,7 @@ def remove_embeddings():
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 def time_training():
 
-
-    index_str = "OPQ64_128,IVF4194304_HNSW32,PQ64"
+    # index_str = "OPQ64_128,IVF4194304_HNSW32,PQ64"
     index_str = "OPQ32_256,IVF32768_HNSW32,PQ32"
     args = get_args()
 
