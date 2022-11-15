@@ -18,8 +18,8 @@ PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-preprocess-pl
 # Data blend.
 # . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
 # . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_play.sh
-. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_corpus.sh
-# . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_wiki.sh
+# . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_corpus.sh
+. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_wiki.sh
 DATA_PATH=${DATA_BLEND}
 
 GPT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
@@ -32,8 +32,8 @@ BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 
 # >>>>>>>>>>>>>>>>>>>>>>>
 # RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/play
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus
-# RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
+# RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
 
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
@@ -42,7 +42,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus
 # RETRO_TASKS="db-preprocess"
 # [x] ... RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
-RETRO_TASKS="index-train"
+# RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="index-remove-train-files,train"
 # RETRO_TASKS="index-remove-add-files,add"
@@ -61,6 +61,7 @@ RETRO_TASKS="index-train"
 # RETRO_TASKS="misc-copy-corpus-dirty"
 # RETRO_TASKS="misc-nan-stats"
 # RETRO_TASKS="misc-bert-nan-analysis"
+RETRO_TASKS="misc-bert-comparison"
 # RETRO_TASKS="build" # ... the goal.
 
 # RETRO_INDEX_TY=faiss-base

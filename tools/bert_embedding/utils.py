@@ -71,7 +71,7 @@ def load_data(paths, timer):
     # pbar = tqdm(paths)
     # pbar.set_description("load data")
     # for pi, p in enumerate(pbar):
-    for pi, p in enumerate(tqdm(paths), "load data"):
+    for pi, p in enumerate(tqdm(paths, "load data")):
         f = h5py.File(p, "r")
         for k in f.keys():
             i0 = start_map[k]

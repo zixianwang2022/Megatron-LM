@@ -36,6 +36,7 @@ from megatron import get_args, initialize_megatron, print_rank_0
 # from megatron.arguments import _print_args
 from tools.retro.db import build_db, preprocess_db # , embed_db
 from tools.retro.index.build import add_to_index, build_index, train_index
+from tools.retro.index.sandbox.megatron_vs_huggingface import run_bert_comparison
 from tools.retro.pretraining.build import (
     build_pretraining_neighbors,
     # embed_pretraining_chunks,
@@ -188,6 +189,8 @@ if __name__ == "__main__":
             get_nan_stats(timer)
         elif task == "bert-nan-analysis":
             run_bert_nan_analysis(timer)
+        elif task == "misc-bert-comparison":
+            run_bert_comparison(timer)
         else:
             raise Exception("specialize for task '%s'." % task)
 

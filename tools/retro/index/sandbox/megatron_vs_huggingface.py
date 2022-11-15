@@ -112,6 +112,21 @@ def get_valid_data(model_key):
     with h5py.File(path, "r") as f:
         return np.copy(f["data"])
 
+def get_sampled_valid_data(model_key):
+    full_data = get_valid_data(model_key)
+    # sampled_data = full_data[:10000]
+    step = len(full_data) // 10000
+    # sampled_data = np.ascontiguousarray(full_data[None:None:step])
+    valid_idxs = list(range(0, len(full_data), step))
+    sampled_data = np.stack([ full_data[i] for i in valid_idxs ])
+    pax({
+        "sampled_data" : sampled_data,
+        "full_data / shape" : str(full_data.shape),
+        "sampled_data / shape" : str(sampled_data.shape),
+        "valid_idxs" : str(valid_idxs),
+    })
+    return sampled_data
+
 def get_empty_index_path(model_key):
     return os.path.join(index_dir, "index", "%s_empty.faissindex" % model_key)
 
@@ -236,21 +251,17 @@ def query_flat_nbrs(model_key, n_nbrs):
     if os.path.exists(flat_nbr_path):
         return
 
-    data_paths = get_block_data_paths(model_key)
-    # >>>
-    # data_paths = data_paths[:10]
-    # <<<
-    print("add to index.")
+    print("add to flat index.")
     index = faiss.index_factory(1024, "Flat")
-    # >>>
-    # print("move to gpu.")
-    # index = faiss.index_cpu_to_all_gpus(index) # oom's w/ wiki index
-    # <<<
-    # for data_path in tqdm(data_paths):
-    #     with h5py.File(data_path, "r") as f:
-    #         index.add(np.copy(f["data"]))
+    data_paths = get_block_data_paths(model_key)
+    # [oom] ... index = faiss.index_cpu_to_all_gpus(index)
+
     n_added = 0
-    for data_path in tqdm(data_paths):
+    for data_index, data_path in enumerate(tqdm(data_paths, "flat / add")):
+        # >>>
+        # if data_index == 10:
+        #     break
+        # <<<
         # data = load_hdf5_data([data_path], None)["data"]
         with h5py.File(data_path, "r") as f:
             data = np.copy(f["data"])
@@ -261,14 +272,9 @@ def query_flat_nbrs(model_key, n_nbrs):
         n_added += end_idx
 
     print("ntotal %d." % index.ntotal)
-    # exit()
 
     print("load valid data.")
-    valid_data = get_valid_data(model_key)
-    # >>>
-    valid_data = valid_data[:10000]
-    # <<<
-    # pax({"valid_data / shape": valid_data.shape})
+    valid_data = get_sampled_valid_data(model_key)
 
     print("query index.")
     block_size = 100
@@ -283,12 +289,12 @@ def query_flat_nbrs(model_key, n_nbrs):
     with h5py.File(flat_nbr_path, "w") as f:
         f.create_dataset("neighbors", data = nbrs)
 
-    pax({
-        "data_paths" : data_paths,
-        "flat_nbr_path" : flat_nbr_path,
-        "index" : index,
-        "nbrs" : nbrs,
-    })
+    # pax({
+    #     # "data_paths" : data_paths,
+    #     "flat_nbr_path" : flat_nbr_path,
+    #     "index" : index,
+    #     "nbrs" : nbrs,
+    # })
 
 def query_hier_nbrs(model_key, n_nbrs):
 
@@ -304,13 +310,14 @@ def query_hier_nbrs(model_key, n_nbrs):
     timer.pop()
 
     print("ntotal %d." % index.ntotal)
-    # exit()
+
+    faiss.ParameterSpace().set_index_parameter(index, "efSearch", 32)
+    faiss.ParameterSpace().set_index_parameter(index, "nprobe", 4096)
+
+    # pax({"index": index})
 
     print("load valid data.")
-    valid_data = get_valid_data(model_key)
-    # >>>
-    valid_data = valid_data[:10000]
-    # <<<
+    valid_data = get_sampled_valid_data(model_key)
 
     print("query index.")
     block_size = 100
@@ -332,23 +339,7 @@ def query_hier_nbrs(model_key, n_nbrs):
         "nbrs" : nbrs,
     })
 
-def compare_nbrs():
-
-    # def load_nbrs(path):
-    #     with h5py.File(path, "r") as f:
-    #         return np.copy(f["neighbors"])
-
-    # (
-    #     megatron_flat_nbrs,
-    #     megatron_hier_nbrs,
-    #     huggingface_flat_nbrs,
-    #     huggingface_hier_nbrs,
-    # ) = [load_nbrs(path) for path in [
-    #     get_flat_nbr_path("megatron"),
-    #     get_hier_nbr_path("megatron"),
-    #     get_flat_nbr_path("huggingface"),
-    #     get_hier_nbr_path("huggingface"),
-    # ]]
+def get_nbr_map():
 
     def load_nbrs(model_key, nbr_key):
         with h5py.File(get_nbr_path(model_key, nbr_key), "r") as f:
@@ -364,12 +355,20 @@ def compare_nbrs():
 
     # pax({f"{m}-{n}" : str(nbr_map[m][n]) for m in model_keys for n in nbr_keys})
 
+    return nbr_map
+
+def compare_nbrs():
+
+    nbr_map = get_nbr_map()
+
+    # pax({"nbr_map": nbr_map})
+
     # ~~~~~~~~ acc map ~~~~~~~~
     nnbrs_list = [ 1, 2, 5, 10, 20, 200 ]
     for key0, key1 in [
-            # (("megatron", "flat"), ("huggingface", "flat")),
-            # (("megatron", "flat"), ("megatron", "hier")),
-            # (("huggingface", "flat"), ("huggingface", "hier")),
+            (("megatron", "flat"), ("huggingface", "flat")),
+            (("megatron", "flat"), ("megatron", "hier")),
+            (("huggingface", "flat"), ("huggingface", "hier")),
             (("megatron", "hier"), ("huggingface", "hier")),
     ]:
         nbrs0 = nbr_map[key0[0]][key0[1]]
@@ -400,6 +399,79 @@ def compare_nbrs():
         "huggingface_hier_nbrs" : str(huggingface_hier_nbrs),
     })
 
+def print_nbrs():
+
+    from tools.retro.db.utils import get_full_merged_dataset
+    from tools.retro.utils import GPTToTextDataset
+
+    gpt_chunk_dataset = get_full_merged_dataset(force = True)
+    text_chunk_dataset = GPTToTextDataset(gpt_chunk_dataset)
+
+    nbr_map = get_nbr_map()
+    # n_valid = len(nbr_map["megatron"]["flat"])
+    valid_idxs, _ = get_sampled_valid_data("megatron")
+
+    pax({
+        "gpt_chunk_dataset" : gpt_chunk_dataset,
+        "text_chunk_dataset" : text_chunk_dataset,
+        "nbr_map" : nbr_map,
+        # "n_valid" : n_valid,
+        "valid_idxs" : str(valid_idxs),
+    })
+
+    # ~~~~~~~~ acc map ~~~~~~~~
+    n_samples = 20
+    n_nbrs = 2
+
+    # for sample_idx in range(1000000, 1000000 + n_samples):
+    for sample_idx in range(0, n_valid, n_valid // n_samples):
+
+        text = text_chunk_dataset[n_chunks_train + sample_idx]["text"] \
+            .replace("\n", "")
+
+        print()
+        print("############################################################")
+        print("~~~~ TEXT [ sample %d of %d ] ~~~~" % (sample_idx, n_valid))
+        print(">> %s" % text)
+
+        for model_key in nbr_map:
+            # for nbr_key in nbr_map[model_key]:
+            for nbr_key in [ "flat" ]:
+
+                print("~~~~ %s / %s ~~~~" % (model_key.upper(), nbr_key.upper()))
+                for nbr_iter_idx in range(n_nbrs):
+
+                    nbr_idx = nbr_map[model_key][nbr_key][sample_idx, nbr_iter_idx].item()
+                    nbr_text = text_chunk_dataset[nbr_idx]["text"].replace("\n", " ")
+
+                    print(">> [sample %d] %s" % (nbr_idx, nbr_text))
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# def compare_bert_models():
+def run_bert_comparison(timer):
+
+    if torch.distributed.get_rank() != 0:
+        return
+
+    # Set num threads (torch.distributed reset it to 1).
+    faiss.omp_set_num_threads(64)
+
+    n_nbrs = 2000
+
+    # for model_key in [
+    #         "megatron",
+    #         "huggingface",
+    # ]:
+    #     # merge_split_data(model_key)
+    #     # train_index(model_key)
+    #     # add_to_index(model_key)
+    #     # query_flat_nbrs(model_key, n_nbrs)
+    #     query_hier_nbrs(model_key, n_nbrs)
+    # compare_nbrs()
+    print_nbrs()
+
+    print("hi.")
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
 
@@ -412,22 +484,6 @@ if __name__ == "__main__":
     #     "n_gpus" : faiss.get_num_gpus(),
     # })
 
-    # Set num threads (torch.distributed reset it to 1).
-    faiss.omp_set_num_threads(64)
-
-    n_nbrs = 2000
-
-    # for model_key in [
-    #         # "megatron",
-    #         "huggingface",
-    # ]:
-    #     # merge_split_data(model_key)
-    #     # train_index(model_key)
-    #     # add_to_index(model_key)
-    #     # query_flat_nbrs(model_key, n_nbrs)
-    #      query_hier_nbrs(model_key, n_nbrs)
-    compare_nbrs()
-
-    print("hi.")
+    compare_bert_models()
 
 # eof

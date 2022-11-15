@@ -56,7 +56,13 @@ def save_indexed_dataset_infos(indexed_dataset_infos):
 def get_indexed_dataset_infos():
     path = get_indexed_dataset_infos_path()
     with open(path) as f:
-        return json.load(f)
+        # return json.load(f)
+        infos = json.load(f)
+
+    for info in infos:
+        info["dataset"] = make_indexed_dataset(info["prefix"], "mmap", True)
+
+    return infos
 
 
 # def get_individual_db_info(name):
@@ -125,13 +131,15 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     if not indexed_dataset_infos:
         indexed_dataset_infos = get_indexed_dataset_infos()
 
-    # Build indexed datasets.
-    indexed_datasets = []
-    for ds_idx, ds_info in enumerate(indexed_dataset_infos):
-        print_rank_0("indexed dataset %d / %d ... '%s'." %
-              (ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-        indexed_datasets.append(make_indexed_dataset(ds_info["prefix"],
-                                                     "mmap",True))
+    # pax(0, {"indexed_dataset_infos": indexed_dataset_infos})
+
+    # # Build indexed datasets.
+    # indexed_datasets = []
+    # for ds_idx, ds_info in enumerate(indexed_dataset_infos):
+    #     print_rank_0("indexed dataset %d / %d ... '%s'." %
+    #           (ds_idx, len(indexed_dataset_infos), ds_info["name"]))
+    #     indexed_datasets.append(make_indexed_dataset(ds_info["prefix"],
+    #                                                  "mmap",True))
 
     # Load chunk db.
     db_path = get_merged_db_path_map()[db_type]
@@ -140,6 +148,7 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     f.close()
 
     # Chunk dataset.
+    indexed_datasets = [ info["dataset"] for info in indexed_dataset_infos ]
     chunk_dataset = GPTChunkDataset(indexed_datasets, chunk_db,
                                     args.retro_gpt_chunk_length)
 
@@ -155,9 +164,12 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     return chunk_dataset
 
 
-def get_full_merged_dataset(indexed_dataset_infos = None):
-    raise Exception("only load 'n_chunks_train' chunks.")
+def get_full_merged_dataset(indexed_dataset_infos = None, force = False):
+    if not force:
+        raise Exception("only load 'n_chunks_train' chunks.")
     return get_merged_dataset("full", indexed_dataset_infos)
+# def get_merged_training_dataset(indexed_dataset_infos = None):
+#     return get_merged_dataset("train", indexed_dataset_infos)
 
 
 def get_sampled_merged_dataset(indexed_dataset_infos = None):
