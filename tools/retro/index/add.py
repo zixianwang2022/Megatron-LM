@@ -18,7 +18,7 @@
 # import torch
 
 from megatron import get_args
-from tools.retro.db.utils import get_full_merged_dataset
+from tools.retro.db.utils import get_merged_train_dataset
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
 
@@ -38,14 +38,12 @@ from lutil import pax
 #     return output_index_path
 def add_to_index(timer):
 
-    raise Exception("only load 'n_chunks_train' chunks.")
-
     args = get_args()
 
     workdir = get_index_dir()
     index = IndexFactory.get_index(args.retro_index_ty)
 
-    gpt_dataset = get_full_merged_dataset()
+    gpt_dataset = get_merged_train_dataset()
     text_dataset = GPTToTextDataset(gpt_dataset)
 
     output_index_path = index.add(text_dataset, workdir, timer)

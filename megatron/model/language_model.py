@@ -20,11 +20,13 @@ import torch.nn.functional as F
 
 from megatron import get_args
 from megatron import mpu
+
+from .enums import LayerType, AttnMaskType
 from .module import MegatronModule
-from megatron.model.enums import LayerType, AttnMaskType
-from megatron.model.transformer import ParallelTransformer
-from megatron.model.utils import get_linear_layer
-from megatron.model.utils import init_method_normal, scaled_init_method_normal
+# from .retro_transformer import ParallelRetroEncoderTransformer
+from .transformer import ParallelTransformer
+from .utils import get_linear_layer
+from .utils import init_method_normal, scaled_init_method_normal
 
 # >>>
 from lutil.pax import print_mem_stats
@@ -359,7 +361,22 @@ class TransformerLanguageModel(MegatronModule):
                                        self.num_tokentypes)
             self._embedding_key = 'embedding'
 
-        # Transformer.
+        # Retriever (bi-directional transformer with cross attention)
+        if args.retro_add_retriever:
+            self.retriever = ParallelRetroEncoderTransformer(
+                self.init_method,
+                output_layer_init_method,
+                self_attn_mask_type=AttnMaskType.padding,
+                pre_process=self.pre_process,
+                post_process=False,
+            )
+            self._retriever_key = 'retriever'
+        else:
+            # >>>
+            # raise Exception("not this way.")
+            # <<<
+            self.retriever = None
+
         # Encoder (usually set to True, False if part of an encoder-decoder
         # architecture and in encoder-only stage).
         if self.add_encoder:
@@ -368,7 +385,8 @@ class TransformerLanguageModel(MegatronModule):
                 output_layer_init_method,
                 self_attn_mask_type=self.encoder_attn_mask_type,
                 pre_process=self.pre_process,
-                post_process=self.post_process
+                post_process=self.post_process,
+                retriever=self.retriever,
             )
             self._encoder_key = 'encoder'
         else:
@@ -424,15 +442,20 @@ class TransformerLanguageModel(MegatronModule):
 
     def forward(self, enc_input_ids, enc_position_ids, enc_attn_mask,
                 dec_input_ids=None, dec_position_ids=None, dec_attn_mask=None,
+                ret_int_ids=None, ret_position_ids=None, ret_attn_mask=None,
                 enc_dec_attn_mask=None, tokentype_ids=None,
                 inference_params=None,
                 pooling_sequence_index=0,
                 enc_hidden_states=None, output_enc_hidden=False):
 
+        # Retriever embedding.
+        if self.retriever and self.pre_process:
+            retriever_input = self.embedding(ret_int_ids, ret_position_ids,
+                                             tokentype_ids=tokentype_ids)
+        else:
+            retriever_input = None
+
         # Encoder embedding.
-        # >>>
-        # print_mem_stats("lm 0")
-        # <<<
         if self.pre_process:
             encoder_input = self.embedding(enc_input_ids, enc_position_ids,
                                            tokentype_ids=tokentype_ids)
@@ -440,31 +463,19 @@ class TransformerLanguageModel(MegatronModule):
             encoder_input = None
 
         # Run encoder.
-        # >>>
-        # from lutil import pax
-        # pax(0, {
-        #     "encoder_input" : encoder_input,
-        #     "pooled_output" : encoder_input[0],
-        # })
-        # return encoder_input, encoder_input[0]
-
-        # print_mem_stats("lm 1")
-        # <<<
         if enc_hidden_states is None:
             if self.encoder is not None:
                 encoder_output = self.encoder(
                     encoder_input,
                     enc_attn_mask,
+                    retriever_output=retriever_input,
+                    retriever_attn_mask=ret_attn_mask,
                     inference_params=inference_params)
             else:
                 encoder_output = self.encoder_hidden_state
         else:
             encoder_output = enc_hidden_states.to(encoder_input.dtype)
 
-        # >>>
-        # print_mem_stats("lm 2")
-        # print_mem_stats("lm 2 [%s, %s]" % (enc_hidden_states is None, self.encoder is not None))
-        # <<<
         if self.post_process:
             if self.add_pooler:
                 pooled_output = self.pooler(encoder_output,
@@ -473,13 +484,11 @@ class TransformerLanguageModel(MegatronModule):
         # output_enc_hidden refers to when we just need the encoder's
         # output. For example, it is helpful to compute
         # similarity between two sequences by average pooling
-        # >>>
-        # print_mem_stats("lm 3")
-        # <<<
         if not self.add_decoder or output_enc_hidden:
             if self.add_pooler and self.post_process:
                 return encoder_output, pooled_output
             else:
+                # print("encoder_output", encoder_output.shape, encoder_output)
                 return encoder_output
 
         # Decoder embedding.

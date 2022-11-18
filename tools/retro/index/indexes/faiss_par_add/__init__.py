@@ -202,6 +202,7 @@ class FaissParallelAddIndex(Index):
             col = 0,
             rank = 0,
         )
+        # pax(0, {"added_index_path": index_path_map["output_index_path"]})
         return index_path_map["output_index_path"]
 
 
@@ -379,7 +380,6 @@ class FaissParallelAddIndex(Index):
             timer.pop()
 
 
-    # def add(self, input_data_paths, dir_path, timer):
     def add(self, text_dataset, dir_path, timer):
         """Add vectors to index, in parallel.
 
@@ -395,8 +395,7 @@ class FaissParallelAddIndex(Index):
         args = get_args()
 
         # Set OMP threads (torch defaults to n_threads = 1).
-        faiss.omp_set_num_threads(4)
-        # pax(0, {"nthreads": faiss.omp_get_max_threads()})
+        faiss.omp_set_num_threads(4) # generally, 4 threads X 8-16 processes.
 
         # Num blocks & rows.
         dataset_sample_ranges = get_dataset_block_ranges(len(text_dataset))
@@ -404,21 +403,17 @@ class FaissParallelAddIndex(Index):
         num_rows = get_num_rows(num_blocks)
 
         # Missing index paths.
-        # missing_blocks = self.get_missing_blocks(
         missing_index_paths = self.get_missing_index_paths(
             dataset_sample_ranges,
             num_rows,
             dir_path,
         )
 
-        # pax(0, {"missing_blocks": missing_blocks})
-
         # Prevent race condition for missing paths. [ necessary? ]
         torch.distributed.barrier()
 
         # Bert embedder.
         embedder = BertEmbedder(args.retro_bert_max_chunk_length)
-        # pax(0, {"embedder": embedder})
 
         # Iterate merge rows.
         for row in range(num_rows):
@@ -440,21 +435,11 @@ class FaissParallelAddIndex(Index):
 
                 # Input/output index paths.
                 partial_index_path_map = self.get_partial_index_path_map(
-                    # input_data_paths,
-                    # text_dataset,
                     dataset_sample_ranges,
                     dir_path,
                     row,
                     col,
                 )
-
-                # >>>
-                # pax(0, {"partial_index_path_map": partial_index_path_map})
-                # print_seq("block %d, range %s." % (
-                #     partial_index_path_map["block_id"],
-                #     partial_index_path_map["dataset_sample_range"],
-                # ))
-                # <<<
 
                 # Handle edge cases.
                 if partial_index_path_map is None or \

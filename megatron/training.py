@@ -149,6 +149,25 @@ def pretrain(train_valid_test_dataset_provider,
     print_rank_0('training ...')
 
     iteration = 0
+
+    # >>>
+    if args.dataloader_type == 'cyclic':
+        print("args.train_iters", args.train_iters)
+        args.train_iters = args.retro_cyclic_train_iters
+        print("args.retro_cyclic_train_iters", args.train_iters)
+    # <<<
+
+    # >>>
+    # args.eval_ppl = True
+    if args.retro_eval_ppl:
+        prefix = 'the beginning of training for val data'
+        evaluate_and_print_results(prefix, forward_step_func,
+                                   valid_data_iterator, model,
+                                   iteration, process_non_loss_data_func,
+                                   False)
+        exit(0)
+    # <<<
+
     if args.do_train and args.train_iters > 0:
         iteration = train(forward_step_func,
                           model, optimizer, opt_param_scheduler,
@@ -875,18 +894,10 @@ def cyclic_iter(iter):
             yield x
 
 # >>>
-# def build_train_valid_test_data_loaders(
-#         build_train_valid_test_datasets_provider,
-#         args = None): 
 def build_train_valid_test_data_loaders(
         build_train_valid_test_datasets_provider):
     """XXX"""
-    # >>>
     args = get_args()
-    # +++
-    # if not args:
-    #     args = get_args()
-    # <<<
 
     (train_dataloader, valid_dataloader, test_dataloader) = (None, None, None)
 
@@ -971,10 +982,12 @@ def build_train_valid_test_data_loaders(
 def build_train_valid_test_data_iterators(
         build_train_valid_test_datasets_provider):
 
+    args = get_args()
+
     # Build loaders.
     train_dataloader, valid_dataloader, test_dataloader = \
         build_train_valid_test_data_loaders(
-            build_train_valid_test_datsets_provider)
+            build_train_valid_test_datasets_provider)
 
     # Build iterators.
     dl_type = args.dataloader_type

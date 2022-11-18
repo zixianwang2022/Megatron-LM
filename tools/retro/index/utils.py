@@ -31,16 +31,16 @@ from lutil import pax
 # <<<
 
 
-def get_index_str():
-    """Faiss notation for index structure."""
-    args = get_args()
-    return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
-        args.retro_pq_m,
-        args.retro_ivf_dim,
-        args.retro_nclusters,
-        args.retro_hnsw_m,
-        args.retro_pq_m,
-    )
+# def get_index_str():
+#     """Faiss notation for index structure."""
+#     args = get_args()
+#     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
+#         args.retro_pq_m,
+#         args.retro_ivf_dim,
+#         args.retro_nclusters,
+#         args.retro_hnsw_m,
+#         args.retro_pq_m,
+#     )
 
 
 def get_index_dir():
@@ -53,7 +53,8 @@ def get_index_dir():
         args.retro_workdir,
         "index",
         args.retro_index_ty,
-        get_index_str(),
+        # get_index_str(),
+        args.retro_index_str,
     )
 
     # Make directory.
@@ -74,8 +75,8 @@ def get_training_data_block_paths():
     return sorted(glob.glob(get_training_data_block_dir() + "/*.hdf5"))
 
 
-def get_training_data_merged_path():
-    return os.path.join(get_training_data_dir(), "merged.hdf5")
+# def get_training_data_merged_path():
+#     return os.path.join(get_training_data_dir(), "merged.hdf5")
 
 
 # def get_training_data_merged():

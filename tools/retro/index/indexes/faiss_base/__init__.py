@@ -19,9 +19,7 @@ import os
 import torch
 
 from megatron import get_args, print_rank_0
-# from tools.bert_embedding.utils import load_data
 from tools.retro.index import Index
-from tools.retro.index.utils import get_index_str
 
 # >>>
 from lutil import pax, print_seq

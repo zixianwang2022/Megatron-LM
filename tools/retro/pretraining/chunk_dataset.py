@@ -115,6 +115,11 @@ def verify_indexed_dataset_order():
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
 
+    # >>>
+    # raise Exception("hi.")
+    # pax(0, {"train_val_test_num_samples": train_val_test_num_samples})
+    # <<<
+
     args = get_args()
 
     print_rank_0('> building train, validation, and test datasets '
@@ -128,6 +133,14 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup))
     print_rank_0("> finished creating pretrained GPT datasets ...")
+
+    # >>>
+    # pax(0, {
+    #     "train_ds" : len(train_ds),
+    #     "valid_ds" : len(valid_ds),
+    #     # "test_ds" : len(test_ds),
+    # })
+    # <<<
 
     return train_ds, valid_ds, test_ds
 
@@ -150,6 +163,7 @@ def get_gpt_chunk_dataset_map():
     train_data_loader, valid_data_loader, test_data_loader \
         = build_train_valid_test_data_loaders(
             train_valid_test_datasets_provider)
+    # pax(0, {"train_data_loader": len(train_data_loader)})
     data_loader_map = {
         "train" : train_data_loader,
         "valid" : valid_data_loader,

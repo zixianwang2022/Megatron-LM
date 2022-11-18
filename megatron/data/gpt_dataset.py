@@ -126,12 +126,25 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                  documents, indexed_dataset,
                                  train_valid_test_num_samples[index],
                                  seq_length, seed)
+            # pax(0, {
+            #     "n_samples" : train_valid_test_num_samples[index],
+            #     "dataset" : len(dataset),
+            # })
             # <<<
         return dataset
 
     train_dataset = build_dataset(0, 'train')
     valid_dataset = build_dataset(1, 'valid')
     test_dataset = build_dataset(2, 'test')
+
+    # >>>
+    # pax(0, {
+    #     "train_valid_test_num_samples" : train_valid_test_num_samples,
+    #     "train_dataset" : len(train_dataset),
+    #     "valid_dataset" : len(valid_dataset),
+    #     # "test_dataset" : len(test_dataset),
+    # })
+    # <<<
 
     return (train_dataset, valid_dataset, test_dataset)
 
@@ -168,6 +181,15 @@ class GPTDataset(torch.utils.data.Dataset):
         self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
             self.name, data_prefix, documents, self.indexed_dataset.sizes,
             num_samples, seq_length, seed)
+
+        # >>>
+        # pax(0, {
+        #     "num_samples" : num_samples,
+        #     "doc_idx" : len(self.doc_idx),
+        #     "sample_idx" : len(self.sample_idx),
+        #     "shuffle_idx" : len(self.shuffle_idx),
+        # })
+        # <<<
 
     def __len__(self):
         # -1 is due to data structure used to retieve the index:
@@ -223,6 +245,16 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
     # Number of tokens in each epoch and number of required epochs.
     tokens_per_epoch = _num_tokens(documents, sizes)
     num_epochs = _num_epochs(tokens_per_epoch, seq_length, num_samples)
+    # >>>
+    # pax(0, {
+    #     "documents" : documents,
+    #     "sizes" : sizes,
+    #     "tokens_per_epoch" : tokens_per_epoch,
+    #     "seq_length" : seq_length,
+    #     "num_samples" : num_samples,
+    #     "num_epochs" : num_epochs,
+    # })
+    # <<<
     # rng state
     np_rng = np.random.RandomState(seed=seed)
 
@@ -272,6 +304,15 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
                 # be adjusted if needed.
                 separate_last_epoch = (last_epoch_num_samples <
                                        int(0.80 * num_samples_per_epoch))
+                # >>>
+                # pax(0, {
+                #     "num_epochs" : num_epochs,
+                #     "num_samples_from_epochs_minus_one" : num_samples_from_epochs_minus_one.item(),
+                #     "last_epoch_num_samples" : last_epoch_num_samples.item(),
+                #     "num_samples_per_epoch" : num_samples_per_epoch.item(),
+                #     "separate_last_epoch" : separate_last_epoch.item(),
+                # })
+                # <<<
                 if separate_last_epoch:
                     string = ' > last epoch number of samples ({}) is smaller '\
                              'than 80% of number of samples per epoch ({}), '\

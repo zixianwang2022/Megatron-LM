@@ -26,20 +26,12 @@ import json
 import os
 import torch
 
-# >>>
-# print("~~~~~~~~~~~~~~~~~~~~~")
-# print("PYTHONPATH = %s" % str(os.environ["PYTHONPATH"]))
-# print("~~~~~~~~~~~~~~~~~~~~~")
-# <<<
-
 from megatron import get_args, initialize_megatron, print_rank_0
-# from megatron.arguments import _print_args
-from tools.retro.db import build_db, preprocess_db # , embed_db
+from tools.retro.db import build_db, preprocess_db
 from tools.retro.index.build import add_to_index, build_index, train_index
 from tools.retro.index.sandbox.megatron_vs_huggingface import run_bert_comparison
 from tools.retro.pretraining.build import (
     build_pretraining_neighbors,
-    # embed_pretraining_chunks,
     query_pretraining_neighbors,
 )
 from tools.retro.pretraining.retro_dataset import test_retro_dataset
@@ -72,11 +64,12 @@ def add_retro_args(parser):
         "faiss-par-add",
     ])
     group.add_argument("--retro-nfeats", "-f", type = int, default = 1024)
-    group.add_argument("--retro-nclusters", type = int, required = True)
-    group.add_argument("--retro-hnsw-m", type = int, required = True)
-    group.add_argument("--retro-ivf-dim", type = int, required = True)
-    group.add_argument("--retro-pq-m", type = int, required = True)
-    group.add_argument("--retro-pq-nbits", type = int, default = 8)
+    # group.add_argument("--retro-nclusters", type = int, required = True)
+    # group.add_argument("--retro-hnsw-m", type = int, required = True)
+    # group.add_argument("--retro-ivf-dim", type = int, required = True)
+    # group.add_argument("--retro-pq-m", type = int, required = True)
+    # group.add_argument("--retro-pq-nbits", type = int, default = 8)
+    group.add_argument("--retro-index-str", required = True)
     group.add_argument("--retro-ef-search", type = int, default = 256)
     group.add_argument("--retro-nprobe", type = int, default = 65536)
     # group.add_argument("--retro-profile-stage-stop", default = None)
@@ -90,7 +83,7 @@ def add_retro_args(parser):
     group.add_argument("--retro-nnbrs-pretraining", type = int, required=True)
     # group.add_argument("--retro-embedder", choices = ["megatron", "huggingface"],
     #                    default = "megatron")
-    group.add_argument("--retro-dump-huggingface-embeddings", action="store_true")
+    # group.add_argument("--retro-dump-huggingface-embeddings", action="store_true")
 
     return parser
 
@@ -113,21 +106,16 @@ if __name__ == "__main__":
     args = get_args()
     args.retro_tasks = args.retro_tasks.split(",")
 
-    # _print_args(args)
     os.makedirs(args.retro_workdir, exist_ok = True)
     save_args(args)
 
+
     # >>>
-    # from megatron import mpu
-    # print_seq("d %d, t %d, p %d." % (
-    #     mpu.get_data_parallel_rank(),
-    #     mpu.get_tensor_model_parallel_rank(),
-    #     mpu.get_pipeline_model_parallel_rank(),
-    # ))
+    # tensor = torch.rand((4, 3), device = torch.cuda.current_device())
+    # val0 = tensor.view(-1)[0].item()
     # pax(0, {
-    #     "args" : args,
-    #     "rank" : torch.distributed.get_rank(),
-    #     "world_size" : torch.distributed.get_world_size(),
+    #     "tensor" : tensor,
+    #     "val0" : val0,
     # })
     # <<<
 

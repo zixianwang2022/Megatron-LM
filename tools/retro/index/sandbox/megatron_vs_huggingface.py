@@ -112,13 +112,23 @@ def get_valid_data(model_key):
     with h5py.File(path, "r") as f:
         return np.copy(f["data"])
 
+def get_sampled_valid_idxs():
+    # step = len(full_data) // 10000
+    step = n_chunks_valid // 10000
+    valid_idxs = list(range(0, n_chunks_valid, step))
+    # pax({
+    #     "n_chunks_valid" : n_chunks_valid,
+    #     "step" : step,
+    #     "valid_idxs" : "%d / %s" % (len(valid_idxs), str(valid_idxs)),
+    # })
+    return valid_idxs
+
 def get_sampled_valid_data(model_key):
     full_data = get_valid_data(model_key)
     # sampled_data = full_data[:10000]
-    step = len(full_data) // 10000
-    # sampled_data = np.ascontiguousarray(full_data[None:None:step])
-    valid_idxs = list(range(0, len(full_data), step))
+    valid_idxs = get_sampled_valid_idxs()
     sampled_data = np.stack([ full_data[i] for i in valid_idxs ])
+    # sampled_data = np.ascontiguousarray(sampled_data)
     pax({
         "sampled_data" : sampled_data,
         "full_data / shape" : str(full_data.shape),
@@ -408,31 +418,31 @@ def print_nbrs():
     text_chunk_dataset = GPTToTextDataset(gpt_chunk_dataset)
 
     nbr_map = get_nbr_map()
-    # n_valid = len(nbr_map["megatron"]["flat"])
-    valid_idxs, _ = get_sampled_valid_data("megatron")
+    valid_idxs = get_sampled_valid_idxs()
 
-    pax({
-        "gpt_chunk_dataset" : gpt_chunk_dataset,
-        "text_chunk_dataset" : text_chunk_dataset,
-        "nbr_map" : nbr_map,
-        # "n_valid" : n_valid,
-        "valid_idxs" : str(valid_idxs),
-    })
+    # pax({
+    #     "gpt_chunk_dataset" : gpt_chunk_dataset,
+    #     "text_chunk_dataset" : text_chunk_dataset,
+    #     "nbr_map" : nbr_map,
+    #     "valid_idxs" : "%d / %s" % (len(valid_idxs), str(valid_idxs)),
+    # })
 
     # ~~~~~~~~ acc map ~~~~~~~~
-    n_samples = 20
+    n_prints = 20
     n_nbrs = 2
 
-    # for sample_idx in range(1000000, 1000000 + n_samples):
-    for sample_idx in range(0, n_valid, n_valid // n_samples):
+    for print_idx in range(n_prints):
 
-        text = text_chunk_dataset[n_chunks_train + sample_idx]["text"] \
-            .replace("\n", "")
+        inner_valid_idx = print_idx * (len(valid_idxs) // n_prints)
+        valid_idx = valid_idxs[inner_valid_idx]
+        global_idx = n_chunks_train + valid_idx
+
+        text = text_chunk_dataset[global_idx]["text"].replace("\n", "")
 
         print()
         print("############################################################")
-        print("~~~~ TEXT [ sample %d of %d ] ~~~~" % (sample_idx, n_valid))
-        print(">> %s" % text)
+        print("~~~~ TEXT [ sample %d of %d ] ~~~~" % (print_idx, n_prints))
+        print(text) # ">> %s" % text)
 
         for model_key in nbr_map:
             # for nbr_key in nbr_map[model_key]:
@@ -441,10 +451,10 @@ def print_nbrs():
                 print("~~~~ %s / %s ~~~~" % (model_key.upper(), nbr_key.upper()))
                 for nbr_iter_idx in range(n_nbrs):
 
-                    nbr_idx = nbr_map[model_key][nbr_key][sample_idx, nbr_iter_idx].item()
+                    nbr_idx = nbr_map[model_key][nbr_key][inner_valid_idx, nbr_iter_idx].item()
                     nbr_text = text_chunk_dataset[nbr_idx]["text"].replace("\n", " ")
 
-                    print(">> [sample %d] %s" % (nbr_idx, nbr_text))
+                    print("[sample %d] %s" % (nbr_idx, nbr_text))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # def compare_bert_models():

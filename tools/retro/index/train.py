@@ -23,7 +23,7 @@ from megatron import get_args, print_rank_0
 from tools.bert_embedding import DiskDataParallelBertEmbedder
 from tools.retro.db.utils import (
     get_indexed_dataset_infos,
-    get_sampled_merged_dataset,
+    get_merged_sampled_dataset,
 )
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
@@ -36,7 +36,7 @@ from .utils import (
     get_training_data_block_dir,
     get_training_data_block_paths,
     get_training_data_merged,
-    get_training_data_merged_path,
+    # get_training_data_merged_path,
 )
 
 # >>>
@@ -55,10 +55,12 @@ def get_empty_index_path():
 
 def embed_db():
 
-    # Skip embedding if merged data exists.
-    merged_data_path = get_training_data_merged_path()
-    if os.path.exists(merged_data_path):
-        return
+    # >>>
+    # # Skip embedding if merged data exists.
+    # merged_data_path = get_training_data_merged_path()
+    # if os.path.exists(merged_data_path):
+    #     return
+    # <<<
 
     # Embed only if index not already trained.
     empty_index_path = get_empty_index_path()
@@ -68,14 +70,12 @@ def embed_db():
     args = get_args()
 
     # Get db dataset.
-    gpt_dataset = get_sampled_merged_dataset()
+    gpt_dataset = get_merged_sampled_dataset()
     text_dataset = GPTToTextDataset(gpt_dataset)
 
     # Embed dataset.
     embedder = DiskDataParallelBertEmbedder(args.retro_bert_max_chunk_length,
-                                            args.retro_block_size,
-                                            args.retro_dump_huggingface_embeddings)
-    # embedder.embed_text_dataset("index", get_embedding_dir(EMBED_KEY),
+                                            args.retro_block_size)
     embedder.embed_text_dataset("index", get_training_data_block_dir(),
                                 text_dataset)
 
@@ -178,59 +178,59 @@ def remove_embeddings():
 
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-def time_training():
+# def time_training():
 
-    # index_str = "OPQ64_128,IVF4194304_HNSW32,PQ64"
-    index_str = "OPQ32_256,IVF32768_HNSW32,PQ32"
-    args = get_args()
+#     # index_str = "OPQ64_128,IVF4194304_HNSW32,PQ64"
+#     index_str = "OPQ32_256,IVF32768_HNSW32,PQ32"
+#     args = get_args()
 
-    assert torch.distributed.get_rank() == 0
+#     assert torch.distributed.get_rank() == 0
 
-    # Set num threads (torch.distributed reset it to 1).
-    faiss.omp_set_num_threads(64)
+#     # Set num threads (torch.distributed reset it to 1).
+#     faiss.omp_set_num_threads(64)
 
-    empty_index_path = self.get_empty_index_path(dir_path)
+#     empty_index_path = self.get_empty_index_path(dir_path)
 
-    # Index already exists? -> return.
-    if os.path.isfile(empty_index_path):
-        return
+#     # Index already exists? -> return.
+#     if os.path.isfile(empty_index_path):
+#         return
 
-    # >>>
-    # # Load data.
-    # timer.push("load-data")
-    # inp = load_data(input_data_paths, timer)["data"]
-    # timer.pop()
-    # <<<
+#     # >>>
+#     # # Load data.
+#     # timer.push("load-data")
+#     # inp = load_data(input_data_paths, timer)["data"]
+#     # timer.pop()
+#     # <<<
 
-    # print_seq("n_threads = %s." % faiss.omp_get_max_threads())
-    inp = input_data_loader()
-    # pax(0, {"inp": inp})
+#     # print_seq("n_threads = %s." % faiss.omp_get_max_threads())
+#     inp = input_data_loader()
+#     # pax(0, {"inp": inp})
 
-    # Init index.
-    timer.push("init")
-    index_str = get_index_str()
-    index = faiss.index_factory(args.retro_nfeats, index_str)
-    timer.pop()
+#     # Init index.
+#     timer.push("init")
+#     index_str = get_index_str()
+#     index = faiss.index_factory(args.retro_nfeats, index_str)
+#     timer.pop()
 
-    # Move to GPU.
-    index_ivf = faiss.extract_index_ivf(index)
-    clustering_index = \
-        faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-    index_ivf.clustering_index = clustering_index
-    self.c_verbose(index, True)
-    self.c_verbose(index_ivf, True)
-    self.c_verbose(index_ivf.quantizer, True)
-    self.c_verbose(index_ivf.clustering_index, True)
+#     # Move to GPU.
+#     index_ivf = faiss.extract_index_ivf(index)
+#     clustering_index = \
+#         faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+#     index_ivf.clustering_index = clustering_index
+#     self.c_verbose(index, True)
+#     self.c_verbose(index_ivf, True)
+#     self.c_verbose(index_ivf.quantizer, True)
+#     self.c_verbose(index_ivf.clustering_index, True)
 
-    # Train index.
-    timer.push("train")
-    index.train(inp)
-    timer.pop()
+#     # Train index.
+#     timer.push("train")
+#     index.train(inp)
+#     timer.pop()
 
-    # Save index.
-    timer.push("save")
-    faiss.write_index(index, empty_index_path)
-    timer.pop()
+#     # Save index.
+#     timer.push("save")
+#     faiss.write_index(index, empty_index_path)
+#     timer.pop()
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 def train_index(timer):
@@ -239,6 +239,6 @@ def train_index(timer):
     # raise Exception("hi.")
     # <<<
     embed_db()
-    # merge_embeddings()
+    # merge_embeddings() # ... deprecated [ non-essential ]
     train_on_embeddings(timer)
     # remove_embeddings()

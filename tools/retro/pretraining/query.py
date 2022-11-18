@@ -15,17 +15,18 @@
 
 from collections import defaultdict
 import faiss
-from faiss import ParameterSpace
+# from faiss import ParameterSpace
 import h5py
 import numpy as np
 import os
 import torch
+from tqdm import tqdm
 
 from megatron import get_args, mpu, print_rank_0
 from tools.bert_embedding import BertEmbedder
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
-from tools.retro.db.utils import get_full_merged_dataset \
-    as get_db_full_merged_dataset
+from tools.retro.db.utils import get_merged_train_dataset \
+    as get_db_merged_train_dataset
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.indexes.faiss_par_add import get_dataset_block_ranges
 from tools.retro.index.utils import get_index_dir
@@ -55,15 +56,19 @@ def get_index(chunk_db_dataset):
     index = faiss.read_index(added_index_path)
 
     # Search parameters.
-    if 0:
-        ParameterSpace().set_index_parameter(index, "efSearch", args.retro_ef_search)
-        ParameterSpace().set_index_parameter(index, "nprobe", args.retro_nprobe)
+    # if 1:
+    faiss.ParameterSpace().set_index_parameter(index, "efSearch",
+                                               args.retro_ef_search)
+    faiss.ParameterSpace().set_index_parameter(index, "nprobe",
+                                               args.retro_nprobe)
 
     # pax(0, {
     #     "index_wrapper" : index_wrapper,
     #     "index" : index,
     #     "index_dir" : index_dir,
     #     "added_index_path" : added_index_path,
+    #     "ef search" : args.retro_ef_search,
+    #     "nprobe" : args.retro_nprobe,
     # })
 
     return index
@@ -133,12 +138,11 @@ def get_banned_chunk_map(chunk_db):
     # Map docs to chunks.
     print_rank_0("build doc-chunk-id-map.")
     banned_chunk_map = defaultdict(set)
-    for chunk_id, (dataset_id, doc_id) in enumerate(chunk_db[:, :2]):
-        if chunk_id % 10000000 == 0:
-            print_rank_0("mapping banned chunks, %.0f%%." %
-                         (100 * chunk_id / len(chunk_db)))
-        if dataset_id == 0 and doc_id == 836728:
-            raise Exception("hi.")
+    # for chunk_id, (dataset_id, doc_id) in enumerate(chunk_db[:, :2]):
+    #     if chunk_id % 10000000 == 0:
+    #         print_rank_0("mapping banned chunks, %.0f%%." %
+    #                      (100 * chunk_id / len(chunk_db)))
+    for chunk_id, (dataset_id, doc_id) in enumerate(tqdm(chunk_db[:, :2], "map banned chunks")):
         banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
 
     # >>>
@@ -170,14 +174,24 @@ def embed_block(gpt_dataset, block, embedder):
 
 def query_block_neighbors(index, banned_chunk_map, dataset, block, embedder):
 
+    # raise Exception("loading 'added' index?")
+
     args = get_args()
 
     # Embed block.
     embeddings = embed_block(dataset, block, embedder)
 
     # Query neighbor ids.
+    # >>>
+    from tools.retro.utils import Timer
+    timer = Timer()
+    timer.push("search")
+    # <<<
     print_rank_0("search.")
     _, query_nbr_ids = index.search(embeddings, args.retro_nnbrs_query)
+    # >>>
+    timer.pop()
+    # <<<
 
     # Banned neighbor ids.
     print_rank_0("get banned neighbor ids.")
@@ -267,7 +281,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
 
     # missing_nbr_blocks = get_missing_neighbor_blocks(embed_dir, nbr_dir)
     def validate(f):
-        assert f["neighbors"].shape[1] == args.retro_nnbrs_query
+        assert f["neighbors"].shape[1] == args.retro_nnbrs_target
     n_missing_blocks, missing_nbr_blocks = get_missing_blocks_by_rank(
         nbr_dir,
         len(dataset),
@@ -275,6 +289,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
         validate = validate,
     )
     # pax(0, {
+    #     "dataset / len" : len(dataset),
     #     "nbr_dir" : nbr_dir,
     #     "n_missing_blocks" : n_missing_blocks,
     #     "missing_nbr_blocks / sample" : missing_nbr_blocks[:10],
@@ -312,16 +327,58 @@ def query_pretraining_neighbors(timer):
     # if torch.distributed.get_rank() != 0:
     #     return
     # faiss.omp_set_num_threads(64)
-    faiss.omp_set_num_threads(8)
+    # faiss.omp_set_num_threads(8)
+
+    # Num threads.
+    world_size = torch.distributed.get_world_size()
+    if world_size == 1:
+        n_threads = 128
+    elif world_size <= 2:
+        n_threads = 64
+    elif world_size <= 4:
+        n_threads = 32
+    elif world_size <= 8:
+        n_threads = 16
+    else:
+        n_threads = 8
+
+    # >>>
+    # faiss.omp_set_num_threads(n_threads)
+    faiss.omp_set_num_threads(16) # 32) # 4 procs/node
+    # faiss.omp_set_num_threads(128) # 1 proc/node
     # <<<
+
+    # pax(0, {
+    #     "world_size" : world_size,
+    #     "n_threads" : n_threads,
+    #     "max threads" : faiss.omp_get_max_threads(),
+    # })
+    # <<<
+
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # print_rank_0(" > get dataset map.")
+    # chunk_dataset_map = get_gpt_chunk_dataset_map()
+    # pax(0, {
+    #     k : {
+    #         "dataset" : d["data"],
+    #         "chunk len" : len(d["data"]),
+    #         "seq len" : len(d["data"].seq_dataset),
+    #     }
+    #     for k, d in chunk_dataset_map.items()
+    # })
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")
-    chunk_db_dataset = get_db_full_merged_dataset()
+    chunk_db_dataset = get_db_merged_train_dataset()
+    # pax(0, {"chunk_db_dataset": chunk_db_dataset})
 
     # Load index, banned chunk ids, datasets.
     print_rank_0(" > get index.")
+    # >>>
     index = get_index(chunk_db_dataset)
+    # index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/empty.faissindex")
+    # <<<
     # pax(0, {"index": index})
 
     print_rank_0(" > get banned doc-chunk id map.")
@@ -329,6 +386,7 @@ def query_pretraining_neighbors(timer):
 
     print_rank_0(" > get dataset map.")
     chunk_dataset_map = get_gpt_chunk_dataset_map()
+    # pax(0, {"chunk_dataset_map": chunk_dataset_map})
 
     # Bert embedder.
     embedder = BertEmbedder(args.retro_bert_max_chunk_length)
@@ -338,10 +396,6 @@ def query_pretraining_neighbors(timer):
     for prefix, info in chunk_dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
-        # query_dataset_neighbors(index, banned_chunk_map,
-        #                         prefix,
-        #                         info["embed_dir"], info["nbr_dir"],
-        #                         info["data"])
         query_dataset_neighbors(index, banned_chunk_map,
                                 prefix, info["data"], info["nbr_dir"],
                                 embedder)

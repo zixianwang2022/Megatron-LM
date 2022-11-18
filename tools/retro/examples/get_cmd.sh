@@ -14,12 +14,13 @@ NPROCS=1
 # >>>
 
 PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-preprocess-play
+# CORPUS="play"
+CORPUS="wiki"
+# CORPUS="corpus"
 
 # Data blend.
 # . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
-# . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_play.sh
-# . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_corpus.sh
-. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_wiki.sh
+. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_${CORPUS}.sh
 DATA_PATH=${DATA_BLEND}
 
 GPT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
@@ -31,9 +32,7 @@ BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
 BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 
 # >>>>>>>>>>>>>>>>>>>>>>>
-# RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/play
-# RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORPUS}
 
 # RETRO_PROFILE_STAGE_STOP="preprocess"
 # RETRO_PROFILE_STAGE_STOP="cluster"
@@ -51,7 +50,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
 # RETRO_TASKS="index-verify-nbrs"
 # RETRO_TASKS="pretraining-build-nbrs"
 # [x] ... RETRO_TASKS="pretraining-embed-chunks"
-# RETRO_TASKS="pretraining-query-nbrs"
+RETRO_TASKS="pretraining-query-nbrs"
 # RETRO_TASKS="pretraining-test-retro-dataset"
 # RETRO_TASKS="pretraining-plot-acc"
 # RETRO_TASKS="pretraining-verify-nbrs"
@@ -61,21 +60,29 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
 # RETRO_TASKS="misc-copy-corpus-dirty"
 # RETRO_TASKS="misc-nan-stats"
 # RETRO_TASKS="misc-bert-nan-analysis"
-RETRO_TASKS="misc-bert-comparison"
+# RETRO_TASKS="misc-bert-comparison"
 # RETRO_TASKS="build" # ... the goal.
 
 # RETRO_INDEX_TY=faiss-base
 RETRO_INDEX_TY=faiss-par-add
 # RETRO_INDEX_TY=faiss-decomp
 
-RETRO_NCLUSTERS=4194304
-# RETRO_NCLUSTERS=32768 # for 169320 training samples
-RETRO_HNSW_M=32
-RETRO_PQ_M=32
-RETRO_IVF_DIM=256
+# >>>
+# RETRO_NCLUSTERS=4194304
+# # RETRO_NCLUSTERS=32768 # for 169320 training samples
+# RETRO_HNSW_M=32
+# RETRO_PQ_M=32
+# RETRO_IVF_DIM=256
+# +++
+RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
+TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=1 LR_WARMUP_SAMPLES=1
+# +++
+# RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
+# TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
+# <<<
 
-RETRO_EF_SEARCH=256
-RETRO_NPROBE=65536
+RETRO_EF_SEARCH=32 # 256
+RETRO_NPROBE=4096 # 65536
 
 # RETRO_PRECOMPUTE_BERT_LENGTHS
 RETRO_GPT_SEQ_LENGTH=2048
@@ -88,21 +95,11 @@ RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
 RETRO_NNBRS_QUERY=2000
 RETRO_NNBRS_TARGET=200
 RETRO_NNBRS_PRETRAINING=2
-# RETRO_EMBEDDER=megatron
-# RETRO_EMBEDDER=huggingface
-# RETRO_DUMP_HUGGINGFACE_EMBEDDINGS
 
-SEED=1001
+SEED=1234 # default
+# SEED=1001
 DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
-# MICRO_BATCH_SIZE=1024 # oom
-# MICRO_BATCH_SIZE=512
-# MICRO_BATCH_SIZE=256
 MICRO_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
-# MICRO_BATCH_SIZE=64
-# MICRO_BATCH_SIZE=32
-# MICRO_BATCH_SIZE=16 # good
-# MICRO_BATCH_SIZE=8
-# MICRO_BATCH_SIZE=4
 
 MEGATRON_ARGS=" \
     --seed ${SEED} \
@@ -116,7 +113,7 @@ MEGATRON_ARGS=" \
     --micro-batch-size ${MICRO_BATCH_SIZE} \
     --seq-length 512 \
     --max-position-embeddings 512 \
-    --train-samples 192000000 \
+    --train-samples ${TRAIN_SAMPLES} \
     --load ${BERT_LOAD_PATH} \
     --data-path ${DATA_PATH} \
     --vocab-file ${BERT_VOCAB_FILE} \
@@ -126,8 +123,8 @@ MEGATRON_ARGS=" \
     --lr 0.0001 \
     --lr-decay-style linear \
     --min-lr 1.0e-5 \
-    --lr-decay-samples 166400000 \
-    --lr-warmup-samples 162761 \
+    --lr-decay-samples ${LR_DECAY_SAMPLES} \
+    --lr-warmup-samples ${LR_WARMUP_SAMPLES} \
     --weight-decay 1e-2 \
     --clip-grad 1.0 \
     --log-interval 100 \
@@ -139,6 +136,11 @@ MEGATRON_ARGS=" \
 
 # --retro-precompute-bert-lengths \
 # --retro-embedder ${RETRO_EMBEDDER} \
+# --retro-dump-huggingface-embeddings \
+# --retro-nclusters ${RETRO_NCLUSTERS} \
+# --retro-ivf-dim ${RETRO_IVF_DIM} \
+# --retro-hnsw-m ${RETRO_HNSW_M} \
+# --retro-pq-m ${RETRO_PQ_M} \
 RETRO_ARGS=" \
     --output-bert-embeddings \
 
@@ -153,10 +155,7 @@ RETRO_ARGS=" \
 
     --retro-tasks ${RETRO_TASKS} \
     --retro-index-ty ${RETRO_INDEX_TY} \
-    --retro-nclusters ${RETRO_NCLUSTERS} \
-    --retro-ivf-dim ${RETRO_IVF_DIM} \
-    --retro-hnsw-m ${RETRO_HNSW_M} \
-    --retro-pq-m ${RETRO_PQ_M} \
+    --retro-index-str ${RETRO_INDEX_STR} \
     --retro-ef-search ${RETRO_EF_SEARCH} \
     --retro-nprobe ${RETRO_NPROBE} \
 
@@ -167,7 +166,6 @@ RETRO_ARGS=" \
     --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \
     --retro-nnbrs-target ${RETRO_NNBRS_TARGET} \
     --retro-nnbrs-pretraining ${RETRO_NNBRS_PRETRAINING} \
-    --retro-dump-huggingface-embeddings \
 "
 
 RETRO_PREPROCESS_CMD=" \

@@ -41,6 +41,7 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     parser = _add_vision_args(parser)
     parser = _add_logging_args(parser)
     parser = _add_inference_args(parser)
+    parser = _add_retro_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:
@@ -365,7 +366,29 @@ def _add_inference_args(parser):
 
     return parser
 
-    
+
+# >>>
+def _add_retro_args(parser):
+    group = parser.add_argument_group(title='retro')
+
+    group.add_argument('--retro-add-retriever',
+                       action='store_true', default=False)
+    group.add_argument('--retro-cyclic-train-iters', type=int, default=None)
+    group.add_argument('--retro-eval-ppl', action='store_true', default=False)
+    group.add_argument('--retro-debug', action='store_true', default=False)
+    group.add_argument('--retro-encoder-layers', type=int, default=2) # 12)
+    group.add_argument('--retro-encoder-hidden-dropout',
+                       type=float, default=0.1)
+    group.add_argument('--retro-encoder-attention-dropout',
+                       type=float, default=0.1)
+    group.add_argument("--retro-chunk-length", type=int, default=64)
+    group.add_argument("--retro-retrieved-length", type=int, default=128)
+    group.add_argument("--retro-nnbrs", type=int, default=2)
+
+    return parser
+# <<<
+
+
 def _add_network_size_args(parser):
     group = parser.add_argument_group(title='network size')
 

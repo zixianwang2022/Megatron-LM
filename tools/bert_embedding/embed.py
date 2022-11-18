@@ -104,7 +104,10 @@ def forward_step(data_iterator, model):
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
 
-    raise Exception("verify pooled output.")
+    # >>>
+    # pax(0, {"output_tensor": output_tensor})
+    # raise Exception("verify pooled output.")
+    # <<<
 
     return output_tensor, partial(loss_func, loss_mask, sentence_order,
                                   seq_lengths)
@@ -249,7 +252,7 @@ def embed_data_loader(models, data_loader, n_samples_world):
 
 class BertEmbedder:
 
-    def __init__(self, max_bert_seq_length, dump_huggingface_embeddings):
+    def __init__(self, max_bert_seq_length):
 
         args = get_args()
 
@@ -264,17 +267,11 @@ class BertEmbedder:
 
         # >>>
         from .huggingface import HuggingfaceEmbedder
-
-        # self.dump_huggingface_embeddings = dump_huggingface_embeddings
-        # self.huggingface_embedder = HuggingfaceEmbedder(
-        #     max_bert_seq_length,
-        #     args.micro_batch_size,
-        # ) if dump_huggingface_embeddings else None
-        self.huggingface_embedder = None
-        # self.huggingface_embedder = HuggingfaceEmbedder(
-        #     max_bert_seq_length,
-        #     args.micro_batch_size,
-        # )
+        # self.huggingface_embedder = None
+        self.huggingface_embedder = HuggingfaceEmbedder(
+            max_bert_seq_length,
+            args.micro_batch_size,
+        )
         # pax(0, {"huggingface_embedder": self.huggingface_embedder})
         # <<<
 
@@ -286,6 +283,7 @@ class BertEmbedder:
         # >>>
         if self.huggingface_embedder:
             return self.huggingface_embedder.embed_text_dataset(text_dataset)
+        raise Exception("using huggingface.")
         # <<<
         embeddings = embed_data_loader(self.models, data_loader, n_samples_world)
         return embeddings
@@ -293,10 +291,8 @@ class BertEmbedder:
 
 class DiskDataParallelBertEmbedder:
 
-    def __init__(self, max_bert_seq_length, block_size,
-                 dump_huggingface_embeddings):
-        self.embedder = BertEmbedder(max_bert_seq_length,
-                                     dump_huggingface_embeddings)
+    def __init__(self, max_bert_seq_length, block_size):
+        self.embedder = BertEmbedder(max_bert_seq_length)
         self.block_size = block_size
 
 

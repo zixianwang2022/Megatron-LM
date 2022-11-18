@@ -54,23 +54,19 @@ def save_indexed_dataset_infos(indexed_dataset_infos):
 
 
 def get_indexed_dataset_infos():
+
+    # Load json.
     path = get_indexed_dataset_infos_path()
     with open(path) as f:
-        # return json.load(f)
         infos = json.load(f)
 
+    # Add indexed datasets.
     for info in infos:
         info["dataset"] = make_indexed_dataset(info["prefix"], "mmap", True)
 
     return infos
 
 
-# def get_individual_db_info(name):
-#     base_dir = os.path.join(get_base_db_workdir(), name)
-#     return {
-#         "db_dir" : os.path.join(base_dir, "db"),
-#         "embed_dir" : os.path.join(base_dir, "embed"),
-#     }
 def get_individual_db_info(name):
     return {
         "db_dir" : os.path.join(get_base_db_workdir(), "individual", name, "db"),
@@ -78,7 +74,6 @@ def get_individual_db_info(name):
 
 
 def get_individual_db(ds_id, ds_info):
-    # pax(0, {"ds_id": ds_id, "ds_info": ds_info})
     db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
     db = np.zeros((ds_info["n_chunks_valid"], 5), dtype = "i8")
     db[:, 0] = ds_id
@@ -92,54 +87,24 @@ def get_individual_db(ds_id, ds_info):
 
     assert start_idx == ds_info["n_chunks_valid"]
 
-    # pax(0, {"db_paths": db_paths, "ds_info": ds_info, "db": db})
-
     return db
 
 
-# def get_db_info(key):
-#     workdir = os.path.join(get_base_db_workdir(), key)
-#     db_path = os.path.join(workdir, "db.hdf5")
-#     embed_dir = os.path.join(workdir, "embed")
-#     embed_paths = sorted(glob.glob(embed_dir + "/*.hdf5")) \
-#         if os.path.isdir(embed_dir) else []
-#     return {
-#         "db_path" : db_path,
-#         "embed_dir" : embed_dir,
-#         "embed_paths" : embed_paths,
-#     }
-
-
-# def get_db_info_map():
-#     return {key:get_db_info(key) for key in ("full", "sampled")}
-# def get_blended_db_path_map():
 def get_merged_db_path_map():
     base_dir = get_base_db_workdir()
     return {
-        "full" : os.path.join(base_dir, "merged", "full.hdf5"),
+        # "full" : os.path.join(base_dir, "merged", "full.hdf5"),
+        "train" : os.path.join(base_dir, "merged", "train.hdf5"),
         "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
     }
 
 
-# def get_sampled_blended_chunk_dataset(indexed_dataset_infos):
-# def get_sampled_blended_dataset(indexed_dataset_infos = None):
-# def get_sampled_merged_dataset(indexed_dataset_infos = None):
 def get_merged_dataset(db_type, indexed_dataset_infos = None):
 
     args = get_args()
 
     if not indexed_dataset_infos:
         indexed_dataset_infos = get_indexed_dataset_infos()
-
-    # pax(0, {"indexed_dataset_infos": indexed_dataset_infos})
-
-    # # Build indexed datasets.
-    # indexed_datasets = []
-    # for ds_idx, ds_info in enumerate(indexed_dataset_infos):
-    #     print_rank_0("indexed dataset %d / %d ... '%s'." %
-    #           (ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-    #     indexed_datasets.append(make_indexed_dataset(ds_info["prefix"],
-    #                                                  "mmap",True))
 
     # Load chunk db.
     db_path = get_merged_db_path_map()[db_type]
@@ -152,27 +117,20 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     chunk_dataset = GPTChunkDataset(indexed_datasets, chunk_db,
                                     args.retro_gpt_chunk_length)
 
-    # pax(0, {
-    #     "indexed_datasets" : indexed_datasets,
-    #     "db_path" : db_path,
-    #     "chunk_db" : chunk_db,
-    #     "chunk_dataset" : chunk_dataset,
-    #     "chunk_dataset / len" : len(chunk_dataset),
-    #     "chunk_dataset / 0" : chunk_dataset[0],
-    # })
-
     return chunk_dataset
 
 
-def get_full_merged_dataset(indexed_dataset_infos = None, force = False):
-    if not force:
-        raise Exception("only load 'n_chunks_train' chunks.")
-    return get_merged_dataset("full", indexed_dataset_infos)
+# def get_full_merged_dataset(indexed_dataset_infos = None, force = False):
+#     if not force:
+#         raise Exception("only load 'n_chunks_train' chunks.")
+#     return get_merged_dataset("full", indexed_dataset_infos)
 # def get_merged_training_dataset(indexed_dataset_infos = None):
-#     return get_merged_dataset("train", indexed_dataset_infos)
+def get_merged_train_dataset(indexed_dataset_infos = None):
+    return get_merged_dataset("train", indexed_dataset_infos)
 
 
-def get_sampled_merged_dataset(indexed_dataset_infos = None):
+# def get_sampled_merged_dataset(indexed_dataset_infos = None):
+def get_merged_sampled_dataset(indexed_dataset_infos = None):
     return get_merged_dataset("sampled", indexed_dataset_infos)
 
 

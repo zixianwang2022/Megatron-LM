@@ -358,7 +358,10 @@ def merge_dbs(indexed_dataset_infos, db_type):
 
     # Count chunks.
     if db_type == "full":
+        raise Exception("deprecated; use 'train' or 'sampled'.")
         n_chunks_key = "n_chunks_valid"
+    elif db_type == "train":
+        n_chunks_key = "n_chunks_train"
     elif db_type == "sampled":
         n_chunks_key = "n_chunks_sampled"
     else:
@@ -442,7 +445,8 @@ def preprocess_db(timer):
     update_chunk_counts(indexed_dataset_infos)
 
     # Merge dbs.
-    merge_dbs(indexed_dataset_infos, "full")
+    # merge_dbs(indexed_dataset_infos, "full")
+    merge_dbs(indexed_dataset_infos, "train")
     merge_dbs(indexed_dataset_infos, "sampled")
 
     # Save (fully annotated) indexed dataset infos.

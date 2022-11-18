@@ -832,9 +832,19 @@ class ParallelTransformer(MegatronModule):
                  self_attn_mask_type=AttnMaskType.padding,
                  post_layer_norm=True, 
                  pre_process=True, post_process=True,
-                 drop_path_rate=0.0):
+                 drop_path_rate=0.0,
+                 # >>>
+                 retriever=None, # note: retriever here only to match signature of ParallelRetroEncoderTransformer
+                 # <<<
+    ):
         super(ParallelTransformer, self).__init__()
         args = get_args()
+
+        # >>>
+        assert retriever is None, \
+            "retriever transformer code currently contained within " \
+            "retro_transformer.py."
+        # <<<
 
         self.layer_type = layer_type
         self.model_type = args.model_type
