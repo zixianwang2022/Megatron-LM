@@ -23,6 +23,10 @@ import torch
 from megatron import print_rank_0
 from megatron import mpu
 
+# >>>
+from lutil import pax
+# <<<
+
 
 class BlendableDataset(torch.utils.data.Dataset):
 
@@ -66,6 +70,11 @@ class BlendableDataset(torch.utils.data.Dataset):
         dataset_idx = self.dataset_index[idx]
         sample_idx = self.dataset_sample_index[idx]
         # >>>
+        # pax(0, {
+        #     "dataset_idx" : dataset_idx,
+        #     "sample_idx" : sample_idx,
+        #     "data" : self.datasets[dataset_idx][sample_idx],
+        # })
         # return self.datasets[dataset_idx][sample_idx]
         return {
             "dataset_idx" : dataset_idx,

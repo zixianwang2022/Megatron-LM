@@ -131,7 +131,8 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         train_valid_test_num_samples=train_val_test_num_samples,
         seq_length=args.retro_gpt_seq_length,
         seed=args.seed,
-        skip_warmup=(not args.mmap_warmup))
+        skip_warmup=(not args.mmap_warmup),
+        return_doc_ids=TrueTrueTrue)
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
     # >>>

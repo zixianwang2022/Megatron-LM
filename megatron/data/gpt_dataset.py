@@ -34,7 +34,8 @@ from lutil import pax, print_seq
 
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
-                                    seq_length, seed, skip_warmup):
+                                    seq_length, seed, skip_warmup,
+                                    return_doc_ids):
     """Build train, valid, and test datasets."""
 
     # >>>
@@ -65,7 +66,8 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             # prefixes[i], i, data_impl, splits_string,
             # <<<
             datasets_train_valid_test_num_samples[i],
-            seq_length, seed, skip_warmup)
+            seq_length, seed, skip_warmup,
+            return_doc_ids)
         if train_ds:
             train_datasets.append(train_ds)
         if valid_ds:
@@ -92,7 +94,8 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 #                                      data_impl, splits_string,
 def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      train_valid_test_num_samples,
-                                     seq_length, seed, skip_warmup):
+                                     seq_length, seed, skip_warmup,
+                                     return_doc_ids):
     """Build train, valid, and test datasets."""
 
     # Indexed dataset.
@@ -125,7 +128,8 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             dataset = GPTDataset(name, data_prefix,
                                  documents, indexed_dataset,
                                  train_valid_test_num_samples[index],
-                                 seq_length, seed)
+                                 seq_length, seed,
+            return_doc_ids)
             # pax(0, {
             #     "n_samples" : train_valid_test_num_samples[index],
             #     "dataset" : len(dataset),
@@ -168,10 +172,12 @@ def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
 class GPTDataset(torch.utils.data.Dataset):
 
     def __init__(self, name, data_prefix, documents, indexed_dataset,
-                 num_samples, seq_length, seed):
+                 num_samples, seq_length, seed,
+                 return_doc_ids):
 
         self.name = name
         self.indexed_dataset = indexed_dataset
+        self.return_doc_ids = return_doc_ids
 
         # Checks
         assert np.min(documents) >= 0
@@ -228,9 +234,12 @@ class GPTDataset(torch.utils.data.Dataset):
             sample = np.concatenate(sample_list)
 
         # >>>
-        # return {'text': np.array(sample, dtype=np.int64)}
-        return {'text': np.array(sample, dtype=np.int64),
-                'doc_ids': np.array(doc_ids, dtype=np.int64)}
+        # pax(0, {"sample": sample, "doc_ids": np.array(doc_ids, dtype="i8").reshape((len(doc_ids), 1))})
+        if self.return_doc_ids: # for retro preprocessing
+            return {'text': np.array(sample, dtype=np.int64),
+                    'doc_ids': np.array(doc_ids, dtype=np.int64)}
+        else:
+            return {'text': np.array(sample, dtype=np.int64)}
         # <<<
 
 
