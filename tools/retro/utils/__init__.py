@@ -17,7 +17,7 @@ import os
 import torch
 import types
 
-from megatron import get_args
+from megatron import get_retro_args
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
@@ -61,9 +61,9 @@ def get_args_path(workdir):
 
 
 def get_num_chunks_per_seq():
-    args = get_args()
-    seq_length = args.retro_args.retro_gpt_seq_length
-    chunk_length = args.retro_args.retro_gpt_chunk_length
+    args = get_retro_args()
+    seq_length = args.retro_gpt_seq_length
+    chunk_length = args.retro_gpt_chunk_length
     assert seq_length % chunk_length == 0
     return seq_length // chunk_length
 # def get_num_chunks_per_seq():
@@ -73,7 +73,7 @@ def get_num_chunks_per_seq():
 
 
 def get_gpt_tokenizer():
-    args = get_args()
+    args = get_retro_args()
     return _GPT2BPETokenizer(
         vocab_file = args.retro_gpt_vocab_file,
         merge_file = args.retro_gpt_merge_file,
@@ -81,7 +81,7 @@ def get_gpt_tokenizer():
 
 
 def get_bert_tokenizer():
-    args = get_args()
+    args = get_retro_args()
     return _BertWordPieceTokenizer(
         vocab_file = args.retro_bert_vocab_file,
         lower_case = True,

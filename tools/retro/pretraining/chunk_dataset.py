@@ -16,7 +16,7 @@
 import os
 import torch
 
-from megatron import get_args, print_rank_0
+from megatron import get_retro_args, print_rank_0
 from megatron.data.gpt_dataset import build_train_valid_test_datasets
 from megatron.training import (
     build_train_valid_test_data_loaders,
@@ -96,7 +96,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
 def verify_indexed_dataset_order():
 
-    args = get_args()
+    args = get_retro_args()
 
     db_indexed_dataset_infos = get_indexed_dataset_infos()
     db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
@@ -123,7 +123,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     # pax(0, {"train_val_test_num_samples": train_val_test_num_samples})
     # <<<
 
-    args = get_args()
+    args = get_retro_args()
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
@@ -137,7 +137,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         data_impl=args.data_impl,
         splits_string=args.split,
         train_valid_test_num_samples=train_val_test_num_samples,
-        seq_length=args.retro_args.retro_gpt_seq_length,
+        seq_length=args.retro_gpt_seq_length,
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup),
         return_doc_ids=args.retro_return_doc_ids) # TrueTrueTrue)
@@ -156,7 +156,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
 def get_gpt_chunk_dataset_map():
 
-    args = get_args()
+    args = get_retro_args()
 
     # Update train iters.
     update_train_iters(args)
@@ -189,8 +189,7 @@ def get_gpt_chunk_dataset_map():
         key : {
             # "embed_dir" : os.path.join(workdir, key, "embed"),
             "nbr_dir" : os.path.join(workdir, key, "nbr"),
-            "data" : GPTChunkDataset(loader.dataset,
-                                     args.retro_args.retro_gpt_chunk_length),
+            "data" : GPTChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
         }
         for key, loader in data_loader_map.items() if loader
     }

@@ -76,6 +76,7 @@ class BlendableDataset(torch.utils.data.Dataset):
         #     "data" : self.datasets[dataset_idx][sample_idx],
         # })
         # return self.datasets[dataset_idx][sample_idx]
+        # raise Exception("dataset_idx == sample[dataset_idx] ??") # ... no exist.
         return {
             "dataset_idx" : dataset_idx,
             **self.datasets[dataset_idx][sample_idx],

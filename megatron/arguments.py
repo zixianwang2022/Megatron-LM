@@ -340,8 +340,10 @@ def validate_args(args, defaults={}):
         retro_args_path = get_retro_args_path(args.retro_workdir)
         if os.path.exists(retro_args_path):
             with open(retro_args_path) as f:
-                # args.retro_args = types.SimpleNamespace(**json.load(f))
-                set_retro_args(types.SimpleNamespace(**json.load(f)))
+                retro_args = types.SimpleNamespace(**json.load(f))
+                retro_args.retro_return_doc_ids = args.retro_return_doc_ids
+                # args.retro_args = retro_args
+                set_retro_args(retro_args)
     # <<<
 
     # >>>

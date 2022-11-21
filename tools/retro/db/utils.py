@@ -19,7 +19,7 @@ import json
 import numpy as np
 import os
 
-from megatron import get_args, print_rank_0
+from megatron import get_retro_args, print_rank_0
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
 from .dataset import GPTChunkDataset
@@ -30,7 +30,7 @@ from lutil import pax
 
 
 def get_base_db_workdir():
-    args = get_args()
+    args = get_retro_args()
     return os.path.join(args.retro_workdir, "db")
 
 
@@ -101,7 +101,7 @@ def get_merged_db_path_map():
 
 def get_merged_dataset(db_type, indexed_dataset_infos = None):
 
-    args = get_args()
+    args = get_retro_args()
 
     if not indexed_dataset_infos:
         indexed_dataset_infos = get_indexed_dataset_infos()
