@@ -995,23 +995,10 @@ class ParallelTransformer(MegatronModule):
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
-                # >>>
-                # retriever_output=None,
-                # retriever_attn_mask=None,
-                # <<<
                 inference_params=None):
         # hidden_states: [s, b, h]
 
-        # >>>
-        # assert retriever_output is None and retriever_attn_mask is None, \
-        #     "retriever transformer code currently contained within " \
-        #     "retro_transformer.py."
-        # <<<
-
         # Checks.
-        # >>>
-        # print_mem_stats("tf 0")
-        # <<<
         if inference_params:
             assert self.recompute_granularity is None, \
                 'inference does not work with activation checkpointing'
@@ -1035,27 +1022,17 @@ class ParallelTransformer(MegatronModule):
         #   likely redundant, since p2p_communication.py (likely originator)
         #   already creates viewless tensors. That said, make_viewless_tensor()
         #   is called here to be future-proof and corner-case-proof.
-        # >>>
-        # print_mem_stats("tf 1")
-        # <<<
         hidden_states = mpu.make_viewless_tensor(
             hidden_states,
             requires_grad=True,
             keep_graph=True,
         )
 
-        # >>>
-        # print_mem_stats("tf 2")
-        # <<<
         if self.sequence_parallel:
             rng_context = mpu.get_cuda_rng_tracker().fork()
         else:
             rng_context = nullcontext()
 
-        # >>>
-        # print_mem_stats("tf 3")
-        # return hidden_states
-        # <<<
         with rng_context:
             # Forward pass.
             if self.recompute_granularity == 'full':
@@ -1074,14 +1051,7 @@ class ParallelTransformer(MegatronModule):
                         inference_params=inference_params)
 
         # Final layer norm.
-        # >>>
-        # print_mem_stats("tf 4")
-        # return hidden_states
-        # <<<
         if self.post_process and self.post_layer_norm:
             hidden_states = self.final_layernorm(hidden_states)
 
-        # >>>
-        # print_mem_stats("tf 5")
-        # <<<
         return hidden_states

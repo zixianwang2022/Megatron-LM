@@ -14,20 +14,25 @@
 # limitations under the License.
 
 """Transformer."""
+from contextlib import nullcontext
 # import math
-
-# import numpy as np
+import numpy as np
 import torch
 # import torch.nn.functional as F
 
-from megatron import get_args, mpu # , print_rank_0
+from megatron import get_args, get_retro_args, mpu # , print_rank_0
 
 from .enums import AttnMaskType, ModelType, LayerType, AttnType
 # from .fused_bias_gelu import bias_gelu_impl
 from .fused_layer_norm import MixedFusedLayerNorm as LayerNorm
 # from .fused_softmax import FusedScaleMaskSoftmax
 from .module import MegatronModule
-from .transformer import ParallelAttention, ParallelMLP, ParallelTransformerLayer
+from .transformer import (
+    bias_dropout_add_fused_train,
+    ParallelAttention,
+    ParallelMLP,
+    ParallelTransformerLayer,
+)
 # .utils import attention_mask_func, openai_gelu, erf_gelu, init_method_normal
 
 """ We use the following notation throughout this file:
@@ -610,7 +615,8 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
         self.input_layernorm = LayerNorm(
             args.hidden_size,
             eps=args.layernorm_epsilon,
-            no_persist_layer_norm=args.no_persist_layer_norm)
+            no_persist_layer_norm=args.no_persist_layer_norm,
+            sequence_parallel=args.sequence_parallel)
 
         # Self attention.
         self.self_attention = ParallelAttention(
@@ -628,7 +634,8 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
         self.post_attention_layernorm = LayerNorm(
             args.hidden_size,
             eps=args.layernorm_epsilon,
-            no_persist_layer_norm=args.no_persist_layer_norm)
+            no_persist_layer_norm=args.no_persist_layer_norm,
+            sequence_parallel=args.sequence_parallel)
 
         self.inter_attention = ParallelAttention(
             init_method,
@@ -709,19 +716,24 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
             r: number of tokens per neighbors (neighbors + continuation)
         """
 
-        args = get_args()
+        # args = get_args()
+        retro_args = get_retro_args()
+        chunk_length = retro_args.retro_gpt_chunk_length
+        retrieved_length = retro_args.retro_gpt_retrieved_length
+        nnbrs = retro_args.retro_nnbrs_pretraining
+
         ns, bs, d = layernorm_output.shape
-        l = int(np.ceil(ns / args.retro_chunk_length))
-        first_ns = ns % args.retro_chunk_length
+        l = int(np.ceil(ns / chunk_length))
+        first_ns = ns % chunk_length
         # print(f"ns: {ns}, bs: {bs}, d: {d}:, first_ns: {first_ns}, l: {l}")
         if first_ns > 0:
             first_chunk, rest_chunk = layernorm_output[:first_ns], layernorm_output[first_ns:]
-            first_chunk = torch.nn.functional.pad(first_chunk, (0, 0, 0, 0, 0, args.retro_chunk_length - first_ns), 'constant', 0)
+            first_chunk = torch.nn.functional.pad(first_chunk, (0, 0, 0, 0, 0, chunk_length - first_ns), 'constant', 0)
             chunked_output = torch.cat((first_chunk, rest_chunk), dim=0)  # [l * m, bs, d]
         else:
             chunked_output = layernorm_output  # [l * m, bs, d]
-        chunked_output = chunked_output.reshape(l, args.retro_chunk_length, bs, d).permute(1, 2, 0, 3).reshape(
-            args.retro_chunk_length, bs * l, d).contiguous()
+        chunked_output = chunked_output.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3).reshape(
+            chunk_length, bs * l, d).contiguous()
         # print("H", chunked_output.shape)     # [m, bs * l, d],  l = ns / m
 
         # Get Encoder Output
@@ -734,17 +746,17 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
             retriever_attn_mask=retriever_attn_mask,
             inference_params=inference_params)
         # print("E", retriever_output.shape)    # [r, k * bs * l , d]
-        retriever_output = retriever_output.reshape(args.retro_retrieved_length * args.retro_nnbrs, bs * l, d)   # [r * k, bs * l, d]
+        retriever_output = retriever_output.reshape(retrieved_length * nnbrs, bs * l, d)   # [r * k, bs * l, d]
 
         # # Chunked Cross attention with Retriever Encoder
-        pad = (ns - 1) % args.retro_chunk_length
+        pad = (ns - 1) % chunk_length
         attending_chunks = layernorm_output[pad:]
         # print("attentding_chunks", attending_chunks.shape)  # [ns - m + 1, bs, d]
-        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, args.retro_chunk_length-1), 'constant', 0)
+        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, chunk_length-1), 'constant', 0)
         # print("padded_chunks", padded_chunks.shape, padded_chunks[-64:, 0])  # [ns, bs, d]
-        padded_chunked_output = padded_chunks.reshape(l, args.retro_chunk_length, bs, d).permute(1, 2, 0, 3)
+        padded_chunked_output = padded_chunks.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3)
         padded_chunked_output = padded_chunked_output.reshape(
-            args.retro_chunk_length, bs * l, d).contiguous()
+            chunk_length, bs * l, d).contiguous()
         # print("padded_chunked_output", padded_chunked_output.shape, padded_chunked_output[:, 31])  # [m, bs * l, d]
 
         attention_output, attention_bias = \
@@ -767,8 +779,8 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
                 attention_bias.expand_as(attention_output),
                 torch.zeros_like(attention_output),
                 self.hidden_dropout)
-            layernorm_input = layernorm_input.reshape(args.retro_chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
-            layernorm_input = layernorm_input.reshape(args.retro_chunk_length * l, bs, d)
+            layernorm_input = layernorm_input.reshape(chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
+            layernorm_input = layernorm_input.reshape(chunk_length * l, bs, d)
             layernorm_input = torch.nn.functional.pad(layernorm_input, (0, 0, 0, 0, pad, 0), 'constant', 0)[:ns]
             # print("CCA attention_output", layernorm_input.shape, layernorm_input[:64])  # [ns, b, d]
             layernorm_input = layernorm_input + residual
@@ -915,17 +927,20 @@ class ParallelRetroTransformerLayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
-        args = get_args()
+        # args = get_args()
+        retro_args = get_retro_args()
+        chunk_length = retro_args.retro_gpt_chunk_length
+
         ns, bs, d = layernorm_output.shape
-        l = int(np.ceil(ns / args.retro_chunk_length))
-        pad = (ns - 1) % args.retro_chunk_length
+        l = int(np.ceil(ns / chunk_length))
+        pad = (ns - 1) % chunk_length
         attending_chunks = layernorm_output[pad:]
         # print("attentding_chunks", attending_chunks.shape)
-        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, args.retro_chunk_length - 1), 'constant', 0)
+        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, chunk_length - 1), 'constant', 0)
         # print("padded_chunks", padded_chunks.shape, padded_chunks[-64:, 0])
-        padded_chunked_output = padded_chunks.reshape(l, args.retro_chunk_length, bs, d).permute(1, 2, 0, 3)
+        padded_chunked_output = padded_chunks.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3)
         padded_chunked_output = padded_chunked_output.reshape(
-            args.retro_chunk_length, bs * l, d).contiguous()
+            chunk_length, bs * l, d).contiguous()
         # print("padded_chunked_output", padded_chunked_output.shape, padded_chunked_output[:, 31])
 
         # Get Encoder Output
@@ -952,8 +967,8 @@ class ParallelRetroTransformerLayer(MegatronModule):
                 attention_bias.expand_as(attention_output),
                 torch.zeros_like(attention_output),
                 self.hidden_dropout)
-            layernorm_input = layernorm_input.reshape(args.retro_chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
-            layernorm_input = layernorm_input.reshape(args.retro_chunk_length * l, bs, d)
+            layernorm_input = layernorm_input.reshape(chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
+            layernorm_input = layernorm_input.reshape(chunk_length * l, bs, d)
             layernorm_input = torch.nn.functional.pad(layernorm_input, (0, 0, 0, 0, pad, 0), 'constant', 0)[:ns]
             # print("CCA attention_output", layernorm_input.shape, layernorm_input[:64])
             layernorm_input = layernorm_input + residual
@@ -1105,16 +1120,19 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
         # for each neighbor:
-        args = get_args()
+        # args = get_args()
+        retro_args = get_retro_args()
+        retrieved_length = retro_args.retro_gpt_retrieved_length
+        nnbrs = retro_args.retro_nnbrs_pretraining
+
         ns, bs, d = layernorm_output.shape   # [r, bs * l * k, d]
         # print(ns, bs, d, layernorm_output.shape)
-        chunked_outputs = layernorm_output.reshape(args.retro_retrieved_length,
-                                                   -1, args.retro_nnbrs, d)
-        chunked_outputs_before_layer_norm = layernorm_input.reshape(args.retro_retrieved_length, -1, args.retro_nnbrs, d)  # [r, bs * l, k, d]
+        chunked_outputs = layernorm_output.reshape(retrieved_length, -1, nnbrs, d)
+        chunked_outputs_before_layer_norm = layernorm_input.reshape(retrieved_length, -1, nnbrs, d)  # [r, bs * l, k, d]
 
         layernorm_inputs = []
         layernorm_outputs = []
-        for k in range(args.retro_nnbrs):
+        for k in range(nnbrs):
             chunked_output = chunked_outputs[:,:,k].contiguous()
             # print("E", chunked_output.shape)
             # self.inter_attention.debug = True
@@ -1537,13 +1555,20 @@ class ParallelRetroTransformer(MegatronModule):
     def __init__(self, init_method, output_layer_init_method,
                  layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
+                 post_layer_norm=True,
                  pre_process=True, post_process=True,
                  drop_path_rate=0.0, retriever=None):
         super().__init__()
         args = get_args()
 
+        # >>>
+        assert retriever, \
+            "this model should only be instantiated with a retriever."
+        # <<<
+
         self.bf16 = args.bf16
         self.fp32_residual_connection = args.fp32_residual_connection
+        self.post_layer_norm = post_layer_norm
         self.pre_process = pre_process
         self.post_process = post_process
         self.input_tensor = None
@@ -1570,7 +1595,8 @@ class ParallelRetroTransformer(MegatronModule):
 
         self.drop_path_rates = [rate.item() for rate in torch.linspace(0, self.drop_path_rate, args.num_layers)]
 
-        if args.retro_add_retriever:
+        # if args.retro_add_retriever:
+        if retriever:
             if args.num_layers == 12:
                 self.P = [6, 9, 12]
             elif args.num_layers == 24:
@@ -1592,7 +1618,8 @@ class ParallelRetroTransformer(MegatronModule):
         #             layer_type=layer_type,
         #             self_attn_mask_type=self_attn_mask_type)
         # elif args.add_retriever:
-        if args.retro_add_retriever:
+        # if args.retro_add_retriever:
+        if retriever:
             def build_layer(layer_number):
                 if layer_number == min(self.P):
                     print("ParallelRetroTransformerEncoderLayer Layer number", layer_number)
@@ -1679,16 +1706,69 @@ class ParallelRetroTransformer(MegatronModule):
             self.layers = torch.nn.ModuleList(
                 [build_layer(i + 1 + offset) for i in range(self.num_layers)])
 
-        if self.post_process:
+        # >>>
+        # if self.post_process:
+        #     # Final layer norm before output.
+        #     self.final_layernorm = LayerNorm(
+        #         args.hidden_size,
+        #         eps=args.layernorm_epsilon,
+        #         no_persist_layer_norm=args.no_persist_layer_norm)
+        # +++
+        if self.post_process and self.post_layer_norm:
             # Final layer norm before output.
             self.final_layernorm = LayerNorm(
                 args.hidden_size,
                 eps=args.layernorm_epsilon,
-                no_persist_layer_norm=args.no_persist_layer_norm)
+                no_persist_layer_norm=args.no_persist_layer_norm,
+                sequence_parallel=args.sequence_parallel)
+        # <<<
 
     def _get_layer(self, layer_number):
         return self.layers[layer_number]
 
+    # def _checkpointed_forward(self, hidden_states, attention_mask,
+    #                           encoder_output, enc_dec_attn_mask):
+    #     """Forward method with activation checkpointing."""
+    #     def custom(start, end):
+    #         def custom_forward(*inputs):
+    #             x_ = inputs[0]
+    #             attention_mask = inputs[1]
+    #             encoder_output = inputs[2]
+    #             enc_dec_attn_mask = inputs[3]
+    #             for index in range(start, end):
+    #                 layer = self._get_layer(index)
+    #                 x_ = layer(x_, attention_mask, encoder_output, enc_dec_attn_mask)
+    #             return x_
+    #         return custom_forward
+
+    #     if self.activations_checkpoint_method == 'uniform':
+    #         # Uniformly divide the total number of Transformer layers and checkpoint
+    #         # the input activation of each divided chunk.
+    #         # A method to further reduce memory usage reducing checkpoints.
+    #         l = 0
+    #         while l < self.num_layers:
+    #             hidden_states = mpu.checkpoint(
+    #                 custom(l, l + self.activations_checkpoint_num_layers),
+    #                 self.distribute_checkpointed_activations,
+    #                 hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+    #             l += self.activations_checkpoint_num_layers
+    #     elif self.activations_checkpoint_method == 'block':
+    #         # Checkpoint the input activation of only a set number of individual
+    #         # Transformer layers and skip the rest.
+    #         # A method fully use the device memory removing redundant re-computation.
+    #         for l in range(self.num_layers):
+    #             if l < self.activations_checkpoint_num_layers:
+    #                 hidden_states = mpu.checkpoint(
+    #                     custom(l, l + 1),
+    #                     self.distribute_checkpointed_activations,
+    #                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+    #             else:
+    #                 hidden_states = custom(l, l + 1)(
+    #                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+    #     else:
+    #         raise ValueError("Invalid activation checkpoint method.")
+
+    #     return hidden_states
     def _checkpointed_forward(self, hidden_states, attention_mask,
                               encoder_output, enc_dec_attn_mask):
         """Forward method with activation checkpointing."""
@@ -1704,32 +1784,33 @@ class ParallelRetroTransformer(MegatronModule):
                 return x_
             return custom_forward
 
-        if self.activations_checkpoint_method == 'uniform':
+        if self.recompute_method == 'uniform':
             # Uniformly divide the total number of Transformer layers and checkpoint
             # the input activation of each divided chunk.
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
             while l < self.num_layers:
                 hidden_states = mpu.checkpoint(
-                    custom(l, l + self.activations_checkpoint_num_layers),
-                    self.distribute_checkpointed_activations,
+                    custom(l, l + self.recompute_num_layers),
+                    self.distribute_saved_activations,
                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
-                l += self.activations_checkpoint_num_layers
-        elif self.activations_checkpoint_method == 'block':
+                l += self.recompute_num_layers
+
+        elif self.recompute_method == 'block':
             # Checkpoint the input activation of only a set number of individual
             # Transformer layers and skip the rest.
             # A method fully use the device memory removing redundant re-computation.
             for l in range(self.num_layers):
-                if l < self.activations_checkpoint_num_layers:
+                if l < self.recompute_num_layers:
                     hidden_states = mpu.checkpoint(
                         custom(l, l + 1),
-                        self.distribute_checkpointed_activations,
+                        self.distribute_saved_activations,
                         hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
                 else:
                     hidden_states = custom(l, l + 1)(
                         hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
         else:
-            raise ValueError("Invalid activation checkpoint method.")
+            raise ValueError("Invalid activation recompute method.")
 
         return hidden_states
 
@@ -1743,29 +1824,120 @@ class ParallelRetroTransformer(MegatronModule):
         forward_step_func"""
         self.input_tensor = input_tensor
 
+    # def forward(self, hidden_states, attention_mask,
+    #             retriever_output=None, retriever_attn_mask=None,
+    #             encoder_output=None, enc_dec_attn_mask=None,
+    #             inference_params=None):
+
+    #     # Checks.
+    #     if inference_params:
+    #         assert self.activations_checkpoint_method is None, \
+    #             'inference does not work with activation checkpointing'
+
+    #     if self.pre_process:
+    #         # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
+    #         # If the input flag for fp32 residual connection is set, convert for float.
+    #         if self.fp32_residual_connection:
+    #             hidden_states = hidden_states.transpose(0, 1).contiguous().float()
+    #         # Otherwise, leave it as is.
+    #         else:
+    #             hidden_states = hidden_states.transpose(0, 1).contiguous()
+    #     else:
+    #         # See set_input_tensor()
+    #         hidden_states = self.input_tensor
+
+    #     args = get_args()
+
+    #     # Viewless tensor.
+    #     # - We only need to create a viewless tensor in the case of micro batch
+    #     #   size (mbs) == 1, since in this case, 'hidden_states.transpose()'
+    #     #   above creates a view tensor, and '.contiguous()' is a pass-through.
+    #     #   For mbs >= 2, '.contiguous()' creates a new tensor, eliminating
+    #     #   the need to make it viewless.
+    #     #
+    #     #   However, we don't explicitly check mbs == 1 here because
+    #     #   make_viewless_tensor() has negligible overhead when its input
+    #     #   is already viewless.
+    #     #
+    #     # - For the 'else' case above, calling make_viewless_tensor() here is
+    #     #   likely redundant, since p2p_communication.py (likely originator)
+    #     #   already creates viewless tensors. That said, make_viewless_tensor()
+    #     #   is called here to be future-proof and corner-case-proof.
+    #     hidden_states = mpu.make_viewless_tensor(
+    #         hidden_states,
+    #         requires_grad = True,
+    #         keep_graph = True,
+    #     )
+
+    #     # Transpose encoder output.
+    #     if encoder_output is not None:
+    #         encoder_output = encoder_output.transpose(0, 1).contiguous()
+
+    #     # TBD
+    #     # if retriever_output is not None:
+    #     #     retriever_output = retriever_output.transpose(0, 1).contiguous()
+
+    #     # Forward pass.
+    #     if self.activations_checkpoint_method is not None:
+    #         hidden_states = self._checkpointed_forward(hidden_states,
+    #                                                    attention_mask,
+    #                                                    encoder_output,
+    #                                                    enc_dec_attn_mask)
+    #     else:
+    #         for index in range(self.num_layers):
+    #             layer = self._get_layer(index)
+    #             if args.retro_add_retriever and index + 1 == min(self.P):
+    #                 hidden_states, E = layer(
+    #                     hidden_states,
+    #                     attention_mask,
+    #                     retriever_output=retriever_output,
+    #                     retriever_attn_mask=retriever_attn_mask,
+    #                     encoder_output=encoder_output,
+    #                     enc_dec_attn_mask=enc_dec_attn_mask,
+    #                     inference_params=inference_params)
+    #             elif args.retro_add_retriever and index + 1 in self.P:
+    #                 hidden_states = layer(
+    #                     hidden_states,
+    #                     attention_mask,
+    #                     retriever_output=E,
+    #                     retriever_attn_mask=retriever_attn_mask,
+    #                     encoder_output=encoder_output,
+    #                     enc_dec_attn_mask=enc_dec_attn_mask,
+    #                     inference_params=inference_params)
+    #             else:
+    #                 hidden_states = layer(
+    #                 hidden_states,
+    #                 attention_mask,
+    #                 encoder_output=encoder_output,
+    #                 enc_dec_attn_mask=enc_dec_attn_mask,
+    #                 inference_params=inference_params)
+
+
+    #     # Final layer norm.
+    #     if self.post_process:
+    #         # Reverting data format change [s b h] --> [b s h].
+    #         hidden_states = hidden_states.transpose(0, 1).contiguous()
+    #         output = self.final_layernorm(hidden_states)
+    #     else:
+    #         output = hidden_states
+
+    #     return output
     def forward(self, hidden_states, attention_mask,
                 retriever_output=None, retriever_attn_mask=None,
                 encoder_output=None, enc_dec_attn_mask=None,
                 inference_params=None):
+        # hidden_states: [s, b, h]
+
+        args = get_args()
 
         # Checks.
         if inference_params:
-            assert self.activations_checkpoint_method is None, \
+            assert self.recompute_granularity is None, \
                 'inference does not work with activation checkpointing'
 
-        if self.pre_process:
-            # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
-            # If the input flag for fp32 residual connection is set, convert for float.
-            if self.fp32_residual_connection:
-                hidden_states = hidden_states.transpose(0, 1).contiguous().float()
-            # Otherwise, leave it as is.
-            else:
-                hidden_states = hidden_states.transpose(0, 1).contiguous()
-        else:
+        if not self.pre_process:
             # See set_input_tensor()
             hidden_states = self.input_tensor
-
-        args = get_args()
 
         # Viewless tensor.
         # - We only need to create a viewless tensor in the case of micro batch
@@ -1777,70 +1949,65 @@ class ParallelRetroTransformer(MegatronModule):
         #   However, we don't explicitly check mbs == 1 here because
         #   make_viewless_tensor() has negligible overhead when its input
         #   is already viewless.
-        #
+        # 
         # - For the 'else' case above, calling make_viewless_tensor() here is
         #   likely redundant, since p2p_communication.py (likely originator)
         #   already creates viewless tensors. That said, make_viewless_tensor()
         #   is called here to be future-proof and corner-case-proof.
         hidden_states = mpu.make_viewless_tensor(
             hidden_states,
-            requires_grad = True,
-            keep_graph = True,
+            requires_grad=True,
+            keep_graph=True,
         )
 
-        # Transpose encoder output.
-        if encoder_output is not None:
-            encoder_output = encoder_output.transpose(0, 1).contiguous()
-
-        # TBD
-        # if retriever_output is not None:
-        #     retriever_output = retriever_output.transpose(0, 1).contiguous()
-
-        # Forward pass.
-        if self.activations_checkpoint_method is not None:
-            hidden_states = self._checkpointed_forward(hidden_states,
-                                                       attention_mask,
-                                                       encoder_output,
-                                                       enc_dec_attn_mask)
+        if self.sequence_parallel:
+            rng_context = mpu.get_cuda_rng_tracker().fork()
         else:
-            for index in range(self.num_layers):
-                layer = self._get_layer(index)
-                if args.retro_add_retriever and index + 1 == min(self.P):
-                    hidden_states, E = layer(
-                        hidden_states,
-                        attention_mask,
-                        retriever_output=retriever_output,
-                        retriever_attn_mask=retriever_attn_mask,
-                        encoder_output=encoder_output,
-                        enc_dec_attn_mask=enc_dec_attn_mask,
-                        inference_params=inference_params)
-                elif args.retro_add_retriever and index + 1 in self.P:
-                    hidden_states = layer(
-                        hidden_states,
-                        attention_mask,
-                        retriever_output=E,
-                        retriever_attn_mask=retriever_attn_mask,
-                        encoder_output=encoder_output,
-                        enc_dec_attn_mask=enc_dec_attn_mask,
-                        inference_params=inference_params)
-                else:
-                    hidden_states = layer(
-                    hidden_states,
-                    attention_mask,
-                    encoder_output=encoder_output,
-                    enc_dec_attn_mask=enc_dec_attn_mask,
-                    inference_params=inference_params)
+            rng_context = nullcontext()
 
+        with rng_context:
+            # Forward pass.
+            if self.recompute_granularity == 'full':
+                hidden_states = self._checkpointed_forward(hidden_states,
+                                                           attention_mask,
+                                                           encoder_output,
+                                                           enc_dec_attn_mask)
+            else:
+                for index in range(self.num_layers):
+                    layer = self._get_layer(index)
+                    # if args.retro_add_retriever and index + 1 == min(self.P):
+                    if self.retriever and index + 1 == min(self.P):
+                        hidden_states, E = layer(
+                            hidden_states,
+                            attention_mask,
+                            retriever_output=retriever_output,
+                            retriever_attn_mask=retriever_attn_mask,
+                            encoder_output=encoder_output,
+                            enc_dec_attn_mask=enc_dec_attn_mask,
+                            inference_params=inference_params)
+                    # elif args.retro_add_retriever and index + 1 in self.P:
+                    elif self.retriever and index + 1 in self.P:
+                        hidden_states = layer(
+                            hidden_states,
+                            attention_mask,
+                            retriever_output=E,
+                            retriever_attn_mask=retriever_attn_mask,
+                            encoder_output=encoder_output,
+                            enc_dec_attn_mask=enc_dec_attn_mask,
+                            inference_params=inference_params)
+                    else:
+                        hidden_states = layer(
+                            hidden_states,
+                            attention_mask,
+                            encoder_output=encoder_output,
+                            enc_dec_attn_mask=enc_dec_attn_mask,
+                            inference_params=inference_params)
 
         # Final layer norm.
-        if self.post_process:
-            # Reverting data format change [s b h] --> [b s h].
-            hidden_states = hidden_states.transpose(0, 1).contiguous()
-            output = self.final_layernorm(hidden_states)
-        else:
-            output = hidden_states
+        if self.post_process and self.post_layer_norm:
+            hidden_states = self.final_layernorm(hidden_states)
 
-        return output
+        return hidden_states
 
 
 # class ParallelRetroEncoderTransformer(MegatronModule):
@@ -1974,16 +2141,69 @@ class ParallelRetroEncoder(MegatronModule):
             self.layers = torch.nn.ModuleList(
                 [build_layer(i + 1 + offset) for i in range(self.num_layers)])
 
-        if self.post_process:
+        # >>>
+        # if self.post_process:
+        #     # Final layer norm before output.
+        #     self.final_layernorm = LayerNorm(
+        #         args.hidden_size,
+        #         eps=args.layernorm_epsilon,
+        #         no_persist_layer_norm=args.no_persist_layer_norm)
+        # +++
+        if self.post_process and self.post_layer_norm:
             # Final layer norm before output.
             self.final_layernorm = LayerNorm(
                 args.hidden_size,
                 eps=args.layernorm_epsilon,
-                no_persist_layer_norm=args.no_persist_layer_norm)
+                no_persist_layer_norm=args.no_persist_layer_norm,
+                sequence_parallel=args.sequence_parallel)
+        # <<<
 
     def _get_layer(self, layer_number):
         return self.layers[layer_number]
 
+    # def _checkpointed_forward(self, hidden_states, attention_mask,
+    #                           encoder_output, enc_dec_attn_mask):
+    #     """Forward method with activation checkpointing."""
+    #     def custom(start, end):
+    #         def custom_forward(*inputs):
+    #             x_ = inputs[0]
+    #             attention_mask = inputs[1]
+    #             encoder_output = inputs[2]
+    #             enc_dec_attn_mask = inputs[3]
+    #             for index in range(start, end):
+    #                 layer = self._get_layer(index)
+    #                 x_ = layer(x_, attention_mask, encoder_output, enc_dec_attn_mask)
+    #             return x_
+    #         return custom_forward
+
+    #     if self.activations_checkpoint_method == 'uniform':
+    #         # Uniformly divide the total number of Transformer layers and checkpoint
+    #         # the input activation of each divided chunk.
+    #         # A method to further reduce memory usage reducing checkpoints.
+    #         l = 0
+    #         while l < self.num_layers:
+    #             hidden_states = mpu.checkpoint(
+    #                 custom(l, l + self.activations_checkpoint_num_layers),
+    #                 self.distribute_checkpointed_activations,
+    #                 hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+    #             l += self.activations_checkpoint_num_layers
+    #     elif self.activations_checkpoint_method == 'block':
+    #         # Checkpoint the input activation of only a set number of individual
+    #         # Transformer layers and skip the rest.
+    #         # A method fully use the device memory removing redundant re-computation.
+    #         for l in range(self.num_layers):
+    #             if l < self.activations_checkpoint_num_layers:
+    #                 hidden_states = mpu.checkpoint(
+    #                     custom(l, l + 1),
+    #                     self.distribute_checkpointed_activations,
+    #                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+    #             else:
+    #                 hidden_states = custom(l, l + 1)(
+    #                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+    #     else:
+    #         raise ValueError("Invalid activation checkpoint method.")
+
+    #     return hidden_states
     def _checkpointed_forward(self, hidden_states, attention_mask,
                               encoder_output, enc_dec_attn_mask):
         """Forward method with activation checkpointing."""
@@ -1999,32 +2219,33 @@ class ParallelRetroEncoder(MegatronModule):
                 return x_
             return custom_forward
 
-        if self.activations_checkpoint_method == 'uniform':
+        if self.recompute_method == 'uniform':
             # Uniformly divide the total number of Transformer layers and checkpoint
             # the input activation of each divided chunk.
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
             while l < self.num_layers:
                 hidden_states = mpu.checkpoint(
-                    custom(l, l + self.activations_checkpoint_num_layers),
-                    self.distribute_checkpointed_activations,
+                    custom(l, l + self.recompute_num_layers),
+                    self.distribute_saved_activations,
                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
-                l += self.activations_checkpoint_num_layers
-        elif self.activations_checkpoint_method == 'block':
+                l += self.recompute_num_layers
+
+        elif self.recompute_method == 'block':
             # Checkpoint the input activation of only a set number of individual
             # Transformer layers and skip the rest.
             # A method fully use the device memory removing redundant re-computation.
             for l in range(self.num_layers):
-                if l < self.activations_checkpoint_num_layers:
+                if l < self.recompute_num_layers:
                     hidden_states = mpu.checkpoint(
                         custom(l, l + 1),
-                        self.distribute_checkpointed_activations,
+                        self.distribute_saved_activations,
                         hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
                 else:
                     hidden_states = custom(l, l + 1)(
                         hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
         else:
-            raise ValueError("Invalid activation checkpoint method.")
+            raise ValueError("Invalid activation recompute method.")
 
         return hidden_states
 
@@ -2038,25 +2259,101 @@ class ParallelRetroEncoder(MegatronModule):
         forward_step_func"""
         self.input_tensor = input_tensor
 
+    # def forward(self, hidden_states, attention_mask,
+    #             retriever_output, retriever_attn_mask,
+    #             encoder_output=None, enc_dec_attn_mask=None,
+    #             inference_params=None):
+
+    #     # Checks.
+    #     if inference_params:
+    #         assert self.activations_checkpoint_method is None, \
+    #             'inference does not work with activation checkpointing'
+
+    #     if self.pre_process:
+    #         # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
+    #         # If the input flag for fp32 residual connection is set, convert for float.
+    #         if self.fp32_residual_connection:
+    #             hidden_states = hidden_states.transpose(0, 1).contiguous().float()
+    #         # Otherwise, leave it as is.
+    #         else:
+    #             hidden_states = hidden_states.transpose(0, 1).contiguous()
+    #     else:
+    #         # See set_input_tensor()
+    #         hidden_states = self.input_tensor
+
+    #     # Viewless tensor.
+    #     # - We only need to create a viewless tensor in the case of micro batch
+    #     #   size (mbs) == 1, since in this case, 'hidden_states.transpose()'
+    #     #   above creates a view tensor, and '.contiguous()' is a pass-through.
+    #     #   For mbs >= 2, '.contiguous()' creates a new tensor, eliminating
+    #     #   the need to make it viewless.
+    #     #
+    #     #   However, we don't explicitly check mbs == 1 here because
+    #     #   make_viewless_tensor() has negligible overhead when its input
+    #     #   is already viewless.
+    #     #
+    #     # - For the 'else' case above, calling make_viewless_tensor() here is
+    #     #   likely redundant, since p2p_communication.py (likely originator)
+    #     #   already creates viewless tensors. That said, make_viewless_tensor()
+    #     #   is called here to be future-proof and corner-case-proof.
+    #     hidden_states = mpu.make_viewless_tensor(
+    #         hidden_states,
+    #         requires_grad = True,
+    #         keep_graph = True,
+    #     )
+
+    #     # Transpose encoder output.
+    #     if encoder_output is not None:
+    #         encoder_output = encoder_output.transpose(0, 1).contiguous()
+
+    #     # Forward pass.
+    #     if self.activations_checkpoint_method is not None:
+    #         hidden_states = self._checkpointed_forward(hidden_states,
+    #                                                    attention_mask,
+    #                                                    encoder_output,
+    #                                                    enc_dec_attn_mask)
+    #     else:
+    #         for index in range(self.num_layers):
+    #             layer = self._get_layer(index)
+    #             if index + 1 in self.P:
+    #                 hidden_states = layer(
+    #                     hidden_states,
+    #                     attention_mask,
+    #                     retriever_output=retriever_output,
+    #                     retriever_attn_mask=retriever_attn_mask,
+    #                     encoder_output=encoder_output,
+    #                     enc_dec_attn_mask=enc_dec_attn_mask,
+    #                     inference_params=inference_params)
+    #             else:
+    #                 hidden_states = layer(
+    #                     hidden_states,
+    #                     attention_mask,
+    #                     encoder_output=encoder_output,
+    #                     enc_dec_attn_mask=enc_dec_attn_mask,
+    #                     inference_params=inference_params)
+    #             # print("E", index + 1, hidden_states.shape)
+
+    #     # Final layer norm.
+    #     if self.post_process:
+    #         # Reverting data format change [s b h] --> [b s h].
+    #         hidden_states = hidden_states.transpose(0, 1).contiguous()
+    #         output = self.final_layernorm(hidden_states)
+    #     else:
+    #         output = hidden_states
+
+    #     return output
     def forward(self, hidden_states, attention_mask,
                 retriever_output, retriever_attn_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
                 inference_params=None):
+        # hidden_states: [s, b, h]
 
         # Checks.
         if inference_params:
-            assert self.activations_checkpoint_method is None, \
+            assert self.recompute_granularity is None, \
                 'inference does not work with activation checkpointing'
 
-        if self.pre_process:
-            # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
-            # If the input flag for fp32 residual connection is set, convert for float.
-            if self.fp32_residual_connection:
-                hidden_states = hidden_states.transpose(0, 1).contiguous().float()
-            # Otherwise, leave it as is.
-            else:
-                hidden_states = hidden_states.transpose(0, 1).contiguous()
-        else:
+        if not self.pre_process:
             # See set_input_tensor()
             hidden_states = self.input_tensor
 
@@ -2070,54 +2367,51 @@ class ParallelRetroEncoder(MegatronModule):
         #   However, we don't explicitly check mbs == 1 here because
         #   make_viewless_tensor() has negligible overhead when its input
         #   is already viewless.
-        #
+        # 
         # - For the 'else' case above, calling make_viewless_tensor() here is
         #   likely redundant, since p2p_communication.py (likely originator)
         #   already creates viewless tensors. That said, make_viewless_tensor()
         #   is called here to be future-proof and corner-case-proof.
         hidden_states = mpu.make_viewless_tensor(
             hidden_states,
-            requires_grad = True,
-            keep_graph = True,
+            requires_grad=True,
+            keep_graph=True,
         )
 
-        # Transpose encoder output.
-        if encoder_output is not None:
-            encoder_output = encoder_output.transpose(0, 1).contiguous()
-
-        # Forward pass.
-        if self.activations_checkpoint_method is not None:
-            hidden_states = self._checkpointed_forward(hidden_states,
-                                                       attention_mask,
-                                                       encoder_output,
-                                                       enc_dec_attn_mask)
+        if self.sequence_parallel:
+            rng_context = mpu.get_cuda_rng_tracker().fork()
         else:
-            for index in range(self.num_layers):
-                layer = self._get_layer(index)
-                if index + 1 in self.P:
-                    hidden_states = layer(
-                        hidden_states,
-                        attention_mask,
-                        retriever_output=retriever_output,
-                        retriever_attn_mask=retriever_attn_mask,
-                        encoder_output=encoder_output,
-                        enc_dec_attn_mask=enc_dec_attn_mask,
-                        inference_params=inference_params)
-                else:
-                    hidden_states = layer(
-                        hidden_states,
-                        attention_mask,
-                        encoder_output=encoder_output,
-                        enc_dec_attn_mask=enc_dec_attn_mask,
-                        inference_params=inference_params)
-                # print("E", index + 1, hidden_states.shape)
+            rng_context = nullcontext()
+
+        with rng_context:
+            # Forward pass.
+            if self.recompute_granularity == 'full':
+                hidden_states = self._checkpointed_forward(hidden_states,
+                                                           attention_mask,
+                                                           encoder_output,
+                                                           enc_dec_attn_mask)
+            else:
+                for index in range(self.num_layers):
+                    layer = self._get_layer(index)
+                    if index + 1 in self.P:
+                        hidden_states = layer(
+                            hidden_states,
+                            attention_mask,
+                            retriever_output=retriever_output,
+                            retriever_attn_mask=retriever_attn_mask,
+                            encoder_output=encoder_output,
+                            enc_dec_attn_mask=enc_dec_attn_mask,
+                            inference_params=inference_params)
+                    else:
+                        hidden_states = layer(
+                            hidden_states,
+                            attention_mask,
+                            encoder_output=encoder_output,
+                            enc_dec_attn_mask=enc_dec_attn_mask,
+                            inference_params=inference_params)
 
         # Final layer norm.
-        if self.post_process:
-            # Reverting data format change [s b h] --> [b s h].
-            hidden_states = hidden_states.transpose(0, 1).contiguous()
-            output = self.final_layernorm(hidden_states)
-        else:
-            output = hidden_states
+        if self.post_process and self.post_layer_norm:
+            hidden_states = self.final_layernorm(hidden_states)
 
-        return output
+        return hidden_states

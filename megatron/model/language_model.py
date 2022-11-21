@@ -465,8 +465,8 @@ class TransformerLanguageModel(MegatronModule):
         # Retriever embedding.
         if self.retriever and self.pre_process:
             # >>>
-            assert ret_int_ids is not None
-            pax({"ret_int_ids": ret_int_ids})
+            # assert ret_int_ids is not None
+            # pax({"ret_int_ids": ret_int_ids})
             # <<<
             retriever_input = self.embedding(ret_int_ids, ret_position_ids,
                                              tokentype_ids=tokentype_ids)

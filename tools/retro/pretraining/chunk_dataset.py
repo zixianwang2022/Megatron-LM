@@ -23,10 +23,7 @@ from megatron.training import (
     update_train_iters,
 )
 from tools.retro.db.utils import get_indexed_dataset_infos
-from tools.retro.utils import (
-    get_num_chunks_per_seq,
-    # get_preprocessing_vs_pretraining_args,
-)
+from tools.retro.utils import get_num_chunks_per_seq
 
 from .utils import get_base_pretraining_workdir
 
@@ -37,21 +34,6 @@ from lutil import pax
 
 class GPTChunkDataset(torch.utils.data.Dataset):
 
-    # def __init__(self, args, seq_dataset):
-
-    #     super().__init__()
-
-    #     self.seq_dataset = seq_dataset
-
-    #     self.seq_length = args.retro_gpt_seq_length
-    #     self.chunk_length = args.retro_gpt_chunk_length
-    #     assert self.seq_length % self.chunk_length == 0
-    #     self.n_chunk_seq_ratio = int(self.seq_length / self.chunk_length)
-    #     # self.n_chunks_per_seq = int(self.seq_length / self.chunk_length)
-
-    #     self.n_seqs = len(seq_dataset)
-    #     self.n_chunks = self.n_seqs * self.n_chunk_seq_ratio
-    # def __init__(self, args, seq_dataset):
     def __init__(self, seq_dataset, chunk_length):
 
         super().__init__()
@@ -118,20 +100,10 @@ def verify_indexed_dataset_order():
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
 
-    # >>>
-    # raise Exception("hi.")
-    # pax(0, {"train_val_test_num_samples": train_val_test_num_samples})
-    # <<<
-
     args = get_retro_args()
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
-    # >>>
-    # gpt_seq_length, return_doc_ids = get_gpt_seq_length_and_return_doc_ids()
-    # special_args = get_preprocessing_vs_pretraining_args()
-    # pax(0, {"special_args": special_args})
-    # <<<
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
         data_impl=args.data_impl,
@@ -140,7 +112,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seq_length=args.retro_gpt_seq_length,
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup),
-        return_doc_ids=args.retro_return_doc_ids) # TrueTrueTrue)
+        return_doc_ids=args.retro_return_doc_ids)
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
     # >>>
@@ -172,7 +144,7 @@ def get_gpt_chunk_dataset_map():
     train_data_loader, valid_data_loader, test_data_loader \
         = build_train_valid_test_data_loaders(
             train_valid_test_datasets_provider)
-    # pax(0, {"train_data_loader": len(train_data_loader)})
+
     data_loader_map = {
         "train" : train_data_loader,
         "valid" : valid_data_loader,
@@ -181,13 +153,8 @@ def get_gpt_chunk_dataset_map():
 
     # Info dict.
     workdir = get_base_pretraining_workdir(args)
-    # >>>
-    # special_args = get_preprocessing_vs_pretraining_args()
-    # pax(0, {"special_args": special_args})
-    # <<<
     dataset_map = {
         key : {
-            # "embed_dir" : os.path.join(workdir, key, "embed"),
             "nbr_dir" : os.path.join(workdir, key, "nbr"),
             "data" : GPTChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
         }

@@ -160,9 +160,11 @@ class RetroDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, sample_idx):
 
+        # Get standard sample.
         sample_idx = self.legal_seq_idxs[sample_idx]
         sample = self.seq_dataset[sample_idx]
 
+        # Sample idx to chunk idxs.
         chunk_idxs = list(range(
             sample_idx * self.n_chunks_per_seq,
             (sample_idx + 1) * self.n_chunks_per_seq,
@@ -303,23 +305,15 @@ def get_retro_datasets():
     # Dataset & neighbors.
     chunk_ds_info_map = get_pretraining_gpt_chunk_dataset_map()
     retro_dataset_map = {}
-    for data_ty, chunk_ds_info in chunk_ds_info_map.items():
+    for data_key, chunk_ds_info in chunk_ds_info_map.items():
+
         seq_dataset = chunk_ds_info["data"].seq_dataset
         nbr_dir = chunk_ds_info["nbr_dir"]
         nbr_path_map = get_chunk_path_map(nbr_dir)
         legal_seq_idxs = get_legal_seq_idxs(nbr_dir)
 
-        # pax(0, {
-        #     "data_ty" : data_ty,
-        #     "seq_dataset" : seq_dataset,
-        #     "nbr_dir" : nbr_dir,
-        #     "nbr_path_map" : nbr_path_map,
-        #     "legal_seq_idxs" :
-        #     "%d / %s" % (len(legal_seq_idxs), str(legal_seq_idxs)),
-        # })
-
         # Retro dataset.
-        retro_dataset = RetroDataset(
+        retro_dataset_map[data_key] = RetroDataset(
             db_chunk_dataset = db_chunk_dataset,
             n_nbrs = args.retro_nnbrs_pretraining,
             block_size = args.retro_block_size,
@@ -329,15 +323,23 @@ def get_retro_datasets():
         )
 
         # >>>
-        pax(0, {"sample": retro_dataset[0]})
+        # pax(0, {"sample": retro_dataset[0]})
         # <<<
 
-    train_ds = retro_dataset_map["train"]
-    valid_ds = retro_dataset_map["valid"]
+    train_ds = retro_dataset_map.get("train", None)
+    valid_ds = retro_dataset_map.get("valid", None)
+    test_ds = retro_dataset_map.get("test", None)
 
-    pax(0, {"train_ds": train_ds, "valid_ds": valid_ds})
+    # pax(0, {
+    #     "train_ds" : train_ds,
+    #     "valid_ds" : valid_ds,
+    #     "test_ds" : test_ds,
+    #     "train_ds / len" : len(train_ds),
+    #     "valid_ds / len" : len(valid_ds),
+    #     "test_ds / len" : None if test_ds is None else len(test_ds),
+    # })
 
-    return retro_dataset
+    return train_ds, valid_ds, test_ds
 
 
 def test_retro_dataset(timer):

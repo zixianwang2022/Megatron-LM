@@ -18,7 +18,7 @@
 from functools import partial
 import torch
 
-from megatron import get_args
+from megatron import get_args, get_retro_args
 from megatron import get_timers
 from megatron import get_tokenizer
 from megatron import mpu
@@ -27,7 +27,7 @@ from megatron import print_rank_0
 # from megatron.data.gpt_dataset import build_train_valid_test_datasets
 from megatron.model import GPTModel, ModelType
 from megatron.training import pretrain
-# from megatron.utils import get_ltor_masks_and_position_ids
+from megatron.utils import get_ltor_masks_and_position_ids
 # from megatron.utils import average_losses_across_data_parallel_group
 from tools.retro.pretraining.retro_dataset import get_retro_datasets
 
@@ -58,6 +58,7 @@ from lutil import pax
 def get_batch(data_iterator):
     """Generate a batch"""
     args = get_args()
+    retro_args = get_retro_args()
     tokenizer = get_tokenizer()
 
     # Items and their type.
@@ -75,7 +76,7 @@ def get_batch(data_iterator):
 
     data_b = mpu.broadcast_data(keys, data, datatype)
 
-    pax(0, {"data_b": data_b})
+    # pax(0, {"data_b": data_b})
 
     # Unpack.
     tokens_ = data_b['text'].long()
@@ -86,7 +87,7 @@ def get_batch(data_iterator):
         # note: [bs * l * k, r]
         # note: 2x == neighbor, continuation
         neighbor_tokens = data_b['neighbor_tokens'] \
-            .view(-1, args.retro_retrieved_length).long()
+            .view(-1, retro_args.retro_gpt_retrieved_length).long()
         # pax(0, {"neighbor_tokens": neighbor_tokens})
 
     # Get the masks and postition ids.
