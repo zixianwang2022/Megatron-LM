@@ -26,10 +26,8 @@ MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-3
 NUM_LAYERS=12 # 4, *12
 HIDDEN_SIZE=512 # 256, 512, *768
 NUM_HEADS=4 # 4, 8, *12
-# --retro-add-retriever \
+ADD_RETRIEVER=1
 options=" \
-    --retro-cyclic-train-iters 750000 \
-
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers ${NUM_LAYERS} \
@@ -67,12 +65,20 @@ options=" \
     --no-data-sharding \
 "
 
+if [ "$ADD_RETRIEVER" = "0" ]; then
+    SCRIPT=pretrain_gpt.py
+else
+    options="${options} \
+    --retro-add-retriever \
+    --retro-cyclic-train-iters 750000 \
+    "
+    SCRIPT=pretrain_gpt_retro.py
+fi
+
 unset NCCL_DEBUG
 
 NPROCS=1
 # NPROCS=16
-# SCRIPT=pretrain_gpt_retro.py
-SCRIPT=pretrain_gpt.py
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \

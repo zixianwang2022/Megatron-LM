@@ -834,16 +834,16 @@ class ParallelTransformer(MegatronModule):
                  pre_process=True, post_process=True,
                  drop_path_rate=0.0,
                  # >>>
-                 retriever=None, # note: retriever here only to match signature of ParallelRetroEncoderTransformer
+                 # retriever=None, # note: retriever here only to match signature of ParallelRetroEncoderTransformer
                  # <<<
     ):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 
         # >>>
-        assert retriever is None, \
-            "retriever transformer code currently contained within " \
-            "retro_transformer.py."
+        # assert retriever is None, \
+        #     "retriever transformer code currently contained within " \
+        #     "retro_transformer.py."
         # <<<
 
         self.layer_type = layer_type
@@ -995,8 +995,18 @@ class ParallelTransformer(MegatronModule):
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
+                # >>>
+                # retriever_output=None,
+                # retriever_attn_mask=None,
+                # <<<
                 inference_params=None):
         # hidden_states: [s, b, h]
+
+        # >>>
+        # assert retriever_output is None and retriever_attn_mask is None, \
+        #     "retriever transformer code currently contained within " \
+        #     "retro_transformer.py."
+        # <<<
 
         # Checks.
         # >>>

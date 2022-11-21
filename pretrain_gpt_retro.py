@@ -19,10 +19,10 @@ from functools import partial
 import torch
 
 from megatron import get_args
-from megatron import print_rank_0
 from megatron import get_timers
 from megatron import get_tokenizer
-# from megatron import mpu
+from megatron import mpu
+from megatron import print_rank_0
 # from megatron.data.blendable_dataset import BlendableDataset
 # from megatron.data.gpt_dataset import build_train_valid_test_datasets
 from megatron.model import GPTModel, ModelType
@@ -188,6 +188,7 @@ def forward_step(data_iterator, model):
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
     args = get_args()
+    raise Exception("hi.")
     if args.retro_add_retriever:
         return build_retro_datasets()
     else:
@@ -287,4 +288,5 @@ if __name__ == "__main__":
     pretrain(train_valid_test_datasets_provider, model_provider,
              ModelType.encoder_or_decoder,
              forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'},
-             extra_args_provider=add_retro_args)
+             # extra_args_provider=add_retro_args)
+    )

@@ -17,16 +17,17 @@
 # import math
 
 # import numpy as np
-# import torch
+import torch
 # import torch.nn.functional as F
 
-from megatron import get_args, mpu, print_rank_0
+from megatron import get_args, mpu # , print_rank_0
 
 from .enums import AttnMaskType, ModelType, LayerType, AttnType
 # from .fused_bias_gelu import bias_gelu_impl
 from .fused_layer_norm import MixedFusedLayerNorm as LayerNorm
 # from .fused_softmax import FusedScaleMaskSoftmax
 from .module import MegatronModule
+from .transformer import ParallelAttention, ParallelMLP, ParallelTransformerLayer
 # .utils import attention_mask_func, openai_gelu, erf_gelu, init_method_normal
 
 """ We use the following notation throughout this file:
@@ -1529,7 +1530,8 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
 #         return hidden_states.clone()
 
 
-class ParallelTransformer(MegatronModule):
+# class ParallelTransformer(MegatronModule):
+class ParallelRetroTransformer(MegatronModule):
     """Standard GPT Transformer class."""
 
     def __init__(self, init_method, output_layer_init_method,
@@ -1537,7 +1539,7 @@ class ParallelTransformer(MegatronModule):
                  self_attn_mask_type=AttnMaskType.padding,
                  pre_process=True, post_process=True,
                  drop_path_rate=0.0, retriever=None):
-        super(ParallelTransformer, self).__init__()
+        super().__init__()
         args = get_args()
 
         self.bf16 = args.bf16
@@ -1548,9 +1550,19 @@ class ParallelTransformer(MegatronModule):
         self.drop_path_rate = drop_path_rate
 
         # Store activation checkpoiting flag.
-        self.activations_checkpoint_method = args.activations_checkpoint_method
-        self.activations_checkpoint_num_layers = args.activations_checkpoint_num_layers
-        self.distribute_checkpointed_activations = args.distribute_checkpointed_activations
+        # >>>
+        # self.activations_checkpoint_method = args.activations_checkpoint_method
+        # self.activations_checkpoint_num_layers = args.activations_checkpoint_num_layers
+        # self.distribute_checkpointed_activations = args.distribute_checkpointed_activations
+        # +++
+        self.recompute_granularity = args.recompute_granularity
+        self.recompute_method = args.recompute_method
+        self.recompute_num_layers = args.recompute_num_layers
+        self.distribute_saved_activations = \
+            args.distribute_saved_activations and not args.sequence_parallel
+
+        self.sequence_parallel = args.sequence_parallel
+        # <<<
 
         # Number of layers.
         self.num_layers = mpu.get_num_layers(
@@ -1831,7 +1843,8 @@ class ParallelTransformer(MegatronModule):
         return output
 
 
-class ParallelRetroEncoderTransformer(MegatronModule):
+# class ParallelRetroEncoderTransformer(MegatronModule):
+class ParallelRetroEncoder(MegatronModule):
     """ Retro Transformer class for encoder ."""
 
     def __init__(self, init_method, output_layer_init_method,
@@ -1839,7 +1852,7 @@ class ParallelRetroEncoderTransformer(MegatronModule):
                  self_attn_mask_type=AttnMaskType.padding,
                  pre_process=True, post_process=True,
                  drop_path_rate=0.0):
-        super(ParallelRetroEncoderTransformer, self).__init__()
+        super().__init__()
         args = get_args()
 
         self.bf16 = args.bf16
@@ -1849,10 +1862,20 @@ class ParallelRetroEncoderTransformer(MegatronModule):
         self.input_tensor = None
         self.drop_path_rate = drop_path_rate
 
-        # Store activation checkpoiting flag.
-        self.activations_checkpoint_method = args.activations_checkpoint_method
-        self.activations_checkpoint_num_layers = args.activations_checkpoint_num_layers
-        self.distribute_checkpointed_activations = args.distribute_checkpointed_activations
+        # Store activation checkpointing flag.
+        # >>>
+        # self.activations_checkpoint_method = args.activations_checkpoint_method
+        # self.activations_checkpoint_num_layers = args.activations_checkpoint_num_layers
+        # self.distribute_checkpointed_activations = args.distribute_checkpointed_activations
+        # +++
+        self.recompute_granularity = args.recompute_granularity
+        self.recompute_method = args.recompute_method
+        self.recompute_num_layers = args.recompute_num_layers
+        self.distribute_saved_activations = \
+            args.distribute_saved_activations and not args.sequence_parallel
+
+        self.sequence_parallel = args.sequence_parallel
+        # <<<
 
         # Number of layers.
         self.num_layers = args.retro_encoder_layers

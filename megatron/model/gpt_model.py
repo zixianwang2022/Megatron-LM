@@ -87,13 +87,35 @@ class GPTModel(MegatronModule):
         """See megatron.model.transformer.set_input_tensor()"""
         self.language_model.set_input_tensor(input_tensor)
 
-    def forward(self, input_ids, position_ids, attention_mask, labels=None,
+    # >>>
+    # def forward(self, input_ids, position_ids, attention_mask, labels=None,
+    #             tokentype_ids=None, inference_params=None):
+
+    #     lm_output = self.language_model(
+    #         input_ids,
+    #         position_ids,
+    #         attention_mask,
+    #         inference_params=inference_params)
+
+    #     if self.post_process:
+    #         return post_language_model_processing(
+    #             lm_output, labels,
+    #             self.word_embeddings_weight(),
+    #             self.parallel_output,
+    #             self.fp16_lm_cross_entropy)
+    #     else:
+    #         return lm_output
+    def forward(self, input_ids, position_ids, attention_mask, ret_int_ids=None,
+                ret_position_ids=None, ret_attn_mask=None, labels=None,
                 tokentype_ids=None, inference_params=None):
 
         lm_output = self.language_model(
             input_ids,
             position_ids,
             attention_mask,
+            ret_int_ids=ret_int_ids,
+            ret_position_ids=ret_position_ids,
+            ret_attn_mask=ret_attn_mask,
             inference_params=inference_params)
 
         if self.post_process:
@@ -104,6 +126,7 @@ class GPTModel(MegatronModule):
                 self.fp16_lm_cross_entropy)
         else:
             return lm_output
+    # <<<
 
     def state_dict_for_save_checkpoint(self, destination=None, prefix='',
                                        keep_vars=False):
