@@ -115,14 +115,6 @@ class MixedFusedLayerNorm(torch.nn.Module):
         return FusedLayerNormAffineFunction.apply(
           input, self.weight, self.bias, self.normalized_shape, self.eps)
     else:
-        # >>>
-        # from lutil.pax import print_mem_stats, get_mem_stats_str
-        # print_mem_stats("ln 0")
-        # print("    input %s, weight %s, bias %s, eps %s ... %s" % (
-        #     input.shape, self.weight.shape, self.bias.shape, self.eps,
-        #     get_mem_stats_str(),
-        # ))
-        # <<<
         output = FastLayerNormFN.apply(
           input, self.weight, self.bias, self.eps)
 
@@ -130,14 +122,8 @@ class MixedFusedLayerNorm(torch.nn.Module):
         # a populated '_base' field). This will result in schedule.py's
         # deallocate_output_tensor() throwing an error, so a viewless tensor is
         # created to prevent this.
-        # >>>
-        # print_mem_stats("ln 1")
-        # <<<
         output = make_viewless_tensor(inp = output,
                                       requires_grad = input.requires_grad,
                                       keep_graph = True)
 
-        # >>>
-        # print_mem_stats("ln 2")
-        # <<<
         return output

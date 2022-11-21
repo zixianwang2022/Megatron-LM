@@ -997,6 +997,9 @@ class ParallelTransformer(MegatronModule):
                 encoder_output=None, enc_dec_attn_mask=None,
                 inference_params=None):
         # hidden_states: [s, b, h]
+        # >>>
+        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        # <<<
 
         # Checks.
         if inference_params:
@@ -1033,6 +1036,9 @@ class ParallelTransformer(MegatronModule):
         else:
             rng_context = nullcontext()
 
+        # >>>
+        raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        # <<<
         with rng_context:
             # Forward pass.
             if self.recompute_granularity == 'full':

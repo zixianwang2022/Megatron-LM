@@ -462,12 +462,13 @@ class TransformerLanguageModel(MegatronModule):
                 pooling_sequence_index=0,
                 enc_hidden_states=None, output_enc_hidden=False):
 
+        # >>>
+        # raise Exception("enc_input_ids = %s." % str(enc_input_ids.shape))
+        # raise Exception("enc_position_ids = %s." % str(enc_position_ids.shape))
+        # <<<
+
         # Retriever embedding.
         if self.retriever and self.pre_process:
-            # >>>
-            # assert ret_int_ids is not None
-            # pax({"ret_int_ids": ret_int_ids})
-            # <<<
             retriever_input = self.embedding(ret_int_ids, ret_position_ids,
                                              tokentype_ids=tokentype_ids)
         else:
@@ -484,6 +485,7 @@ class TransformerLanguageModel(MegatronModule):
         if enc_hidden_states is None:
             if self.encoder is not None:
                 # >>>
+                # raise Exception("encoder_input = %s."%str(encoder_input.shape))
                 if self.retriever:
                     encoder_output = self.encoder(
                         encoder_input,
@@ -495,14 +497,16 @@ class TransformerLanguageModel(MegatronModule):
                     encoder_output = self.encoder(
                         encoder_input,
                         enc_attn_mask,
-                        # retriever_output=retriever_input,
-                        # retriever_attn_mask=ret_attn_mask,
                         inference_params=inference_params)
                 # <<<
             else:
                 encoder_output = self.encoder_hidden_state
         else:
             encoder_output = enc_hidden_states.to(encoder_input.dtype)
+
+        # >>>
+        raise Exception("encoder_output = %s." % str(encoder_output.shape))
+        # <<<
 
         if self.post_process:
             if self.add_pooler:
