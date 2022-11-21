@@ -174,13 +174,41 @@ def get_valid_pretraining_seq_idxs(nbr_dir):
     return valid_seq_idxs
 
 
-def test_retro_dataset(timer):
+# def get_retro_datasets():
+
+#     # DB embedding paths.
+#     db_embed_dir = get_db_gpt_chunk_dataset_map()["full"]["embed_dir"]
+#     db_embed_path_map = get_chunk_path_map(db_embed_dir)
+
+#     # Pretraining dataset & neighbors.
+#     pretraining_chunk_dataset_info = \
+#         get_pretraining_gpt_chunk_dataset_map()["train"]
+#     pretraining_seq_dataset = pretraining_chunk_dataset_info["data"].seq_dataset
+#     pretraining_nbr_dir = pretraining_chunk_dataset_info["nbr_dir"]
+#     pretraining_nbr_path_map = get_chunk_path_map(pretraining_nbr_dir)
+#     pretraining_valid_seq_idxs = \
+#         get_valid_pretraining_seq_idxs(pretraining_nbr_dir)
+
+#     # Retro dataset.
+#     retro_dataset = RetroDataset(
+#         n_pretraining_nbrs = args.retro_nnbrs_pretraining,
+#         block_size = args.retro_block_size,
+#         db_embed_path_map = db_embed_path_map,
+#         pretraining_seq_dataset = pretraining_seq_dataset,
+#         pretraining_nbr_path_map = pretraining_nbr_path_map,
+#         pretraining_valid_seq_idxs = pretraining_valid_seq_idxs,
+#     )
+
+#     pax(0, {"retro_dataset": retro_dataset})
+
+#     return retro_dataset
+def get_retro_datasets():
 
     args = get_args()
 
-    # DB embedding paths.
-    db_embed_dir = get_db_gpt_chunk_dataset_map()["full"]["embed_dir"]
-    db_embed_path_map = get_chunk_path_map(db_embed_dir)
+    # # DB embedding paths.
+    # db_embed_dir = get_db_gpt_chunk_dataset_map()["full"]["embed_dir"]
+    # db_embed_path_map = get_chunk_path_map(db_embed_dir)
 
     # Pretraining dataset & neighbors.
     pretraining_chunk_dataset_info = \
@@ -193,13 +221,26 @@ def test_retro_dataset(timer):
 
     # Retro dataset.
     retro_dataset = RetroDataset(
-        n_pretraining_nbrs = args.retro_nnbrs_pretraining,
+        n_pretraining_nbrs = args.retro_args.retro_nnbrs_pretraining,
         block_size = args.retro_block_size,
         db_embed_path_map = db_embed_path_map,
         pretraining_seq_dataset = pretraining_seq_dataset,
         pretraining_nbr_path_map = pretraining_nbr_path_map,
         pretraining_valid_seq_idxs = pretraining_valid_seq_idxs,
     )
+
+    pax(0, {"train_ds": train_ds, "valid_ds": valid_ds})
+
+    return retro_dataset
+
+
+def test_retro_dataset(timer):
+
+    args = get_args()
+
+    train_ds, valid_ds, _ = get_retro_datasets()
+
+    pax(0, {})
 
     # >>>
     n_samples = 3

@@ -90,10 +90,14 @@ def add_retro_args(parser):
 
 def save_args(args):
 
+    # args.retro_args = None # matches pretraining format
+
     if torch.distributed.get_rank() == 0:
         args_path = get_args_path(args.retro_workdir)
         with open(args_path, "w") as f:
             json.dump(vars(args), f, indent = 4, default = lambda o : "<skipped>")
+
+    # args.retro_args = args
 
     torch.distributed.barrier()
 
@@ -108,16 +112,7 @@ if __name__ == "__main__":
 
     os.makedirs(args.retro_workdir, exist_ok = True)
     save_args(args)
-
-
-    # >>>
-    # tensor = torch.rand((4, 3), device = torch.cuda.current_device())
-    # val0 = tensor.view(-1)[0].item()
-    # pax(0, {
-    #     "tensor" : tensor,
-    #     "val0" : val0,
-    # })
-    # <<<
+    set_retro_args(args)
 
     # Select task to run.
     timer = Timer()

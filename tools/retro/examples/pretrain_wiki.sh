@@ -68,7 +68,9 @@ options=" \
 if [ "$ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py
 else
+    RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
     options="${options} \
+    --retro-workdir ${RETRO_WORKDIR} \
     --retro-add-retriever \
     --retro-cyclic-train-iters 750000 \
     "

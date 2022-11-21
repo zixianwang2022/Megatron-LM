@@ -166,6 +166,8 @@ RETRO_ARGS=" \
     --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \
     --retro-nnbrs-target ${RETRO_NNBRS_TARGET} \
     --retro-nnbrs-pretraining ${RETRO_NNBRS_PRETRAINING} \
+
+    --retro-return-doc-ids \
 "
 
 RETRO_PREPROCESS_CMD=" \

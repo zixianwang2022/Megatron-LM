@@ -29,6 +29,7 @@ from megatron.model import GPTModel, ModelType
 from megatron.training import pretrain
 # from megatron.utils import get_ltor_masks_and_position_ids
 # from megatron.utils import average_losses_across_data_parallel_group
+from tools.retro.pretraining.retro_dataset import get_retro_datasets
 
 from pretrain_gpt import (
     loss_func,
@@ -188,9 +189,8 @@ def forward_step(data_iterator, model):
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
     args = get_args()
-    raise Exception("hi.")
     if args.retro_add_retriever:
-        return build_retro_datasets()
+        return get_retro_datasets()
     else:
         return standard_datasets_provider(train_val_test_num_samples)
 # import numpy as np

@@ -17,8 +17,17 @@
 
 import argparse
 import os
-
 import torch
+
+# >>>
+import json
+import types
+
+from megatron.global_vars import set_retro_args, get_retro_args
+
+from tools.retro.utils import get_args_path as get_retro_args_path
+# <<<
+
 
 def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     """Parse all arguments."""
@@ -326,14 +335,32 @@ def validate_args(args, defaults={}):
     if args.sequence_parallel:
         args.async_tensor_model_parallel_allreduce = False
 
-    _print_args(args)
+    # >>>
+    if args.retro_workdir:
+        retro_args_path = get_retro_args_path(args.retro_workdir)
+        if os.path.exists(retro_args_path):
+            with open(retro_args_path) as f:
+                # args.retro_args = types.SimpleNamespace(**json.load(f))
+                set_retro_args(types.SimpleNamespace(**json.load(f)))
+    # <<<
+
+    # >>>
+    # _print_args(args)
+    _print_args("arguments", args)
+    retro_args = get_retro_args()
+    if retro_args and args != retro_args:
+        _print_args("retro arguments", types.SimpleNamespace(**{k:v for k,v in vars(retro_args).items() if k.startswith("retro") or k.startswith("rank")}))
+    # <<<
     return args
 
 
-def _print_args(args):
+# >>>
+# def _print_args(args):
+def _print_args(title, args):
     """Print arguments."""
     if args.rank == 0:
-        print('------------------------ arguments ------------------------',
+        # print('------------------------ arguments ------------------------',
+        print(f'------------------------ {title} ------------------------',
               flush=True)
         str_list = []
         for arg in vars(args):
@@ -341,8 +368,10 @@ def _print_args(args):
             str_list.append('  {} {} {}'.format(arg, dots, getattr(args, arg)))
         for arg in sorted(str_list, key=lambda x: x.lower()):
             print(arg, flush=True)
-        print('-------------------- end of arguments ---------------------',
+        # print('-------------------- end of arguments ---------------------',
+        print(f'-------------------- end of {title} ---------------------',
               flush=True)
+# <<<
 
 
 def _check_arg_is_not_none(args, arg):
@@ -371,6 +400,9 @@ def _add_inference_args(parser):
 def _add_retro_args(parser):
     group = parser.add_argument_group(title='retro')
 
+    group.add_argument('--retro-workdir', default=None,
+                       help='retro root directory, containining sub-directories '
+                       'for db, index, and pretraining.')
     group.add_argument('--retro-add-retriever',
                        action='store_true', default=False)
     group.add_argument('--retro-cyclic-train-iters', type=int, default=None)
@@ -381,9 +413,11 @@ def _add_retro_args(parser):
                        type=float, default=0.1)
     group.add_argument('--retro-encoder-attention-dropout',
                        type=float, default=0.1)
-    group.add_argument("--retro-chunk-length", type=int, default=64)
-    group.add_argument("--retro-retrieved-length", type=int, default=128)
-    group.add_argument("--retro-nnbrs", type=int, default=2)
+    # group.add_argument("--retro-chunk-length", type=int, default=64)
+    # group.add_argument("--retro-retrieved-length", type=int, default=128)
+    # group.add_argument("--retro-nnbrs", type=int, default=2)
+    group.add_argument("--retro-return-doc-ids", action="store_true",
+                       help="Turn this on when preprocessing retro data.")
 
     return parser
 # <<<
