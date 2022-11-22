@@ -505,7 +505,7 @@ class TransformerLanguageModel(MegatronModule):
             encoder_output = enc_hidden_states.to(encoder_input.dtype)
 
         # >>>
-        raise Exception("encoder_output = %s." % str(encoder_output.shape))
+        # raise Exception("encoder_output = %s." % str(encoder_output.shape))
         # <<<
 
         if self.post_process:

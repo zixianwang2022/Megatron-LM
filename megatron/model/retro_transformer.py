@@ -20,7 +20,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from megatron import get_args, get_tensorboard_writer
+from megatron import get_args, get_retro_args, get_tensorboard_writer
 from megatron import mpu
 from .module import MegatronModule
 from megatron.model.enums import AttnMaskType, ModelType, LayerType, AttnType
@@ -328,7 +328,7 @@ class ParallelAttention(MegatronModule):
         # hidden_states: [sq, b, h]
         # >>>
         # pax(0, {"hidden_states": str(hidden_states.shape)})
-        raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
         # <<<
 
         # =================================================
@@ -421,7 +421,9 @@ class ParallelAttention(MegatronModule):
                        query_layer.size(2),
                        query_layer.size(0),
                        key_layer.size(0))
-        pax(0, {"output_size": str(output_size)})
+        # >>>
+        # pax(0, {"output_size": str(output_size)})
+        # <<<
 
         # [sq, b, np, hn] -> [sq, b * np, hn]
         query_layer = query_layer.view(output_size[2],
@@ -455,11 +457,11 @@ class ParallelAttention(MegatronModule):
 
         # attention scores and attention mask [b, np, sq, sk]
         # >>>
-        pax(0, {
-            "output_size" : str(output_size),
-            "attention_scores" : str(attention_scores.shape),
-            "attention_mask" : str(attention_mask.shape),
-        })
+        # pax(0, {
+        #     "output_size" : str(output_size),
+        #     "attention_scores" : str(attention_scores.shape),
+        #     "attention_mask" : str(attention_mask.shape),
+        # })
         # <<<
         attention_probs = self.scale_mask_softmax(attention_scores,
                                                   attention_mask)
@@ -727,18 +729,23 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
         """
 
         args = get_args()
+        retro_args = get_retro_args()
+        chunk_length = retro_args.retro_gpt_chunk_length
+        retrieved_length = retro_args.retro_gpt_retrieved_length
+        nnbrs = retro_args.retro_nnbrs_pretraining
+
         ns, bs, d = layernorm_output.shape
-        l = int(np.ceil(ns / args.m))
-        first_ns = ns % args.m
+        l = int(np.ceil(ns / chunk_length))
+        first_ns = ns % chunk_length
         # print(f"ns: {ns}, bs: {bs}, d: {d}:, first_ns: {first_ns}, l: {l}")
         if first_ns > 0:
             first_chunk, rest_chunk = layernorm_output[:first_ns], layernorm_output[first_ns:]
-            first_chunk = torch.nn.functional.pad(first_chunk, (0, 0, 0, 0, 0, args.m - first_ns), 'constant', 0)
+            first_chunk = torch.nn.functional.pad(first_chunk, (0, 0, 0, 0, 0, chunk_length - first_ns), 'constant', 0)
             chunked_output = torch.cat((first_chunk, rest_chunk), dim=0)  # [l * m, bs, d]
         else:
             chunked_output = layernorm_output  # [l * m, bs, d]
-        chunked_output = chunked_output.reshape(l, args.m, bs, d).permute(1, 2, 0, 3).reshape(
-            args.m, bs * l, d).contiguous()
+        chunked_output = chunked_output.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3).reshape(
+            chunk_length, bs * l, d).contiguous()
         # print("H", chunked_output.shape)     # [m, bs * l, d],  l = ns / m
 
         # Get Encoder Output
@@ -751,17 +758,17 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
             retriever_attn_mask=retriever_attn_mask,
             inference_params=inference_params)
         # print("E", retriever_output.shape)    # [r, k * bs * l , d]
-        retriever_output = retriever_output.reshape(args.r * args.k, bs * l, d)   # [r * k, bs * l, d]
+        retriever_output = retriever_output.reshape(retrieved_length * nnbrs, bs * l, d)   # [r * k, bs * l, d]
 
         # # Chunked Cross attention with Retriever Encoder
-        pad = (ns - 1) % args.m
+        pad = (ns - 1) % chunk_length
         attending_chunks = layernorm_output[pad:]
         # print("attentding_chunks", attending_chunks.shape)  # [ns - m + 1, bs, d]
-        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, args.m-1), 'constant', 0)
+        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, chunk_length-1), 'constant', 0)
         # print("padded_chunks", padded_chunks.shape, padded_chunks[-64:, 0])  # [ns, bs, d]
-        padded_chunked_output = padded_chunks.reshape(l, args.m, bs, d).permute(1, 2, 0, 3)
+        padded_chunked_output = padded_chunks.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3)
         padded_chunked_output = padded_chunked_output.reshape(
-            args.m, bs * l, d).contiguous()
+            chunk_length, bs * l, d).contiguous()
         # print("padded_chunked_output", padded_chunked_output.shape, padded_chunked_output[:, 31])  # [m, bs * l, d]
 
         attention_output, attention_bias = \
@@ -784,8 +791,8 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
                 attention_bias.expand_as(attention_output),
                 torch.zeros_like(attention_output),
                 self.hidden_dropout)
-            layernorm_input = layernorm_input.reshape(args.m, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
-            layernorm_input = layernorm_input.reshape(args.m * l, bs, d)
+            layernorm_input = layernorm_input.reshape(chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
+            layernorm_input = layernorm_input.reshape(chunk_length * l, bs, d)
             layernorm_input = torch.nn.functional.pad(layernorm_input, (0, 0, 0, 0, pad, 0), 'constant', 0)[:ns]
             # print("CCA attention_output", layernorm_input.shape, layernorm_input[:64])  # [ns, b, d]
             layernorm_input = layernorm_input + residual
@@ -933,16 +940,19 @@ class ParallelRetroTransformerLayer(MegatronModule):
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
         args = get_args()
+        retro_args = get_retro_args()
+        chunk_length = retro_args.retro_gpt_chunk_length
+
         ns, bs, d = layernorm_output.shape
-        l = int(np.ceil(ns / args.m))
-        pad = (ns - 1) % args.m
+        l = int(np.ceil(ns / chunk_length))
+        pad = (ns - 1) % chunk_length
         attending_chunks = layernorm_output[pad:]
         # print("attentding_chunks", attending_chunks.shape)
-        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, args.m - 1), 'constant', 0)
+        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, chunk_length - 1), 'constant', 0)
         # print("padded_chunks", padded_chunks.shape, padded_chunks[-64:, 0])
-        padded_chunked_output = padded_chunks.reshape(l, args.m, bs, d).permute(1, 2, 0, 3)
+        padded_chunked_output = padded_chunks.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3)
         padded_chunked_output = padded_chunked_output.reshape(
-            args.m, bs * l, d).contiguous()
+            chunk_length, bs * l, d).contiguous()
         # print("padded_chunked_output", padded_chunked_output.shape, padded_chunked_output[:, 31])
 
         # Get Encoder Output
@@ -969,8 +979,8 @@ class ParallelRetroTransformerLayer(MegatronModule):
                 attention_bias.expand_as(attention_output),
                 torch.zeros_like(attention_output),
                 self.hidden_dropout)
-            layernorm_input = layernorm_input.reshape(args.m, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
-            layernorm_input = layernorm_input.reshape(args.m * l, bs, d)
+            layernorm_input = layernorm_input.reshape(chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
+            layernorm_input = layernorm_input.reshape(chunk_length * l, bs, d)
             layernorm_input = torch.nn.functional.pad(layernorm_input, (0, 0, 0, 0, pad, 0), 'constant', 0)[:ns]
             # print("CCA attention_output", layernorm_input.shape, layernorm_input[:64])
             layernorm_input = layernorm_input + residual
@@ -1121,14 +1131,18 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
 
         # for each neighbor:
         args = get_args()
+        retro_args = get_retro_args()
+        retrieved_length = retro_args.retro_gpt_retrieved_length
+        nnbrs = retro_args.retro_nnbrs_pretraining
+
         ns, bs, d = layernorm_output.shape   # [r, bs * l * k, d]
         # print(ns, bs, d, layernorm_output.shape)
-        chunked_outputs = layernorm_output.reshape(args.r, -1, args.k, d)
-        chunked_outputs_before_layer_norm = layernorm_input.reshape(args.r, -1, args.k, d)  # [r, bs * l, k, d]
+        chunked_outputs = layernorm_output.reshape(retrieved_length, -1, nnbrs, d)
+        chunked_outputs_before_layer_norm = layernorm_input.reshape(retrieved_length, -1, nnbrs, d)  # [r, bs * l, k, d]
 
         layernorm_inputs = []
         layernorm_outputs = []
-        for k in range(args.k):
+        for k in range(nnbrs):
             chunked_output = chunked_outputs[:,:,k].contiguous()
             # print("E", chunked_output.shape)
             # self.inter_attention.debug = True
@@ -1873,11 +1887,20 @@ class ParallelRetroTransformer(MegatronModule):
 
         # Final layer norm.
         if self.post_process:
+            # >>>
+            # ... *note*: skip transpose to match new SP code ...
+
             # Reverting data format change [s b h] --> [b s h].
-            hidden_states = hidden_states.transpose(0, 1).contiguous()
+            # hidden_states = hidden_states.transpose(0, 1).contiguous()
             output = self.final_layernorm(hidden_states)
+            # <<<
         else:
-            output = hidden_states
+            # >>>
+            raise Exception("pipeline parallelism un-supported.")
+            # <<<
+            # >>>
+            # output = hidden_states
+            # <<<
 
         return output
 
@@ -2081,7 +2104,7 @@ class ParallelRetroEncoder(MegatronModule):
                 encoder_output=None, enc_dec_attn_mask=None,
                 inference_params=None):
 
-        raise Exception("who calls me?")
+        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
 
         # Checks.
         if inference_params:
@@ -2125,8 +2148,14 @@ class ParallelRetroEncoder(MegatronModule):
         if encoder_output is not None:
             encoder_output = encoder_output.transpose(0, 1).contiguous()
 
+        # >>>
+        args = get_args()
+        assert not args.sequence_parallel, "if SP, need rng context."
+        # <<<
+
         # Forward pass.
-        if self.activations_checkpoint_method is not None:
+        # if self.activations_checkpoint_method is not None:
+        if self.recompute_granularity == 'full':
             hidden_states = self._checkpointed_forward(hidden_states,
                                                        attention_mask,
                                                        encoder_output,

@@ -1037,7 +1037,7 @@ class ParallelTransformer(MegatronModule):
             rng_context = nullcontext()
 
         # >>>
-        raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
         # <<<
         with rng_context:
             # Forward pass.
