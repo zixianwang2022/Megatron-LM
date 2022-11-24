@@ -23,11 +23,22 @@ MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-3
 # --load ${CHECKPOINT_DIR} \
 # --exit-duration-in-mins 230 \
 # --debug \
-NUM_LAYERS=12 # 4, *12
-HIDDEN_SIZE=512 # 256, 512, *768
-NUM_HEADS=4 # 4, 8, *12
+NUM_LAYERS=12 # 4, [*12]
+HIDDEN_SIZE=768 # 256, [512], *768
+NUM_HEADS=12 # [4], 8, *12
+MICRO_BATCH_SIZE=4 # *8
 ADD_RETRIEVER=1
+
+# >>>
+CHECKPOINT_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/checkpoints/interactive
+TENSORBOARD_DIR="${CHECKPOINT_DIR}/tensorboard"
+mkdir -p ${TENSORBOARD_DIR}
+# <<<
+
 options=" \
+    --tensorboard-dir ${TENSORBOARD_DIR} \
+    --log-validation-ppl-to-tensorboard \
+
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers ${NUM_LAYERS} \
@@ -35,7 +46,7 @@ options=" \
     --num-attention-heads ${NUM_HEADS} \
     --seq-length 2048 \
     --max-position-embeddings 2048 \
-    --micro-batch-size 8 \
+    --micro-batch-size ${MICRO_BATCH_SIZE} \
     --global-batch-size 256 \
     --train-samples  2037248  \
     --lr-decay-samples 166400000 \
@@ -79,8 +90,8 @@ fi
 
 unset NCCL_DEBUG
 
-NPROCS=1
-# NPROCS=16
+# NPROCS=1
+NPROCS=16
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \
