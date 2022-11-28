@@ -6,23 +6,11 @@ set -u
 DATA_PATH=${DATA_BLEND}
 
 # BPE_DIR="/lustre/fsw/adlr/adlr-nlp/data/pile-cc1-cc2-shuf/bpe"
+# VOCAB_FILE=${BPE_DIR}/gpt2-vocab.json \
+# MERGE_FILE=${BPE_DIR}/gpt2-merges.txt \
 VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-vocab.json
 MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-merges.txt
 
-# --neighbors_path /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retrieval-gpt3/wiki.train.h5py_start_0_end_2037248_ns_2037248_sl2048_seed_1234_with_offset.tokens.neighbors.wiki.hdf5 \
-# --database_path /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retrieval-gpt3/Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5 \
-# --valid_neighbors_path /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retrieval-gpt3/wiki.valid.h5py_start_0_end_25600_ns_2037248_sl2048_seed_1234_with_offset.tokens.feat.h5py_neighbors.wiki.hdf5 \
-# --valid_database_path /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retrieval-gpt3/Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5 \
-# --tensorboard-dir ${TENSORBOARD_DIR}
-# --weight 1
-# --log-validation-ppl-to-tensorboard
-# --data-path2 ${DATA_BLEND} \
-# --vocab-file ${BPE_DIR}/gpt2-vocab.json \
-# --merge-file ${BPE_DIR}/gpt2-merges.txt \
-# --save ${CHECKPOINT_DIR} \
-# --load ${CHECKPOINT_DIR} \
-# --exit-duration-in-mins 230 \
-# --debug \
 NUM_LAYERS=12 # 4, [*12]
 HIDDEN_SIZE=768 # 256, [512], *768
 NUM_HEADS=12 # [4], 8, *12

@@ -13,11 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import os
-# import shutil
-# import torch
-
-from megatron import get_args
+from megatron import get_retro_args
 from tools.retro.db.utils import get_merged_train_dataset
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
@@ -29,16 +25,9 @@ from lutil import pax
 # <<<
 
 
-# def add_to_index(timer):
-#     args = get_args()
-#     workdir = get_index_workdir()
-#     input_data_paths = get_db_info_map()["full"]["embed_paths"]
-#     index = IndexFactory.get_index(args.retro_index_ty)
-#     output_index_path = index.add(input_data_paths, workdir, timer)
-#     return output_index_path
 def add_to_index(timer):
 
-    args = get_args()
+    args = get_retro_args()
 
     workdir = get_index_dir()
     index = IndexFactory.get_index(args.retro_index_ty)

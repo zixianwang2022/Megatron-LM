@@ -20,7 +20,7 @@ import numpy as np
 import os
 import torch
 
-from megatron import get_args, print_rank_0
+from megatron import get_retro_args, print_rank_0
 # from tools.bert_embedding import embed_text_datasets
 from tools.bert_embedding import BertEmbedder
 # from tools.retro.data import load_data
@@ -34,7 +34,7 @@ from lutil import pax, print_seq
 
 # def get_dataset_sample_ranges(num_samples):
 def get_dataset_block_ranges(num_samples):
-    args = get_args()
+    args = get_retro_args()
     block_size = args.retro_block_size
     start_idxs = list(range(0, num_samples, block_size))
     end_idxs = [min(num_samples, s + block_size) for s in start_idxs]
@@ -209,7 +209,7 @@ class FaissParallelAddIndex(Index):
     # def embed_partial(self, partial_index_path_map, text_dataset, embed_dir):
     def embed_partial(self, partial_index_path_map, text_dataset, embedder):
 
-        # args = get_args()
+        # args = get_retro_args()
 
         sub_dataset = torch.utils.data.Subset(
             text_dataset,
@@ -392,7 +392,7 @@ class FaissParallelAddIndex(Index):
            - Ranks move in lock-step across each row (i.e., 'cols')
         """
 
-        args = get_args()
+        args = get_retro_args()
 
         # Set OMP threads (torch defaults to n_threads = 1).
         faiss.omp_set_num_threads(4) # generally, 4 threads X 8-16 processes.

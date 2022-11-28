@@ -23,7 +23,7 @@ import time
 import torch
 from tqdm import tqdm
 
-from megatron import get_args, print_rank_0
+from megatron import get_retro_args, print_rank_0
 from tools.retro.db.utils import get_indexed_dataset_infos
 
 # >>>
@@ -33,7 +33,7 @@ from lutil import pax
 
 # def get_index_str():
 #     """Faiss notation for index structure."""
-#     args = get_args()
+#     args = get_retro_args()
 #     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
 #         args.retro_pq_m,
 #         args.retro_ivf_dim,
@@ -46,7 +46,7 @@ from lutil import pax
 def get_index_dir():
     """Create sub-directory for this index."""
     
-    args = get_args()
+    args = get_retro_args()
 
     # Directory path.
     index_dir_path = os.path.join(
@@ -120,7 +120,7 @@ def get_training_data_block_paths():
 #     return load_data(get_training_data_block_paths(), Timer())
 def get_training_data_merged():
 
-    args = get_args()
+    args = get_retro_args()
 
     # Setup.
     block_paths = get_training_data_block_paths()

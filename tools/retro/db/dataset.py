@@ -19,11 +19,7 @@ import numpy as np
 import torch
 
 from megatron import get_args, print_rank_0
-# from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from tools.retro.utils import get_gpt_tokenizer
-
-# from .utils import get_db_info_map, get_indexed_dataset_infos
-# from .utils import get_indexed_dataset_infos
 
 # >>>
 from lutil import pax, print_seq
@@ -35,8 +31,6 @@ class GPTChunkDataset(torch.utils.data.Dataset):
     def __init__(
             self,
             indexed_datasets,
-            # indexed_dataset_ids,
-            # chunk_index,
             chunk_db,
             max_gpt_chunk_length,
     ):
@@ -44,8 +38,6 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         assert chunk_db.shape[1] == 5, "expected 5 columns (dataset_idx, doc_idx, token_start_idx, token_end_idx, bert_chunk_length); found %d columns." % chunk_db.shape[1]
 
         self.indexed_datasets = indexed_datasets
-        # self.indexed_dataset_ids = indexed_dataset_ids
-        # self.chunk_index = chunk_index
         self.chunk_db = chunk_db
 
         self.max_gpt_chunk_length = max_gpt_chunk_length
@@ -58,15 +50,12 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, chunk_id):
 
-        # indexed_dataset_id = self.indexed_dataset_ids[chunk_id]
-        # doc_id, token_start_idx, token_end_idx, _ = \
-        #     [ value.item() for value in self.chunk_index[chunk_id] ]
         indexed_dataset_id, doc_id, token_start_idx, token_end_idx, _ = \
             [ value.item() for value in self.chunk_db[chunk_id] ]
-        # pax(0, {
-        #     "indexed_dataset_id" : indexed_dataset_id,
-        #     "doc_id" : doc_id,
-        # })
+        pax(0, {
+            "indexed_dataset_id" : indexed_dataset_id,
+            "doc_id" : doc_id,
+        })
         chunk_length = token_end_idx - token_start_idx
         indexed_dataset = self.indexed_datasets[indexed_dataset_id]
 
@@ -91,61 +80,3 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         # })
 
         return {'text': np.array(token_ids, dtype=np.int64)}
-
-
-# def dataset_offsets_to_ids(offsets):
-#     ids = []
-#     for i in range(len(offsets) - 1):
-#         ids.append([i] * (offsets[i+1] - offsets[i]))
-#     ids = [ i for ii in ids for i in ii ]
-#     # pax(0, {"offsets": str(offsets), "ids": str(ids)})
-#     return ids
-
-
-# def get_gpt_chunk_dataset_map():
-
-#     args = get_args()
-
-#     # Load indexed dataset infos.
-#     indexed_dataset_infos = get_indexed_dataset_infos()
-
-#     # Indexed datasets.
-#     indexed_datasets = []
-#     for index, indexed_dataset_info in enumerate(indexed_dataset_infos):
-#         print_rank_0("indexed dataset %d / %d [ %s ]." % (
-#             index,
-#             len(indexed_dataset_infos),
-#             indexed_dataset_info["prefix"],
-#         ))
-#         indexed_datasets.append(
-#             make_indexed_dataset(indexed_dataset_info["prefix"], "mmap", True))
-
-#     # Chunk index.
-#     db_info_map = get_db_info_map()
-#     chunk_dataset_map = {}
-#     for db_index, (db_key, db_info) in enumerate(db_info_map.items()):
-
-#         print_rank_0("init gpt chunk dataset %d / %d [ %s ]." %
-#               (db_index, len(db_info_map), db_key))
-
-#         # Load chunk index.
-#         f = h5py.File(db_info["db_path"], "r")
-#         indexed_dataset_offsets = np.copy(f["dataset_offsets_valid"])
-#         chunk_index = np.copy(f["chunks_valid"])
-#         f.close()
-
-#         # Indexed dataset ids.
-#         indexed_dataset_ids = dataset_offsets_to_ids(indexed_dataset_offsets)
-
-#         # Chunk dataset.
-#         chunk_dataset_map[db_key] = {
-#             "data" : GPTChunkDataset(
-#                 indexed_datasets = indexed_datasets,
-#                 indexed_dataset_ids = indexed_dataset_ids,
-#                 chunk_index = chunk_index,
-#                 max_gpt_chunk_length = args.retro_gpt_chunk_length,
-#             ),
-#             "embed_dir" : db_info["embed_dir"],
-#         }
-
-#     return chunk_dataset_map

@@ -22,7 +22,7 @@ import os
 import torch
 from tqdm import tqdm
 
-from megatron import get_args, mpu, print_rank_0
+from megatron import get_retro_args, mpu, print_rank_0
 from tools.bert_embedding import BertEmbedder
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
 from tools.retro.db.utils import get_merged_train_dataset \
@@ -41,7 +41,7 @@ from lutil import pax, print_seq, shorten as shorten_str
 
 def get_index(chunk_db_dataset):
 
-    args = get_args()
+    args = get_retro_args()
 
     # Chunk db block ranges.
     n_db_chunks = len(chunk_db_dataset)
@@ -176,7 +176,7 @@ def query_block_neighbors(index, banned_chunk_map, dataset, block, embedder):
 
     # raise Exception("loading 'added' index?")
 
-    args = get_args()
+    args = get_retro_args()
 
     # Embed block.
     embeddings = embed_block(dataset, block, embedder)
@@ -277,7 +277,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
                             prefix, dataset, nbr_dir,
                             embedder):
 
-    args = get_args()
+    args = get_retro_args()
 
     # missing_nbr_blocks = get_missing_neighbor_blocks(embed_dir, nbr_dir)
     def validate(f):
@@ -319,7 +319,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
 
 def query_pretraining_neighbors(timer):
 
-    args = get_args()
+    args = get_retro_args()
 
     # >>>
     # Set num threads (torch.distributed reset it to 1).
@@ -401,7 +401,7 @@ def query_pretraining_neighbors(timer):
                                 embedder)
 # def query_pretraining_neighbors(timer):
 
-#     args = get_args()
+#     args = get_retro_args()
 
 #     # Set num threads (torch.distributed reset it to 1).
 #     faiss.omp_set_num_threads(8)

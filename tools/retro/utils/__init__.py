@@ -26,36 +26,6 @@ from megatron.tokenizer.tokenizer import (
 from .timer import Timer
 
 
-# def get_gpt_seq_length_and_return_doc_ids():
-# def get_preprocessing_vs_pretraining_args():
-#     """*note: hacky ... differentiate between preprocessing & pretraining."""
-
-#     raise Exception("preload workdir args.")
-
-#     # Ideally would consolidate these 2 args; but seq_length==512 (for Bert)
-#     # during preprocessing.
-
-#     args = get_args()
-
-#     # Preprocessing.
-#     if hasattr(args, "retro_gpt_seq_length"):
-#         # return args.retro_gpt_seq_length, True
-#         return types.SimpleNamespace(
-#             gpt_seq_length = args.retro_gpt_seq_length,
-#             gpt_chunk_length = args.retro_gpt_chunk_length,
-#             return_doc_ids = True,
-#         )
-
-#     # Pretraining.
-#     else:
-#         # return args.seq_length, False
-#         return types.SimpleNamespace(
-#             gpt_seq_length = args.seq_length,
-#             gpt_chunk_length = args.retro_chunk_length,
-#             return_doc_ids = False,
-#         )
-
-
 def get_args_path(workdir):
     return os.path.join(workdir, "args.json")
 
@@ -66,10 +36,6 @@ def get_num_chunks_per_seq():
     chunk_length = args.retro_gpt_chunk_length
     assert seq_length % chunk_length == 0
     return seq_length // chunk_length
-# def get_num_chunks_per_seq():
-#     args = get_preprocessing_vs_pretraining_args()
-#     assert args.gpt_seq_length % args.gpt_chunk_length == 0
-#     return args.gpt_seq_length // args.gpt_chunk_length
 
 
 def get_gpt_tokenizer():

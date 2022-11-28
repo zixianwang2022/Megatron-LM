@@ -18,7 +18,7 @@ import faiss
 import os
 import torch
 
-from megatron import get_args, print_rank_0
+from megatron import get_retro_args, print_rank_0
 from tools.retro.index import Index
 
 # >>>
@@ -32,7 +32,7 @@ class FaissBaseIndex(Index):
     # def _train(self, inp, dir_path, timer):
     def _train(self, input_data_loader, dir_path, timer):
 
-        args = get_args()
+        args = get_retro_args()
 
         assert torch.distributed.get_rank() == 0
 

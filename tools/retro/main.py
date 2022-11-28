@@ -27,13 +27,11 @@ import os
 import torch
 
 from megatron import get_args, initialize_megatron, print_rank_0
-from tools.retro.db import build_db, preprocess_db
+from megatron.global_vars import set_retro_args
+from tools.retro.db import build_db # , preprocess_db
 from tools.retro.index.build import add_to_index, build_index, train_index
 from tools.retro.index.sandbox.megatron_vs_huggingface import run_bert_comparison
-from tools.retro.pretraining.build import (
-    build_pretraining_neighbors,
-    query_pretraining_neighbors,
-)
+from tools.retro.pretraining import query_pretraining_neighbors
 from tools.retro.pretraining.retro_dataset import test_retro_dataset
 from tools.retro.utils import get_args_path, Timer
 
@@ -74,7 +72,7 @@ def add_retro_args(parser):
     group.add_argument("--retro-nprobe", type = int, default = 65536)
     # group.add_argument("--retro-profile-stage-stop", default = None)
 
-    group.add_argument("--retro-workdir", required = True)
+    # group.add_argument("--retro-workdir", required = True)
     group.add_argument("--retro-nchunks-sampled", type = int, required = True)
     group.add_argument("--retro-doc-block-size", type = int, required = True)
     group.add_argument("--retro-block-size", type = int, required = True)
@@ -100,6 +98,36 @@ def save_args(args):
     # args.retro_args = args
 
     torch.distributed.barrier()
+
+
+def check_index_train_valid_split(timer):
+
+    # >>>
+    # # Load chunk db dataset.
+    # print_rank_0("load chunk db dataset.")
+    # chunk_db_dataset = get_db_merged_train_dataset()
+    # # pax(0, {"chunk_db_dataset": chunk_db_dataset})
+
+    # # Load index, banned chunk ids, datasets.
+    # print_rank_0(" > get index.")
+    # # >>>
+    # index = get_index(chunk_db_dataset)
+    # <<<
+
+    import faiss
+    from tools.retro.db.utils import get_indexed_dataset_infos
+
+    indexed_dataset_infos = get_indexed_dataset_infos()
+
+    index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added_0667_0000-0666.faissindex"
+    index = faiss.read_index(index_path)
+
+    pax(0, {
+        "indexed_dataset_infos" : indexed_dataset_infos,
+        "indexed_dataset_infos / 0" : indexed_dataset_infos[0],
+        "index_path" : index_path,
+        "index" : index,
+    })
 
 
 if __name__ == "__main__":
@@ -174,6 +202,8 @@ if __name__ == "__main__":
             run_bert_nan_analysis(timer)
         elif task == "misc-bert-comparison":
             run_bert_comparison(timer)
+        elif task == "misc-check-index-train-valid-split":
+            check_index_train_valid_split(timer)
         else:
             raise Exception("specialize for task '%s'." % task)
 

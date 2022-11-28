@@ -75,7 +75,7 @@ def get_individual_db_info(name):
 
 def get_individual_db(ds_id, ds_info):
     db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
-    db = np.zeros((ds_info["n_chunks_valid"], 5), dtype = "i8")
+    db = np.zeros((ds_info["n_chunks"], 5), dtype = "i8")
     db[:, 0] = ds_id
     start_idx = 0
     for db_path in db_paths:
@@ -85,7 +85,7 @@ def get_individual_db(ds_id, ds_info):
         start_idx += n_chunks_current
         f.close()
 
-    assert start_idx == ds_info["n_chunks_valid"]
+    assert start_idx == ds_info["n_chunks"]
 
     return db
 
@@ -109,8 +109,12 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     # Load chunk db.
     db_path = get_merged_db_path_map()[db_type]
     f = h5py.File(db_path, "r")
-    chunk_db = np.copy(f["chunks"])
-    f.close()
+    # >>>
+    # chunk_db = np.copy(f["chunks"])
+    # f.close()
+    # +++
+    chunk_db = f["chunks"]
+    # <<<
 
     # Chunk dataset.
     indexed_datasets = [ info["dataset"] for info in indexed_dataset_infos ]
@@ -120,54 +124,9 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     return chunk_dataset
 
 
-# def get_full_merged_dataset(indexed_dataset_infos = None, force = False):
-#     if not force:
-#         raise Exception("only load 'n_chunks_train' chunks.")
-#     return get_merged_dataset("full", indexed_dataset_infos)
-# def get_merged_training_dataset(indexed_dataset_infos = None):
 def get_merged_train_dataset(indexed_dataset_infos = None):
     return get_merged_dataset("train", indexed_dataset_infos)
 
 
-# def get_sampled_merged_dataset(indexed_dataset_infos = None):
 def get_merged_sampled_dataset(indexed_dataset_infos = None):
     return get_merged_dataset("sampled", indexed_dataset_infos)
-
-
-# def create_data_softlinks(data_files):
-
-#     # Soft links. [ personal space ]
-#     root_dir = \
-#         "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/data"
-#     for data_index, global_file in enumerate(data_files):
-
-#         print("soft links, data %d / %d." % (data_index, len(data_files)))
-
-#         local_dir = os.path.join(
-#             root_dir,
-#             os.path.basename(os.path.dirname(global_file)),
-#         )
-#         local_prefix = os.path.join(
-#             local_dir,
-#             os.path.splitext(os.path.basename(global_file))[0],
-#         )
-#         global_prefix = os.path.splitext(global_file)[0]
-
-#         if not os.path.exists(local_dir):
-#             os.mkdir(local_dir)
-
-#         for ext in [ "bin", "idx" ]:
-#             local_file = local_prefix + "." + ext
-#             if not os.path.exists(local_file):
-#                 os.symlink(global_prefix + "." + ext, local_file)
-
-#         # pax(0, {
-#         #     "global_file" : global_file,
-#         #     "root_dir" : root_dir,
-#         #     "local_dir" : local_dir,
-#         #     "local_prefix" : local_prefix,
-#         #     "global_prefix" : global_prefix,
-#         # })
-
-#     pax(0, {"data_files": data_files})
-#     # raise Exception("soft link.")

@@ -13,10 +13,10 @@ NPROCS=1
 # NPROCS=128
 # >>>
 
-PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-preprocess-play
+PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-process
 # CORPUS="play"
-CORPUS="wiki"
-# CORPUS="corpus"
+# CORPUS="wiki"
+CORPUS="corpus"
 
 # Data blend.
 # . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
@@ -34,10 +34,7 @@ BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 # >>>>>>>>>>>>>>>>>>>>>>>
 RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORPUS}
 
-# RETRO_PROFILE_STAGE_STOP="preprocess"
-# RETRO_PROFILE_STAGE_STOP="cluster"
-
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="db-preprocess"
 # [x] ... RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
@@ -50,7 +47,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORP
 # RETRO_TASKS="index-verify-nbrs"
 # RETRO_TASKS="pretraining-build-nbrs"
 # [x] ... RETRO_TASKS="pretraining-embed-chunks"
-RETRO_TASKS="pretraining-query-nbrs"
+# cnRETRO_TASKS="pretraining-query-nbrs"
 # RETRO_TASKS="pretraining-test-retro-dataset"
 # RETRO_TASKS="pretraining-plot-acc"
 # RETRO_TASKS="pretraining-verify-nbrs"
@@ -62,6 +59,7 @@ RETRO_TASKS="pretraining-query-nbrs"
 # RETRO_TASKS="misc-bert-nan-analysis"
 # RETRO_TASKS="misc-bert-comparison"
 # RETRO_TASKS="build" # ... the goal.
+# RETRO_TASKS="misc-check-index-train-valid-split"
 
 # RETRO_INDEX_TY=faiss-base
 RETRO_INDEX_TY=faiss-par-add

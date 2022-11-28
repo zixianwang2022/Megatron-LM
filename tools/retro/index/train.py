@@ -19,7 +19,7 @@ import os
 import torch
 from tqdm import tqdm
 
-from megatron import get_args, print_rank_0
+from megatron import get_retro_args, print_rank_0
 from tools.bert_embedding import DiskDataParallelBertEmbedder
 from tools.retro.db.utils import (
     get_indexed_dataset_infos,
@@ -47,7 +47,7 @@ from lutil import pax, print_seq
 
 
 def get_empty_index_path():
-    args = get_args()
+    args = get_retro_args()
     index = IndexFactory.get_index(args.retro_index_ty)
     empty_index_path = index.get_empty_index_path(get_index_dir())
     return empty_index_path
@@ -67,7 +67,7 @@ def embed_db():
     if os.path.isfile(empty_index_path):
         return
 
-    args = get_args()
+    args = get_retro_args()
 
     # Get db dataset.
     gpt_dataset = get_merged_sampled_dataset()
@@ -86,7 +86,7 @@ def embed_db():
 #     if torch.distributed.get_rank() != 0:
 #         return
 
-#     args = get_args()
+#     args = get_retro_args()
 
 #     # Already merged?
 #     merged_path = get_training_data_merged_path()
@@ -129,7 +129,7 @@ def embed_db():
 
 
 def train_on_embeddings(timer):
-    args = get_args()
+    args = get_retro_args()
     workdir = get_index_dir()
     # input_data_paths = get_embedding_paths(EMBED_KEY)
     # merged_data_path = get_training_data_merged_path()
@@ -182,7 +182,7 @@ def remove_embeddings():
 
 #     # index_str = "OPQ64_128,IVF4194304_HNSW32,PQ64"
 #     index_str = "OPQ32_256,IVF32768_HNSW32,PQ32"
-#     args = get_args()
+#     args = get_retro_args()
 
 #     assert torch.distributed.get_rank() == 0
 
