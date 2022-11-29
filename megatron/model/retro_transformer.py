@@ -31,6 +31,12 @@ from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, ini
 
 # >>>
 from lutil import pax
+
+def debug_tensors(key, tensor_map):
+    from megatron import print_rank_0
+    print_rank_0(">> %s <<" % key)
+    [ print_rank_0("    %s : %s." % (k, "--" if t is None else str(t.shape)))
+      for k, t in tensor_map.items() ]
 # <<<
 
 """ We use the following notation throughout this file:
@@ -108,6 +114,10 @@ class ParallelMLP(MegatronModule):
 
     def forward(self, hidden_states):
 
+        debug_tensors("ParallelMLP.forward", {
+            "hidden_states" : hidden_states,
+        })
+
         # [s, b, 4hp]
         intermediate_parallel, bias_parallel = self.dense_h_to_4h(hidden_states)
 
@@ -122,108 +132,108 @@ class ParallelMLP(MegatronModule):
         output, output_bias = self.dense_4h_to_h(intermediate_parallel)
         return output, output_bias
 
-class ParallelAdaptor(MegatronModule):
-    """MLP.
+# class ParallelAdaptor(MegatronModule):
+#     """MLP.
 
-    MLP will take the input with h hidden state, project it to 4*h
-    hidden dimension, perform nonlinear transformation, and project the
-    state back into h hidden dimension. At the end, dropout is also
-    applied.
-    """
+#     MLP will take the input with h hidden state, project it to 4*h
+#     hidden dimension, perform nonlinear transformation, and project the
+#     state back into h hidden dimension. At the end, dropout is also
+#     applied.
+#     """
 
-    def __init__(self, project_size=64, id=1):
-        super(ParallelAdaptor, self).__init__()
-        args = get_args()
+#     def __init__(self, project_size=64, id=1):
+#         super(ParallelAdaptor, self).__init__()
+#         args = get_args()
 
-        self.id = id
-        # Project to .
-        self.dense_h_to_4h = mpu.ColumnParallelLinear(
-            args.hidden_size,
-            project_size,
-            gather_output=False,
-            init_method=init_method_normal(1e-3),
-            skip_bias_add=True)
+#         self.id = id
+#         # Project to .
+#         self.dense_h_to_4h = mpu.ColumnParallelLinear(
+#             args.hidden_size,
+#             project_size,
+#             gather_output=False,
+#             init_method=init_method_normal(1e-3),
+#             skip_bias_add=True)
 
-        self.bias_gelu_fusion = args.bias_gelu_fusion
-        self.activation_func = F.gelu
-        if args.openai_gelu:
-            self.activation_func = openai_gelu
-        elif args.onnx_safe:
-            self.activation_func = erf_gelu
+#         self.bias_gelu_fusion = args.bias_gelu_fusion
+#         self.activation_func = F.gelu
+#         if args.openai_gelu:
+#             self.activation_func = openai_gelu
+#         elif args.onnx_safe:
+#             self.activation_func = erf_gelu
 
-        # Project back to h.
-        self.dense_4h_to_h = mpu.RowParallelLinear(
-            project_size,
-            args.hidden_size,
-            input_is_parallel=True,
-            init_method=init_method_normal(1e-3),
-            skip_bias_add=True)
+#         # Project back to h.
+#         self.dense_4h_to_h = mpu.RowParallelLinear(
+#             project_size,
+#             args.hidden_size,
+#             input_is_parallel=True,
+#             init_method=init_method_normal(1e-3),
+#             skip_bias_add=True)
 
 
-    def forward(self, hidden_states):
+#     def forward(self, hidden_states):
 
-        # [s, b, 4hp]
-        # print(f"adaptor {self.id}")
-        intermediate_parallel, bias_parallel = self.dense_h_to_4h(hidden_states)
+#         # [s, b, 4hp]
+#         # print(f"adaptor {self.id}")
+#         intermediate_parallel, bias_parallel = self.dense_h_to_4h(hidden_states)
 
-        if self.bias_gelu_fusion:
-             intermediate_parallel = \
-                     bias_gelu_impl(intermediate_parallel, bias_parallel)
-        else:
-            intermediate_parallel = \
-                self.activation_func(intermediate_parallel + bias_parallel)
+#         if self.bias_gelu_fusion:
+#              intermediate_parallel = \
+#                      bias_gelu_impl(intermediate_parallel, bias_parallel)
+#         else:
+#             intermediate_parallel = \
+#                 self.activation_func(intermediate_parallel + bias_parallel)
 
-        # [s, b, h]
-        output, output_bias = self.dense_4h_to_h(intermediate_parallel)
-        return output + hidden_states, output_bias
+#         # [s, b, h]
+#         output, output_bias = self.dense_4h_to_h(intermediate_parallel)
+#         return output + hidden_states, output_bias
 
-class SwitchMLP(MegatronModule):
-    """
-    Routes input to one of N MLP "experts"
-    """
-    def __init__(self, init_method, output_layer_init_method):
-        super(SwitchMLP, self).__init__()
-        args = get_args()
-        self.router = torch.nn.Linear(args.hidden_size, args.num_experts)
-        self.experts = torch.nn.ModuleList()
-        for i in range(args.num_experts):
-            self.experts.append(ParallelMLP(init_method, output_layer_init_method))
+# class SwitchMLP(MegatronModule):
+#     """
+#     Routes input to one of N MLP "experts"
+#     """
+#     def __init__(self, init_method, output_layer_init_method):
+#         super(SwitchMLP, self).__init__()
+#         args = get_args()
+#         self.router = torch.nn.Linear(args.hidden_size, args.num_experts)
+#         self.experts = torch.nn.ModuleList()
+#         for i in range(args.num_experts):
+#             self.experts.append(ParallelMLP(init_method, output_layer_init_method))
 
-    def forward(self, hidden_states):
-        # hidden_states: [b, s, h]
-        b = hidden_states.size(0)
-        s = hidden_states.size(1)
-        h = hidden_states.size(2)
-        route = self.router(hidden_states)
-        route = torch.nn.functional.softmax(route, dim=2)
-        max_prob, max_ind = torch.max(route, dim=2)
-        max_prob = torch.unsqueeze(max_prob, 2) # [b s 1]
+#     def forward(self, hidden_states):
+#         # hidden_states: [b, s, h]
+#         b = hidden_states.size(0)
+#         s = hidden_states.size(1)
+#         h = hidden_states.size(2)
+#         route = self.router(hidden_states)
+#         route = torch.nn.functional.softmax(route, dim=2)
+#         max_prob, max_ind = torch.max(route, dim=2)
+#         max_prob = torch.unsqueeze(max_prob, 2) # [b s 1]
 
-        # TODO (rprenger) TODO this could be made easier to read
-        # Converting [b, s, h] to [b*s, h].
-        # Each vector could be routed differently
-        hidden_states = hidden_states.view(-1, hidden_states.size(2)) # [b*s h]
-        max_prob = max_prob.view(-1, max_prob.size(2)) # [b*s 1]
-        max_ind = max_ind.view(-1) # [b*s]
+#         # TODO (rprenger) TODO this could be made easier to read
+#         # Converting [b, s, h] to [b*s, h].
+#         # Each vector could be routed differently
+#         hidden_states = hidden_states.view(-1, hidden_states.size(2)) # [b*s h]
+#         max_prob = max_prob.view(-1, max_prob.size(2)) # [b*s 1]
+#         max_ind = max_ind.view(-1) # [b*s]
 
-        output_total = torch.empty_like(hidden_states)
-        output_bias_total = torch.empty_like(hidden_states)
-        #TODO (rprenger) This does each expert in serial, but it could be parallelized
+#         output_total = torch.empty_like(hidden_states)
+#         output_bias_total = torch.empty_like(hidden_states)
+#         #TODO (rprenger) This does each expert in serial, but it could be parallelized
 
-        for expert_num, expert in enumerate(self.experts):
-            local_indices = (max_ind == expert_num).nonzero()
-            hidden = hidden_states[local_indices,:]
-            output, output_bias = expert(hidden)
-            output_bias = output_bias.expand_as(output)
-            output_total[local_indices,:] = output
-            output_bias_total[local_indices,:] = output_bias
+#         for expert_num, expert in enumerate(self.experts):
+#             local_indices = (max_ind == expert_num).nonzero()
+#             hidden = hidden_states[local_indices,:]
+#             output, output_bias = expert(hidden)
+#             output_bias = output_bias.expand_as(output)
+#             output_total[local_indices,:] = output
+#             output_bias_total[local_indices,:] = output_bias
 
-        output_total = output_total*max_prob
-        output_bias_total = output_bias_total*max_prob
-        output_total = output_total.view(b, s, h)
-        output_bias_total = output_bias_total.view(b, s, h)
+#         output_total = output_total*max_prob
+#         output_bias_total = output_bias_total*max_prob
+#         output_total = output_total.view(b, s, h)
+#         output_bias_total = output_bias_total.view(b, s, h)
 
-        return output_total, output_bias_total
+#         return output_total, output_bias_total
 
 class ParallelAttention(MegatronModule):
     """Parallel self-attention layer abstract class.
@@ -329,6 +339,12 @@ class ParallelAttention(MegatronModule):
         # >>>
         # pax(0, {"hidden_states": str(hidden_states.shape)})
         # raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        debug_tensors("ParallelAttention.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "encoder_output" : encoder_output,
+            "inference_params" : inference_params,
+        })
         # <<<
 
         # =================================================
@@ -673,6 +689,15 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
                 encoder_output=None, enc_dec_attn_mask=None,
                 inference_params=None):
         # hidden_states: [s, b, h]
+        debug_tensors("ParallelRetroTransformerEncoderLayer.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "retriever_output" : retriever_output,
+            "retriever_attn_mask" : retriever_attn_mask,
+            "encoder_output" : encoder_output,
+            "enc_dec_attn_mask" : enc_dec_attn_mask,
+            "inference_params" : inference_params,
+        })
 
         # Layer norm at the beginning of the transformer layer.
         layernorm_output = self.input_layernorm(hidden_states)
@@ -894,6 +919,15 @@ class ParallelRetroTransformerLayer(MegatronModule):
                 encoder_output=None, enc_dec_attn_mask=None,
                 inference_params=None):
         # hidden_states: [b, s, h]
+        debug_tensors("ParallelRetroTransformerLayer.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "retriever_output" : retriever_output,
+            "retriever_attn_mask" : retriever_attn_mask,
+            "encoder_output" : encoder_output,
+            "enc_dec_attn_mask" : enc_dec_attn_mask,
+            "inference_params" : inference_params,
+        })
 
         # Layer norm at the beginning of the transformer layer.
         layernorm_output = self.input_layernorm(hidden_states)
@@ -1084,6 +1118,15 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
                 inference_params=None):
         # hidden_states: [s, b, h]
         # print("hidden_states", hidden_states.shape)
+        debug_tensors("ParallelRetroEncoderTransformerCALayer.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "retriever_output" : retriever_output,
+            "retriever_attn_mask" : retriever_attn_mask,
+            "encoder_output" : encoder_output,
+            "enc_dec_attn_mask" : enc_dec_attn_mask,
+            "inference_params" : inference_params,
+        })
 
         # Layer norm at the beginning of the transformer layer.
         layernorm_output = self.input_layernorm(hidden_states)
@@ -1276,6 +1319,13 @@ class ParallelTransformerLayer(MegatronModule):
                 encoder_output=None, enc_dec_attn_mask=None,
                 inference_params=None):
         # hidden_states: [b, s, h]
+        debug_tensors("ParallelTransformerLayer.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "encoder_output" : encoder_output,
+            "enc_dec_attn_mask" : enc_dec_attn_mask,
+            "inference_params" : inference_params,
+        })
 
         # >>>
         # raise Exception("hidden_states = %s." % str(hidden_states.shape))
@@ -1373,194 +1423,194 @@ class ParallelTransformerLayer(MegatronModule):
         return output
 
 
-class ParallelAdaptorTransformerLayer(MegatronModule):
-    """A single transformer layer.
+# class ParallelAdaptorTransformerLayer(MegatronModule):
+#     """A single transformer layer.
 
-    Transformer layer takes input with size [b, s, h] and returns an
-    output of the same size.
-    """
+#     Transformer layer takes input with size [b, s, h] and returns an
+#     output of the same size.
+#     """
 
-    def __init__(self, init_method, output_layer_init_method,
-                 layer_number, layer_type=LayerType.encoder,
-                 self_attn_mask_type=AttnMaskType.padding):
-        args = get_args()
+#     def __init__(self, init_method, output_layer_init_method,
+#                  layer_number, layer_type=LayerType.encoder,
+#                  self_attn_mask_type=AttnMaskType.padding):
+#         args = get_args()
 
-        super(ParallelAdaptorTransformerLayer, self).__init__()
-        self.layer_number = layer_number
-        self.layer_type = layer_type
+#         super(ParallelAdaptorTransformerLayer, self).__init__()
+#         self.layer_number = layer_number
+#         self.layer_type = layer_type
 
-        self.apply_residual_connection_post_layernorm \
-            = args.apply_residual_connection_post_layernorm
+#         self.apply_residual_connection_post_layernorm \
+#             = args.apply_residual_connection_post_layernorm
 
-        self.bf16 = args.bf16
-        self.fp32_residual_connection = args.fp32_residual_connection
+#         self.bf16 = args.bf16
+#         self.fp32_residual_connection = args.fp32_residual_connection
 
-        # Layernorm on the input data.
-        self.input_layernorm = LayerNorm(
-            args.hidden_size,
-            eps=args.layernorm_epsilon)
+#         # Layernorm on the input data.
+#         self.input_layernorm = LayerNorm(
+#             args.hidden_size,
+#             eps=args.layernorm_epsilon)
 
-        # Self attention.
-        self.self_attention = ParallelAttention(
-            init_method,
-            output_layer_init_method,
-            layer_number,
-            attention_type=AttnType.self_attn,
-            attn_mask_type=self_attn_mask_type)
-        self.hidden_dropout = args.hidden_dropout
-        self.bias_dropout_fusion = args.bias_dropout_fusion
+#         # Self attention.
+#         self.self_attention = ParallelAttention(
+#             init_method,
+#             output_layer_init_method,
+#             layer_number,
+#             attention_type=AttnType.self_attn,
+#             attn_mask_type=self_attn_mask_type)
+#         self.hidden_dropout = args.hidden_dropout
+#         self.bias_dropout_fusion = args.bias_dropout_fusion
 
-        # Layernorm on the attention output
-        self.post_attention_layernorm = LayerNorm(
-            args.hidden_size,
-            eps=args.layernorm_epsilon)
+#         # Layernorm on the attention output
+#         self.post_attention_layernorm = LayerNorm(
+#             args.hidden_size,
+#             eps=args.layernorm_epsilon)
 
-        if self.layer_type == LayerType.decoder:
-            self.inter_attention = ParallelAttention(
-                init_method,
-                output_layer_init_method,
-                layer_number,
-                attention_type=AttnType.cross_attn)
-            # Layernorm on the attention output.
-            self.post_inter_attention_layernorm = LayerNorm(
-                args.hidden_size,
-                eps=args.layernorm_epsilon)
+#         if self.layer_type == LayerType.decoder:
+#             self.inter_attention = ParallelAttention(
+#                 init_method,
+#                 output_layer_init_method,
+#                 layer_number,
+#                 attention_type=AttnType.cross_attn)
+#             # Layernorm on the attention output.
+#             self.post_inter_attention_layernorm = LayerNorm(
+#                 args.hidden_size,
+#                 eps=args.layernorm_epsilon)
 
-        # MLP
-        self.mlp = ParallelMLP(init_method,
-                               output_layer_init_method)
+#         # MLP
+#         self.mlp = ParallelMLP(init_method,
+#                                output_layer_init_method)
 
-        self.adaptor1 = ParallelAdaptor(project_size=args.project_size, id=1)
-        self.adaptor2 = ParallelAdaptor(project_size=args.project_size, id=2)
+#         self.adaptor1 = ParallelAdaptor(project_size=args.project_size, id=1)
+#         self.adaptor2 = ParallelAdaptor(project_size=args.project_size, id=2)
 
-    def forward(self, hidden_states, attention_mask,
-                encoder_output=None, enc_dec_attn_mask=None,
-                inference_params=None):
-        # hidden_states: [b, s, h]
+#     def forward(self, hidden_states, attention_mask,
+#                 encoder_output=None, enc_dec_attn_mask=None,
+#                 inference_params=None):
+#         # hidden_states: [b, s, h]
 
-        # Layer norm at the beginning of the transformer layer.
-        layernorm_output = self.input_layernorm(hidden_states)
-        # Self attention.
-        attention_output, attention_bias = \
-            self.self_attention(layernorm_output,
-                                attention_mask,
-                                inference_params=inference_params)
-
-
-        # Residual connection.
-        if self.apply_residual_connection_post_layernorm:
-            residual = layernorm_output
-        else:
-            residual = hidden_states
-
-        # jit scripting for a nn.module (with dropout) is not
-        # trigerring the fusion kernel. For now, we use two
-        # different nn.functional routines to account for varying
-        # dropout semantics during training and inference phases.
-        if self.bias_dropout_fusion:
-            if self.training:
-                bias_dropout_add_func = bias_dropout_add_fused_train
-            else:
-                bias_dropout_add_func = bias_dropout_add_fused_inference
-        else:
-            bias_dropout_add_func = get_bias_dropout_add(self.training)
-
-        # re-enable torch grad to enable fused optimization.
-        with torch.enable_grad():
-            out = bias_dropout_add_func(
-                attention_output,
-                attention_bias.expand_as(residual),
-                torch.zeros_like(residual),
-                self.hidden_dropout)
-
-        adaptor_output, adaptor_bias = self.adaptor1(out)
-
-        with torch.enable_grad():
-            layernorm_input = bias_dropout_add_func(
-                adaptor_output,
-                adaptor_bias.expand_as(residual),
-                residual,
-                self.hidden_dropout)
-
-        # Layer norm post the self attention.
-        layernorm_output = self.post_attention_layernorm(layernorm_input)
-
-        if self.layer_type == LayerType.decoder:
-            attention_output, attention_bias = \
-                self.inter_attention(layernorm_output,
-                                     enc_dec_attn_mask,
-                                     encoder_output=encoder_output)
-            # residual connection
-            if self.apply_residual_connection_post_layernorm:
-                residual = layernorm_output
-            else:
-                residual = layernorm_input
-
-            # re-enable torch grad to enable fused optimization.
-            with torch.enable_grad():
-                layernorm_input = bias_dropout_add_func(
-                    attention_output,
-                    attention_bias.expand_as(residual),
-                    residual,
-                    self.hidden_dropout)
-
-            # Layer norm post the decoder attention
-            layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
-
-        # MLP.
-        mlp_output, mlp_bias = self.mlp(layernorm_output)
-
-        # Second residual connection.
-        if self.apply_residual_connection_post_layernorm:
-            residual = layernorm_output
-        else:
-            residual = layernorm_input
-
-        # re-enable torch grad to enable fused optimization.
-        with torch.enable_grad():
-            out = bias_dropout_add_func(
-                mlp_output,
-                mlp_bias.expand_as(residual),
-                torch.zeros_like(residual),
-                self.hidden_dropout)
-
-        adaptor_output, adaptor_bias = self.adaptor2(out)
-
-        with torch.enable_grad():
-            output = bias_dropout_add_func(
-                adaptor_output,
-                adaptor_bias.expand_as(residual),
-                residual,
-                self.hidden_dropout)
-
-        return output
+#         # Layer norm at the beginning of the transformer layer.
+#         layernorm_output = self.input_layernorm(hidden_states)
+#         # Self attention.
+#         attention_output, attention_bias = \
+#             self.self_attention(layernorm_output,
+#                                 attention_mask,
+#                                 inference_params=inference_params)
 
 
+#         # Residual connection.
+#         if self.apply_residual_connection_post_layernorm:
+#             residual = layernorm_output
+#         else:
+#             residual = hidden_states
 
-class NoopTransformerLayer(MegatronModule):
-    """A single 'no-op' transformer layer.
+#         # jit scripting for a nn.module (with dropout) is not
+#         # trigerring the fusion kernel. For now, we use two
+#         # different nn.functional routines to account for varying
+#         # dropout semantics during training and inference phases.
+#         if self.bias_dropout_fusion:
+#             if self.training:
+#                 bias_dropout_add_func = bias_dropout_add_fused_train
+#             else:
+#                 bias_dropout_add_func = bias_dropout_add_fused_inference
+#         else:
+#             bias_dropout_add_func = get_bias_dropout_add(self.training)
 
-    The sole purpose of this layer is for when a standalone embedding layer
-    is used (i.e., args.standalone_embedding_stage == True). In this case,
-    zero transformer layers are assigned when pipeline rank == 0. Additionally,
-    when virtual pipeline rank >= 1, zero total model parameters are created
-    (virtual rank 0 contains the input embedding). This results in the model's
-    input and output tensors being the same, which causes an error when
-    performing certain memory optimiations on the output tensor (e.g.,
-    deallocating it). Thus, this layer disconnects the input from the output
-    via a clone. Since ranks containing a no-op layer are generally under-
-    utilized (both compute and memory), there's no worry of any performance
-    degredation.
-    """
+#         # re-enable torch grad to enable fused optimization.
+#         with torch.enable_grad():
+#             out = bias_dropout_add_func(
+#                 attention_output,
+#                 attention_bias.expand_as(residual),
+#                 torch.zeros_like(residual),
+#                 self.hidden_dropout)
 
-    def __init__(self, layer_number):
-        super().__init__()
-        self.layer_number = layer_number
+#         adaptor_output, adaptor_bias = self.adaptor1(out)
 
-    def forward(self, hidden_states, attention_mask,
-                encoder_output=None, enc_dec_attn_mask=None,
-                inference_params=None):
-        return hidden_states.clone()
+#         with torch.enable_grad():
+#             layernorm_input = bias_dropout_add_func(
+#                 adaptor_output,
+#                 adaptor_bias.expand_as(residual),
+#                 residual,
+#                 self.hidden_dropout)
+
+#         # Layer norm post the self attention.
+#         layernorm_output = self.post_attention_layernorm(layernorm_input)
+
+#         if self.layer_type == LayerType.decoder:
+#             attention_output, attention_bias = \
+#                 self.inter_attention(layernorm_output,
+#                                      enc_dec_attn_mask,
+#                                      encoder_output=encoder_output)
+#             # residual connection
+#             if self.apply_residual_connection_post_layernorm:
+#                 residual = layernorm_output
+#             else:
+#                 residual = layernorm_input
+
+#             # re-enable torch grad to enable fused optimization.
+#             with torch.enable_grad():
+#                 layernorm_input = bias_dropout_add_func(
+#                     attention_output,
+#                     attention_bias.expand_as(residual),
+#                     residual,
+#                     self.hidden_dropout)
+
+#             # Layer norm post the decoder attention
+#             layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
+
+#         # MLP.
+#         mlp_output, mlp_bias = self.mlp(layernorm_output)
+
+#         # Second residual connection.
+#         if self.apply_residual_connection_post_layernorm:
+#             residual = layernorm_output
+#         else:
+#             residual = layernorm_input
+
+#         # re-enable torch grad to enable fused optimization.
+#         with torch.enable_grad():
+#             out = bias_dropout_add_func(
+#                 mlp_output,
+#                 mlp_bias.expand_as(residual),
+#                 torch.zeros_like(residual),
+#                 self.hidden_dropout)
+
+#         adaptor_output, adaptor_bias = self.adaptor2(out)
+
+#         with torch.enable_grad():
+#             output = bias_dropout_add_func(
+#                 adaptor_output,
+#                 adaptor_bias.expand_as(residual),
+#                 residual,
+#                 self.hidden_dropout)
+
+#         return output
+
+
+
+# class NoopTransformerLayer(MegatronModule):
+#     """A single 'no-op' transformer layer.
+
+#     The sole purpose of this layer is for when a standalone embedding layer
+#     is used (i.e., args.standalone_embedding_stage == True). In this case,
+#     zero transformer layers are assigned when pipeline rank == 0. Additionally,
+#     when virtual pipeline rank >= 1, zero total model parameters are created
+#     (virtual rank 0 contains the input embedding). This results in the model's
+#     input and output tensors being the same, which causes an error when
+#     performing certain memory optimiations on the output tensor (e.g.,
+#     deallocating it). Thus, this layer disconnects the input from the output
+#     via a clone. Since ranks containing a no-op layer are generally under-
+#     utilized (both compute and memory), there's no worry of any performance
+#     degredation.
+#     """
+
+#     def __init__(self, layer_number):
+#         super().__init__()
+#         self.layer_number = layer_number
+
+#     def forward(self, hidden_states, attention_mask,
+#                 encoder_output=None, enc_dec_attn_mask=None,
+#                 inference_params=None):
+#         return hidden_states.clone()
 
 
 # class ParallelTransformer(MegatronModule):
@@ -1780,6 +1830,15 @@ class ParallelRetroTransformer(MegatronModule):
                 inference_params=None):
         # >>>
         # raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        debug_tensors("ParallelTransformer.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "retriever_output" : retriever_output,
+            "retriever_attn_mask" : retriever_attn_mask,
+            "encoder_output" : encoder_output,
+            "enc_dec_attn_mask" : enc_dec_attn_mask,
+            "inference_params" : inference_params,
+        })
         # <<<
 
         # Checks.
@@ -1811,6 +1870,10 @@ class ParallelRetroTransformer(MegatronModule):
             # <<<
 
         args = get_args()
+
+        # >>> ... new, 11/29
+        retriever_output = retriever_output.transpose(0, 1).contiguous()
+        # <<<
 
         # Viewless tensor.
         # - We only need to create a viewless tensor in the case of micro batch
@@ -2105,6 +2168,15 @@ class ParallelRetroEncoder(MegatronModule):
                 inference_params=None):
 
         # raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        debug_tensors("ParallelRetroEncoderTransformer.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "retriever_output" : retriever_output,
+            "retriever_attn_mask" : retriever_attn_mask,
+            "encoder_output" : encoder_output,
+            "enc_dec_attn_mask" : enc_dec_attn_mask,
+            "inference_params" : inference_params,
+        })
 
         # Checks.
         if inference_params:
@@ -2122,6 +2194,10 @@ class ParallelRetroEncoder(MegatronModule):
         else:
             # See set_input_tensor()
             hidden_states = self.input_tensor
+
+        # >>> ... new, 11/29
+        # retriever_output = retriever_output.transpose(0, 1).contiguous()
+        # <<<
 
         # Viewless tensor.
         # - We only need to create a viewless tensor in the case of micro batch

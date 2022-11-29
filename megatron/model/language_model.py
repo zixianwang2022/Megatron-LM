@@ -31,6 +31,7 @@ from .utils import init_method_normal, scaled_init_method_normal
 # >>>
 from lutil import pax
 from lutil.pax import print_mem_stats
+from .retro_transformer import debug_tensors
 # <<<
 
 
@@ -465,6 +466,14 @@ class TransformerLanguageModel(MegatronModule):
         # >>>
         # raise Exception("enc_input_ids = %s." % str(enc_input_ids.shape))
         # raise Exception("enc_position_ids = %s." % str(enc_position_ids.shape))
+        debug_tensors("LanguageModel.forward", {
+            "enc_input_ids" : enc_input_ids,
+            "enc_position_ids" : enc_position_ids,
+            "enc_attn_mask" : enc_attn_mask,
+            "ret_int_ids" : ret_int_ids,
+            "ret_position_ids" : ret_position_ids,
+            "ret_attn_mask" : ret_attn_mask,
+        })
         # <<<
 
         # Retriever embedding.

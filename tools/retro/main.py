@@ -30,9 +30,10 @@ from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.global_vars import set_retro_args
 from tools.retro.db import build_db # , preprocess_db
 from tools.retro.index.build import add_to_index, build_index, train_index
-from tools.retro.index.sandbox.megatron_vs_huggingface import run_bert_comparison
+from tools.retro.index.misc.megatron_vs_huggingface import run_bert_comparison
 from tools.retro.pretraining import query_pretraining_neighbors
 from tools.retro.pretraining.retro_dataset import test_retro_dataset
+from tools.retro.pretraining.misc import print_pretraining_neighbors
 from tools.retro.utils import get_args_path, Timer
 
 # >>>
@@ -100,6 +101,7 @@ def save_args(args):
     torch.distributed.barrier()
 
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 def check_index_train_valid_split(timer):
 
     # >>>
@@ -128,6 +130,7 @@ def check_index_train_valid_split(timer):
         "index_path" : index_path,
         "index" : index,
     })
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 if __name__ == "__main__":
@@ -204,6 +207,8 @@ if __name__ == "__main__":
             run_bert_comparison(timer)
         elif task == "misc-check-index-train-valid-split":
             check_index_train_valid_split(timer)
+        elif task == "misc-print-pretraining-neighbors":
+            print_pretraining_neighbors()
         else:
             raise Exception("specialize for task '%s'." % task)
 

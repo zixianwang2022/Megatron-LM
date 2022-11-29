@@ -52,10 +52,14 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
         indexed_dataset_id, doc_id, token_start_idx, token_end_idx, _ = \
             [ value.item() for value in self.chunk_db[chunk_id] ]
-        pax(0, {
-            "indexed_dataset_id" : indexed_dataset_id,
-            "doc_id" : doc_id,
-        })
+        # pax(0, {
+        #     "chunk_db" : self.chunk_db,
+        #     "chunk db row" : self.chunk_db[chunk_id],
+        #     "indexed_dataset_id" : indexed_dataset_id,
+        #     "doc_id" : doc_id,
+        #     "token_start_idx" : token_start_idx,
+        #     "token_end_idx" : token_end_idx,
+        # })
         chunk_length = token_end_idx - token_start_idx
         indexed_dataset = self.indexed_datasets[indexed_dataset_id]
 
