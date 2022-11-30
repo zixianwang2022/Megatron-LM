@@ -91,8 +91,6 @@ def load_data(paths, timer):
     return data_map
 
 
-# def get_missing_embedding_blocks(workdir, dataset, block_size):
-#     n_samples = len(dataset)
 def get_missing_blocks_by_rank(workdir, n_samples, block_size,
                                validate = lambda f : None):
 
@@ -110,6 +108,7 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
             "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
         )
     } for r in block_ranges]
+    all_block_path_set = set(item["path"] for item in all_block_items)
 
     # Delete corrupt files.
     if torch.distributed.get_rank() == 0:
@@ -119,6 +118,8 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
         pbar = tqdm(existing_block_paths)
         for index, path in enumerate(pbar):
             pbar.set_description("validating block.")
+
+            assert path in all_block_path_set, "unexpected filename, '%s'." % path
 
             try:
                 f = h5py.File(path, "r")

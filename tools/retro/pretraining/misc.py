@@ -32,6 +32,10 @@ def print_pretraining_neighbors():
 
     train_ds, valid_ds, test_ds = get_retro_datasets()
 
+    pax({
+        "train_ds / len" : len(train_ds),
+    })
+
     def print_tokens(key, token_ids):
         tokens = gpt_tokenizer.detokenize(token_ids)
         print("%s : %s" % (key, "\\n".join(tokens.splitlines())))

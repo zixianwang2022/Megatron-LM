@@ -55,6 +55,16 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                                   train_valid_test_num_samples)
     prefixes, weights, datasets_train_valid_test_num_samples = output
 
+    # >>>
+    # pax(0, {
+    #     "prefixes" : prefixes,
+    #     "weights" : weights,
+    #     "train_valid_test_num_samples" : train_valid_test_num_samples,
+    #     "datasets_train_valid_test_num_samples" :
+    #     datasets_train_valid_test_num_samples,
+    # })
+    # <<<
+
     # Build individual datasets.
     train_datasets = []
     valid_datasets = []
@@ -97,6 +107,10 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      seq_length, seed, skip_warmup,
                                      return_doc_ids):
     """Build train, valid, and test datasets."""
+
+    # >>>
+    # pax(0, {"train-valid_test_num_samples": train_valid_test_num_samples})
+    # <<<
 
     # Indexed dataset.
     indexed_dataset = get_indexed_dataset_(data_prefix,
@@ -184,18 +198,16 @@ class GPTDataset(torch.utils.data.Dataset):
         assert np.max(documents) < indexed_dataset.sizes.shape[0]
 
         # Build index mappings.
-        self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
-            self.name, data_prefix, documents, self.indexed_dataset.sizes,
-            num_samples, seq_length, seed)
-
         # >>>
-        # pax(0, {
-        #     "num_samples" : num_samples,
-        #     "doc_idx" : len(self.doc_idx),
-        #     "sample_idx" : len(self.sample_idx),
-        #     "shuffle_idx" : len(self.shuffle_idx),
-        # })
+        # self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
+        #     self.name, data_prefix, documents, self.indexed_dataset.sizes,
+        #     num_samples, seq_length, seed)
+        self.doc_idx, self.sample_idx, self.shuffle_idx, self.index_prefix = \
+            _build_index_mappings(self.name, data_prefix,
+                                  documents, self.indexed_dataset.sizes,
+                                  num_samples, seq_length, seed)
         # <<<
+
 
     def __len__(self):
         # -1 is due to data structure used to retieve the index:
@@ -244,7 +256,11 @@ class GPTDataset(torch.utils.data.Dataset):
 
 
 def _build_index_mappings(name, data_prefix, documents, sizes,
-                          num_samples, seq_length, seed):
+                          num_samples, seq_length, seed,
+                          # >>>
+                          # return_index_prefix = False):
+                          # <<<
+):
     """Build doc-idx, sample-idx, and shuffle-idx.
     doc-idx: is an array (ordered) of documents to be used in training.
     sample-idx: is the start document index and document offset for each
@@ -254,25 +270,24 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
     # Number of tokens in each epoch and number of required epochs.
     tokens_per_epoch = _num_tokens(documents, sizes)
     num_epochs = _num_epochs(tokens_per_epoch, seq_length, num_samples)
-    # >>>
-    # pax(0, {
-    #     "documents" : documents,
-    #     "sizes" : sizes,
-    #     "tokens_per_epoch" : tokens_per_epoch,
-    #     "seq_length" : seq_length,
-    #     "num_samples" : num_samples,
-    #     "num_epochs" : num_epochs,
-    # })
-    # <<<
+
     # rng state
     np_rng = np.random.RandomState(seed=seed)
 
     # Filename of the index mappings.
     _filename = data_prefix
-    _filename += '_{}_indexmap'.format(name)
-    _filename += '_{}ns'.format(num_samples)
-    _filename += '_{}sl'.format(seq_length)
-    _filename += '_{}s'.format(seed)
+    # >>>
+    # _filename += '_{}_indexmap'.format(name)
+    # _filename += '_{}ns'.format(num_samples)
+    # _filename += '_{}sl'.format(seq_length)
+    # _filename += '_{}s'.format(seed)
+    # +++
+    _index_prefix = '{}_indexmap'.format(name)
+    _index_prefix += '_{}ns'.format(num_samples)
+    _index_prefix += '_{}sl'.format(seq_length)
+    _index_prefix += '_{}s'.format(seed)
+    _filename += '_' + _index_prefix
+    # <<<
     doc_idx_filename = _filename + '_doc_idx.npy'
     sample_idx_filename = _filename + '_sample_idx.npy'
     shuffle_idx_filename = _filename + '_shuffle_idx.npy'
@@ -395,7 +410,13 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
         sample_idx.shape[0]))
     print_rank_0('    total number of epochs: {}'.format(num_epochs))
 
-    return doc_idx, sample_idx, shuffle_idx
+    # >>>
+    # if return_index_prefix:
+    # return doc_idx, sample_idx, shuffle_idx, _filename
+    return doc_idx, sample_idx, shuffle_idx, _index_prefix
+    # else:
+    #     return doc_idx, sample_idx, shuffle_idx
+    # <<<
 
 
 def _num_tokens(documents, sizes):

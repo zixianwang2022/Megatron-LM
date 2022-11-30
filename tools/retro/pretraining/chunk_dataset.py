@@ -89,16 +89,17 @@ def verify_indexed_dataset_order():
     if len(db_prefixes) != len(pretraining_prefixes):
         raise Exception("inconsistent dataset count between db & pretraining.")
     if db_prefixes != pretraining_prefixes:
+        # pax(0, {
+        #     "db_prefixes" : db_prefixes,
+        #     "pretraining_prefixes" : pretraining_prefixes,
+        # })
         raise Exception("inconsistent dataset order between db & pretraining.")
-
-    # pax(0, {
-    #     "db_prefixes" : db_prefixes,
-    #     "pretraining_prefixes" : pretraining_prefixes,
-    # })
 
 
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
+
+    # pax(0, {"train_val_test_num_samples": train_val_test_num_samples})
 
     args = get_retro_args()
 
@@ -116,9 +117,15 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
     # >>>
+    # raise Exception("hi.")
     # pax(0, {
-    #     "train_ds" : len(train_ds),
-    #     "valid_ds" : len(valid_ds),
+    #     "train_val_test_num_samples" : train_val_test_num_samples,
+    #     "train_ds / ty" : type(train_ds).__name__,
+    #     "valid_ds / ty" : type(valid_ds).__name__,
+    #     "train_ds / len" : len(train_ds),
+    #     "valid_ds / len" : len(valid_ds),
+    #     "train_ds / prefix" : os.path.basename(train_ds.datasets[0].index_prefix),
+    #     "valid_ds / prefix" : os.path.basename(valid_ds.datasets[0].index_prefix),
     #     # "test_ds" : len(test_ds),
     # })
     # <<<
@@ -155,10 +162,21 @@ def get_gpt_chunk_dataset_map():
     workdir = get_base_pretraining_workdir(args)
     dataset_map = {
         key : {
-            "nbr_dir" : os.path.join(workdir, key, "nbr"),
+            # "nbr_dir" : os.path.join(workdir, key, "nbr"),
+            "nbr_dir" : os.path.join(
+                workdir,
+                os.path.basename(loader.dataset.datasets[0].index_prefix),
+            ),
             "data" : GPTChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
         }
         for key, loader in data_loader_map.items() if loader
     }
+
+    # >>>
+    # pax({"dataset_map": dataset_map})
+    # pax(dataset_map)
+    # pax(0, {k:len(d["data"]) for k,d in dataset_map.items()})
+    # raise Exception("hi.")
+    # <<<
 
     return dataset_map

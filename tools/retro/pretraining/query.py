@@ -142,6 +142,7 @@ def get_banned_chunk_map(chunk_db):
     #     if chunk_id % 10000000 == 0:
     #         print_rank_0("mapping banned chunks, %.0f%%." %
     #                      (100 * chunk_id / len(chunk_db)))
+    # my_iter
     for chunk_id, (dataset_id, doc_id) in enumerate(tqdm(chunk_db[:, :2], "map banned chunks")):
         banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
 
@@ -188,6 +189,7 @@ def query_block_neighbors(index, banned_chunk_map, dataset, block, embedder):
     timer.push("search")
     # <<<
     print_rank_0("search.")
+    assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_nbr_ids = index.search(embeddings, args.retro_nnbrs_query)
     # >>>
     timer.pop()
@@ -288,12 +290,17 @@ def query_dataset_neighbors(index, banned_chunk_map,
         args.retro_block_size,
         validate = validate,
     )
-    # pax(0, {
-    #     "dataset / len" : len(dataset),
-    #     "nbr_dir" : nbr_dir,
-    #     "n_missing_blocks" : n_missing_blocks,
-    #     "missing_nbr_blocks / sample" : missing_nbr_blocks[:10],
-    # })
+
+    # >>>
+    # if True or prefix != "train":
+    #     pax(0, {
+    #         "prefix" : prefix,
+    #         "dataset / len" : len(dataset),
+    #         "nbr_dir" : nbr_dir,
+    #         "n_missing_blocks" : n_missing_blocks,
+    #         "missing_nbr_blocks / sample" : missing_nbr_blocks[:10],
+    #     })
+    # <<<
 
     for block_index, block in enumerate(missing_nbr_blocks):
 
@@ -321,14 +328,6 @@ def query_pretraining_neighbors(timer):
 
     args = get_retro_args()
 
-    # >>>
-    # Set num threads (torch.distributed reset it to 1).
-    # assert torch.distributed.get_rank() == 0
-    # if torch.distributed.get_rank() != 0:
-    #     return
-    # faiss.omp_set_num_threads(64)
-    # faiss.omp_set_num_threads(8)
-
     # Num threads.
     world_size = torch.distributed.get_world_size()
     if world_size == 1:
@@ -346,13 +345,7 @@ def query_pretraining_neighbors(timer):
     # faiss.omp_set_num_threads(n_threads)
     faiss.omp_set_num_threads(16) # 32) # 4 procs/node
     # faiss.omp_set_num_threads(128) # 1 proc/node
-    # <<<
-
-    # pax(0, {
-    #     "world_size" : world_size,
-    #     "n_threads" : n_threads,
-    #     "max threads" : faiss.omp_get_max_threads(),
-    # })
+    # print("n_threads = %d." % faiss.omp_get_max_threads())
     # <<<
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -360,6 +353,7 @@ def query_pretraining_neighbors(timer):
     # chunk_dataset_map = get_gpt_chunk_dataset_map()
     # pax(0, {
     #     k : {
+    #         "nbr_dir" : d["nbr_dir"],
     #         "dataset" : d["data"],
     #         "chunk len" : len(d["data"]),
     #         "seq len" : len(d["data"].seq_dataset),
@@ -371,7 +365,6 @@ def query_pretraining_neighbors(timer):
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")
     chunk_db_dataset = get_db_merged_train_dataset()
-    # pax(0, {"chunk_db_dataset": chunk_db_dataset})
 
     # Load index, banned chunk ids, datasets.
     print_rank_0(" > get index.")
@@ -379,14 +372,12 @@ def query_pretraining_neighbors(timer):
     index = get_index(chunk_db_dataset)
     # index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/empty.faissindex")
     # <<<
-    # pax(0, {"index": index})
 
     print_rank_0(" > get banned doc-chunk id map.")
     banned_chunk_map = get_banned_chunk_map(chunk_db_dataset.chunk_db)
 
     print_rank_0(" > get dataset map.")
     chunk_dataset_map = get_gpt_chunk_dataset_map()
-    # pax(0, {"chunk_dataset_map": chunk_dataset_map})
 
     # Bert embedder.
     embedder = BertEmbedder(args.retro_bert_max_chunk_length)
@@ -399,27 +390,3 @@ def query_pretraining_neighbors(timer):
         query_dataset_neighbors(index, banned_chunk_map,
                                 prefix, info["data"], info["nbr_dir"],
                                 embedder)
-# def query_pretraining_neighbors(timer):
-
-#     args = get_retro_args()
-
-#     # Set num threads (torch.distributed reset it to 1).
-#     faiss.omp_set_num_threads(8)
-
-#     # Data stuff.
-#     pretraining_chunk_dataset_map = get_pretraining_chunk_dataset_map()
-#     db_chunk_dataset = get_db_chunk_dataset_map()
-#     # text_dataset_map = {key : {
-#     #     **info,
-#     #     "data" : GPTToTextDataset(info["data"]),
-#     # } for key, info in gpt_dataset_map.items()}
-
-#     pax(0, {
-#         "pretraining_chunk_dataset_map" : pretraining_chunk_dataset_map,
-#         "db_chunk_dataset" : db_chunk_dataset,
-#     })
-    
-#     # Embed.
-#     embed_text_datasets(text_dataset_map,
-#                         args.retro_bert_max_chunk_length,
-#                         args.retro_block_size)

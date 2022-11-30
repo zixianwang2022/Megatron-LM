@@ -21,8 +21,6 @@ import os
 import torch
 
 from megatron import get_retro_args
-# from tools.retro.db.dataset import \
-#     get_gpt_chunk_dataset_map as get_db_gpt_chunk_dataset_map
 from tools.retro.db.utils import get_merged_train_dataset as get_db_chunk_dataset
 from tools.retro.pretraining.chunk_dataset import \
     get_gpt_chunk_dataset_map as get_pretraining_gpt_chunk_dataset_map
@@ -153,12 +151,25 @@ class RetroDataset(torch.utils.data.Dataset):
         self.nbr_path_map = nbr_path_map
         self.legal_seq_idxs = legal_seq_idxs
 
+        # >>>
+        assert len(self.legal_seq_idxs) == len(self.seq_dataset)
+        # <<<
+
 
     def __len__(self):
         return len(self.legal_seq_idxs)
 
 
     def __getitem__(self, sample_idx):
+
+        # >>>
+        # if sample_idx >= len(self.seq_dataset):
+        #     pax(0, {
+        #         "sample_idx" : sample_idx,
+        #         "seq_dataset / len" : len(self.seq_dataset),
+        #         "legal_seq_idxs / len" : len(self.legal_seq_idxs),
+        #     })
+        # <<<
 
         # Get standard sample.
         sample_idx = self.legal_seq_idxs[sample_idx]
@@ -262,45 +273,12 @@ def get_legal_seq_idxs(nbr_dir):
     return legal_seq_idxs
 
 
-# def get_retro_datasets():
-
-#     # DB embedding paths.
-#     db_embed_dir = get_db_gpt_chunk_dataset_map()["full"]["embed_dir"]
-#     db_embed_path_map = get_chunk_path_map(db_embed_dir)
-
-#     # Pretraining dataset & neighbors.
-#     pretraining_chunk_dataset_info = \
-#         get_pretraining_gpt_chunk_dataset_map()["train"]
-#     pretraining_seq_dataset = pretraining_chunk_dataset_info["data"].seq_dataset
-#     pretraining_nbr_dir = pretraining_chunk_dataset_info["nbr_dir"]
-#     pretraining_nbr_path_map = get_chunk_path_map(pretraining_nbr_dir)
-#     pretraining_valid_seq_idxs = \
-#         get_valid_pretraining_seq_idxs(pretraining_nbr_dir)
-
-#     # Retro dataset.
-#     retro_dataset = RetroDataset(
-#         n_pretraining_nbrs = args.retro_nnbrs_pretraining,
-#         block_size = args.retro_block_size,
-#         db_embed_path_map = db_embed_path_map,
-#         pretraining_seq_dataset = pretraining_seq_dataset,
-#         pretraining_nbr_path_map = pretraining_nbr_path_map,
-#         pretraining_valid_seq_idxs = pretraining_valid_seq_idxs,
-#     )
-
-#     pax(0, {"retro_dataset": retro_dataset})
-
-#     return retro_dataset
 def get_retro_datasets():
 
     args = get_retro_args()
 
     # Load chunk db.
-    # chunk_db_path = get_merged_db_path_map()["train"]
-    # with h5py.File(chunk_db_path, "r") as f:
-    #     chunk_db = np.copy(f["chunks"])
     db_chunk_dataset = get_db_chunk_dataset()
-
-    # pax(0, {"db_chunk_dataset": db_chunk_dataset})
 
     # Dataset & neighbors.
     chunk_ds_info_map = get_pretraining_gpt_chunk_dataset_map()
@@ -311,6 +289,25 @@ def get_retro_datasets():
         nbr_dir = chunk_ds_info["nbr_dir"]
         nbr_path_map = get_chunk_path_map(nbr_dir)
         legal_seq_idxs = get_legal_seq_idxs(nbr_dir)
+
+        # >>>
+        try:
+            assert len(legal_seq_idxs) == len(seq_dataset), \
+                "expected %d retro samples, found %d ... did your dataset " \
+                "arguments change?" % (len(seq_dataset), len(legal_seq_idxs))
+        except:
+            pax(0, {
+                "db_chunk_dataset / len" : len(db_chunk_dataset),
+                "data_key" : data_key,
+                "chunk_ds_info" : chunk_ds_info,
+                "seq_dataset / len" : len(seq_dataset),
+                "nbr_dir" : nbr_dir,
+                "nbr_path_map" : nbr_path_map,
+                "legal_seq_idxs / len" : len(legal_seq_idxs),
+            })
+        # if len(legal_seq_idxs) > len(seq_dataset):
+        #     raise Exception("%d > %d." % (len(legal_seq_idxs), len(seq_dataset)))
+        # <<<
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
