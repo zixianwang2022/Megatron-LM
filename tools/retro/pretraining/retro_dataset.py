@@ -24,7 +24,7 @@ from megatron import get_retro_args
 from tools.retro.db.utils import get_merged_train_dataset as get_db_chunk_dataset
 from tools.retro.pretraining.chunk_dataset import \
     get_gpt_chunk_dataset_map as get_pretraining_gpt_chunk_dataset_map
-from tools.retro.utils import get_num_chunks_per_seq
+# from tools.retro.utils import get_num_chunks_per_seq
 
 # >>>
 from lutil import pax
@@ -149,35 +149,28 @@ class RetroDataset(torch.utils.data.Dataset):
                  db_chunk_dataset,
                  n_nbrs,
                  block_size,
-                 seq_dataset,
-                 nbr_path_map,
-                 # legal_seq_idxs,
-    ):
+                 # seq_dataset,
+                 chunk_dataset,
+                 nbr_path_map):
 
         super().__init__()
 
         self.db_chunk_dataset = db_chunk_dataset
         self.n_nbrs = n_nbrs
         self.block_size = block_size
-        self.n_chunks_per_seq = get_num_chunks_per_seq()
-        self.seq_dataset = seq_dataset
+        # self.n_chunks_per_seq = get_num_chunks_per_seq()
+        # self.seq_dataset = seq_dataset
+        self.chunk_dataset = chunk_dataset
         self.nbr_path_map = nbr_path_map
-        # self.legal_seq_idxs = legal_seq_idxs
-
-        # >>>
-        # assert len(self.legal_seq_idxs) == len(self.seq_dataset)
-        # <<<
 
 
     def __len__(self):
-        # return len(self.legal_seq_idxs)
-        return len(self.seq_dataset)
+        return len(self.chunk_dataset.seq_dataset)
 
 
     def __getitem__(self, sample_idx):
 
         # Get standard sample.
-        # sample_idx = self.legal_seq_idxs[sample_idx]
         sample = self.seq_dataset[sample_idx]
 
         # Sample idx to chunk idxs.
@@ -361,12 +354,12 @@ def get_retro_datasets():
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 
         chunk_dataset = chunk_ds_info["data"]
-        seq_dataset = chunk_dataset.seq_dataset
+        # seq_dataset = chunk_dataset.seq_dataset
         nbr_dir = chunk_ds_info["nbr_dir"]
         nbr_path_map = get_chunk_path_map(nbr_dir)
 
         # Verify dataset prefixes.
-        seq_prefix = seq_dataset.datasets[0].index_prefix
+        seq_prefix = chunk_dataset.seq_dataset.datasets[0].index_prefix
         nbr_prefix = os.path.basename(nbr_dir)
         assert seq_prefix == nbr_prefix, \
             "inconsistent dataset source; '%s' vs. '%s'." % \
@@ -389,7 +382,8 @@ def get_retro_datasets():
             db_chunk_dataset = db_chunk_dataset,
             n_nbrs = args.retro_nnbrs_pretraining,
             block_size = args.retro_block_size,
-            seq_dataset = seq_dataset,
+            # seq_dataset = seq_dataset,
+            chunk_dataset = chunk_dataset,
             nbr_path_map = nbr_path_map,
         )
 

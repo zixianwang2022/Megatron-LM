@@ -5,9 +5,9 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-# NPROCS=1
+NPROCS=1
 # NPROCS=2
-NPROCS=4
+# NPROCS=4
 # NPROCS=8
 # NPROCS=16
 # NPROCS=128
@@ -45,7 +45,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORP
 # RETRO_TASKS="index-verify"
 # RETRO_TASKS="index-verify-codes"
 # RETRO_TASKS="index-verify-nbrs"
-RETRO_TASKS="pretraining-query-nbrs"
+# RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-pretraining-test-retro-dataset"
 # RETRO_TASKS="misc-pretraining-plot-acc"
@@ -57,7 +57,8 @@ RETRO_TASKS="pretraining-query-nbrs"
 # RETRO_TASKS="misc-db-bert-nan-analysis"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison"
 # RETRO_TASKS="misc-index-check-train-valid-split"
-# RETRO_TASKS="misc-pretraining-print-neighbors"
+RETRO_TASKS="misc-pretraining-print-neighbors"
+# RETRO_TASKS="misc-pretraining-compare-old-nbrs"
 
 # RETRO_INDEX_TY=faiss-base
 RETRO_INDEX_TY=faiss-par-add

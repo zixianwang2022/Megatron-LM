@@ -490,6 +490,13 @@ class TransformerLanguageModel(MegatronModule):
         else:
             encoder_input = None
 
+        # >>>
+        debug_tensors("LanguageModel.forward-1", {
+            "encoder_input" : encoder_input,
+            "retriever_input" : retriever_input,
+        })
+        # <<<
+
         # Run encoder.
         if enc_hidden_states is None:
             if self.encoder is not None:

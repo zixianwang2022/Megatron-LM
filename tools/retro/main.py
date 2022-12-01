@@ -208,7 +208,7 @@ if __name__ == "__main__":
             run_bert_comparison(timer)
         elif task == "misc-check-index-train-valid-split":
             check_index_train_valid_split(timer)
-        elif task == "misc-print-pretraining-neighbors":
+        elif task == "misc-pretraining-print-neighbors":
             print_pretraining_neighbors()
         else:
             raise Exception("specialize for task '%s'." % task)

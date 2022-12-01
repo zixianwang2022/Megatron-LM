@@ -1616,361 +1616,6 @@ class ParallelTransformerLayer(MegatronModule):
 #         return hidden_states.clone()
 
 
-# class ParallelTransformer(MegatronModule):
-class ParallelRetroTransformer(MegatronModule):
-    """Standard GPT Transformer class."""
-
-    def __init__(self, init_method, output_layer_init_method,
-                 layer_type=LayerType.encoder,
-                 self_attn_mask_type=AttnMaskType.padding,
-                 pre_process=True, post_process=True,
-                 drop_path_rate=0.0, retriever=None):
-        super(ParallelRetroTransformer, self).__init__()
-        args = get_args()
-
-        self.bf16 = args.bf16
-        self.fp32_residual_connection = args.fp32_residual_connection
-        self.pre_process = pre_process
-        self.post_process = post_process
-        self.input_tensor = None
-        self.drop_path_rate = drop_path_rate
-
-        # Store activation checkpoiting flag.
-        # >>>
-        # self.activations_checkpoint_method = args.activations_checkpoint_method
-        # self.activations_checkpoint_num_layers = args.activations_checkpoint_num_layers
-        # self.distribute_checkpointed_activations = args.distribute_checkpointed_activations
-        # +++
-        self.recompute_granularity = args.recompute_granularity
-        self.recompute_method = args.recompute_method
-        self.recompute_num_layers = args.recompute_num_layers
-        self.distribute_saved_activations = \
-            args.distribute_saved_activations and not args.sequence_parallel
-
-        self.sequence_parallel = args.sequence_parallel
-        # <<<
-
-        # Number of layers.
-        self.num_layers = mpu.get_num_layers(
-            args, args.model_type == ModelType.encoder_and_decoder)
-
-        self.drop_path_rates = [rate.item() for rate in torch.linspace(0, self.drop_path_rate, args.num_layers)]
-
-        if args.retro_add_retriever:
-            if args.num_layers == 12:
-                self.P = [6, 9, 12]
-            elif args.num_layers == 24:
-                self.P = np.arange(9, 25, 3).tolist()
-            elif args.num_layers == 40:
-                self.P = np.arange(9, 41, 3).tolist()
-                self.P.append(40)
-            self.retriever = retriever
-
-        # Transformer layers.
-        # if args.adaptor:
-        #     def build_layer(layer_number):
-        #         return ParallelAdaptorTransformerLayer(
-        #             init_method,
-        #             output_layer_init_method,
-        #             layer_number,
-        #             layer_type=layer_type,
-        #             self_attn_mask_type=self_attn_mask_type)
-        # elif args.add_retriever:
-        if args.retro_add_retriever:
-            def build_layer(layer_number):
-                if layer_number == min(self.P):
-                    print("ParallelRetroTransformerEncoderLayer Layer number", layer_number)
-                    return ParallelRetroTransformerEncoderLayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1],
-                        retriever=retriever
-                    )
-                elif layer_number in self.P:
-                    print("ParallelRetroTransformerLayer Layer number", layer_number)
-                    return ParallelRetroTransformerLayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1])
-                else:
-                    print("ParallelTransformerLayer Layer number", layer_number)
-                    return ParallelTransformerLayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1])
-        else:
-            def build_layer(layer_number):
-                return ParallelTransformerLayer(
-                    init_method,
-                    output_layer_init_method,
-                    layer_number,
-                    layer_type=layer_type,
-                    self_attn_mask_type=self_attn_mask_type,
-                    drop_path_rate=self.drop_path_rates[layer_number - 1])
-        if args.virtual_pipeline_model_parallel_size is not None:
-            assert args.num_layers % args.virtual_pipeline_model_parallel_size == 0, \
-                'num_layers_per_stage must be divisible by ' \
-                'virtual_pipeline_model_parallel_size'
-            assert args.model_type != ModelType.encoder_and_decoder
-            # Number of layers in each model chunk is the number of layers in the stage,
-            # divided by the number of model chunks in a stage.
-            self.num_layers = self.num_layers // args.virtual_pipeline_model_parallel_size
-            # With 8 layers, 2 stages, and 4 model chunks, we want an assignment of
-            # layers to stages like (each list is a model chunk):
-            # Stage 0: [0]  [2]  [4]  [6]
-            # Stage 1: [1]  [3]  [5]  [7]
-            # With 8 layers, 2 stages, and 2 virtual stages, we want an assignment of
-            # layers to stages like (each list is a model chunk):
-            # Stage 0: [0, 1]  [4, 5]
-            # Stage 1: [2, 3]  [6, 7]
-            offset = mpu.get_virtual_pipeline_model_parallel_rank() * (
-                args.num_layers // args.virtual_pipeline_model_parallel_size) + \
-                (mpu.get_pipeline_model_parallel_rank() * self.num_layers)
-        else:
-            # Each stage gets a contiguous set of layers.
-            if args.model_type == ModelType.encoder_and_decoder and \
-                    mpu.get_pipeline_model_parallel_world_size() > 1:
-                pipeline_rank = mpu.get_pipeline_model_parallel_rank()
-                if layer_type == LayerType.encoder:
-                    offset = pipeline_rank * self.num_layers
-                else:
-                    num_ranks_in_enc = args.pipeline_model_parallel_split_rank
-                    offset = (pipeline_rank - num_ranks_in_enc) * self.num_layers
-            else:
-                offset = mpu.get_pipeline_model_parallel_rank() * self.num_layers
-
-        if self.num_layers == 0:
-            # When a standalone embedding stage is used (e.g.,
-            # args.standalone_embedding_stage == True), virtual pipeline ranks
-            # on pipeline rank 0 will have zero transformer layers assigned to
-            # them. This results in the model's input and output tensors to be
-            # the same, which will cause failure for certain output tensor
-            # optimizations (e.g., pipeline output deallocation). To remedy
-            # this, we assign a 'no-op' layer on these ranks, which will
-            # disconnect the input tensor from the output tensor.
-            self.num_layers = 1
-            self.layers = torch.nn.ModuleList([ NoopTransformerLayer(1) ])
-        else:
-            self.layers = torch.nn.ModuleList(
-                [build_layer(i + 1 + offset) for i in range(self.num_layers)])
-
-        if self.post_process:
-            # Final layer norm before output.
-            self.final_layernorm = LayerNorm(
-                args.hidden_size,
-                eps=args.layernorm_epsilon,
-                no_persist_layer_norm=args.no_persist_layer_norm)
-
-    def _get_layer(self, layer_number):
-        return self.layers[layer_number]
-
-    def _checkpointed_forward(self, hidden_states, attention_mask,
-                              encoder_output, enc_dec_attn_mask):
-        """Forward method with activation checkpointing."""
-        def custom(start, end):
-            def custom_forward(*inputs):
-                x_ = inputs[0]
-                attention_mask = inputs[1]
-                encoder_output = inputs[2]
-                enc_dec_attn_mask = inputs[3]
-                for index in range(start, end):
-                    layer = self._get_layer(index)
-                    x_ = layer(x_, attention_mask, encoder_output, enc_dec_attn_mask)
-                return x_
-            return custom_forward
-
-        if self.activations_checkpoint_method == 'uniform':
-            # Uniformly divide the total number of Transformer layers and checkpoint
-            # the input activation of each divided chunk.
-            # A method to further reduce memory usage reducing checkpoints.
-            l = 0
-            while l < self.num_layers:
-                hidden_states = mpu.checkpoint(
-                    custom(l, l + self.activations_checkpoint_num_layers),
-                    self.distribute_checkpointed_activations,
-                    hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
-                l += self.activations_checkpoint_num_layers
-        elif self.activations_checkpoint_method == 'block':
-            # Checkpoint the input activation of only a set number of individual
-            # Transformer layers and skip the rest.
-            # A method fully use the device memory removing redundant re-computation.
-            for l in range(self.num_layers):
-                if l < self.activations_checkpoint_num_layers:
-                    hidden_states = mpu.checkpoint(
-                        custom(l, l + 1),
-                        self.distribute_checkpointed_activations,
-                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
-                else:
-                    hidden_states = custom(l, l + 1)(
-                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
-        else:
-            raise ValueError("Invalid activation checkpoint method.")
-
-        return hidden_states
-
-    def set_input_tensor(self, input_tensor):
-        """Set input tensor to be used instead of forward()'s input.
-
-        When doing pipeline parallelism the input from the previous
-        stage comes from communication, not from the input, so the
-        model's forward_step_func won't have it. This function is thus
-        used by internal code to bypass the input provided by the
-        forward_step_func"""
-        self.input_tensor = input_tensor
-
-    def forward(self, hidden_states, attention_mask,
-                retriever_output=None, retriever_attn_mask=None,
-                encoder_output=None, enc_dec_attn_mask=None,
-                inference_params=None):
-        # >>>
-        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
-        debug_tensors("ParallelTransformer.forward", {
-            "hidden_states" : hidden_states,
-            "attention_mask" : attention_mask,
-            "retriever_output" : retriever_output,
-            "retriever_attn_mask" : retriever_attn_mask,
-            "encoder_output" : encoder_output,
-            "enc_dec_attn_mask" : enc_dec_attn_mask,
-            "inference_params" : inference_params,
-        })
-        # <<<
-
-        # Checks.
-        if inference_params:
-            assert self.recompute_granularity is None, \
-                'inference does not work with activation checkpointing'
-
-        if self.pre_process:
-            # >>>
-            pass
-            # raise Exception("new SP code transposes within embedding layer.")
-            # <<<
-            # >>>
-            # # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
-            # # If the input flag for fp32 residual connection is set, convert for float.
-            # if self.fp32_residual_connection:
-            #     hidden_states = hidden_states.transpose(0, 1).contiguous().float()
-            # # Otherwise, leave it as is.
-            # else:
-            #     hidden_states = hidden_states.transpose(0, 1).contiguous()
-            # <<<
-        else:
-            # >>>
-            raise Exception("pipeline parallelism un-supported.")
-            # <<<
-            # >>>
-            # # See set_input_tensor()
-            # hidden_states = self.input_tensor
-            # <<<
-
-        args = get_args()
-
-        # >>> ... new, 11/29
-        retriever_output = retriever_output.transpose(0, 1).contiguous()
-        # <<<
-
-        # Viewless tensor.
-        # - We only need to create a viewless tensor in the case of micro batch
-        #   size (mbs) == 1, since in this case, 'hidden_states.transpose()'
-        #   above creates a view tensor, and '.contiguous()' is a pass-through.
-        #   For mbs >= 2, '.contiguous()' creates a new tensor, eliminating
-        #   the need to make it viewless.
-        #
-        #   However, we don't explicitly check mbs == 1 here because
-        #   make_viewless_tensor() has negligible overhead when its input
-        #   is already viewless.
-        #
-        # - For the 'else' case above, calling make_viewless_tensor() here is
-        #   likely redundant, since p2p_communication.py (likely originator)
-        #   already creates viewless tensors. That said, make_viewless_tensor()
-        #   is called here to be future-proof and corner-case-proof.
-        hidden_states = mpu.make_viewless_tensor(
-            hidden_states,
-            requires_grad = True,
-            keep_graph = True,
-        )
-
-        # Transpose encoder output.
-        if encoder_output is not None:
-            encoder_output = encoder_output.transpose(0, 1).contiguous()
-
-        # TBD
-        # if retriever_output is not None:
-        #     retriever_output = retriever_output.transpose(0, 1).contiguous()
-
-        # >>>
-        assert not args.sequence_parallel, "if SP, need rng context."
-        # <<<
-
-        # >>>
-        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
-        # <<<
-        # Forward pass.
-        # if self.activations_checkpoint_method is not None:
-        if self.recompute_granularity == 'full':
-            hidden_states = self._checkpointed_forward(hidden_states,
-                                                       attention_mask,
-                                                       encoder_output,
-                                                       enc_dec_attn_mask)
-        else:
-            for index in range(self.num_layers):
-                layer = self._get_layer(index)
-                if args.retro_add_retriever and index + 1 == min(self.P):
-                    hidden_states, E = layer(
-                        hidden_states,
-                        attention_mask,
-                        retriever_output=retriever_output,
-                        retriever_attn_mask=retriever_attn_mask,
-                        encoder_output=encoder_output,
-                        enc_dec_attn_mask=enc_dec_attn_mask,
-                        inference_params=inference_params)
-                elif args.retro_add_retriever and index + 1 in self.P:
-                    hidden_states = layer(
-                        hidden_states,
-                        attention_mask,
-                        retriever_output=E,
-                        retriever_attn_mask=retriever_attn_mask,
-                        encoder_output=encoder_output,
-                        enc_dec_attn_mask=enc_dec_attn_mask,
-                        inference_params=inference_params)
-                else:
-                    hidden_states = layer(
-                    hidden_states,
-                    attention_mask,
-                    encoder_output=encoder_output,
-                    enc_dec_attn_mask=enc_dec_attn_mask,
-                    inference_params=inference_params)
-
-
-        # Final layer norm.
-        if self.post_process:
-            # >>>
-            # ... *note*: skip transpose to match new SP code ...
-
-            # Reverting data format change [s b h] --> [b s h].
-            # hidden_states = hidden_states.transpose(0, 1).contiguous()
-            output = self.final_layernorm(hidden_states)
-            # <<<
-        else:
-            # >>>
-            raise Exception("pipeline parallelism un-supported.")
-            # <<<
-            # >>>
-            # output = hidden_states
-            # <<<
-
-        return output
-
-
 # class ParallelRetroEncoderTransformer(MegatronModule):
 class ParallelRetroEncoder(MegatronModule):
     """ Retro Transformer class for encoder ."""
@@ -2024,8 +1669,9 @@ class ParallelRetroEncoder(MegatronModule):
         #             self_attn_mask_type=self_attn_mask_type)
         # elif args.add_retriever:
         if args.retro_add_retriever:
+            #from megatron import print_rank_0 # imported here to avoid cyclic dep
             def build_layer(layer_number):
-                print("Retro Transformer Layer number", layer_number)
+                # print_rank_0("Retro Transformer Layer number %d" % layer_number)
                 if layer_number in self.P:
                     return ParallelRetroEncoderTransformerCALayer(
                         init_method,
@@ -2267,5 +1913,361 @@ class ParallelRetroEncoder(MegatronModule):
             output = self.final_layernorm(hidden_states)
         else:
             output = hidden_states
+
+        return output
+
+
+# class ParallelTransformer(MegatronModule):
+class ParallelRetroTransformer(MegatronModule):
+    """Standard GPT Transformer class."""
+
+    def __init__(self, init_method, output_layer_init_method,
+                 layer_type=LayerType.encoder,
+                 self_attn_mask_type=AttnMaskType.padding,
+                 pre_process=True, post_process=True,
+                 drop_path_rate=0.0, retriever=None):
+        super(ParallelRetroTransformer, self).__init__()
+        args = get_args()
+
+        self.bf16 = args.bf16
+        self.fp32_residual_connection = args.fp32_residual_connection
+        self.pre_process = pre_process
+        self.post_process = post_process
+        self.input_tensor = None
+        self.drop_path_rate = drop_path_rate
+
+        # Store activation checkpoiting flag.
+        # >>>
+        # self.activations_checkpoint_method = args.activations_checkpoint_method
+        # self.activations_checkpoint_num_layers = args.activations_checkpoint_num_layers
+        # self.distribute_checkpointed_activations = args.distribute_checkpointed_activations
+        # +++
+        self.recompute_granularity = args.recompute_granularity
+        self.recompute_method = args.recompute_method
+        self.recompute_num_layers = args.recompute_num_layers
+        self.distribute_saved_activations = \
+            args.distribute_saved_activations and not args.sequence_parallel
+
+        self.sequence_parallel = args.sequence_parallel
+        # <<<
+
+        # Number of layers.
+        self.num_layers = mpu.get_num_layers(
+            args, args.model_type == ModelType.encoder_and_decoder)
+
+        self.drop_path_rates = [rate.item() for rate in torch.linspace(0, self.drop_path_rate, args.num_layers)]
+
+        if args.retro_add_retriever:
+            if args.num_layers == 12:
+                self.P = [6, 9, 12]
+            elif args.num_layers == 24:
+                self.P = np.arange(9, 25, 3).tolist()
+            elif args.num_layers == 40:
+                self.P = np.arange(9, 41, 3).tolist()
+                self.P.append(40)
+            self.retriever = retriever
+
+        # Transformer layers.
+        # if args.adaptor:
+        #     def build_layer(layer_number):
+        #         return ParallelAdaptorTransformerLayer(
+        #             init_method,
+        #             output_layer_init_method,
+        #             layer_number,
+        #             layer_type=layer_type,
+        #             self_attn_mask_type=self_attn_mask_type)
+        # elif args.add_retriever:
+        if args.retro_add_retriever:
+            def build_layer(layer_number):
+                if layer_number == min(self.P):
+                    # print("ParallelRetroTransformerEncoderLayer Layer number", layer_number)
+                    return ParallelRetroTransformerEncoderLayer(
+                        init_method,
+                        output_layer_init_method,
+                        layer_number,
+                        layer_type=layer_type,
+                        self_attn_mask_type=self_attn_mask_type,
+                        drop_path_rate=self.drop_path_rates[layer_number - 1],
+                        retriever=retriever
+                    )
+                elif layer_number in self.P:
+                    # print("ParallelRetroTransformerLayer Layer number", layer_number)
+                    return ParallelRetroTransformerLayer(
+                        init_method,
+                        output_layer_init_method,
+                        layer_number,
+                        layer_type=layer_type,
+                        self_attn_mask_type=self_attn_mask_type,
+                        drop_path_rate=self.drop_path_rates[layer_number - 1])
+                else:
+                    # print("ParallelTransformerLayer Layer number", layer_number)
+                    return ParallelTransformerLayer(
+                        init_method,
+                        output_layer_init_method,
+                        layer_number,
+                        layer_type=layer_type,
+                        self_attn_mask_type=self_attn_mask_type,
+                        drop_path_rate=self.drop_path_rates[layer_number - 1])
+        else:
+            def build_layer(layer_number):
+                return ParallelTransformerLayer(
+                    init_method,
+                    output_layer_init_method,
+                    layer_number,
+                    layer_type=layer_type,
+                    self_attn_mask_type=self_attn_mask_type,
+                    drop_path_rate=self.drop_path_rates[layer_number - 1])
+        if args.virtual_pipeline_model_parallel_size is not None:
+            assert args.num_layers % args.virtual_pipeline_model_parallel_size == 0, \
+                'num_layers_per_stage must be divisible by ' \
+                'virtual_pipeline_model_parallel_size'
+            assert args.model_type != ModelType.encoder_and_decoder
+            # Number of layers in each model chunk is the number of layers in the stage,
+            # divided by the number of model chunks in a stage.
+            self.num_layers = self.num_layers // args.virtual_pipeline_model_parallel_size
+            # With 8 layers, 2 stages, and 4 model chunks, we want an assignment of
+            # layers to stages like (each list is a model chunk):
+            # Stage 0: [0]  [2]  [4]  [6]
+            # Stage 1: [1]  [3]  [5]  [7]
+            # With 8 layers, 2 stages, and 2 virtual stages, we want an assignment of
+            # layers to stages like (each list is a model chunk):
+            # Stage 0: [0, 1]  [4, 5]
+            # Stage 1: [2, 3]  [6, 7]
+            offset = mpu.get_virtual_pipeline_model_parallel_rank() * (
+                args.num_layers // args.virtual_pipeline_model_parallel_size) + \
+                (mpu.get_pipeline_model_parallel_rank() * self.num_layers)
+        else:
+            # Each stage gets a contiguous set of layers.
+            if args.model_type == ModelType.encoder_and_decoder and \
+                    mpu.get_pipeline_model_parallel_world_size() > 1:
+                pipeline_rank = mpu.get_pipeline_model_parallel_rank()
+                if layer_type == LayerType.encoder:
+                    offset = pipeline_rank * self.num_layers
+                else:
+                    num_ranks_in_enc = args.pipeline_model_parallel_split_rank
+                    offset = (pipeline_rank - num_ranks_in_enc) * self.num_layers
+            else:
+                offset = mpu.get_pipeline_model_parallel_rank() * self.num_layers
+
+        if self.num_layers == 0:
+            # When a standalone embedding stage is used (e.g.,
+            # args.standalone_embedding_stage == True), virtual pipeline ranks
+            # on pipeline rank 0 will have zero transformer layers assigned to
+            # them. This results in the model's input and output tensors to be
+            # the same, which will cause failure for certain output tensor
+            # optimizations (e.g., pipeline output deallocation). To remedy
+            # this, we assign a 'no-op' layer on these ranks, which will
+            # disconnect the input tensor from the output tensor.
+            self.num_layers = 1
+            self.layers = torch.nn.ModuleList([ NoopTransformerLayer(1) ])
+        else:
+            self.layers = torch.nn.ModuleList(
+                [build_layer(i + 1 + offset) for i in range(self.num_layers)])
+
+        if self.post_process:
+            # Final layer norm before output.
+            self.final_layernorm = LayerNorm(
+                args.hidden_size,
+                eps=args.layernorm_epsilon,
+                no_persist_layer_norm=args.no_persist_layer_norm)
+
+    def _get_layer(self, layer_number):
+        return self.layers[layer_number]
+
+    def _checkpointed_forward(self, hidden_states, attention_mask,
+                              encoder_output, enc_dec_attn_mask):
+        """Forward method with activation checkpointing."""
+        def custom(start, end):
+            def custom_forward(*inputs):
+                x_ = inputs[0]
+                attention_mask = inputs[1]
+                encoder_output = inputs[2]
+                enc_dec_attn_mask = inputs[3]
+                for index in range(start, end):
+                    layer = self._get_layer(index)
+                    x_ = layer(x_, attention_mask, encoder_output, enc_dec_attn_mask)
+                return x_
+            return custom_forward
+
+        if self.activations_checkpoint_method == 'uniform':
+            # Uniformly divide the total number of Transformer layers and checkpoint
+            # the input activation of each divided chunk.
+            # A method to further reduce memory usage reducing checkpoints.
+            l = 0
+            while l < self.num_layers:
+                hidden_states = mpu.checkpoint(
+                    custom(l, l + self.activations_checkpoint_num_layers),
+                    self.distribute_checkpointed_activations,
+                    hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                l += self.activations_checkpoint_num_layers
+        elif self.activations_checkpoint_method == 'block':
+            # Checkpoint the input activation of only a set number of individual
+            # Transformer layers and skip the rest.
+            # A method fully use the device memory removing redundant re-computation.
+            for l in range(self.num_layers):
+                if l < self.activations_checkpoint_num_layers:
+                    hidden_states = mpu.checkpoint(
+                        custom(l, l + 1),
+                        self.distribute_checkpointed_activations,
+                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                else:
+                    hidden_states = custom(l, l + 1)(
+                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+        else:
+            raise ValueError("Invalid activation checkpoint method.")
+
+        return hidden_states
+
+    def set_input_tensor(self, input_tensor):
+        """Set input tensor to be used instead of forward()'s input.
+
+        When doing pipeline parallelism the input from the previous
+        stage comes from communication, not from the input, so the
+        model's forward_step_func won't have it. This function is thus
+        used by internal code to bypass the input provided by the
+        forward_step_func"""
+        self.input_tensor = input_tensor
+
+    def forward(self, hidden_states, attention_mask,
+                retriever_output=None, retriever_attn_mask=None,
+                encoder_output=None, enc_dec_attn_mask=None,
+                inference_params=None):
+        # >>>
+        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        debug_tensors("ParallelTransformer.forward", {
+            "hidden_states" : hidden_states,
+            "attention_mask" : attention_mask,
+            "retriever_output" : retriever_output,
+            "retriever_attn_mask" : retriever_attn_mask,
+            "encoder_output" : encoder_output,
+            "enc_dec_attn_mask" : enc_dec_attn_mask,
+            "inference_params" : inference_params,
+        })
+        # raise Exception("hi.")
+        # <<<
+
+        # Checks.
+        if inference_params:
+            assert self.recompute_granularity is None, \
+                'inference does not work with activation checkpointing'
+
+        if self.pre_process:
+            # >>>
+            pass
+            # raise Exception("new SP code transposes within embedding layer.")
+            # <<<
+            # >>>
+            # # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
+            # # If the input flag for fp32 residual connection is set, convert for float.
+            # if self.fp32_residual_connection:
+            #     hidden_states = hidden_states.transpose(0, 1).contiguous().float()
+            # # Otherwise, leave it as is.
+            # else:
+            #     hidden_states = hidden_states.transpose(0, 1).contiguous()
+            # <<<
+        else:
+            # >>>
+            raise Exception("pipeline parallelism un-supported.")
+            # <<<
+            # >>>
+            # # See set_input_tensor()
+            # hidden_states = self.input_tensor
+            # <<<
+
+        args = get_args()
+
+        # >>> ... new, 11/29
+        retriever_output = retriever_output.transpose(0, 1).contiguous()
+        # <<<
+
+        # Viewless tensor.
+        # - We only need to create a viewless tensor in the case of micro batch
+        #   size (mbs) == 1, since in this case, 'hidden_states.transpose()'
+        #   above creates a view tensor, and '.contiguous()' is a pass-through.
+        #   For mbs >= 2, '.contiguous()' creates a new tensor, eliminating
+        #   the need to make it viewless.
+        #
+        #   However, we don't explicitly check mbs == 1 here because
+        #   make_viewless_tensor() has negligible overhead when its input
+        #   is already viewless.
+        #
+        # - For the 'else' case above, calling make_viewless_tensor() here is
+        #   likely redundant, since p2p_communication.py (likely originator)
+        #   already creates viewless tensors. That said, make_viewless_tensor()
+        #   is called here to be future-proof and corner-case-proof.
+        hidden_states = mpu.make_viewless_tensor(
+            hidden_states,
+            requires_grad = True,
+            keep_graph = True,
+        )
+
+        # Transpose encoder output.
+        if encoder_output is not None:
+            encoder_output = encoder_output.transpose(0, 1).contiguous()
+
+        # TBD
+        # if retriever_output is not None:
+        #     retriever_output = retriever_output.transpose(0, 1).contiguous()
+
+        # >>>
+        assert not args.sequence_parallel, "if SP, need rng context."
+        # <<<
+
+        # >>>
+        # raise Exception("hidden_states = %s." % str(hidden_states.shape))
+        # <<<
+        # Forward pass.
+        # if self.activations_checkpoint_method is not None:
+        if self.recompute_granularity == 'full':
+            hidden_states = self._checkpointed_forward(hidden_states,
+                                                       attention_mask,
+                                                       encoder_output,
+                                                       enc_dec_attn_mask)
+        else:
+            for index in range(self.num_layers):
+                layer = self._get_layer(index)
+                if args.retro_add_retriever and index + 1 == min(self.P):
+                    hidden_states, E = layer(
+                        hidden_states,
+                        attention_mask,
+                        retriever_output=retriever_output,
+                        retriever_attn_mask=retriever_attn_mask,
+                        encoder_output=encoder_output,
+                        enc_dec_attn_mask=enc_dec_attn_mask,
+                        inference_params=inference_params)
+                elif args.retro_add_retriever and index + 1 in self.P:
+                    hidden_states = layer(
+                        hidden_states,
+                        attention_mask,
+                        retriever_output=E,
+                        retriever_attn_mask=retriever_attn_mask,
+                        encoder_output=encoder_output,
+                        enc_dec_attn_mask=enc_dec_attn_mask,
+                        inference_params=inference_params)
+                else:
+                    hidden_states = layer(
+                    hidden_states,
+                    attention_mask,
+                    encoder_output=encoder_output,
+                    enc_dec_attn_mask=enc_dec_attn_mask,
+                    inference_params=inference_params)
+
+
+        # Final layer norm.
+        if self.post_process:
+            # >>>
+            # ... *note*: skip transpose to match new SP code ...
+
+            # Reverting data format change [s b h] --> [b s h].
+            # hidden_states = hidden_states.transpose(0, 1).contiguous()
+            output = self.final_layernorm(hidden_states)
+            # <<<
+        else:
+            # >>>
+            raise Exception("pipeline parallelism un-supported.")
+            # <<<
+            # >>>
+            # output = hidden_states
+            # <<<
 
         return output

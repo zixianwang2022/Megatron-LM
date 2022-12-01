@@ -345,6 +345,9 @@ def validate_args(args, defaults={}):
                 retro_args.retro_gpt_retrieved_length = \
                     2 * retro_args.retro_gpt_chunk_length
                 # args.retro_args = retro_args
+                # >>>
+                # retro_args.retro_nnbrs_pretraining = 10 # 2, 4, 10
+                # <<<
                 set_retro_args(retro_args)
     # <<<
 

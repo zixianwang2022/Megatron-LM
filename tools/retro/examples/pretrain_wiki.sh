@@ -15,7 +15,7 @@ MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-3
 NUM_LAYERS=12 # 4, [*12]
 HIDDEN_SIZE=768 # 256, [512], *768
 NUM_HEADS=12 # [4], 8, *12
-MICRO_BATCH_SIZE=4 # *8
+MICRO_BATCH_SIZE=4 # 2[k=10], 4[draco-rno], *8
 ADD_RETRIEVER=1
 
 # >>>
@@ -26,6 +26,7 @@ mkdir -p ${TENSORBOARD_DIR}
 
 #     --tensorboard-dir ${TENSORBOARD_DIR} \
 #     --log-validation-ppl-to-tensorboard \
+#     --loss-scale 1024 \
 options=" \
 
     --tensor-model-parallel-size 1 \
@@ -43,7 +44,7 @@ options=" \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
-    --log-interval 1 \
+    --log-interval 10 \
     --eval-iters 100 \
     --eval-interval 2000 \
     --data-path ${DATA_PATH} \
@@ -59,7 +60,6 @@ options=" \
     --log-params-norm \
     --log-num-zeros-in-grad \
     --fp16 \
-    --loss-scale 1024 \
     --DDP-impl local \
     --dataloader-type cyclic \
     --no-data-sharding \
@@ -117,8 +117,8 @@ if [ "$ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py
 else
     RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
-    RETRO_CYCLIC_TRAIN_ITERS=750000
-    # RETRO_CYCLIC_TRAIN_ITERS=1 # 20
+    # RETRO_CYCLIC_TRAIN_ITERS=750000
+    RETRO_CYCLIC_TRAIN_ITERS=100 # 1, 20
     options="${options} \
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-add-retriever \
@@ -129,8 +129,8 @@ fi
 
 unset NCCL_DEBUG
 
-NPROCS=1
-# NPROCS=16
+# NPROCS=1
+NPROCS=16
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \
