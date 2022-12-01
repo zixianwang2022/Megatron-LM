@@ -158,7 +158,8 @@ def collate_batch(samples):
 
 # def get_block_data_loader(full_dataset, sample_start_idx, sample_end_idx):
 # def get_subset_data_loader(full_dataset, sample_start_idx, sample_end_idx):
-def get_data_loader(dataset):
+# def get_data_loader(dataset):
+def get_data_loader(dataset, batch_size):
     """Build data loader over data subset.
 
     Get a subset of the dataset (from start_idx -> end_idx), and wrap it in
@@ -170,7 +171,8 @@ def get_data_loader(dataset):
     # Sequential & batch samplers.
     batch_sampler = BatchSampler(
         sampler = SequentialSampler(dataset),
-        batch_size = args.micro_batch_size,
+        # batch_size = args.micro_batch_size,
+        batch_size = batch_size,
         drop_last = False,
     )
 
@@ -252,7 +254,8 @@ def embed_data_loader(models, data_loader, n_samples_world):
 
 class BertEmbedder:
 
-    def __init__(self, max_bert_seq_length):
+    # def __init__(self, max_bert_seq_length):
+    def __init__(self, batch_size, max_bert_seq_length):
 
         args = get_args()
 
@@ -263,6 +266,7 @@ class BertEmbedder:
         self.models, optimizer, opt_param_scheduler = \
             setup_model_and_optimizer(model_provider,
                                       ModelType.encoder_or_decoder)
+        self.batch_size = batch_size
         self.max_bert_seq_length = max_bert_seq_length
 
         # >>>
@@ -270,7 +274,8 @@ class BertEmbedder:
         # self.huggingface_embedder = None
         self.huggingface_embedder = HuggingfaceEmbedder(
             max_bert_seq_length,
-            args.micro_batch_size,
+            # args.micro_batch_size,
+            batch_size,
         )
         # pax(0, {"huggingface_embedder": self.huggingface_embedder})
         # <<<
@@ -279,7 +284,7 @@ class BertEmbedder:
     def embed_text_dataset(self, text_dataset, n_samples_world):
         bert_dataset = BertEmbeddingDataset(text_dataset,
                                             self.max_bert_seq_length)
-        data_loader = get_data_loader(bert_dataset)
+        data_loader = get_data_loader(bert_dataset, self.batch_size)
         # >>>
         if self.huggingface_embedder:
             return self.huggingface_embedder.embed_text_dataset(text_dataset)

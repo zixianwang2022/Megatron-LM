@@ -33,6 +33,9 @@ from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, ini
 from lutil import pax
 
 def debug_tensors(key, tensor_map):
+    # >>>
+    return
+    # <<<
     from megatron import print_rank_0
     print_rank_0(">> %s <<" % key)
     [ print_rank_0("    %s : %s." % (k, "--" if t is None else str(t.shape)))

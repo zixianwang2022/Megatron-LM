@@ -5,9 +5,9 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=1
+# NPROCS=1
 # NPROCS=2
-# NPROCS=4
+NPROCS=4
 # NPROCS=8
 # NPROCS=16
 # NPROCS=128
@@ -71,7 +71,7 @@ RETRO_INDEX_TY=faiss-par-add
 # RETRO_IVF_DIM=256
 # +++
 RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=1 LR_WARMUP_SAMPLES=1
+RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=1 LR_WARMUP_SAMPLES=1
 # +++
 # RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
 # TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
@@ -83,6 +83,9 @@ RETRO_NPROBE=4096 # 65536
 # RETRO_PRECOMPUTE_BERT_LENGTHS
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
+RETRO_GPT_MICRO_BATCH_SIZE=8
+RETRO_GPT_GLOBAL_BATCH_SIZE=256
+RETRO_BERT_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
 RETRO_BERT_MAX_CHUNK_LENGTH=256
 RETRO_NCHUNKS_SAMPLED=300000000
 # RETRO_NCHUNKS_SAMPLED=3000000
@@ -95,8 +98,11 @@ RETRO_NNBRS_PRETRAINING=2
 SEED=1234 # default
 # SEED=1001
 DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
-MICRO_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
+# MICRO_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
 
+#     --log-interval 100 \
+#     --save-interval 10000 \
+#     --cyclic-train-iters 750000 \ # ... retro pretraining only
 MEGATRON_ARGS=" \
     --seed ${SEED} \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \
@@ -106,10 +112,11 @@ MEGATRON_ARGS=" \
     --num-layers 24 \
     --hidden-size 1024 \
     --num-attention-heads 16 \
-    --micro-batch-size ${MICRO_BATCH_SIZE} \
+    --micro-batch-size ${RETRO_GPT_MICRO_BATCH_SIZE} \
+    --global-batch-size ${RETRO_GPT_GLOBAL_BATCH_SIZE} \
     --seq-length 512 \
     --max-position-embeddings 512 \
-    --train-samples ${TRAIN_SAMPLES} \
+    --train-samples ${RETRO_GPT_TRAIN_SAMPLES} \
     --load ${BERT_LOAD_PATH} \
     --data-path ${DATA_PATH} \
     --vocab-file ${BERT_VOCAB_FILE} \
@@ -123,11 +130,12 @@ MEGATRON_ARGS=" \
     --lr-warmup-samples ${LR_WARMUP_SAMPLES} \
     --weight-decay 1e-2 \
     --clip-grad 1.0 \
-    --log-interval 100 \
-    --save-interval 10000 \
-    --eval-interval 1000 \
-    --eval-iters 10 \
+    --eval-interval 2000 \
+    --eval-iters 100 \
     --fp16 \
+    --DDP-impl local \
+    --dataloader-type cyclic \
+    --no-data-sharding \
 "
 
 # --retro-precompute-bert-lengths \
@@ -147,6 +155,7 @@ RETRO_ARGS=" \
     --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-bert-vocab-file ${BERT_VOCAB_FILE} \
     --retro-bert-tokenizer-type ${BERT_TOKENIZER_TYPE} \
+    --retro-bert-batch-size ${RETRO_BERT_BATCH_SIZE} \
     --retro-bert-max-chunk-length ${RETRO_BERT_MAX_CHUNK_LENGTH} \
 
     --retro-tasks ${RETRO_TASKS} \

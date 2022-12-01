@@ -54,7 +54,8 @@ def add_retro_args(parser):
     group.add_argument("--retro-bert-vocab-file", required = True)
     group.add_argument("--retro-bert-tokenizer-type", required = True)
     # group.add_argument("--retro-precompute-bert-lengths", action="store_true")
-    group.add_argument("--retro-bert-max-chunk-length", type = int, required = True)
+    group.add_argument("--retro-bert-batch-size", type = int, required = True)
+    group.add_argument("--retro-bert-max-chunk-length", type=int, required=True)
 
     group.add_argument("--retro-tasks", required = True)
     group.add_argument("--retro-index-ty", required = True, choices = [

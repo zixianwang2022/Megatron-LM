@@ -380,7 +380,8 @@ def query_pretraining_neighbors(timer):
     chunk_dataset_map = get_gpt_chunk_dataset_map()
 
     # Bert embedder.
-    embedder = BertEmbedder(args.retro_bert_max_chunk_length)
+    embedder = BertEmbedder(args.retro_bert_batch_size,
+                            args.retro_bert_max_chunk_length)
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")

@@ -2,7 +2,7 @@
 
 set -u
 
-. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/preprocess/gpt3_blend_wiki.sh
+. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc/gpt3_blend_wiki.sh
 DATA_PATH=${DATA_BLEND}
 
 # BPE_DIR="/lustre/fsw/adlr/adlr-nlp/data/pile-cc1-cc2-shuf/bpe"
