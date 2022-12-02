@@ -45,7 +45,41 @@ def print_tokens(key, token_ids):
 
 # def get_new_db_chunk_hash_map(chunk_ds):
 # def get_new_db_hash_map(chunk_ds):
-def get_chunk_ds_hashes(filename, chunk_ds):
+# def get_chunk_ds_hashes(filename, chunk_ds):
+# def get_token_dataset_hashes(filename, chunk_ds):
+
+#     path = os.path.join(
+#         get_pretraining_workdir(),
+#         "compare_nbrs",
+#         filename + ".json",
+#     )
+
+#     # pax(0, {"path": path})
+
+#     if os.path.exists(path):
+#         raise Exception("exists.")
+#         with open(path) as f:
+#             return json.load(f)
+
+#     os.makedirs(os.path.dirname(path), exist_ok = True)
+
+#     hashes = []
+#     for chunk_id in tqdm(range(len(chunk_ds)), "chunk hashes / %s" % filename):
+#         # >>>
+#         # if chunk_id == 1000000:
+#         #     # pax(0, {"hashes / len": len(hashes)})
+#         #     break
+#         # <<<
+#         chunk = chunk_ds[chunk_id]["text"]
+#         hashes.append(hashlib.sha256(pickle.dumps(chunk.tolist())).hexdigest())
+
+#     with open(path, "w") as f:
+#         json.dump(hashes, f)
+
+#     # pax(0, {"hashes[:10]" : hashes[:10]})
+
+#     return hashes
+def get_seq_hashes(filename, seq_iter, get_token_id_list):
 
     path = os.path.join(
         get_pretraining_workdir(),
@@ -53,24 +87,21 @@ def get_chunk_ds_hashes(filename, chunk_ds):
         filename + ".json",
     )
 
-    # pax(0, {"path": path})
-
     if os.path.exists(path):
-        raise Exception("exists.")
         with open(path) as f:
             return json.load(f)
 
     os.makedirs(os.path.dirname(path), exist_ok = True)
 
     hashes = []
-    for chunk_id in tqdm(range(len(chunk_ds)), "chunk hashes / %s" % filename):
-        # >>>
-        if chunk_id == 1000000:
-            # pax(0, {"hashes / len": len(hashes)})
-            break
-        # <<<
-        chunk = chunk_ds[chunk_id]["text"]
-        hashes.append(hashlib.sha256(pickle.dumps(chunk.tolist())).hexdigest())
+    for seq_id, seq in enumerate(tqdm(seq_iter, "seq hashes / %s" % filename)):
+        token_ids = get_token_id_list(seq)
+        # pax(0, {
+        #     "seq_id" : seq_id,
+        #     "seq" : seq,
+        #     "token_ids" : token_ids,
+        # })
+        hashes.append(hashlib.sha256(pickle.dumps(token_ids)).hexdigest())
 
     with open(path, "w") as f:
         json.dump(hashes, f)
@@ -78,6 +109,36 @@ def get_chunk_ds_hashes(filename, chunk_ds):
     # pax(0, {"hashes[:10]" : hashes[:10]})
 
     return hashes
+
+
+def align_old_new_sample_idxs(old_seqs, new_seq_ds):
+
+    old_hashes = get_seq_hashes(
+        "old_seq_hashes",
+        old_seqs,
+        lambda token_ids : token_ids.tolist(),
+    )
+    new_hashes = get_seq_hashes(
+        "new_seq_hashes",
+        new_seq_ds,
+        lambda sample : sample["text"][:2048].tolist(),
+    )
+
+    old_hash_map = { h:i for i,h in enumerate(old_hashes) }
+    new_hash_map = { h:i for i,h in enumerate(new_hashes) }
+    common_hashes = set(old_hashes) & set(new_hashes)
+
+    # pax(0, {
+    #     # "old_seqs" : old_seqs,
+    #     # "new_seq_ds" : new_seq_ds,
+    #     "old_hashes / len" : len(old_hashes),
+    #     "new_hashes / len" : len(new_hashes),
+    #     "old_hash_map / len" : len(old_hash_map),
+    #     "new_hash_map / len" : len(new_hash_map),
+    #     "common_hashes" : len(common_hashes),
+    # })
+
+    return old_hash_map, new_hash_map, list(common_hashes)
 
 def test_old_new():
 
@@ -112,14 +173,30 @@ def test_old_new():
     old_pt_nbrs_train = h5py.File(old_pt_nbr_train_path, "r")["neighbors"]
     old_pt_nbrs_valid = h5py.File(old_pt_nbr_valid_path, "r")["neighbors"]
 
-    some_list = align_old_new_sample_idxs(old_pt_seqs_train,new_pt_retro_train_ds)
-    pax(0, {"some_list": some_list})
+    old_seq_hash_map, new_seq_hash_map, common_seq_hashes = \
+        align_old_new_sample_idxs(
+            old_pt_seqs_train,
+            new_pt_retro_train_ds.chunk_dataset.seq_dataset,
+        )
+
+    # pax(0, {
+    #     "old_seq_hash_map" : len(old_seq_hash_map),
+    #     "new_seq_hash_map" : len(new_seq_hash_map),
+    #     "common_seq_hashes" : len(common_seq_hashes),
+    # })
 
     chunk_length = args.retro_gpt_chunk_length
     nnbrs = args.retro_nnbrs_pretraining
     n_chunks_per_seq = new_pt_retro_train_ds.chunk_dataset.n_chunks_per_seq
 
-    for sample_idx in range(10): # range(10, 20):
+    # for sample_idx in range(10): # range(10, 20):
+    for seq_hash_idx in range(0, len(seq_hash), len(seq_hash) // 10):
+
+        seq_hash = common_seq_hashes[seq_hash_idx]
+
+        pax(0, {"seq_hash": seq_hash})
+
+        
 
         old_seq = old_pt_seqs_train[sample_idx]
         new_sample = new_pt_retro_train_ds[sample_idx]
