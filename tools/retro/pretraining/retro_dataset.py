@@ -170,13 +170,15 @@ class RetroDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, sample_idx):
 
+        n_chunks_per_seq = self.chunk_dataset.n_chunks_per_seq
+
         # Get standard sample.
-        sample = self.seq_dataset[sample_idx]
+        sample = self.chunk_dataset.seq_dataset[sample_idx]
 
         # Sample idx to chunk idxs.
         chunk_idxs = list(range(
-            sample_idx * self.n_chunks_per_seq,
-            (sample_idx + 1) * self.n_chunks_per_seq,
+            sample_idx * n_chunks_per_seq,
+            (sample_idx + 1) * n_chunks_per_seq,
         ))
         
         # Collect retrieved tokens.
@@ -203,7 +205,7 @@ class RetroDataset(torch.utils.data.Dataset):
 
         # Reshape retrieved tokens.
         all_retrieved_token_ids = np.array(all_retrieved_token_ids) \
-            .reshape((self.n_chunks_per_seq, self.n_nbrs, -1))
+            .reshape((n_chunks_per_seq, self.n_nbrs, -1))
 
         # Sample.
         sample = {

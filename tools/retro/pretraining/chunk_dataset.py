@@ -25,7 +25,7 @@ from megatron.training import (
 from tools.retro.db.utils import get_indexed_dataset_infos
 from tools.retro.utils import get_num_chunks_per_seq
 
-from .utils import get_base_pretraining_workdir
+from .utils import get_pretraining_workdir
 
 # >>>
 from lutil import pax
@@ -159,7 +159,7 @@ def get_gpt_chunk_dataset_map():
     }
 
     # Info dict.
-    workdir = get_base_pretraining_workdir(args)
+    workdir = get_pretraining_workdir()
     dataset_map = {
         key : {
             # "nbr_dir" : os.path.join(workdir, key, "nbr"),
