@@ -201,7 +201,7 @@ def test_old_new():
     for seq_hash_idx in range(
             0,
             len(common_seq_hashes),
-            len(common_seq_hashes) // 1000,
+            len(common_seq_hashes) // 100,
     ):
 
         seq_hash = common_seq_hashes[seq_hash_idx]
@@ -256,10 +256,6 @@ def test_old_new():
             # print("~~~~~~~~~~~~~~~~~~~~~")
             # print_tokens("OLD_NBR", old_nbr_token_ids)
             # print_tokens("NEW_NBR", new_nbr_token_ids)
-        print()
-        [ print_tokens("OLD", ts[:30]) for ts in old_nbr_token_ids ]
-        print()
-        [ print_tokens("NEW", ts[:30]) for ts in new_nbr_token_ids ]
 
         old_token_hashes = [ get_pickle_hash(ts.tolist())
                              for ts in old_nbr_token_ids ]
@@ -269,9 +265,29 @@ def test_old_new():
                            for ts in old_nbr_token_ids ]
         new_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
                            for ts in new_nbr_token_ids ]
-        token_acc = len(set(old_token_hashes) & set(new_token_hashes)) / nnbrs
+        common_token_hashes = set(old_token_hashes) & set(new_token_hashes)
+        token_acc = len(common_token_hashes) / nnbrs
         text_acc = len(set(old_text_hashes) & set(new_text_hashes)) / nnbrs
         accs.append(text_acc)
+
+        # print()
+        # [ print_tokens("OLD", ts[:30]) for ts in old_nbr_token_ids ]
+        # print()
+        # [ print_tokens("NEW", ts[:30]) for ts in new_nbr_token_ids ]
+        print()
+        for i, ts in enumerate(old_nbr_token_ids):
+            c = old_token_hashes[i] in common_token_hashes
+            print("%s : %s" % (
+                "OLD" if c else "[[OLD]]",
+                "\\n".join(gpt_tokenizer.detokenize(ts[:30]).splitlines()),
+            ))
+        print()
+        for i, ts in enumerate(new_nbr_token_ids):
+            c = new_token_hashes[i] in common_token_hashes
+            print("%s : %s" % (
+                "NEW" if c else "[[NEW]]",
+                "\\n".join(gpt_tokenizer.detokenize(ts[:30]).splitlines()),
+            ))
 
         print()
         print("ACC : %.2f." % (100 * token_acc))
