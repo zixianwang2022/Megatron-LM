@@ -413,9 +413,9 @@ def merge_dbs(indexed_dataset_infos, db_type):
 def build_db(timer):
 
     # >>>
-    from .long_bert_chunks import print_longest_bert_chunks
-    print_longest_bert_chunks()
-    raise Exception("hi.")
+    # from .long_bert_chunks import print_longest_bert_chunks
+    # print_longest_bert_chunks()
+    # raise Exception("hi.")
     # <<<
 
     # Indexed dataset info.

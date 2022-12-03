@@ -413,7 +413,9 @@ class FaissParallelAddIndex(Index):
         torch.distributed.barrier()
 
         # Bert embedder.
-        embedder = BertEmbedder(args.retro_bert_max_chunk_length)
+        # embedder = BertEmbedder(args.retro_bert_max_chunk_length)
+        embedder = BertEmbedder(args.retro_bert_batch_size,
+                                args.retro_bert_max_chunk_length)
 
         # Iterate merge rows.
         for row in range(num_rows):

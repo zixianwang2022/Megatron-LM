@@ -273,9 +273,9 @@ class BertEmbedder:
         from .huggingface import HuggingfaceEmbedder
         # self.huggingface_embedder = None
         self.huggingface_embedder = HuggingfaceEmbedder(
-            max_bert_seq_length,
             # args.micro_batch_size,
             batch_size,
+            max_bert_seq_length,
         )
         # pax(0, {"huggingface_embedder": self.huggingface_embedder})
         # <<<
@@ -296,8 +296,8 @@ class BertEmbedder:
 
 class DiskDataParallelBertEmbedder:
 
-    def __init__(self, max_bert_seq_length, block_size):
-        self.embedder = BertEmbedder(max_bert_seq_length)
+    def __init__(self, batch_size, max_bert_seq_length, block_size):
+        self.embedder = BertEmbedder(batch_size, max_bert_seq_length)
         self.block_size = block_size
 
 

@@ -74,7 +74,8 @@ def embed_db():
     text_dataset = GPTToTextDataset(gpt_dataset)
 
     # Embed dataset.
-    embedder = DiskDataParallelBertEmbedder(args.retro_bert_max_chunk_length,
+    embedder = DiskDataParallelBertEmbedder(args.retro_bert_batch_size,
+                                            args.retro_bert_max_chunk_length,
                                             args.retro_block_size)
     embedder.embed_text_dataset("index", get_training_data_block_dir(),
                                 text_dataset)

@@ -5,7 +5,7 @@ set -u
 # echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
 # NPROCS=$SLURM_TASKS_PER_NODE
 # >>>
-NPROCS=1
+# NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
@@ -13,7 +13,7 @@ NPROCS=1
 # NPROCS=128
 # >>>
 
-PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-process
+# PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-process
 # CORPUS="play"
 CORPUS="wiki"
 # CORPUS="corpus"
@@ -35,8 +35,6 @@ BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORPUS}
 
 # RETRO_TASKS="db-build"
-# RETRO_TASKS="db-preprocess"
-# [x] ... RETRO_TASKS="db-embed"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
@@ -57,6 +55,7 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORP
 # RETRO_TASKS="misc-db-bert-nan-analysis"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison"
 # RETRO_TASKS="misc-index-check-train-valid-split"
+# RETRO_TASKS="misc-pretraining-compare-embeds"
 RETRO_TASKS="misc-pretraining-print-neighbors"
 # RETRO_TASKS="misc-pretraining-compare-old-nbrs"
 
@@ -72,13 +71,14 @@ RETRO_INDEX_TY=faiss-par-add
 # RETRO_IVF_DIM=256
 # +++
 RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=1 LR_WARMUP_SAMPLES=1
+# RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=1 LR_WARMUP_SAMPLES=1
+RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
 # +++
 # RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
 # TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
 # <<<
 
-RETRO_EF_SEARCH=32 # 256
+RETRO_EF_SEARCH=16 # 32 # 256
 RETRO_NPROBE=4096 # 65536
 
 # RETRO_PRECOMPUTE_BERT_LENGTHS
@@ -104,6 +104,7 @@ DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
 #     --log-interval 100 \
 #     --save-interval 10000 \
 #     --cyclic-train-iters 750000 \ # ... retro pretraining only
+#     --no-load-optim \ # ... just experimenting
 MEGATRON_ARGS=" \
     --seed ${SEED} \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \
@@ -176,13 +177,19 @@ RETRO_ARGS=" \
     --retro-return-doc-ids \
 "
 
+# RETRO_PREPROCESS_CMD=" \
+#     python -m torch.distributed.launch \
+#     --nproc_per_node ${NPROCS} \
+#     --nnodes 1 \
+#     --node_rank ${NODE_RANK} \
+#     --master_addr ${MASTER_ADDR} \
+#     --master_port 6000 \
+#     ./tools/retro/main.py \
+#     ${MEGATRON_ARGS} \
+#     ${RETRO_ARGS} \
+# "
+# python -u ./tools/retro/main.py \
 RETRO_PREPROCESS_CMD=" \
-    python -m torch.distributed.launch \
-    --nproc_per_node ${NPROCS} \
-    --nnodes 1 \
-    --node_rank ${NODE_RANK} \
-    --master_addr ${MASTER_ADDR} \
-    --master_port 6000 \
     ./tools/retro/main.py \
     ${MEGATRON_ARGS} \
     ${RETRO_ARGS} \

@@ -58,8 +58,9 @@ class FaissBaseIndex(Index):
 
         # Init index.
         timer.push("init")
-        index_str = get_index_str()
-        index = faiss.index_factory(args.retro_nfeats, index_str)
+        # index_str = get_index_str()
+        # index = faiss.index_factory(args.retro_nfeats, index_str)
+        index = faiss.index_factory(args.retro_nfeats, args.retro_index_str)
         timer.pop()
 
         # Move to GPU.

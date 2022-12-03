@@ -88,12 +88,20 @@ class MyFeatureExtractionPipeline(FeatureExtractionPipeline):
 
 class HuggingfaceEmbedder:
 
-    def __init__(self, max_seq_length, batch_size):
+    def __init__(self, batch_size, max_seq_length):
 
-        model = BertModel.from_pretrained("bert-large-uncased")
+        # >>> [ temporary, for debug. ]
+        assert batch_size == 128
+        assert max_seq_length == 256
+        # <<<
+
+        # model = BertModel.from_pretrained("bert-large-uncased")
+        # tokenizer = AutoTokenizer.from_pretrained(
+        #     "bert-large-uncased",
+        #     model_max_lengthh = max_seq_length)
+        model = BertModel.from_pretrained("bert-large-cased")
         tokenizer = AutoTokenizer.from_pretrained(
-            "bert-large-uncased",
-            model_max_lengthh = max_seq_length)
+            "bert-large-cased", model_max_length=max_seq_length)
 
         self.pipe = MyFeatureExtractionPipeline(
             model      = model,

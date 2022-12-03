@@ -218,7 +218,7 @@ if __name__ == "__main__":
         torch.distributed.barrier()
 
     # Print timing.
-    from index.utils import get_index_str
+    # from index.utils import get_index_str
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
         # print_rank_0("~~~~~~~~ [ ARG OBJ ] ~~~~~~~~")
@@ -235,6 +235,7 @@ if __name__ == "__main__":
             args.retro_tasks[-1],
             args.retro_index_ty,
             timer.get_child_str(args.retro_tasks[-1]),
-            get_index_str(),
+            # get_index_str(),
+            args.retro_index_str,
         ))
     torch.distributed.barrier()

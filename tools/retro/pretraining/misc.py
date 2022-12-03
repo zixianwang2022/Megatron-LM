@@ -79,6 +79,10 @@ def print_tokens(key, token_ids):
 #     # pax(0, {"hashes[:10]" : hashes[:10]})
 
 #     return hashes
+
+def get_pickle_hash(value):
+    return hashlib.sha256(pickle.dumps(value)).hexdigest()
+
 def get_seq_hashes(filename, seq_iter, get_token_id_list):
 
     path = os.path.join(
@@ -101,7 +105,7 @@ def get_seq_hashes(filename, seq_iter, get_token_id_list):
         #     "seq" : seq,
         #     "token_ids" : token_ids,
         # })
-        hashes.append(hashlib.sha256(pickle.dumps(token_ids)).hexdigest())
+        hashes.append(get_pickle_hash(token_ids))
 
     with open(path, "w") as f:
         json.dump(hashes, f)
@@ -178,6 +182,8 @@ def test_old_new():
             old_pt_seqs_train,
             new_pt_retro_train_ds.chunk_dataset.seq_dataset,
         )
+    common_seq_hashes = list(common_seq_hashes)
+    np.random.shuffle(common_seq_hashes)
 
     # pax(0, {
     #     "old_seq_hash_map" : len(old_seq_hash_map),
@@ -189,30 +195,42 @@ def test_old_new():
     nnbrs = args.retro_nnbrs_pretraining
     n_chunks_per_seq = new_pt_retro_train_ds.chunk_dataset.n_chunks_per_seq
 
+    accs = []
+
     # for sample_idx in range(10): # range(10, 20):
-    for seq_hash_idx in range(0, len(seq_hash), len(seq_hash) // 10):
+    for seq_hash_idx in range(
+            0,
+            len(common_seq_hashes),
+            len(common_seq_hashes) // 1000,
+    ):
 
         seq_hash = common_seq_hashes[seq_hash_idx]
+        old_sample_idx = old_seq_hash_map[seq_hash]
+        new_sample_idx = new_seq_hash_map[seq_hash]
+        sample_idxs = list(set([ old_sample_idx, new_sample_idx ]))
 
-        pax(0, {"seq_hash": seq_hash})
+        # pax(0, {
+        #     "seq_hash" : seq_hash,
+        #     "old_sample_idx" : old_sample_idx,
+        #     "new_sample_idx" : new_sample_idx,
+        # })
 
-        
-
-        old_seq = old_pt_seqs_train[sample_idx]
-        new_sample = new_pt_retro_train_ds[sample_idx]
+        old_seq = old_pt_seqs_train[old_sample_idx]
+        new_sample = new_pt_retro_train_ds[new_sample_idx]
         new_seq = new_sample["text"]
 
         # pax(0, {"old_pt_nbrs_train": old_pt_nbrs_train})
 
-        old_nbr_ids = old_pt_nbrs_train[sample_idx][:, :nnbrs]
+        old_nbr_ids = old_pt_nbrs_train[old_sample_idx][:, :nnbrs]
         new_nbrs = new_sample["neighbor_tokens"]
         assert nnbrs == new_nbrs.shape[1]
 
         chunk_idx = np.random.randint(n_chunks_per_seq)
         # for chunk_idx in range(n_chunks_per_seq):
 
-        header = "############## sample %d, chunk %d ##############" % (
-            sample_idx, chunk_idx)
+        header = "############## sample %s, chunk %d ##############" % (
+            ",".join(str(i) for i in sample_idxs), chunk_idx)
+        print()
         print("#" * len(header))
         print(header)
         print("#" * len(header))
@@ -229,16 +247,50 @@ def test_old_new():
             old_nbr_token_ids.append(old_db_chunks[old_nbr_id])
             new_nbr_token_ids.append(new_nbrs[chunk_idx][nbr_idx][:chunk_length])
 
+            # pax(0, {
+            #     "old_nbr_token_ids" : old_nbr_token_ids[-1],
+            #     "new_nbr_token_ids" : new_nbr_token_ids[-1],
+            # })
+
             # print()
             # print("~~~~~~~~~~~~~~~~~~~~~")
             # print_tokens("OLD_NBR", old_nbr_token_ids)
             # print_tokens("NEW_NBR", new_nbr_token_ids)
         print()
-        [ print_tokens("OLD", ts[:20]) for ts in old_nbr_token_ids ]
+        [ print_tokens("OLD", ts[:30]) for ts in old_nbr_token_ids ]
         print()
-        [ print_tokens("NEW", ts[:20]) for ts in new_nbr_token_ids ]
+        [ print_tokens("NEW", ts[:30]) for ts in new_nbr_token_ids ]
 
-        exit(0)
+        old_token_hashes = [ get_pickle_hash(ts.tolist())
+                             for ts in old_nbr_token_ids ]
+        new_token_hashes = [ get_pickle_hash(ts.tolist())
+                             for ts in new_nbr_token_ids ]
+        old_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+                           for ts in old_nbr_token_ids ]
+        new_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+                           for ts in new_nbr_token_ids ]
+        token_acc = len(set(old_token_hashes) & set(new_token_hashes)) / nnbrs
+        text_acc = len(set(old_text_hashes) & set(new_text_hashes)) / nnbrs
+        accs.append(text_acc)
+
+        print()
+        print("ACC : %.2f." % (100 * token_acc))
+
+        # >>>
+        if token_acc != text_acc:
+            # for nbr_idx in range(nnbrs)
+            pax(0, {
+                "token_acc" : token_acc,
+                "text_acc" : text_acc,
+            })
+        # <<<
+
+        # pax(0, {
+        #     "old_nbr_hashes" : old_nbr_hashes,
+        #     "new_nbr_hashes" : new_nbr_hashes,
+        # })
+
+        # exit(0)
 
         # >>>
         # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -260,6 +312,11 @@ def test_old_new():
         # })
         # <<<
 
+    pax(0, {
+        # "accs" : accs,
+        "acc" : np.mean(accs),
+    })
+    exit(0)
     pax({
         "train_ds" : train_ds,
         "train_ds / len" : len(train_ds),
