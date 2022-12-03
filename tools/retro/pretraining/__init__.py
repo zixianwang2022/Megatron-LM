@@ -13,4 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .query import query_pretraining_neighbors
+# ... *note*: no imports here, to avoid faiss dependency ...
+# from .query import query_pretraining_neighbors
