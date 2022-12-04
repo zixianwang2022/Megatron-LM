@@ -99,19 +99,46 @@ class HuggingfaceEmbedder:
         # tokenizer = AutoTokenizer.from_pretrained(
         #     "bert-large-uncased",
         #     model_max_lengthh = max_seq_length)
-        model = BertModel.from_pretrained("bert-large-cased")
-        tokenizer = AutoTokenizer.from_pretrained(
+        self.model = BertModel.from_pretrained("bert-large-cased")
+        self.tokenizer = AutoTokenizer.from_pretrained(
             "bert-large-cased", model_max_length=max_seq_length)
 
         self.pipe = MyFeatureExtractionPipeline(
-            model      = model,
-            tokenizer  = tokenizer,
+            model      = self.model,
+            tokenizer  = self.tokenizer,
             device     = torch.cuda.current_device(), # args.device,
             truncation = True,
             max_length = max_seq_length, # 256,
         )
 
         self.batch_size = batch_size
+
+
+    def embed_text(self, text):
+        
+        class SingleTextDataset(torch.utils.data.Dataset):
+            def __init__(self, text):
+                assert isinstance(text, str)
+                self.text = text
+            def __len__(self):
+                return 1
+            def __getitem__(self, i):
+                # assert i == 0
+                return {"text": self.text}
+
+        text_ds = SingleTextDataset(text)
+        embed = self.embed_text_dataset(text_ds)[0]
+
+        # token_ids = self.tokenizer(text)
+        # embed = self.pipe._forward(token_ids)
+
+        # pax(0, {
+        #     "text" : text,
+        #     "text_ds" : text_ds,
+        #     "embed" : embed,
+        # })
+
+        return embed
 
 
     def embed_text_dataset(self, text_dataset):

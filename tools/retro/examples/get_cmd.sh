@@ -53,10 +53,12 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORP
 # RETRO_TASKS="misc-index-time-merge-partials"
 # RETRO_TASKS="misc-db-nan-stats"
 # RETRO_TASKS="misc-db-bert-nan-analysis"
+RETRO_TASKS="misc-db-print-embeddings"
+# RETRO_TASKS="misc-db-print-neighbors"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison"
 # RETRO_TASKS="misc-index-check-train-valid-split"
 # RETRO_TASKS="misc-pretraining-compare-embeds"
-RETRO_TASKS="misc-pretraining-print-neighbors"
+# RETRO_TASKS="misc-pretraining-print-neighbors"
 # RETRO_TASKS="misc-pretraining-compare-old-nbrs"
 
 # RETRO_INDEX_TY=faiss-base

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import faiss
 import h5py
 import hashlib
 import itertools
@@ -23,6 +24,7 @@ import pickle
 from tqdm import tqdm
 
 from megatron import get_retro_args
+from tools.bert_embedding.huggingface import HuggingfaceEmbedder
 from tools.retro.utils import get_gpt_tokenizer
 
 from .retro_dataset import get_retro_datasets
@@ -43,45 +45,10 @@ def print_tokens(key, token_ids):
     tokens = gpt_tokenizer.detokenize(token_ids)
     print("%s : %s" % (key, "\\n".join(tokens.splitlines())))
 
-# def get_new_db_chunk_hash_map(chunk_ds):
-# def get_new_db_hash_map(chunk_ds):
-# def get_chunk_ds_hashes(filename, chunk_ds):
-# def get_token_dataset_hashes(filename, chunk_ds):
-
-#     path = os.path.join(
-#         get_pretraining_workdir(),
-#         "compare_nbrs",
-#         filename + ".json",
-#     )
-
-#     # pax(0, {"path": path})
-
-#     if os.path.exists(path):
-#         raise Exception("exists.")
-#         with open(path) as f:
-#             return json.load(f)
-
-#     os.makedirs(os.path.dirname(path), exist_ok = True)
-
-#     hashes = []
-#     for chunk_id in tqdm(range(len(chunk_ds)), "chunk hashes / %s" % filename):
-#         # >>>
-#         # if chunk_id == 1000000:
-#         #     # pax(0, {"hashes / len": len(hashes)})
-#         #     break
-#         # <<<
-#         chunk = chunk_ds[chunk_id]["text"]
-#         hashes.append(hashlib.sha256(pickle.dumps(chunk.tolist())).hexdigest())
-
-#     with open(path, "w") as f:
-#         json.dump(hashes, f)
-
-#     # pax(0, {"hashes[:10]" : hashes[:10]})
-
-#     return hashes
 
 def get_pickle_hash(value):
     return hashlib.sha256(pickle.dumps(value)).hexdigest()
+
 
 def get_seq_hashes(filename, seq_iter, get_token_id_list):
 
@@ -92,6 +59,7 @@ def get_seq_hashes(filename, seq_iter, get_token_id_list):
     )
 
     if os.path.exists(path):
+        print("loading '%s'." % filename)
         with open(path) as f:
             return json.load(f)
 
@@ -115,21 +83,62 @@ def get_seq_hashes(filename, seq_iter, get_token_id_list):
     return hashes
 
 
-def align_old_new_sample_idxs(old_seqs, new_seq_ds):
+def align_db_idxs(old_chunks, new_chunk_ds):
+
+    # pax(0, {
+    #     "old_chunks" : old_chunks,
+    #     "new_chunk_ds" : new_chunk_ds,
+    # })
 
     old_hashes = get_seq_hashes(
-        "old_seq_hashes",
+        "old_db_hashes",
+        old_chunks,
+        lambda token_ids : token_ids.tolist(),
+    )
+    new_hashes = get_seq_hashes(
+        "new_db_hashes",
+        new_chunk_ds,
+        lambda sample : sample["text"].tolist(),
+    )
+
+    print("re-map db.")
+    old_hash_map = { h:i for i,h in enumerate(old_hashes) }
+    new_hash_map = { h:i for i,h in enumerate(new_hashes) }
+
+    print("common db.")
+    common_hashes = set(old_hashes) & set(new_hashes)
+
+    # pax(0, {
+    #     # "old_seqs" : old_seqs,
+    #     # "new_seq_ds" : new_seq_ds,
+    #     "old_hashes / len" : len(old_hashes),
+    #     "new_hashes / len" : len(new_hashes),
+    #     "old_hash_map / len" : len(old_hash_map),
+    #     "new_hash_map / len" : len(new_hash_map),
+    #     "common_hashes" : len(common_hashes),
+    # })
+
+    return old_hash_map, new_hash_map, list(common_hashes)
+
+# def align_old_new_sample_idxs(old_seqs, new_seq_ds):
+def align_pt_idxs(old_seqs, new_seq_ds):
+
+    old_hashes = get_seq_hashes(
+        "old_pt_hashes",
         old_seqs,
         lambda token_ids : token_ids.tolist(),
     )
     new_hashes = get_seq_hashes(
-        "new_seq_hashes",
+        "new_pt_hashes",
         new_seq_ds,
         lambda sample : sample["text"][:2048].tolist(),
     )
 
+    print("re-map pt.")
     old_hash_map = { h:i for i,h in enumerate(old_hashes) }
     new_hash_map = { h:i for i,h in enumerate(new_hashes) }
+
+    print("common pt.")
     common_hashes = set(old_hashes) & set(new_hashes)
 
     # pax(0, {
@@ -151,8 +160,15 @@ def test_old_new():
 
     # new_db_chunk_ds, new_pt_chunk_
 
-    retro_args = get_retro_args()
+    # retro_args = get_retro_args()
     gpt_tokenizer = get_gpt_tokenizer()
+
+    embedder = HuggingfaceEmbedder(128, 256)
+
+    # >>>
+    # embedder.embed_text("lawrence.")
+    # raise Exception("hi.")
+    # <<<
 
     new_pt_retro_train_ds, new_pt_retro_valid_ds, _ = get_retro_datasets()
     # new_db_chunk_ds = train_ds.db_chunk_dataset
@@ -177,40 +193,216 @@ def test_old_new():
     old_pt_nbrs_train = h5py.File(old_pt_nbr_train_path, "r")["neighbors"]
     old_pt_nbrs_valid = h5py.File(old_pt_nbr_valid_path, "r")["neighbors"]
 
-    old_seq_hash_map, new_seq_hash_map, common_seq_hashes = \
-        align_old_new_sample_idxs(
-            old_pt_seqs_train,
-            new_pt_retro_train_ds.chunk_dataset.seq_dataset,
-        )
-    common_seq_hashes = list(common_seq_hashes)
-    np.random.shuffle(common_seq_hashes)
+    old_pt_hash_map, new_pt_hash_map, common_pt_hashes = align_pt_idxs(
+        old_pt_seqs_train,
+        new_pt_retro_train_ds.chunk_dataset.seq_dataset,
+    )
+    common_pt_hashes = list(common_pt_hashes)
+    np.random.shuffle(common_pt_hashes)
+
+    old_db_hash_map, new_db_hash_map, common_db_hashes = align_db_idxs(
+        old_db_chunks,
+        new_pt_retro_train_ds.db_chunk_dataset,
+    )
 
     # pax(0, {
-    #     "old_seq_hash_map" : len(old_seq_hash_map),
-    #     "new_seq_hash_map" : len(new_seq_hash_map),
-    #     "common_seq_hashes" : len(common_seq_hashes),
+    #     "old_pt_hash_map" : len(old_pt_hash_map),
+    #     "new_pt_hash_map" : len(new_pt_hash_map),
+    #     "common_pt_hashes" : len(common_pt_hashes),
+    #     "old_db_hash_map" : len(old_db_hash_map),
+    #     "new_db_hash_map" : len(new_db_hash_map),
+    #     "common_db_hashes" : len(common_db_hashes),
     # })
 
     chunk_length = args.retro_gpt_chunk_length
     nnbrs = args.retro_nnbrs_pretraining
     n_chunks_per_seq = new_pt_retro_train_ds.chunk_dataset.n_chunks_per_seq
 
+    _print_db_neighbors(
+        embedder,
+        old_db_chunks,
+        new_pt_retro_train_ds.db_chunk_dataset,
+        old_db_hash_map,
+        new_db_hash_map,
+        common_db_hashes,
+    )
+    # _print_pt_neighbors()
+
+
+def _print_db_neighbors(
+        embedder,
+        old_db_chunks,
+        new_db_chunk_ds,
+        old_db_hash_map,
+        new_db_hash_map,
+        common_db_hashes,
+):
+
+    print("read old index.")
+    old_index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/Wikipedia_IVF262144_HNSW32_Flat_index.bin")
+
+    print("read new index.")
+    new_index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added_0667_0000-0666.faissindex")
+
+    accs = []
+    n_common = len(common_db_hashes)
+    for db_hash_idx in range(0, n_common, n_common // 100):
+
+        db_hash = common_db_hashes[db_hash_idx]
+        old_chunk_id = old_db_hash_map[db_hash]
+        new_chunk_id = new_db_hash_map[db_hash]
+
+        old_tokens = old_db_chunks[old_chunk_id]
+        new_tokens = new_db_chunk_ds[new_chunk_id]["text"]
+        old_text = gpt_tokenizer.detokenize(old_tokens)
+        new_text = gpt_tokenizer.detokenize(new_tokens)
+        old_embed = embedder.embed_text(old_text)
+        new_embed = embedder.embed_text(new_text)
+
+        old_nbr_dists, old_nbr_ids = \
+            old_index.search(old_embed.reshape((1, -1)), 10)
+        new_nbr_dists, new_nbr_ids = \
+            new_index.search(new_embed.reshape((1, -1)), 10)
+
+        pax(0, {
+            "db_hash" : db_hash,
+            "old_chunk_idx" : old_chunk_idx,
+            "new_chunk_idx" : new_chunk_idx,
+            "old_tokens" : old_tokens,
+            "new_tokens" : new_tokens,
+            "old_text" : old_text,
+            "new_text" : new_text,
+            "old_embed" : old_embed,
+            "new_embed" : new_embed,
+            "old_nbr_dists" : old_nbr_dists,
+            "new_nbr_dists" : new_nbr_dists,
+            "old_nbr_ids" : old_nbr_ids,
+            "new_nbr_ids" : new_nbr_ids,
+        })
+
+        # pax(0, {"old_pt_nbrs_train": old_pt_nbrs_train})
+
+        old_nbr_ids = old_pt_nbrs_train[old_sample_idx][:, :nnbrs]
+        new_nbrs = new_sample["neighbor_tokens"]
+        assert nnbrs == new_nbrs.shape[1]
+
+        chunk_idx = np.random.randint(n_chunks_per_seq)
+        # for chunk_idx in range(n_chunks_per_seq):
+
+        header = "############## sample %s, chunk %d ##############" % (
+            ",".join(str(i) for i in sample_idxs), chunk_idx)
+        print()
+        print("#" * len(header))
+        print(header)
+        print("#" * len(header))
+        old_seq_chunk = old_seq[
+            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+        new_seq_chunk = new_seq[
+            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+        print_tokens("OLD_CHUNK", old_seq_chunk)
+        print_tokens("NEW_CHUNK", new_seq_chunk)
+
+        old_nbr_token_ids = []
+        new_nbr_token_ids = []
+        for nbr_idx in range(nnbrs):
+            old_nbr_id = old_nbr_ids[chunk_idx][nbr_idx].item()
+            old_nbr_token_ids.append(old_db_chunks[old_nbr_id])
+            new_nbr_token_ids.append(new_nbrs[chunk_idx][nbr_idx][:chunk_length])
+
+        # >>>
+        # old_token_hashes = [ get_pickle_hash(ts.tolist())
+        #                      for ts in old_nbr_token_ids ]
+        # new_token_hashes = [ get_pickle_hash(ts.tolist())
+        #                      for ts in new_nbr_token_ids ]
+        # old_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+        #                    for ts in old_nbr_token_ids ]
+        # new_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+        #                    for ts in new_nbr_token_ids ]
+        # common_token_hashes = set(old_token_hashes) & set(new_token_hashes)
+        # token_acc = len(common_token_hashes) / nnbrs
+        # text_acc = len(set(old_text_hashes) & set(new_text_hashes)) / nnbrs
+        # accs.append(text_acc)
+        # +++
+        old_nbr_hashes = [ get_pickle_hash(ts.tolist())
+                           for ts in old_nbr_token_ids ]
+        new_nbr_hashes = [ get_pickle_hash(ts.tolist())
+                           for ts in new_nbr_token_ids ]
+        common_nbr_hashes = set(old_nbr_hashes) & set(new_nbr_hashes)
+        accs.append(len(common_nbr_hashes) / nnbrs)
+        # +++
+        # old_nbr_hashes = [ old_db_hash_map[old_nbr_ids[chunk_idx][ni].item()]
+        #                    for ni in range(nnbrs)]
+        # <<<
+
+        print()
+        for i, ts in enumerate(old_nbr_token_ids):
+            c = old_nbr_hashes[i] in common_nbr_hashes
+            print("%s : %s" % (
+                "OLD" if c else "[[OLD]]",
+                "\\n".join(gpt_tokenizer.detokenize(ts[:30]).splitlines()),
+            ))
+        print()
+        for i, ts in enumerate(new_nbr_token_ids):
+            c = new_nbr_hashes[i] in common_nbr_hashes
+            print("%s : %s" % (
+                "NEW" if c else "[[NEW]]",
+                "\\n".join(gpt_tokenizer.detokenize(ts[:30]).splitlines()),
+            ))
+
+        print()
+        print("ACC : %.2f." % (100 * accs[-1]))
+
+        # >>>
+        if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
+            seq_embed = \
+                embedder.embed_text(gpt_tokenizer.detokenize(old_seq_chunk))
+            old_nbr_embeds = [ embedder.embed_text(gpt_tokenizer.detokenize(ts))
+                               for ts in old_nbr_token_ids ]
+            new_nbr_embeds = [ embedder.embed_text(gpt_tokenizer.detokenize(ts))
+                               for ts in new_nbr_token_ids ]
+            old_nbr_dists = [np.linalg.norm(seq_embed-e) for e in old_nbr_embeds]
+            new_nbr_dists = [np.linalg.norm(seq_embed-e) for e in new_nbr_embeds]
+
+            old_nbr_id = old_db_hash_map[old_nbr_hashes[0]]
+            new_nbr_id = new_db_hash_map[old_nbr_hashes[0]]
+            pax(0, {
+                "old 0 hash" : old_nbr_hashes[0],
+                "old 0 in old db?" : old_nbr_hashes[0] in old_db_hash_map,
+                "old 0 in new db?" : old_nbr_hashes[0] in new_db_hash_map,
+                "old_nbr_id" : old_nbr_id,
+                "new_nbr_id" : new_nbr_id,
+                "old nbr" : str(old_db_chunks[old_nbr_id]),
+                "new nbr" :
+                str(new_pt_retro_train_ds.db_chunk_dataset[new_nbr_id]["text"]),
+                # "seq_embed" : seq_embed,
+                # "old_nbr_embeds" : old_nbr_embeds,
+                # "new_nbr_embeds" : new_nbr_embeds,
+                "old_nbr_dists" : str(old_nbr_dists),
+                "new_nbr_dists" : str(new_nbr_dists),
+            })
+        # <<<
+
+    pax(0, {"acc" : np.mean(accs)})
+
+
+def _print_pt_neighbors():
+
     accs = []
 
     # for sample_idx in range(10): # range(10, 20):
-    for seq_hash_idx in range(
+    for pt_hash_idx in range(
             0,
-            len(common_seq_hashes),
-            len(common_seq_hashes) // 100,
+            len(common_pt_hashes),
+            len(common_pt_hashes) // 100,
     ):
 
-        seq_hash = common_seq_hashes[seq_hash_idx]
-        old_sample_idx = old_seq_hash_map[seq_hash]
-        new_sample_idx = new_seq_hash_map[seq_hash]
+        pt_hash = common_pt_hashes[pt_hash_idx]
+        old_sample_idx = old_pt_hash_map[pt_hash]
+        new_sample_idx = new_pt_hash_map[pt_hash]
         sample_idxs = list(set([ old_sample_idx, new_sample_idx ]))
 
         # pax(0, {
-        #     "seq_hash" : seq_hash,
+        #     "pt_hash" : pt_hash,
         #     "old_sample_idx" : old_sample_idx,
         #     "new_sample_idx" : new_sample_idx,
         # })
@@ -234,117 +426,95 @@ def test_old_new():
         print("#" * len(header))
         print(header)
         print("#" * len(header))
-        print_tokens("OLD_CHUNK", old_seq[
-            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)])
-        print_tokens("NEW_CHUNK", new_seq[
-            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)])
+        old_seq_chunk = old_seq[
+            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+        new_seq_chunk = new_seq[
+            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+        print_tokens("OLD_CHUNK", old_seq_chunk)
+        print_tokens("NEW_CHUNK", new_seq_chunk)
 
         old_nbr_token_ids = []
         new_nbr_token_ids = []
         for nbr_idx in range(nnbrs):
-
             old_nbr_id = old_nbr_ids[chunk_idx][nbr_idx].item()
             old_nbr_token_ids.append(old_db_chunks[old_nbr_id])
             new_nbr_token_ids.append(new_nbrs[chunk_idx][nbr_idx][:chunk_length])
 
-            # pax(0, {
-            #     "old_nbr_token_ids" : old_nbr_token_ids[-1],
-            #     "new_nbr_token_ids" : new_nbr_token_ids[-1],
-            # })
-
-            # print()
-            # print("~~~~~~~~~~~~~~~~~~~~~")
-            # print_tokens("OLD_NBR", old_nbr_token_ids)
-            # print_tokens("NEW_NBR", new_nbr_token_ids)
-
-        old_token_hashes = [ get_pickle_hash(ts.tolist())
-                             for ts in old_nbr_token_ids ]
-        new_token_hashes = [ get_pickle_hash(ts.tolist())
-                             for ts in new_nbr_token_ids ]
-        old_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+        # >>>
+        # old_token_hashes = [ get_pickle_hash(ts.tolist())
+        #                      for ts in old_nbr_token_ids ]
+        # new_token_hashes = [ get_pickle_hash(ts.tolist())
+        #                      for ts in new_nbr_token_ids ]
+        # old_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+        #                    for ts in old_nbr_token_ids ]
+        # new_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+        #                    for ts in new_nbr_token_ids ]
+        # common_token_hashes = set(old_token_hashes) & set(new_token_hashes)
+        # token_acc = len(common_token_hashes) / nnbrs
+        # text_acc = len(set(old_text_hashes) & set(new_text_hashes)) / nnbrs
+        # accs.append(text_acc)
+        # +++
+        old_nbr_hashes = [ get_pickle_hash(ts.tolist())
                            for ts in old_nbr_token_ids ]
-        new_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
+        new_nbr_hashes = [ get_pickle_hash(ts.tolist())
                            for ts in new_nbr_token_ids ]
-        common_token_hashes = set(old_token_hashes) & set(new_token_hashes)
-        token_acc = len(common_token_hashes) / nnbrs
-        text_acc = len(set(old_text_hashes) & set(new_text_hashes)) / nnbrs
-        accs.append(text_acc)
+        common_nbr_hashes = set(old_nbr_hashes) & set(new_nbr_hashes)
+        accs.append(len(common_nbr_hashes) / nnbrs)
+        # +++
+        # old_nbr_hashes = [ old_db_hash_map[old_nbr_ids[chunk_idx][ni].item()]
+        #                    for ni in range(nnbrs)]
+        # <<<
 
-        # print()
-        # [ print_tokens("OLD", ts[:30]) for ts in old_nbr_token_ids ]
-        # print()
-        # [ print_tokens("NEW", ts[:30]) for ts in new_nbr_token_ids ]
         print()
         for i, ts in enumerate(old_nbr_token_ids):
-            c = old_token_hashes[i] in common_token_hashes
+            c = old_nbr_hashes[i] in common_nbr_hashes
             print("%s : %s" % (
                 "OLD" if c else "[[OLD]]",
                 "\\n".join(gpt_tokenizer.detokenize(ts[:30]).splitlines()),
             ))
         print()
         for i, ts in enumerate(new_nbr_token_ids):
-            c = new_token_hashes[i] in common_token_hashes
+            c = new_nbr_hashes[i] in common_nbr_hashes
             print("%s : %s" % (
                 "NEW" if c else "[[NEW]]",
                 "\\n".join(gpt_tokenizer.detokenize(ts[:30]).splitlines()),
             ))
 
         print()
-        print("ACC : %.2f." % (100 * token_acc))
+        print("ACC : %.2f." % (100 * accs[-1]))
 
         # >>>
-        if token_acc != text_acc:
-            # for nbr_idx in range(nnbrs)
+        if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
+            seq_embed = \
+                embedder.embed_text(gpt_tokenizer.detokenize(old_seq_chunk))
+            old_nbr_embeds = [ embedder.embed_text(gpt_tokenizer.detokenize(ts))
+                               for ts in old_nbr_token_ids ]
+            new_nbr_embeds = [ embedder.embed_text(gpt_tokenizer.detokenize(ts))
+                               for ts in new_nbr_token_ids ]
+            old_nbr_dists = [np.linalg.norm(seq_embed-e) for e in old_nbr_embeds]
+            new_nbr_dists = [np.linalg.norm(seq_embed-e) for e in new_nbr_embeds]
+
+            old_nbr_id = old_db_hash_map[old_nbr_hashes[0]]
+            new_nbr_id = new_db_hash_map[old_nbr_hashes[0]]
             pax(0, {
-                "token_acc" : token_acc,
-                "text_acc" : text_acc,
+                "old 0 hash" : old_nbr_hashes[0],
+                "old 0 in old db?" : old_nbr_hashes[0] in old_db_hash_map,
+                "old 0 in new db?" : old_nbr_hashes[0] in new_db_hash_map,
+                "old_nbr_id" : old_nbr_id,
+                "new_nbr_id" : new_nbr_id,
+                "old nbr" : str(old_db_chunks[old_nbr_id]),
+                "new nbr" :
+                str(new_pt_retro_train_ds.db_chunk_dataset[new_nbr_id]["text"]),
+                # "seq_embed" : seq_embed,
+                # "old_nbr_embeds" : old_nbr_embeds,
+                # "new_nbr_embeds" : new_nbr_embeds,
+                "old_nbr_dists" : str(old_nbr_dists),
+                "new_nbr_dists" : str(new_nbr_dists),
             })
         # <<<
 
-        # pax(0, {
-        #     "old_nbr_hashes" : old_nbr_hashes,
-        #     "new_nbr_hashes" : new_nbr_hashes,
-        # })
+    pax(0, {"acc" : np.mean(accs)})
 
-        # exit(0)
-
-        # >>>
-        # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        # for token_idx, (old_token_id, new_token_id) in \
-        #     enumerate(itertools.zip_longest(old_seq, new_seq)):
-        #     print("%4d. %5s, %5s ... %10s, %10s." % (
-        #         token_idx,
-        #         old_token_id,
-        #         new_token_id,
-        #         gpt_tokenizer.detokenize([ old_token_id ]) if old_token_id else "--",
-        #         gpt_tokenizer.detokenize([ new_token_id ]),
-        #     ))
-        # pax(0, {
-        #     "old_pt_seq_train" : "%d / %s" % (len(old_seq), str(old_seq)),
-        #     "new_pt_seq_train" : "%d / %s" % (len(new_seq), str(new_seq)),
-        #     "old_nbr_chunk_ids" : str(old_nbr_chunk_ids.shape),
-        #     # "old_nbrs" : str(old_nbrs.shape),
-        #     "new_nbrs" : str(new_nbrs.shape),
-        # })
-        # <<<
-
-    pax(0, {
-        # "accs" : accs,
-        "acc" : np.mean(accs),
-    })
-    exit(0)
-    pax({
-        "train_ds" : train_ds,
-        "train_ds / len" : len(train_ds),
-        "valid_ds / len" : len(valid_ds),
-        
-        # "new_db_chunks" : str(new_db_chunks.shape),
-        # "old_db_doc_ids" : str(old_db_doc_ids.shape),
-        # "old_db_chunks" : str(old_db_chunks.shape),
-
-        "old_pt_seqs_train[:10]" : old_pt_seqs_train[:10].tolist(),
-        "new_pt_seqs_train / 0" : [ new_pt_chunk_ds.seq_dataset[i]["text"][:2048].tolist() for i in range(10) ],
-    })
 
 def print_pretraining_neighbors():
 

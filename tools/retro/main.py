@@ -29,9 +29,10 @@ import torch
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.global_vars import set_retro_args
 from tools.retro.db import build_db # , preprocess_db
+from tools.retro.db.misc import print_db_embeddings # print_db_neighbors
 from tools.retro.index.build import add_to_index, build_index, train_index
 from tools.retro.index.misc.megatron_vs_huggingface import run_bert_comparison
-from tools.retro.pretraining import query_pretraining_neighbors
+from tools.retro.pretraining.query import query_pretraining_neighbors
 from tools.retro.pretraining.retro_dataset import test_retro_dataset
 from tools.retro.pretraining.misc import print_pretraining_neighbors
 from tools.retro.utils import get_args_path, Timer
@@ -208,6 +209,10 @@ if __name__ == "__main__":
             run_bert_comparison(timer)
         elif task == "misc-check-index-train-valid-split":
             check_index_train_valid_split(timer)
+        elif task == "misc-db-print-embeddings":
+            print_db_embeddings()
+        elif task == "misc-db-print-neighbors":
+            print_db_neighbors()
         elif task == "misc-pretraining-print-neighbors":
             print_pretraining_neighbors()
         else:
