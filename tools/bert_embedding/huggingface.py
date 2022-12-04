@@ -36,7 +36,12 @@ class IterableTextDataset(torch.utils.data.IterableDataset):
     def __iter__(self):
         for sample_idx in range(len(self.text_dataset)):
             sample = self.text_dataset[sample_idx]
-            yield sample["text"]
+            text = sample["text"].replace("<|endoftext|>", "")
+            # >>>
+            # if "<|endoftext|>" in text:
+            #     raise Exception("wha?")
+            # <<<
+            yield text
 
 
 # class HuggingfaceEmbedder(FeatureExtractionPipeline):
