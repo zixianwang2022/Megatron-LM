@@ -83,4 +83,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         #     "chunk" : chunk,
         # })
 
-        return {'text': np.array(token_ids, dtype=np.int64)}
+        return {
+            "doc_id" : doc_id,
+            "text" : np.array(token_ids, dtype=np.int64),
+        }

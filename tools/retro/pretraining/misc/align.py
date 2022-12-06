@@ -15,8 +15,11 @@
 
 import hashlib
 import json
+import numpy as np
 import os
 import pickle
+from tqdm import tqdm
+import types
 
 from ..utils import get_pretraining_workdir
 
@@ -62,16 +65,11 @@ def get_seq_hashes(filename, seq_iter, get_token_id_list):
     return hashes
 
 
-def align_db_idxs(old_chunks, new_chunk_ds):
-
-    # pax(0, {
-    #     "old_chunks" : old_chunks,
-    #     "new_chunk_ds" : new_chunk_ds,
-    # })
+def align_db_idxs(old_db_ds, new_chunk_ds):
 
     old_hashes = get_seq_hashes(
         "old_db_hashes",
-        old_chunks,
+        old_db_ds.chunks,
         lambda token_ids : token_ids.tolist(),
     )
     new_hashes = get_seq_hashes(
@@ -97,20 +95,29 @@ def align_db_idxs(old_chunks, new_chunk_ds):
     #     "common_hashes" : len(common_hashes),
     # })
 
-    return old_hash_map, new_hash_map, list(common_hashes)
+    # return old_hash_map, new_hash_map, list(common_hashes)
+    return types.SimpleNamespace(
+        old = old_hash_map,
+        new = new_hash_map,
+        common = common_hashes,
+    )
 
 
-# def align_old_new_sample_idxs(old_seqs, new_seq_ds):
-def align_pt_idxs(old_seqs, new_seq_ds):
+def align_pt_idxs(dkey, old_ds, new_ds):
 
+    # old_hashes = get_seq_hashes(
+    #     f"old_pt_{dkey}_hashes",
+    #     old_ds,
+    #     lambda sample : sample["text"].tolist(),
+    # )
     old_hashes = get_seq_hashes(
-        "old_pt_hashes",
-        old_seqs,
-        lambda token_ids : token_ids.tolist(),
+        f"old_pt_{dkey}_hashes",
+        old_ds.tokens,
+        lambda tokens : tokens.tolist(),
     )
     new_hashes = get_seq_hashes(
-        "new_pt_hashes",
-        new_seq_ds,
+        f"new_pt_{dkey}_hashes",
+        new_ds.chunk_dataset.seq_dataset,
         lambda sample : sample["text"][:2048].tolist(),
     )
 
@@ -119,7 +126,11 @@ def align_pt_idxs(old_seqs, new_seq_ds):
     new_hash_map = { h:i for i,h in enumerate(new_hashes) }
 
     print("common pt.")
-    common_hashes = set(old_hashes) & set(new_hashes)
+    common_hashes = list(set(old_hashes) & set(new_hashes))
+
+    # print("shuffle common.")
+    # common_hashes = list(common_hashes)
+    # np.random.shuffle(common_hashes)
 
     # pax(0, {
     #     # "old_seqs" : old_seqs,
@@ -131,4 +142,14 @@ def align_pt_idxs(old_seqs, new_seq_ds):
     #     "common_hashes" : len(common_hashes),
     # })
 
-    return old_hash_map, new_hash_map, list(common_hashes)
+    # return old_hash_map, new_hash_map, list(common_hashes)
+    # return {
+    #     "old" : old_hash_map,
+    #     "new" : new_hash_map,
+    #     "common" : common_hashes,
+    # }
+    return types.SimpleNamespace(
+        old = old_hash_map,
+        new = new_hash_map,
+        common = common_hashes,
+    )
