@@ -306,9 +306,9 @@ def print_db_embeddings():
         print(header)
         print("#" * len(header))
         print("CHUNK   : %s" % "\\n".join(text.splitlines()))
-        print("OLD_EMB : %s ..." % str(old_embed.tolist())[:75])
-        print("NEW_EMB : %s ..." % str(new_embed.tolist())[:75])
-        print("HF_EMB  : %s ..." % str(hf_embed.tolist())[:75])
+        print("OLD_EMB : %s ..." % str(old_embed.tolist())[:125])
+        print("NEW_EMB : %s ..." % str(new_embed.tolist())[:125])
+        print("HF_EMB  : %s ..." % str(hf_embed.tolist())[:125])
         print("EQUAL?  : %d." % np.array_equal(old_embed, new_embed))
 
         # pax(0, {
@@ -318,5 +318,5 @@ def print_db_embeddings():
         #     "equal?" : np.array_equal(old_sample["embed"], new_sample["embed"]),
         # })
 
-    print("acc = %.2f." % (100 * np.mean(accs)))
+    print("acc = %.2f [ n %d ]." % (100 * np.mean(accs), len(accs)))
     exit()
