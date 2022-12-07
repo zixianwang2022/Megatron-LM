@@ -133,11 +133,14 @@ def test_old_new():
     pt_train_hashes = align_pt_idxs("train", old_pt_train_ds, new_pt_train_ds)
     pt_valid_hashes = align_pt_idxs("valid", old_pt_valid_ds, new_pt_valid_ds)
 
+    # pax({"pt_train_hashes": pt_train_hashes})
+
     db_hashes = align_db_idxs(
         old_pt_train_ds.db_ds,
         new_pt_train_ds.db_chunk_dataset,
     )
-    # db_hashes = None
+
+    # pax({"db_hashes": db_hashes})
 
     meta = types.SimpleNamespace(
         tokenizer = get_gpt_tokenizer(),

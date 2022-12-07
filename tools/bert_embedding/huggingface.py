@@ -132,7 +132,7 @@ class HuggingfaceEmbedder:
                 return {"text": self.text}
 
         text_ds = SingleTextDataset(text)
-        embed = self.embed_text_dataset(text_ds)[0]
+        embed = self.embed_text_dataset(text_ds, verbose = False)[0]
 
         # token_ids = self.tokenizer(text)
         # embed = self.pipe._forward(token_ids)
@@ -146,17 +146,22 @@ class HuggingfaceEmbedder:
         return embed
 
 
-    def embed_text_dataset(self, text_dataset):
+    def embed_text_dataset(self, text_dataset, verbose = True):
 
         dataset = IterableTextDataset(text_dataset)
 
         n_samples = len(text_dataset)
         embeddings = np.zeros((n_samples, 1024), dtype = "f4")
         start_idx = 0
-        for idx, out_dict in enumerate(tqdm(
-                self.pipe(dataset, batch_size = self.batch_size),
-                total = n_samples,
-        )):
+        # for idx, out_dict in enumerate(tqdm(
+        #         self.pipe(dataset, batch_size = self.batch_size),
+        #         total = n_samples,
+        # )):
+        _iter = self.pipe(dataset, batch_size = self.batch_size)
+        if verbose:
+            _iter = tqdm(_iter, total = n_samples)
+
+        for idx, out_dict in enumerate(_iter):
 
             inp = out_dict["input"]
             out = out_dict["output"]

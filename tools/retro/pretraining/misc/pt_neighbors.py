@@ -39,58 +39,48 @@ def print_nbrs(
     chunk_length = meta.chunk_length
     n_chunks_per_seq = meta.n_chunks_per_seq
 
+    # Extract samle.
     old_seq = old_sample["text"][:2048]
     new_seq = new_sample["text"][:2048]
-    # old_nbr_ids = old_pt_nbrs_train[old_sample_idx][:, :nnbrs]
     old_nbrs = old_sample["neighbor_tokens"][:, :, :meta.chunk_length]
     new_nbrs = new_sample["neighbor_tokens"][:, :, :meta.chunk_length]
     assert old_nbrs.shape == (n_chunks_per_seq, nnbrs, chunk_length)
     assert new_nbrs.shape == (n_chunks_per_seq, nnbrs, chunk_length)
-    # assert nnbrs == new_nbrs.shape[1]
 
-    # pax({
-    #     "old_seq" : old_seq,
-    #     "new_seq" : new_seq,
-    #     "old_nbrs" : old_nbrs,
-    #     "new_nbrs" : new_nbrs,
-    # })
+    # Sequence chunk.
+    old_seq_chunk = old_seq[
+        (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+    new_seq_chunk = new_seq[
+        (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+    assert get_pickle_hash(old_seq_chunk.tolist()) == \
+        get_pickle_hash(new_seq_chunk.tolist())
 
+    # Neighbor tokens.
     old_nbr_token_ids = []
     new_nbr_token_ids = []
     for nbr_idx in range(nnbrs):
-        # old_nbr_id = old_nbr_ids[chunk_idx][nbr_idx].item()
-        # old_nbr_token_ids.append(old_db_chunks[old_nbr_id])
-        # new_nbr_token_ids.append(new_nbrs[chunk_idx][nbr_idx][:chunk_length])
         old_nbr_token_ids.append(old_nbrs[chunk_idx][nbr_idx])
         new_nbr_token_ids.append(new_nbrs[chunk_idx][nbr_idx])
 
-    # >>>
-    # old_token_hashes = [ get_pickle_hash(ts.tolist())
-    #                      for ts in old_nbr_token_ids ]
-    # new_token_hashes = [ get_pickle_hash(ts.tolist())
-    #                      for ts in new_nbr_token_ids ]
-    # old_text_hashes = [ get_pickle_hash(tokenizer.detokenize(ts))
-    #                    for ts in old_nbr_token_ids ]
-    # new_text_hashes = [ get_pickle_hash(tokenizer.detokenize(ts))
-    #                    for ts in new_nbr_token_ids ]
-    # common_token_hashes = set(old_token_hashes) & set(new_token_hashes)
-    # token_acc = len(common_token_hashes) / nnbrs
-    # text_acc = len(set(old_text_hashes) & set(new_text_hashes)) / nnbrs
-    # accs.append(text_acc)
-    # +++
+    # Hashes [ +acc ].
     old_nbr_hashes = [ get_pickle_hash(ts.tolist()) for ts in old_nbr_token_ids ]
     new_nbr_hashes = [ get_pickle_hash(ts.tolist()) for ts in new_nbr_token_ids ]
     common_nbr_hashes = set(old_nbr_hashes) & set(new_nbr_hashes)
-    # accs.append(len(common_nbr_hashes) / nnbrs)
     acc = len(common_nbr_hashes) / nnbrs
-    # +++
-    # old_nbr_hashes = [ old_db_hash_map[old_nbr_ids[chunk_idx][ni].item()]
-    #                    for ni in range(nnbrs)]
-    # <<<
+
+    # Embeddings, dists.
+    seq_embed = embedder.embed_text(tokenizer.detokenize(old_seq_chunk))
+    old_nbr_embeds = [ embedder.embed_text(tokenizer.detokenize(ts))
+                       for ts in old_nbr_token_ids ]
+    new_nbr_embeds = [ embedder.embed_text(tokenizer.detokenize(ts))
+                       for ts in new_nbr_token_ids ]
+    old_nbr_dists = [np.linalg.norm(seq_embed-e) for e in old_nbr_embeds]
+    new_nbr_dists = [np.linalg.norm(seq_embed-e) for e in new_nbr_embeds]
 
     causal = True
     # if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
-    if True:
+    # if True:
+    if acc != 1:
         # n_causal += 1
         causal = False
 
@@ -100,12 +90,6 @@ def print_nbrs(
         print("#" * len(header))
         print(header)
         print("#" * len(header))
-        old_seq_chunk = old_seq[
-            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
-        new_seq_chunk = new_seq[
-            (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
-        assert get_pickle_hash(old_seq_chunk.tolist()) == \
-            get_pickle_hash(new_seq_chunk.tolist())
         # print_tokens("OLD_CHUNK", old_seq_chunk)
         # print_tokens("NEW_CHUNK", new_seq_chunk)
         print_tokens("SAMPLE", old_seq_chunk)
@@ -113,35 +97,33 @@ def print_nbrs(
         print()
         for i, ts in enumerate(old_nbr_token_ids): # [:2]):
             c = old_nbr_hashes[i] in common_nbr_hashes
-            print("%s : %s" % (
-                "OLD" if c else "[[OLD]]",
+            print("%.3f, %s : %s" % (
+                old_nbr_dists[i],
+                "  OLD  " if c else "[[OLD]]",
                 "\\n".join(tokenizer.detokenize(ts[:30]).splitlines()),
                 # "\\n".join(tokenizer.detokenize(ts).splitlines()),
             ))
         print()
         for i, ts in enumerate(new_nbr_token_ids): # [:2]):
             c = new_nbr_hashes[i] in common_nbr_hashes
-            print("%s : %s" % (
-                "NEW" if c else "[[NEW]]",
+            print("%.3f, %s : %s" % (
+                new_nbr_dists[i],
+                "  NEW  " if c else "[[NEW]]",
                 "\\n".join(tokenizer.detokenize(ts[:30]).splitlines()),
                 # "\\n".join(tokenizer.detokenize(ts).splitlines()),
             ))
 
         print()
         print("ACC : %.2f." % (100 * acc))
+        print("DISTS : old %.4f, new %.4f." % (
+            np.mean(old_nbr_dists),
+            np.mean(new_nbr_dists),
+        ))
 
     # >>>
     # if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
-    # if False:
-    if acc != 1:
-        seq_embed = embedder.embed_text(tokenizer.detokenize(old_seq_chunk))
-        old_nbr_embeds = [ embedder.embed_text(tokenizer.detokenize(ts))
-                           for ts in old_nbr_token_ids ]
-        new_nbr_embeds = [ embedder.embed_text(tokenizer.detokenize(ts))
-                           for ts in new_nbr_token_ids ]
-        old_nbr_dists = [np.linalg.norm(seq_embed-e) for e in old_nbr_embeds]
-        new_nbr_dists = [np.linalg.norm(seq_embed-e) for e in new_nbr_embeds]
-
+    if False:
+    # if acc != 1:
         try:
             diff_index = min(i for i in range(nnbrs)
                              if old_nbr_hashes[i] != new_nbr_hashes[i])
@@ -150,24 +132,25 @@ def print_nbrs(
                 "old_nbr_hashes" : old_nbr_hashes,
                 "new_nbr_hashes" : new_nbr_hashes,
             })
-        old_nbr_id = db_hashes.old[old_nbr_hashes[diff_index]]
-        new_nbr_id = db_hashes.new[new_nbr_hashes[diff_index]]
+        # old_nbr_id = db_hashes.old[old_nbr_hashes[diff_index]]
+        # new_nbr_id = db_hashes.new[new_nbr_hashes[diff_index]]
         pax(0, {
             "banned doc ids" : str(new_sample["doc_ids"]),
             "diff_index" : diff_index,
             "old diff hash" : old_nbr_hashes[diff_index],
-            "old diff in old db?" : old_nbr_hashes[diff_index] in db_hashes.old,
-            "old diff in new db?" : old_nbr_hashes[diff_index] in db_hashes.new,
-            "old_nbr_id" : old_nbr_id,
-            "new_nbr_id" : new_nbr_id,
-            "old nbr" : "%d / %s" % (
-                old_db_ds[old_nbr_id]["doc_id"],
-                str(old_db_ds[old_nbr_id]["text"]),
-            ),
-            "new nbr" : "%d / %s" % (
-                new_db_ds[new_nbr_id]["doc_id"],
-                str(new_db_ds[new_nbr_id]["text"]),
-            ),
+            # "old diff in old db?" : old_nbr_hashes[diff_index] in db_hashes.old,
+            # "old diff in new db?" : old_nbr_hashes[diff_index] in db_hashes.new,
+            # "old_nbr_id" : old_nbr_id,
+            # "new_nbr_id" : new_nbr_id,
+            # "old nbr" : "%d / %s" % (
+            #     old_db_ds[old_nbr_id]["doc_id"],
+            #     str(old_db_ds[old_nbr_id]["text"]),
+            # ),
+            # "new nbr" : "%d / %s" % (
+            #     new_db_ds[new_nbr_id]["doc_id"],
+            #     str(new_db_ds[new_nbr_id]["text"]),
+            # ),
+
             # "seq_embed" : seq_embed,
             # "old_nbr_embeds" : old_nbr_embeds,
             # "new_nbr_embeds" : new_nbr_embeds,
@@ -176,7 +159,7 @@ def print_nbrs(
         })
     # <<<
 
-    return acc, causal
+    return acc, causal, np.mean(old_nbr_dists), np.mean(new_nbr_dists)
 
 # def _print_pt_neighbors(
 # def print_pt_neighbors(
@@ -243,17 +226,28 @@ def print_pt_neighbors(
 
     accs = []
     n_causal = 0
+    old_dists = []
+    new_dists = []
 
     # old_pt_hash_map = pt_hashes["old"]
     # new_pt_hash_map = pt_hashes["new"]
     # common_pt_hashes = pt_hashes["common"]
     for rand_idx in range(100):
 
-        pt_hash_idx = np.random.randint(len(pt_hashes.common))
+        # pt_hash_idx = np.random.randint(len(pt_hashes.common))
+        # pt_hash = pt_hashes.common[pt_hash_idx]
+        # old_sample_idx = pt_hashes.old[pt_hash]
+        # new_sample_idx = pt_hashes.new[pt_hash]
+        # pax({"pt_hashes": pt_hashes})
+        pt_hash_idx = np.random.randint(len(pt_hashes.old))
+        old_sample_idx = pt_hashes.old[pt_hash_idx].item()
+        new_sample_idx = pt_hashes.new[pt_hash_idx].item()
 
-        pt_hash = pt_hashes.common[pt_hash_idx]
-        old_sample_idx = pt_hashes.old[pt_hash]
-        new_sample_idx = pt_hashes.new[pt_hash]
+        # pax({
+        #     "old_sample_idx" : old_sample_idx,
+        #     "new_sample_idx" : new_sample_idx,
+        # })
+
         sample_idxs = list(set([ old_sample_idx, new_sample_idx ]))
 
         old_sample = old_pt_ds[old_sample_idx]
@@ -262,7 +256,7 @@ def print_pt_neighbors(
         # for chunk_idx in range(n_chunks_per_seq):
         chunk_idx = np.random.randint(meta.n_chunks_per_seq)
 
-        acc, causal = print_nbrs(
+        acc, causal, old_dist, new_dist = print_nbrs(
             meta,
             sample_idxs,
             chunk_idx,
@@ -274,6 +268,8 @@ def print_pt_neighbors(
         )
         accs.append(acc)
         n_causal += int(causal)
+        old_dists.append(old_dist)
+        new_dists.append(new_dist)
 
     # acc = np.mean(accs)
     # causal_rate = n_causal
@@ -282,4 +278,6 @@ def print_pt_neighbors(
         "n_causal" : n_causal,
         "acc" : np.mean(accs),
         "causal" : n_causal / len(accs),
+        "old_dist" : np.mean(old_dists).item(),
+        "new_dist" : np.mean(new_dists).item(),
     })
