@@ -21,10 +21,8 @@ import os
 import torch
 
 from megatron import get_retro_args
-from tools.retro.db.utils import get_merged_train_dataset as get_db_chunk_dataset
-from tools.retro.pretraining.chunk_dataset import \
-    get_gpt_chunk_dataset_map as get_pretraining_gpt_chunk_dataset_map
-# from tools.retro.utils import get_num_chunks_per_seq
+from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
+from tools.retro.pretraining.chunk_dataset import get_chunk_dataset_map
 
 # >>>
 from lutil import pax
@@ -58,17 +56,17 @@ class IdPathMap:
 class RetroDataset(torch.utils.data.Dataset):
 
     def __init__(self,
-                 db_chunk_dataset,
                  n_nbrs,
                  block_size,
+                 db_dataset,
                  chunk_dataset,
                  nbr_path_map):
 
         super().__init__()
 
-        self.db_chunk_dataset = db_chunk_dataset
         self.n_nbrs = n_nbrs
         self.block_size = block_size
+        self.db_dataset = db_dataset
         self.chunk_dataset = chunk_dataset
         self.nbr_path_map = nbr_path_map
 
@@ -106,8 +104,8 @@ class RetroDataset(torch.utils.data.Dataset):
             retrieved_token_ids = []
             for nbr_chunk_id in nbr_chunk_ids:
                 current_chunk_ids = \
-                    nbr_chunk_id, (nbr_chunk_id + 1) % len(self.db_chunk_dataset)
-                current_token_ids = [self.db_chunk_dataset[ci]["text"]
+                    nbr_chunk_id, (nbr_chunk_id + 1) % len(self.db_dataset)
+                current_token_ids = [self.db_dataset[ci]["text"]
                                      for ci in current_chunk_ids]
                 retrieved_chunk_ids.append(current_chunk_ids)
                 retrieved_token_ids.append(current_token_ids)
@@ -163,16 +161,15 @@ def get_retro_datasets():
 
     args = get_retro_args()
 
-    # Load chunk db.
-    db_chunk_dataset = get_db_chunk_dataset()
+    # DB dataset.
+    db_dataset = get_db_dataset()
 
-    # Dataset & neighbors.
-    chunk_ds_info_map = get_pretraining_gpt_chunk_dataset_map()
+    # Retro datasets.
+    chunk_ds_info_map = get_chunk_dataset_map()
     retro_dataset_map = {}
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 
         chunk_dataset = chunk_ds_info["data"]
-        # seq_dataset = chunk_dataset.seq_dataset
         nbr_dir = chunk_ds_info["nbr_dir"]
         nbr_path_map = get_chunk_path_map(nbr_dir)
 
@@ -197,66 +194,16 @@ def get_retro_datasets():
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
-            db_chunk_dataset = db_chunk_dataset,
             n_nbrs = args.retro_nnbrs_pretraining,
             block_size = args.retro_block_size,
-            # seq_dataset = seq_dataset,
+            db_dataset = db_dataset,
             chunk_dataset = chunk_dataset,
             nbr_path_map = nbr_path_map,
         )
 
-        # >>>
-        # pax(0, {"sample": retro_dataset_map[data_key][0]})
-        # <<<
-
+    # Extract datasets.
     train_ds = retro_dataset_map.get("train", None)
     valid_ds = retro_dataset_map.get("valid", None)
     test_ds = retro_dataset_map.get("test", None)
 
-    # pax(0, {
-    #     "train_ds" : train_ds,
-    #     "valid_ds" : valid_ds,
-    #     "test_ds" : test_ds,
-    #     "train_ds / len" : len(train_ds),
-    #     "valid_ds / len" : len(valid_ds),
-    #     "test_ds / len" : None if test_ds is None else len(test_ds),
-    # })
-
     return train_ds, valid_ds, test_ds
-
-
-def test_retro_dataset(timer):
-
-    # args = get_retro_args()
-
-    train_ds, valid_ds, _ = get_retro_datasets()
-
-    pax(0, {})
-
-    # >>>
-    n_samples = 3
-    samples = []
-    for sample_idx in range(0, len(retro_dataset), len(retro_dataset)//n_samples):
-        samples.append(retro_dataset[sample_idx])
-    pax(0, {
-        "samples" : samples,
-        "samples / 0" : samples[0],
-        "samples / 0 / nbrs" : samples[0]["neighbor_embeddings"],
-        "samples / 0 / nbrs / 0" : samples[0]["neighbor_embeddings"][0],
-        "samples / 0 / nbrs / 0 / 0" : samples[0]["neighbor_embeddings"][0][0],
-    })
-    # <<<
-
-    # pax(0, {
-    #     "db_embed_dir" : db_embed_dir,
-    #     "db_embed_path_map" : db_embed_path_map,
-    #     "pretraining_seq_dataset" : pretraining_seq_dataset,
-    #     "pretraining_nbr_dir" : pretraining_nbr_dir,
-    #     "pretraining_nbr_path_map" : pretraining_nbr_path_map,
-    #     "pretraining_valid_seq_idxs" : "%d / %s" % (
-    #         len(pretraining_valid_seq_idxs),
-    #         str(pretraining_valid_seq_idxs),
-    #     ),
-    #     "retro_dataset" : retro_dataset,
-    #     "retro_dataset / len" : len(retro_dataset),
-    # })

@@ -22,7 +22,7 @@ import os
 from megatron import get_retro_args, print_rank_0
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
-from .dataset import GPTChunkDataset
+from .dataset import DBDataset
 
 # >>>
 from lutil import pax
@@ -93,7 +93,6 @@ def get_individual_db(ds_id, ds_info):
 def get_merged_db_path_map():
     base_dir = get_base_db_workdir()
     return {
-        # "full" : os.path.join(base_dir, "merged", "full.hdf5"),
         "train" : os.path.join(base_dir, "merged", "train.hdf5"),
         "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
     }
@@ -106,22 +105,17 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     if not indexed_dataset_infos:
         indexed_dataset_infos = get_indexed_dataset_infos()
 
-    # Load chunk db.
+    # Load chunks.
     db_path = get_merged_db_path_map()[db_type]
     f = h5py.File(db_path, "r")
-    # >>>
-    # chunk_db = np.copy(f["chunks"])
-    # f.close()
-    # +++
-    chunk_db = f["chunks"]
-    # <<<
+    chunks = f["chunks"]
 
-    # Chunk dataset.
+    # DB dataset.
     indexed_datasets = [ info["dataset"] for info in indexed_dataset_infos ]
-    chunk_dataset = GPTChunkDataset(indexed_datasets, chunk_db,
-                                    args.retro_gpt_chunk_length)
+    dataset = DBDataset(indexed_datasets, chunks,
+                        args.retro_gpt_chunk_length)
 
-    return chunk_dataset
+    return dataset
 
 
 def get_merged_train_dataset(indexed_dataset_infos = None):

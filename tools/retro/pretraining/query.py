@@ -32,7 +32,7 @@ from tools.retro.index.indexes.faiss_par_add import get_dataset_block_ranges
 from tools.retro.index.utils import get_index_dir
 from tools.retro.utils import GPTToTextDataset
 
-from .chunk_dataset import get_gpt_chunk_dataset_map
+from .chunk_dataset import get_chunk_dataset_map
 
 # >>>
 from lutil import pax, print_seq, shorten as shorten_str

@@ -23,7 +23,7 @@ from megatron.training import (
     update_train_iters,
 )
 from tools.retro.db.utils import get_indexed_dataset_infos
-from tools.retro.utils import get_num_chunks_per_seq
+from tools.retro.utils import get_num_chunks_per_sample
 
 from .utils import get_pretraining_workdir
 
@@ -32,18 +32,19 @@ from lutil import pax
 # <<<
 
 
-class GPTChunkDataset(torch.utils.data.Dataset):
+# class GPTChunkDataset(torch.utils.data.Dataset):
+class ChunkDataset(torch.utils.data.Dataset):
 
-    def __init__(self, seq_dataset, chunk_length):
+    def __init__(self, sample_dataset, chunk_length):
 
         super().__init__()
 
-        self.seq_dataset = seq_dataset
+        self.sample_dataset = sample_dataset
 
         self.chunk_length = chunk_length
-        self.n_chunks_per_seq = get_num_chunks_per_seq()
-        self.n_seqs = len(seq_dataset)
-        self.n_chunks = self.n_seqs * self.n_chunks_per_seq
+        self.n_chunks_per_sample = get_num_chunks_per_sample()
+        self.n_samples = len(sample_dataset)
+        self.n_chunks = self.n_samples * self.n_chunks_per_sample
 
 
     def __len__(self):
@@ -52,27 +53,20 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
-        # >>>
-        # seq_idx = idx // self.n_chunk_seq_ratio
-        # chunk_idx = idx % self.n_chunk_seq_ratio
-        seq_idx = idx // self.n_chunks_per_seq
-        chunk_idx = idx % self.n_chunks_per_seq
-        # <<<
+        sample_idx = idx // self.n_chunks_per_sample
+        chunk_idx = idx % self.n_chunks_per_sample
 
-        seq_sample = self.seq_dataset[seq_idx]
-        seq_token_ids = seq_sample["text"]
-        seq_doc_ids = seq_sample["doc_ids"]
-
-        # assert len(seq_token_ids) == self.seq_length, \
-        #     "len(seq_token_ids) == %d." % len(seq_token_ids)
+        sample = self.sample_dataset[sample_idx]
+        sample_token_ids = sample["text"]
+        sample_doc_ids = sample["doc_ids"]
 
         token_start_idx = chunk_idx * self.chunk_length
         token_end_idx = token_start_idx + self.chunk_length
-        chunk_token_ids = seq_token_ids[token_start_idx:token_end_idx]
+        chunk_token_ids = sample_token_ids[token_start_idx:token_end_idx]
 
         return {
+            "doc_ids" : sample_doc_ids,
             "text" : chunk_token_ids,
-            "doc_ids" : seq_doc_ids,
         }
 
 
@@ -89,17 +83,11 @@ def verify_indexed_dataset_order():
     if len(db_prefixes) != len(pretraining_prefixes):
         raise Exception("inconsistent dataset count between db & pretraining.")
     if db_prefixes != pretraining_prefixes:
-        # pax(0, {
-        #     "db_prefixes" : db_prefixes,
-        #     "pretraining_prefixes" : pretraining_prefixes,
-        # })
         raise Exception("inconsistent dataset order between db & pretraining.")
 
 
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
-
-    # pax(0, {"train_val_test_num_samples": train_val_test_num_samples})
 
     args = get_retro_args()
 
@@ -116,24 +104,11 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         return_doc_ids=args.retro_return_doc_ids)
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
-    # >>>
-    # raise Exception("hi.")
-    # pax(0, {
-    #     "train_val_test_num_samples" : train_val_test_num_samples,
-    #     "train_ds / ty" : type(train_ds).__name__,
-    #     "valid_ds / ty" : type(valid_ds).__name__,
-    #     "train_ds / len" : len(train_ds),
-    #     "valid_ds / len" : len(valid_ds),
-    #     "train_ds / prefix" : os.path.basename(train_ds.datasets[0].index_prefix),
-    #     "valid_ds / prefix" : os.path.basename(valid_ds.datasets[0].index_prefix),
-    #     # "test_ds" : len(test_ds),
-    # })
-    # <<<
-
     return train_ds, valid_ds, test_ds
 
 
-def get_gpt_chunk_dataset_map():
+# def get_gpt_chunk_dataset_map():
+def get_chunk_dataset_map():
 
     args = get_retro_args()
 
@@ -162,7 +137,6 @@ def get_gpt_chunk_dataset_map():
     workdir = get_pretraining_workdir()
     dataset_map = {
         key : {
-            # "nbr_dir" : os.path.join(workdir, key, "nbr"),
             "nbr_dir" : os.path.join(
                 workdir,
                 os.path.basename(loader.dataset.datasets[0].index_prefix),
@@ -171,12 +145,5 @@ def get_gpt_chunk_dataset_map():
         }
         for key, loader in data_loader_map.items() if loader
     }
-
-    # >>>
-    # pax({"dataset_map": dataset_map})
-    # pax(0, dataset_map)
-    # pax(0, {k:len(d["data"]) for k,d in dataset_map.items()})
-    # raise Exception("hi.")
-    # <<<
 
     return dataset_map

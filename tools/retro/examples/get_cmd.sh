@@ -34,7 +34,7 @@ BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
 # >>>>>>>>>>>>>>>>>>>>>>>
 RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORPUS}
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
