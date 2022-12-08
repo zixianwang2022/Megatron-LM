@@ -30,20 +30,14 @@ from tools.retro.utils import GPTToTextDataset
 
 from .utils import (
     get_index_dir,
-    # get_embedding_dir,
-    # get_embedding_paths,
-    # remove_embedding_dir,
     get_training_data_block_dir,
     get_training_data_block_paths,
     get_training_data_merged,
-    # get_training_data_merged_path,
 )
 
 # >>>
 from lutil import pax, print_seq
 # <<<
-
-# EMBED_KEY = "sampled"
 
 
 def get_empty_index_path():

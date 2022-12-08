@@ -13,7 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import faiss
 import numpy as np
+
+from tools.retro.pretraining.query import (
+    get_index as get_new_index,
+    # get_banned_chunk_map,
+    # query_embeddings,
+)
+from tools.retro.utils import get_gpt_tokenizer
 
 from .align import get_pickle_hash
 from .print_tokens import print_tokens
@@ -22,16 +30,92 @@ from .print_tokens import print_tokens
 from lutil import pax
 # <<<
 
+tokenizer = None
+def tokens2str(ts):
+    global tokenizer
+    if not tokenizer:
+        tokenizer = get_gpt_tokenizer()
+    return "\\n".join(tokenizer.detokenize(ts).splitlines())[:125]
+
+def query_chunk(meta, query_token_ids, index, db_ds):
+    query_text = meta.tokenizer.detokenize(query_token_ids)
+    query_embed = meta.embedder.embed_text(query_text)
+    D, I = index.search(query_embed.reshape((1, -1)), 10)
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("QUERY : %s" % tokens2str(query_token_ids))
+    for i, ni in enumerate(I[0]):
+        print("NBR [%.3f] : %s" % (D[0][i].item(), tokens2str(db_ds[ni]["text"])))
+
+def index_encode_chunks(meta, token_ids_0, token_ids_1, index, db_ds):
+
+    text0 = meta.tokenizer.detokenize(token_ids_0)
+    text1 = meta.tokenizer.detokenize(token_ids_1)
+    embed0 = meta.embedder.embed_text(text0)
+    embed1 = meta.embedder.embed_text(text1)
+    embeds = np.vstack([ embed0.reshape((1, -1)), embed1.reshape((1, -1)) ])
+
+    # pax({"embeds": embeds})
+
+    index_ivf = faiss.extract_index_ivf(index)
+    quantizer = index_ivf.quantizer
+
+    # ef_search = 16
+    # ef_search = 32
+    ef_search = 64
+    # ef_search = 128
+    faiss.ParameterSpace().set_index_parameter(quantizer, "efSearch", ef_search)
+    # faiss.ParameterSpace().set_index_parameter(quantizer, "nprobe", 4096)
+
+    D, I = quantizer.search(embeds, 1024) # 100, 4096
+    clusters0 = list(I[0, :])
+    clusters1 = list(I[1, :])
+    intsec = set(clusters0) & set(clusters1)
+
+    # print(I)
+    # print("CLUSTERS0 : %s." % clusters0)
+    # print("CLUSTERS1 : %s." % clusters1)
+    # print("INTSEC    : %s." % (set(clusters0) & set(clusters1)))
+    pax({
+        "clusters0" : "%d / %s" % (len(clusters0), str(clusters0)),
+        "clusters1" : "%d / %s" % (len(clusters1), str(clusters1)),
+        "intsec" : "%d / %s" % (len(intsec), str(intsec)),
+    })
+    pax({
+        "index" : index,
+        "index_ivf" : index_ivf,
+        "quantizer" : quantizer,
+        # "result" : result,
+    })
+
+# def print_nbrs(
+#         meta,
+#         sample_idxs,
+#         chunk_idx,
+#         old_db_ds,
+#         new_db_ds,
+#         old_sample,
+#         new_sample,
+#         db_hashes,
+# ):
 def print_nbrs(
         meta,
-        sample_idxs,
+        old_pt_ds,
+        new_pt_ds,
+        old_sample_idx,
+        new_sample_idx,
         chunk_idx,
-        old_db_ds,
-        new_db_ds,
-        old_sample,
-        new_sample,
         db_hashes,
 ):
+
+    old_sample = old_pt_ds[old_sample_idx]
+    new_sample = new_pt_ds[new_sample_idx]
+    old_db_ds = old_pt_ds.db_ds
+    new_db_ds = new_pt_ds.db_chunk_dataset
+
+    # pax({
+    #     "old_sample" : old_sample,
+    #     "new_sample" : new_sample,
+    # })
 
     tokenizer = meta.tokenizer
     embedder = meta.embedder
@@ -39,7 +123,7 @@ def print_nbrs(
     chunk_length = meta.chunk_length
     n_chunks_per_seq = meta.n_chunks_per_seq
 
-    # Extract samle.
+    # Extract sample.
     old_seq = old_sample["text"][:2048]
     new_seq = new_sample["text"][:2048]
     old_nbrs = old_sample["neighbor_tokens"][:, :, :meta.chunk_length]
@@ -47,21 +131,38 @@ def print_nbrs(
     assert old_nbrs.shape == (n_chunks_per_seq, nnbrs, chunk_length)
     assert new_nbrs.shape == (n_chunks_per_seq, nnbrs, chunk_length)
 
-    # Sequence chunk.
-    old_seq_chunk = old_seq[
-        (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
-    new_seq_chunk = new_seq[
-        (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
-    assert get_pickle_hash(old_seq_chunk.tolist()) == \
-        get_pickle_hash(new_seq_chunk.tolist())
+    # Sample chunk.
+    # old_seq_chunk = old_seq[
+    #     (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+    # new_seq_chunk = new_seq[
+    #     (chunk_idx * chunk_length):((chunk_idx + 1) * chunk_length)]
+    # assert get_pickle_hash(old_seq_chunk.tolist()) == \
+    #     get_pickle_hash(new_seq_chunk.tolist())
+    sample_chunk = old_seq[(chunk_idx*chunk_length):((chunk_idx+1)*chunk_length)]
 
-    # Neighbor tokens.
+    # pax({
+    #     "sample chunk" : str(sample_chunk),
+    #     "new sample chunks" : str(new_pt_ds.chunk_dataset[new_sample_idx * n_chunks_per_seq + chunk_idx]["text"]),
+    # })
+
+    # Neighbor chunks, tokens.
+    old_nbr_chunk_ids = []
+    new_nbr_chunk_ids = []
     old_nbr_token_ids = []
     new_nbr_token_ids = []
     for nbr_idx in range(nnbrs):
+        old_nbr_chunk_ids.append(
+            old_sample["neighbor_chunks"][chunk_idx][nbr_idx].item())
+        new_nbr_chunk_ids.append(
+            new_sample["neighbor_chunks"][chunk_idx][nbr_idx][0].item())
         old_nbr_token_ids.append(old_nbrs[chunk_idx][nbr_idx])
         new_nbr_token_ids.append(new_nbrs[chunk_idx][nbr_idx])
 
+    # pax({
+    #     "old_nbr_chunk_ids" : old_nbr_chunk_ids,
+    #     "new_nbr_chunk_ids" : new_nbr_chunk_ids,
+    # })
+    
     # Hashes [ +acc ].
     old_nbr_hashes = [ get_pickle_hash(ts.tolist()) for ts in old_nbr_token_ids ]
     new_nbr_hashes = [ get_pickle_hash(ts.tolist()) for ts in new_nbr_token_ids ]
@@ -69,56 +170,124 @@ def print_nbrs(
     acc = len(common_nbr_hashes) / nnbrs
 
     # Embeddings, dists.
-    seq_embed = embedder.embed_text(tokenizer.detokenize(old_seq_chunk))
+    sample_embed = embedder.embed_text(tokenizer.detokenize(sample_chunk))
     old_nbr_embeds = [ embedder.embed_text(tokenizer.detokenize(ts))
                        for ts in old_nbr_token_ids ]
     new_nbr_embeds = [ embedder.embed_text(tokenizer.detokenize(ts))
                        for ts in new_nbr_token_ids ]
-    old_nbr_dists = [np.linalg.norm(seq_embed-e) for e in old_nbr_embeds]
-    new_nbr_dists = [np.linalg.norm(seq_embed-e) for e in new_nbr_embeds]
+    old_nbr_dists = [ np.linalg.norm(sample_embed - e) for e in old_nbr_embeds ]
+    new_nbr_dists = [ np.linalg.norm(sample_embed - e) for e in new_nbr_embeds ]
 
     causal = True
     # if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
     # if True:
     if acc != 1:
-        # n_causal += 1
         causal = False
 
         header = "############## sample %s, chunk %d ##############" % (
-            ",".join(str(i) for i in sample_idxs), chunk_idx)
+            ",".join(str(i) for i in set([old_sample_idx, new_sample_idx])),
+            chunk_idx,
+        )
         print()
         print("#" * len(header))
         print(header)
         print("#" * len(header))
         # print_tokens("OLD_CHUNK", old_seq_chunk)
         # print_tokens("NEW_CHUNK", new_seq_chunk)
-        print_tokens("SAMPLE", old_seq_chunk)
+        print_tokens("SAMPLE", sample_chunk)
+        print("DOC_IDS : %s." % str(new_sample["doc_ids"]))
 
         print()
         for i, ts in enumerate(old_nbr_token_ids): # [:2]):
+            # doc_id = 
             c = old_nbr_hashes[i] in common_nbr_hashes
-            print("%.3f, %s : %s" % (
+            print("[%d] %.3f, %s : %s" % (
+                old_db_ds[old_nbr_chunk_ids[i]]["doc_id"],
                 old_nbr_dists[i],
                 "  OLD  " if c else "[[OLD]]",
-                "\\n".join(tokenizer.detokenize(ts[:30]).splitlines()),
+                # "\\n".join(tokenizer.detokenize(ts[:30]).splitlines()),
+                tokens2str(ts),
                 # "\\n".join(tokenizer.detokenize(ts).splitlines()),
             ))
         print()
         for i, ts in enumerate(new_nbr_token_ids): # [:2]):
             c = new_nbr_hashes[i] in common_nbr_hashes
-            print("%.3f, %s : %s" % (
+            print("[%d] %.3f, %s : %s" % (
+                new_db_ds[new_nbr_chunk_ids[i]]["doc_id"],
                 new_nbr_dists[i],
                 "  NEW  " if c else "[[NEW]]",
-                "\\n".join(tokenizer.detokenize(ts[:30]).splitlines()),
+                # "\\n".join(tokenizer.detokenize(ts[:30]).splitlines()),
+                tokens2str(ts),
                 # "\\n".join(tokenizer.detokenize(ts).splitlines()),
             ))
 
         print()
         print("ACC : %.2f." % (100 * acc))
         print("DISTS : old %.4f, new %.4f." % (
-            np.mean(old_nbr_dists),
-            np.mean(new_nbr_dists),
+            np.mean(old_nbr_dists), # [1:]), # skip causality bug.
+            np.mean(new_nbr_dists), # [1:]),
         ))
+
+    # >>>
+    # print("load old index.")
+    # old_index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/Wikipedia_IVF262144_HNSW32_Flat_index.bin", faiss.IO_FLAG_MMAP)
+    # print("load new index.")
+    # new_index = get_new_index(new_db_ds, ondisk = True)
+    # print("finished loading indexes.")
+    # ef_search = 16
+    # # ef_search = 32
+    # # ef_search = 64
+    # # ef_search = 128
+    # faiss.ParameterSpace().set_index_parameter(old_index, "efSearch", ef_search)
+    # faiss.ParameterSpace().set_index_parameter(old_index, "nprobe", 4096)
+    # faiss.ParameterSpace().set_index_parameter(new_index, "efSearch", ef_search)
+    # faiss.ParameterSpace().set_index_parameter(new_index, "nprobe", 4096)
+
+    # pax({
+    #     "new_index" : new_index,
+    #     "new_index / ivf" : faiss.extract_index_ivf(new_index),
+    #     "new_index / ivf / quantizer" :
+    #     faiss.extract_index_ivf(new_index).quantizer,
+    #     # "ef-search" :
+    #     # faiss.ParameterSpace().get_index_parameter(index, "efSearch"),
+    # })
+
+    # missing_old_nbr_idxs = [ i for i in range(nnbrs)
+    #                          if old_nbr_hashes[i] not in new_nbr_hashes ]
+
+    # # query_chunk(meta, sample_chunk, old_index, old_db_ds)
+    # # query_chunk(meta, sample_chunk, new_index, new_db_ds)
+    # # query_chunk(meta, old_nbr_token_ids[missing_old_nbr_idxs[0]],
+    # #             new_index, new_db_ds)
+    # # query_chunk(meta, old_nbr_token_ids[missing_old_nbr_idxs[0]],
+    # #             old_index, old_db_ds)
+
+    # index_encode_chunks(
+    #     meta,
+    #     sample_chunk,
+    #     old_nbr_token_ids[missing_old_nbr_idxs[0]],
+    #     old_index, old_db_ds,
+    #     # new_index, new_db_ds,
+    # )
+    # pax({})
+    # for nidx in range(nnbrs):
+    #     if old_nbr_hashes[nidx] in new_nbr_hashes:
+    #         raise Exception("hi.")
+    #         continue
+    #     query_chunk(old_nbr_token_ids[nidx], new_index, new_db_ds)
+    #     break
+    # for nidx in range(nnbrs):
+    #     if old_nbr_hashes[nidx] in new_nbr_hashes:
+    #         raise Exception("hi.")
+    #         continue
+    #     D, I = new_index.search(sample_embed.reshape((1, -1)), 10)
+    #     print("QUERY : %s" % tokens2str(sample_chunk))
+    #     for i, ni in enumerate(I[0]):
+    #         print("NBR [%.3f] : %s" % (D[0][i].item(), tokens2str(new_db_ds[ni]["text"])))
+    #     pax({
+    #         "I" : str(I),
+    #     })
+    # <<<
 
     # >>>
     # if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
@@ -239,11 +408,15 @@ def print_pt_neighbors(
         # old_sample_idx = pt_hashes.old[pt_hash]
         # new_sample_idx = pt_hashes.new[pt_hash]
         # pax({"pt_hashes": pt_hashes})
-        pt_hash_idx = np.random.randint(len(pt_hashes.old))
-        old_sample_idx = pt_hashes.old[pt_hash_idx].item()
-        new_sample_idx = pt_hashes.new[pt_hash_idx].item()
+        pt_hash_idx = np.random.randint(len(pt_hashes.data)) # .old))
+        # old_sample_idx = pt_hashes.old[pt_hash_idx].item()
+        # new_sample_idx = pt_hashes.new[pt_hash_idx].item()
+        old_sample_idx, new_sample_idx, pt_hash = \
+            [ a.item() for a in pt_hashes.data[pt_hash_idx] ]
 
         # pax({
+        #     "pt_hash_idx" : pt_hash_idx,
+        #     "pt_hash" : pt_hash,
         #     "old_sample_idx" : old_sample_idx,
         #     "new_sample_idx" : new_sample_idx,
         # })
@@ -256,14 +429,23 @@ def print_pt_neighbors(
         # for chunk_idx in range(n_chunks_per_seq):
         chunk_idx = np.random.randint(meta.n_chunks_per_seq)
 
+        # acc, causal, old_dist, new_dist = print_nbrs(
+        #     meta,
+        #     sample_idxs,
+        #     chunk_idx,
+        #     old_pt_ds.db_ds,
+        #     new_pt_ds.db_chunk_dataset,
+        #     old_sample,
+        #     new_sample,
+        #     db_hashes,
+        # )
         acc, causal, old_dist, new_dist = print_nbrs(
             meta,
-            sample_idxs,
+            old_pt_ds,
+            new_pt_ds,
+            old_sample_idx,
+            new_sample_idx,
             chunk_idx,
-            old_pt_ds.db_ds,
-            new_pt_ds.db_chunk_dataset,
-            old_sample,
-            new_sample,
             db_hashes,
         )
         accs.append(acc)

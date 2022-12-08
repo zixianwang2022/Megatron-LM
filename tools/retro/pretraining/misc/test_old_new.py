@@ -23,8 +23,8 @@ from tools.bert_embedding.huggingface import HuggingfaceEmbedder
 from tools.retro.utils import get_gpt_tokenizer
 
 from ..retro_dataset import get_retro_datasets as get_new_retro_datasets
-from .align import align_db_idxs, align_pt_idxs
-from .pt_neighbors import print_pt_neighbors
+from .align import align_db_idxs, align_pt_idxs, get_pickle_hash
+from .pt_neighbors import print_pt_neighbors, print_nbrs
 
 # >>>
 from lutil import pax
@@ -70,13 +70,18 @@ class OldRetroDataset(torch.utils.data.Dataset):
         nbrs = np.copy(self.nbrs[sample_idx][:, :self.nnbrs])
         # tokens = self.tokens[sample_idx]
         # nbrs = self.nbrs[sample_idx][:, :self.nnbrs]
+        nbr_chunk_ids = []
         nbr_token_ids = []
         for ci in range(len(nbrs)):
+            crnt_nbr_chunk_ids = []
             crnt_nbr_token_ids = []
             for ni in range(self.nnbrs):
+                crnt_nbr_chunk_ids.append(nbrs[ci][ni])
                 crnt_nbr_token_ids.append(self.db_ds[nbrs[ci][ni]]["text"])
             # pax({"crnt_nbr_token_ids": crnt_nbr_token_ids})
+            nbr_chunk_ids.append(crnt_nbr_chunk_ids)
             nbr_token_ids.append(crnt_nbr_token_ids)
+        nbr_chunk_ids = np.array(nbr_chunk_ids)
         nbr_token_ids = np.array(nbr_token_ids)
 
         # pax(0, {
@@ -87,6 +92,7 @@ class OldRetroDataset(torch.utils.data.Dataset):
 
         return {
             "text" : tokens,
+            "neighbor_chunks" : nbr_chunk_ids,
             "neighbor_tokens" : nbr_token_ids,
         }
 
@@ -159,18 +165,11 @@ def test_old_new():
     #     common_db_hashes,
     # )
     # print_pt_neighbors(
-    #     gpt_tokenizer,
-    #     embedder,
-    #     chunk_length,
-    #     nnbrs,
-    #     n_chunks_per_seq,
-    #     old_db_doc_ids,
-    #     old_db_chunks,
-    #     old_pt_seqs_train,
-    #     old_pt_nbrs_train,
-    #     new_pt_retro_train_ds,
+    #     meta,
+    #     old_pt_train_ds,
+    #     new_pt_train_ds,
     #     pt_train_hashes,
-    #     # db_hashes,
+    #     db_hashes,
     # )
     print_pt_neighbors(
         meta,
@@ -179,3 +178,97 @@ def test_old_new():
         pt_valid_hashes,
         db_hashes,
     )
+    # print_nbrs(
+    #     meta,
+    #     old_pt_train_ds,
+    #     new_pt_train_ds,
+    #     1520761,
+    #     1520761,
+    #     11,
+    #     db_hashes,
+    # )
+    # query(
+    #     meta,
+    #     old_pt_train_ds,
+    #     new_pt_train_ds,
+    #     pt_train_hashes,
+    #     db_hashes,
+    #     1520761,
+    #     11,
+    # )
+
+def query(
+        meta,
+        old_pt_train_ds,
+        new_pt_train_ds,
+        pt_train_hashes,
+        db_hashes,
+        sample_idx,
+        chunk_idx,
+):
+
+    from tools.retro.pretraining.query import (
+        get_index,
+        get_banned_chunk_map,
+        query_embeddings,
+    )
+
+    old_sample = old_pt_train_ds[sample_idx]
+    old_nbr_token_ids = old_sample["neighbor_tokens"][chunk_idx]
+
+    # pax({
+    #     "old_sample" : old_sample,
+    #     "old_nbr_token_ids" : old_nbr_token_ids,
+    # })
+
+    print("embed sample.")
+    sample = new_pt_train_ds[sample_idx]
+    sample_token_ids = sample["text"] \
+        [(chunk_idx*meta.chunk_length):((chunk_idx+1)*meta.chunk_length)]
+    sample_text = meta.tokenizer.detokenize(sample_token_ids)
+    sample_embed = meta.embedder.embed_text(sample_text).reshape((1, -1))
+
+    # pax({
+    #     "sample" : sample,
+    #     "sample_token_ids" : str(sample_token_ids),
+    #     "sample_text" : sample_text,
+    #     "sample_embed" : sample_embed,
+    # })
+
+    print("get banned chunk map.")
+    db_ds = new_pt_train_ds.db_chunk_dataset
+    banned_chunk_map = get_banned_chunk_map(db_ds.chunk_db)
+
+    print("get index.")
+    index = get_index(db_ds, ondisk = True)
+
+    n_chunks_per_seq = new_pt_train_ds.chunk_dataset.n_chunks_per_seq
+    chunk_id = sample_idx * n_chunks_per_seq + chunk_idx
+    unfiltered_nbr_ids, filtered_nbr_ids = query_embeddings(
+        index, banned_chunk_map, (chunk_id, chunk_id + 1), sample_embed,
+        {sample_idx: new_pt_train_ds.chunk_dataset.seq_dataset[sample_idx]},
+        n_chunks_per_seq,
+    )
+
+    for nbr_id in range(len(old_nbr_token_ids)):
+        text = meta.tokenizer.detokenize(old_nbr_token_ids[nbr_id])
+        text = "\\n".join(text.splitlines())[:125]
+        old_hash = get_pickle_hash(old_nbr_token_ids[nbr_id].tolist())
+        print("%s : %s" % (
+            "[[OLD]]" if old_hash in db_hashes.hash_map else "  OLD  ",
+            text,
+        ))
+    for nbr_id in filtered_nbr_ids.flatten().tolist():
+    # for nbr_id in unfiltered_nbr_ids.flatten().tolist():
+        text = meta.tokenizer.detokenize(
+            new_pt_train_ds.db_chunk_dataset[nbr_id]["text"])
+        text = "\\n".join(text.splitlines())[:125]
+        print("%s : %s" % (
+            "[[NEW]]" if nbr_id in filtered_nbr_ids else "  NEW  ",
+            text,
+        ))
+
+    pax({
+        "unfiltered_nbr_ids" : str(unfiltered_nbr_ids),
+        "filtered_nbr_ids" : str(filtered_nbr_ids),
+    })

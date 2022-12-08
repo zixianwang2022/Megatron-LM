@@ -32,6 +32,7 @@ from tools.retro.db import build_db
 from tools.retro.db.misc import print_db_embeddings # print_db_neighbors
 from tools.retro.index.build import add_to_index, build_index, train_index
 from tools.retro.index.misc.megatron_vs_huggingface import run_bert_comparison
+from tools.retro.index.misc.verify_codes import verify_codes as verify_index_codes
 from tools.retro.pretraining.query import query_pretraining_neighbors
 from tools.retro.pretraining.retro_dataset import test_retro_dataset
 from tools.retro.pretraining.misc import print_pretraining_neighbors
@@ -184,8 +185,8 @@ if __name__ == "__main__":
             test_retro_dataset(timer)
         elif task == "nbr-plot-acc":
             plot_nbr_acc(timer)
-        elif task == "nbr-verify-codes":
-            verify_codes(timer)
+        elif task == "misc-index-verify-codes":
+            verify_index_codes(timer)
         elif task == "nbr-verify-nbrs":
             verify_nbrs(timer)
 

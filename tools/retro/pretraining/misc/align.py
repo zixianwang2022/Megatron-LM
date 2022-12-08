@@ -33,122 +33,6 @@ def get_pickle_hash(value):
     return int(hashlib.sha256(pickle.dumps(value)).hexdigest()[:10], 16)
 
 
-# def get_seq_hashes(filename, seq_iter, get_token_id_list):
-
-#     path = os.path.join(
-#         get_pretraining_workdir(),
-#         "compare_nbrs",
-#         filename + ".json",
-#     )
-
-#     if os.path.exists(path):
-#         print("loading '%s'." % filename)
-#         with open(path) as f:
-#             return json.load(f)
-
-#     os.makedirs(os.path.dirname(path), exist_ok = True)
-
-#     hashes = []
-#     for seq_id, seq in enumerate(tqdm(seq_iter, "seq hashes / %s" % filename)):
-#         token_ids = get_token_id_list(seq)
-#         # pax(0, {
-#         #     "seq_id" : seq_id,
-#         #     "seq" : seq,
-#         #     "token_ids" : token_ids,
-#         # })
-#         hashes.append(get_pickle_hash(token_ids))
-
-#     with open(path, "w") as f:
-#         json.dump(hashes, f)
-
-#     # pax(0, {"hashes[:10]" : hashes[:10]})
-
-#     return hashes
-
-
-# def align_db_idxs(old_db_ds, new_chunk_ds):
-
-#     old_hashes = get_seq_hashes(
-#         "old_db_hashes",
-#         old_db_ds.chunks,
-#         lambda token_ids : token_ids.tolist(),
-#     )
-#     new_hashes = get_seq_hashes(
-#         "new_db_hashes",
-#         new_chunk_ds,
-#         lambda sample : sample["text"].tolist(),
-#     )
-
-#     print("re-map db.")
-#     old_hash_map = { h:i for i,h in enumerate(old_hashes) }
-#     new_hash_map = { h:i for i,h in enumerate(new_hashes) }
-
-#     print("common db.")
-#     common_hashes = set(old_hashes) & set(new_hashes)
-
-#     # pax(0, {
-#     #     # "old_seqs" : old_seqs,
-#     #     # "new_seq_ds" : new_seq_ds,
-#     #     "old_hashes / len" : len(old_hashes),
-#     #     "new_hashes / len" : len(new_hashes),
-#     #     "old_hash_map / len" : len(old_hash_map),
-#     #     "new_hash_map / len" : len(new_hash_map),
-#     #     "common_hashes" : len(common_hashes),
-#     # })
-
-#     # return old_hash_map, new_hash_map, list(common_hashes)
-#     return types.SimpleNamespace(
-#         old = old_hash_map,
-#         new = new_hash_map,
-#         common = common_hashes,
-#     )
-
-
-# def align_pt_idxs(dkey, old_ds, new_ds):
-
-#     # old_hashes = get_seq_hashes(
-#     #     f"old_pt_{dkey}_hashes",
-#     #     old_ds,
-#     #     lambda sample : sample["text"].tolist(),
-#     # )
-#     old_hashes = get_seq_hashes(
-#         f"old_pt_{dkey}_hashes",
-#         old_ds.tokens,
-#         lambda tokens : tokens.tolist(),
-#     )
-#     new_hashes = get_seq_hashes(
-#         f"new_pt_{dkey}_hashes",
-#         new_ds.chunk_dataset.seq_dataset,
-#         lambda sample : sample["text"][:2048].tolist(),
-#     )
-
-#     print("re-map pt.")
-#     old_hash_map = { h:i for i,h in enumerate(old_hashes) }
-#     new_hash_map = { h:i for i,h in enumerate(new_hashes) }
-
-#     print("common pt.")
-#     common_hashes = list(set(old_hashes) & set(new_hashes))
-
-#     # print("shuffle common.")
-#     # common_hashes = list(common_hashes)
-#     # np.random.shuffle(common_hashes)
-
-#     # pax(0, {
-#     #     # "old_seqs" : old_seqs,
-#     #     # "new_seq_ds" : new_seq_ds,
-#     #     "old_hashes / len" : len(old_hashes),
-#     #     "new_hashes / len" : len(new_hashes),
-#     #     "old_hash_map / len" : len(old_hash_map),
-#     #     "new_hash_map / len" : len(new_hash_map),
-#     #     "common_hashes" : len(common_hashes),
-#     # })
-
-#     return types.SimpleNamespace(
-#         old = old_hash_map,
-#         new = new_hash_map,
-#         common = common_hashes,
-#     )
-
 def get_seq_hashes(prefix, seq_iter, get_token_id_list):
     hash_map = {}
     for seq_id, seq in enumerate(tqdm(seq_iter, "seq hashes / %s" % prefix)):
@@ -182,26 +66,19 @@ def align_idxs(prefix, old_dict, new_dict):
 
         print("save hashes.")
         with h5py.File(path, "w") as f:
-            f.create_dataset("old", data = np.array(old_seq_ids, dtype = "i8"))
-            f.create_dataset("new", data = np.array(new_seq_ids, dtype = "i8"))
-            f.create_dataset("hashes", data = np.array(common_hashes, dtype="i8"))
+            f.create_dataset("data", data = np.stack(
+                [old_seq_ids, new_seq_ids, common_hashes],
+                axis = 1,
+            ))
 
     print("loading '%s.hdf5'." % prefix)
-    # with h5py.File(path) as f:
     f = h5py.File(path)
     return types.SimpleNamespace(
-        # f = f,
-        hashes = f["hashes"],
-        old = f["old"],
-        new = f["new"],
-        # old_map = {
-        #     f["hashes"][i].item() : f["old"][i].item()
-        #     for i in tqdm(range(f["old"].shape[0]), "old map")
-        # }
-        # new_map = {
-        #     f["hashes"][i].item() : f["new"][i].item()
-        #     for i in tqdm(range(f["new"].shape[0]), "new map")
-        # }
+        data = f["data"],
+        # hash_map = {
+        #     h.item() : i
+        #     for i, (o, n, h) in enumerate(tqdm(f["data"], f"load {prefix}"))
+        # },
     )
 
 
