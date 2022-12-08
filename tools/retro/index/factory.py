@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .indexes import FaissBaseIndex, FaissDecompIndex, FaissParallelAddIndex
+from .indexes import FaissBaseIndex, FaissParallelAddIndex
 
 
 class IndexFactory:
@@ -22,7 +22,6 @@ class IndexFactory:
     def get_index_ty(cls, index_ty):
         return {
             "faiss-base" : FaissBaseIndex,
-            "faiss-decomp" : FaissDecompIndex,
             "faiss-par-add" : FaissParallelAddIndex,
         }[index_ty]
 

@@ -14,5 +14,4 @@
 # limitations under the License.
 
 from .faiss_base import FaissBaseIndex
-from .faiss_decomp import FaissDecompIndex
 from .faiss_par_add import FaissParallelAddIndex

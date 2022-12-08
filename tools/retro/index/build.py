@@ -16,12 +16,7 @@
 from .add import add_to_index
 from .train import train_index
 
-# >>>
-from lutil import pax
-# <<<
 
-
-def build_index(timer):
-    raise Exception("hi.")
-    train_index(timer)
-    add_to_index(timer)
+def build_index():
+    train_index()
+    add_to_index()

@@ -11,7 +11,7 @@ import torch
 from tqdm import tqdm
 
 from tools.bert_embedding.utils import load_data as load_hdf5_data
-from tools.retro.pretraining.acc.test_index_acc import rowwise_intersection
+from tools.retro.pretraining.misc.acc.test_index_acc import rowwise_intersection
 from tools.retro.utils import Timer
 
 from lutil import pax
