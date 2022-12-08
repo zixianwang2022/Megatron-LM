@@ -29,7 +29,8 @@ NPROCS=1
 
 # REPO="retro-preprocess-corpus"
 # REPO="retro-preprocess-play"
-REPO="retro-process"
+# REPO="retro-process"
+REPO="retro"
 
 FULL_CMD="\
     pwd && cd $SHARE_SOURCE/megatrons/megatron-lm-${REPO} && pwd && \

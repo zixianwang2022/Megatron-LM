@@ -133,6 +133,8 @@ if __name__ == "__main__":
             get_nan_stats()
         elif task == "misc-db-bert-nan-analysis":
             run_bert_nan_analysis()
+        elif task == "misc-db-longest-bert-chunks":
+            print_db_longest_bert_chunks()
 
         elif task == "misc-index-remove-train-files":
             remove_train_files()

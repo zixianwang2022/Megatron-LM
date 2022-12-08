@@ -13,7 +13,7 @@ set -u
 # NPROCS=128
 # >>>
 
-# PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro-process
+# PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro
 # CORPUS="play"
 CORPUS="wiki"
 # CORPUS="corpus"
@@ -58,7 +58,7 @@ RETRO_TASKS="db-build"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison"
 # RETRO_TASKS="misc-index-check-train-valid-split"
 # RETRO_TASKS="misc-pretraining-compare-embeds"
-RETRO_TASKS="misc-pretraining-print-neighbors"
+# RETRO_TASKS="misc-pretraining-print-neighbors"
 # RETRO_TASKS="misc-pretraining-compare-old-nbrs"
 
 # RETRO_INDEX_TY=faiss-base

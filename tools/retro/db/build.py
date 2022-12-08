@@ -183,29 +183,11 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
         args.retro_doc_block_size,
         validate = lambda f : f["chunks_valid"].shape[1] == 4)
 
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # [ temporary ... remove me ]
-    assert n_missing_world == 0
-    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
     # Prevent missing-path-write race condition.
     torch.distributed.barrier()
 
     if not missing_db_blocks:
         return
-
-    # >>>
-    raise Exception("preprocess individuals again?")
-    # <<<
-
-    # >>>
-    # print_seq("missing blocks [%d] : %s ... %s." % (
-    #     len(missing_db_blocks),
-    #     str(missing_db_blocks[0]["range"]),
-    #     str(missing_db_blocks[-1]["range"]) if missing_db_blocks[-1] else str(missing_db_blocks[-2]["range"]),
-    # ))
-    # pax(0, {"missing_db_blocks": missing_db_blocks})
-    # <<<
 
     # Num processes.
     if n_missing_world == 1:
@@ -219,7 +201,6 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     else:
         n_procs = 8
 
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # Process documents in parallel.
     with concurrent.futures.ProcessPoolExecutor(max_workers=n_procs) as executor:
         for block_idx, block in enumerate(missing_db_blocks):
@@ -318,7 +299,7 @@ def update_chunk_counts(indexed_dataset_infos):
 
         ds_info["n_docs"] = len(ds_info["dataset"].doc_idx) - 1
         ds_info["n_docs_train"] = int(train_fraction * ds_info["n_docs"])
-        ds_info["n_chunks"] = 0 # n_chunks_valid
+        ds_info["n_chunks"] = 0 # previously, 'n_chunks_valid'
         ds_info["n_chunks_train"] = 0
         ds_info["n_chunks_invalid"] = 0
         for db_path in db_paths:
@@ -409,14 +390,7 @@ def merge_dbs(indexed_dataset_infos, db_type):
         f.close()
 
 
-# def preprocess_db(timer):
-def build_db(timer):
-
-    # >>>
-    # from .long_bert_chunks import print_longest_bert_chunks
-    # print_longest_bert_chunks()
-    # raise Exception("hi.")
-    # <<<
+def build_db():
 
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()
