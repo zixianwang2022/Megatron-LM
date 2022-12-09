@@ -17,6 +17,10 @@ from .indexes import FaissBaseIndex, FaissParallelAddIndex
 
 
 class IndexFactory:
+    '''Get index.
+
+    Index type generally read from argument '--retro-index-ty'.
+    '''
 
     @classmethod
     def get_index_ty(cls, index_ty):

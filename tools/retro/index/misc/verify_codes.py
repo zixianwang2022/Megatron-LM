@@ -25,10 +25,6 @@ from tqdm import tqdm
 
 from ..utils import get_training_data_block_paths
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def verify_codes(timer):
 
@@ -57,27 +53,10 @@ def verify_codes(timer):
         base_index = faiss.read_index(empty_index_path)
         input_paths = get_training_data_block_paths()
         for input_index, input_path in enumerate(tqdm(input_paths)):
-            # >>>
-            # if input_index == 10:
-            #     break
-            # <<<
             with h5py.File(input_path) as f:
                 base_index.add(np.copy(f["data"]))
-        # pax({
-        #     "input_paths" : input_paths,
-        #     "base_index" : base_index,
-        # })
         faiss.write_index(base_index, base_index_path)
         raise Exception("added base.")
-
-
-    # test_index = faiss.read_index(
-
-    # pax({
-    #     "base_index" : base_index,
-    #     "test_index" : test_index,
-    # })
-    # <<<
 
     # Read indexes.
     timer.push("read")
@@ -88,11 +67,6 @@ def verify_codes(timer):
     base_invlists = faiss.extract_index_ivf(base_index).invlists
     test_invlists = faiss.extract_index_ivf(test_index).invlists
     timer.pop()
-
-    # pax({
-    #     "base ivf" : faiss.extract_index_ivf(base_index),
-    #     "base ils" : base_invlists,
-    # })
 
     # # ###########################
     # # Test #1: Serialize indexes.
@@ -141,11 +115,6 @@ def verify_codes(timer):
         base_invlists.release_codes(list_id, base_code_ptr)
         test_invlists.release_ids(list_id, test_id_ptr)
         test_invlists.release_codes(list_id, test_code_ptr)
-
-        # pax({
-        #     "base_ids" : base_ids,
-        #     "base_codes" : base_codes,
-        # })
 
         # Verify list size, ids, codes.
         assert base_list_size == test_list_size

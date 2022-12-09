@@ -40,12 +40,13 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
-# >>>
-from lutil import pax, print_seq
-# <<<
-
 
 def init_indexed_dataset_infos():
+    '''Gather meta-info about each indexed dataset.
+
+    The returned info array allows for easy access to the configuration, and
+    helps remove ambiguity.
+    '''
 
     args = get_retro_args()
 
@@ -60,13 +61,12 @@ def init_indexed_dataset_infos():
         path = prefix + ".bin"
         name = os.path.basename(prefix)
         assert os.path.exists(path)
-        db_info = get_individual_db_info(name)
         infos.append({
             "ratio" : ratio,
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            "db_dir" : db_info["db_dir"],
+            "db_dir" : get_individual_db_dir(name),
             "dataset" : make_indexed_dataset(prefix, "mmap", True),
         })
 
@@ -84,6 +84,13 @@ def build_partial_db(
         n_procs,
         tokenizers,
 ):
+    '''Process a document index range of the indexed dataset.
+
+    The chunk database is built in parallel blocks, since de-tokenizing &
+    re-tokenizing for Bert-length computation is expensive. This method
+    iterates each document and extracts sequential 'chunk-length' sequences
+    from each document.
+    '''
 
     args = get_retro_args()
 
@@ -142,6 +149,8 @@ def build_partial_db(
 
         # Re-tokenize each chunk to Bert/Wordpiece (empty bert -> 'invalid').
         for i, chunk_start_idx in enumerate(chunk_start_idxs):
+
+            # Re-tokenize.
             chunk_end_idx = chunk_end_idxs[i]
             gpt_token_ids = indexed_dataset.get(
                 idx = doc_id,
@@ -152,6 +161,7 @@ def build_partial_db(
             text = tokenizers["gpt"].detokenize(gpt_token_ids)
             bert_token_ids = tokenizers["bert"].tokenize(text)
 
+            # 'Valid' for non-empty Bert chunks; 'invalid' otherwise.
             _chunk_db = chunk_db_invalid \
                 if len(bert_token_ids) == 0 else \
                    chunk_db_valid
@@ -166,6 +176,7 @@ def build_partial_db(
 
 
 def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
+    '''Process a single indexed dataset & extract chunks.'''
 
     args = get_retro_args()
 
@@ -256,6 +267,7 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
 
 
 def build_individual_dbs(indexed_dataset_infos):
+    '''Iterate each indexed dataset & process its chunks.'''
 
     args = get_retro_args()
 
@@ -269,23 +281,27 @@ def build_individual_dbs(indexed_dataset_infos):
     print_rank_0(" > build individual chunk dbs.")
     for ds_idx, ds_info in enumerate(indexed_dataset_infos):
 
+        # Progress.
         print_rank_0(" > building individual db, dataset %d / %d ... '%s'." % (
             ds_idx,
             len(indexed_dataset_infos),
             ds_info["name"],
         ))
 
+        # Process single dataset.
         build_individual_db(ds_idx, len(indexed_dataset_infos),
                             ds_info, tokenizers)
 
 
 def update_chunk_counts(indexed_dataset_infos):
+    '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
 
     args = get_retro_args()
 
     if torch.distributed.get_rank() != 0:
         return
 
+    # Training split size (split at document level).
     train_fraction = float(args.split.split(",")[0]) / 100
     assert train_fraction > 0 and train_fraction <= 1
 
@@ -297,6 +313,7 @@ def update_chunk_counts(indexed_dataset_infos):
         db_dir = ds_info["db_dir"]
         db_paths = sorted(glob.glob(db_dir + "/*.hdf5"))
 
+        # Update counts.
         ds_info["n_docs"] = len(ds_info["dataset"].doc_idx) - 1
         ds_info["n_docs_train"] = int(train_fraction * ds_info["n_docs"])
         ds_info["n_chunks"] = 0 # previously, 'n_chunks_valid'
@@ -313,6 +330,7 @@ def update_chunk_counts(indexed_dataset_infos):
         ds_info["n_chunks_sampled"] = \
             int(round(args.retro_nchunks_sampled * ds_info["ratio"]))
 
+        # Verify counts.
         assert ds_info["n_chunks_train"] <= ds_info["n_chunks"], \
             "n_train (%d) > n_total (%d)." % (
                 ds_info["n_chunks_train"], ds_info["n_chunks"])
@@ -322,6 +340,7 @@ def update_chunk_counts(indexed_dataset_infos):
 
 
 def merge_dbs(indexed_dataset_infos, db_type):
+    '''Merge individual DBs into single DB.'''
 
     if torch.distributed.get_rank() != 0:
         return
@@ -391,6 +410,11 @@ def merge_dbs(indexed_dataset_infos, db_type):
 
 
 def build_db():
+    '''Extract token chunks from each indexed dataset.
+
+    Iterate each document of each indexed dataset, extract that document's
+    chunks, and save to a 'DB' (hdf5 file).
+    '''
 
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()

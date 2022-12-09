@@ -18,5 +18,6 @@ from .train import train_index
 
 
 def build_index():
+    '''Train & add to index.'''
     train_index()
     add_to_index()

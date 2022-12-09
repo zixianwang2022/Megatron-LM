@@ -35,11 +35,7 @@ from tools.retro.index.misc.megatron_vs_huggingface import run_bert_comparison
 from tools.retro.index.misc.verify_codes import verify_codes as verify_index_codes
 from tools.retro.pretraining.query import query_pretraining_neighbors
 from tools.retro.pretraining.misc import print_pretraining_neighbors
-from tools.retro.utils import get_args_path, Timer
-
-# >>>
-from lutil import pax, print_seq
-# <<<
+from tools.retro.utils import get_args_path
 
 
 def add_retro_args(parser):
@@ -82,6 +78,7 @@ def add_retro_args(parser):
 
 
 def save_args(args):
+    '''Save copy of args within retro workdir.'''
 
     if torch.distributed.get_rank() == 0:
         args_path = get_args_path(args.retro_workdir)
@@ -107,6 +104,8 @@ if __name__ == "__main__":
 
     # Select task to run.
     for task in args.retro_tasks:
+
+        print_rank_0("start '%s'." % task)
 
         # DB (i.e., chunk db).
         if task == "db-build":
@@ -169,3 +168,5 @@ if __name__ == "__main__":
             raise Exception("specialize for task '%s'." % task)
 
         torch.distributed.barrier()
+
+        print_rank_0("end '%s'." % task)

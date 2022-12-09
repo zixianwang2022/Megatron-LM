@@ -25,79 +25,7 @@ from tools.retro.utils import get_bert_tokenizer, get_gpt_tokenizer
 
 from .utils import get_merged_dataset, get_merged_train_dataset
 
-# >>>
-from lutil import pax
-# <<<
 
-
-# def print_longest_bert_chunks(args, shared_dataset_info):
-
-#     n_chunks = len(shared_dataset_info["chunk_index"])
-
-#     data_loader = get_block_data_loader(args,
-#                                         shared_dataset_info,
-#                                         0, n_chunks)
-#     dataset = data_loader.dataset
-#     gpt_tokenizer = dataset.gpt_tokenizer
-#     bert_tokenizer = dataset.bert_tokenizer
-
-#     # pax({"bert_tokenizer": bert_tokenizer})
-
-#     print_rank_0(" > sort / start.")
-#     t = time.time()
-#     bert_chunk_lens = list(enumerate(dataset.chunk_index[:, 3]))
-#     bert_chunk_lens.sort(key = lambda item : item[1])
-#     bert_chunk_lens.reverse() # for debugging.
-#     print_rank_0(" > sort / end. [ %.2f sec ]" % (time.time() - t))
-
-#     results = []
-#     for k, (chunk_id, bert_chunk_len) in enumerate(bert_chunk_lens[:20]):
-
-#         gpt_token_ids = super(type(dataset),dataset).__getitem__(chunk_id)["text"]
-#         text = gpt_tokenizer.detokenize(gpt_token_ids)
-#         bert_token_ids = bert_tokenizer.tokenize(text)
-
-#         print()
-#         print()
-#         print("#############################################################")
-#         print("#############################################################")
-#         print("#############################################################")
-#         print("LENGTHS ... gpt %d, bert %d" % (len(gpt_token_ids), len(bert_token_ids)))
-#         print("#############################################################")
-#         print("GPT TOKENS ... %s" % ", ".join("(%d/%s)" % (i, str(gpt_tokenizer.detokenize([i])).replace("\n", "\\n").replace("\r", "\\r")) for i in gpt_token_ids))
-#         print("#############################################################")
-#         print("BERT TOKENS ... %s" % ", ".join("(%d/%s)" % (i, str(bert_tokenizer.inv_vocab[i]).replace("\n", "\\n").replace("\r", "\\r")) for i in bert_token_ids))
-#         print("#############################################################")
-        
-
-#         # print("TEXT ... %s" % text)
-#         print()
-#         # print("####")
-#         # print("####")
-#         print(text)
-#         print()
-
-#         # pax({
-#         #     "text" : text,
-#         #     "gpt_token_ids" : "%d / %s" % (
-#         #         len(gpt_token_ids),
-#         #         str(gpt_token_ids.tolist()),
-#         #     ),
-#         #     "bert_token_ids" : "%d / %s" % (
-#         #         len(bert_token_ids),
-#         #         str(bert_token_ids),
-#         #     ),
-#         # })
-        
-#     torch.distributed.barrier()
-#     exit(0)
-
-#     pax(0, {
-#         "shared_dataset_info" : shared_dataset_info,
-#         "n_chunks" : n_chunks,
-#         "data_loader" : data_loader,
-#         "bert_chunk_lens" : bert_chunk_lens[:10],
-#     })
 def print_longest_bert_chunks():
 
     # dataset = get_merged_dataset("train")
@@ -106,12 +34,6 @@ def print_longest_bert_chunks():
 
     gpt_tokenizer = get_gpt_tokenizer()
     bert_tokenizer = get_bert_tokenizer()
-
-    # pax(0, {
-    #     "n_chunks" : n_chunks,
-    #     "gpt_tokenizer" : gpt_tokenizer,
-    #     "bert_tokenizer" : bert_tokenizer,
-    # })
 
     print_rank_0(" > sort / start.")
     t = time.time()
@@ -148,27 +70,8 @@ def print_longest_bert_chunks():
         print(text)
         print()
 
-        # pax({
-        #     "text" : text,
-        #     "gpt_token_ids" : "%d / %s" % (
-        #         len(gpt_token_ids),
-        #         str(gpt_token_ids.tolist()),
-        #     ),
-        #     "bert_token_ids" : "%d / %s" % (
-        #         len(bert_token_ids),
-        #         str(bert_token_ids),
-        #     ),
-        # })
-        
     torch.distributed.barrier()
     exit(0)
-
-    pax(0, {
-        "shared_dataset_info" : shared_dataset_info,
-        "n_chunks" : n_chunks,
-        "data_loader" : data_loader,
-        "bert_chunk_lens" : bert_chunk_lens[:10],
-    })
 
 
 class OldEmbedDataset(torch.utils.data.Dataset):
@@ -185,14 +88,6 @@ class OldEmbedDataset(torch.utils.data.Dataset):
             with h5py.File(p) as f:
                 self.embed_offsets.append(self.embed_offsets[-1] + len(f["feat"]))
 
-        # pax(0, {
-        #     "chunks / shape" : str(self.chunks.shape),
-        #     # "embed_paths" : embed_paths,
-        #     # "embed_sizes" : embed_sizes,
-        #     # "embed_sizes / total" : sum(embed_sizes),
-        #     "embed_offsets" : str(self.embed_offsets),
-        # })
-
     def __getitem__(self, idx):
 
         tokens = np.copy(self.chunks[idx])
@@ -206,13 +101,6 @@ class OldEmbedDataset(torch.utils.data.Dataset):
 
         with h5py.File(embed_path) as f:
             embed = np.copy(f["feat"][idx - start_idx])
-
-        # pax(0, {
-        #     "idx" : idx,
-        #     "tokens" : tokens,
-        #     "embed_path" : embed_path,
-        #     "embed" : embed,
-        # })
 
         return {
             "tokens" : tokens,
@@ -238,13 +126,6 @@ class NewEmbedDataset(torch.utils.data.Dataset):
         embed_path = self.embed_path_map[idx]
         with h5py.File(embed_path, "r") as f:
             embed = np.copy(f["data"][idx % self.block_size])
-
-        # if idx > 0:
-        #     pax(0, {
-        #         "idx" : idx,
-        #         "embed_path" : embed_path,
-        #         "embed" : embed,
-        #     })
 
         return {
             "tokens" : self.chunk_ds[idx]["text"],
@@ -310,13 +191,6 @@ def print_db_embeddings():
         print("NEW_EMB : %s ..." % str(new_embed.tolist())[:125])
         print("HF_EMB  : %s ..." % str(hf_embed.tolist())[:125])
         print("EQUAL?  : %d." % np.array_equal(old_embed, new_embed))
-
-        # pax(0, {
-        #     "hash" : hash,
-        #     "old_sample" : old_sample,
-        #     "new_sample" : new_sample,
-        #     "equal?" : np.array_equal(old_sample["embed"], new_sample["embed"]),
-        # })
 
     print("acc = %.2f [ n %d ]." % (100 * np.mean(accs), len(accs)))
     exit()

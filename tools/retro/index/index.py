@@ -25,6 +25,7 @@ class Index:
 
     @classmethod
     def c_verbose(cls, index, v):
+        '''Make index object verbose.'''
         assert isinstance(v, bool)
         faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
         # index.verbose = True # ... maybe?
@@ -32,6 +33,7 @@ class Index:
 
     @classmethod
     def swig_ptr(cls, x):
+        '''Get raw C++ pointer.'''
         return faiss.swig_ptr(np.ascontiguousarray(x))
 
 
@@ -45,35 +47,35 @@ class Index:
         return os.path.join(dir_path, "added.faissindex")
 
 
-    @classmethod
-    def get_output_data_path(cls, dir_path, task, suffix):
-        return os.path.join(dir_path, "%s_output%s_%s.hdf5" % (task, suffix))
+    # @classmethod
+    # def get_output_data_path(cls, dir_path, task, suffix):
+    #     return os.path.join(dir_path, "%s_output%s_%s.hdf5" % (task, suffix))
 
 
-    @classmethod
-    def get_output_data_path(cls, dir_path, task, suffix):
-        sub_dir_name = "%s_output" % task
-        utils.make_sub_dir(dir_path, sub_dir_name)
-        return os.path.join(dir_path, sub_dir_name, "%s.hdf5" % suffix)
+    # @classmethod
+    # def get_output_data_path(cls, dir_path, task, suffix):
+    #     sub_dir_name = "%s_output" % task
+    #     utils.make_sub_dir(dir_path, sub_dir_name)
+    #     return os.path.join(dir_path, sub_dir_name, "%s.hdf5" % suffix)
 
 
-    def get_missing_output_data_path_map(self, input_paths, dir_path, task):
+    # def get_missing_output_data_path_map(self, input_paths, dir_path, task):
 
-        all_output_paths = []
-        missing_output_path_map = {}
-        missing_index = 0
-        for input_index, input_path in enumerate(input_paths):
-            output_path = self.get_output_data_path(dir_path, task, input_index)
-            all_output_paths.append(output_path)
-            if not os.path.isfile(output_path):
-                if missing_index % torch.distributed.get_world_size() == \
-                   torch.distributed.get_rank():
-                    missing_output_path_map[input_index] = output_path
-                missing_index += 1
+    #     all_output_paths = []
+    #     missing_output_path_map = {}
+    #     missing_index = 0
+    #     for input_index, input_path in enumerate(input_paths):
+    #         output_path = self.get_output_data_path(dir_path, task, input_index)
+    #         all_output_paths.append(output_path)
+    #         if not os.path.isfile(output_path):
+    #             if missing_index % torch.distributed.get_world_size() == \
+    #                torch.distributed.get_rank():
+    #                 missing_output_path_map[input_index] = output_path
+    #             missing_index += 1
 
-        torch.distributed.barrier()
+    #     torch.distributed.barrier()
 
-        return all_output_paths, missing_output_path_map
+    #     return all_output_paths, missing_output_path_map
 
 
     def train(self, *args):
@@ -82,3 +84,9 @@ class Index:
 
     def add(self, *args):
         raise Exception("implement 'add()' for <%s>." % type(self).__name__)
+
+
+    def embed_text_dataset_block(self, embedder, text_dataset, _range):
+        '''Embed a range of a text dataset.'''
+        sub_dataset = torch.utils.data.Subset(text_dataset, range(*_range))
+        return embedder.embed_text_dataset(sub_dataset, len(text_dataset))

@@ -20,26 +20,32 @@ from tools.retro.utils import GPTToTextDataset
 
 from .utils import get_index_dir
 
-# >>>
-from lutil import pax
-# <<<
 
-
-def add_to_index(timer):
+def add_to_index():
+    '''Add DB chunks to index.'''
 
     args = get_retro_args()
 
+    # Get index.
     workdir = get_index_dir()
     index = IndexFactory.get_index(args.retro_index_ty)
 
+    # Get text dataset.
     gpt_dataset = get_merged_train_dataset()
     text_dataset = GPTToTextDataset(gpt_dataset)
 
-    output_index_path = index.add(text_dataset, workdir, timer)
+    # Add to index.
+    output_index_path = index.add(text_dataset, workdir)
+
     return output_index_path
 
 
-def remove_add_files(timer):
+def remove_add_files():
+    '''Remove 'add*' files.
+
+    This method is rarely needed, but here in case adding gets canceled
+    partway through.
+    '''
 
     # Single process only.
     if torch.distributed.get_rank() != 0:
@@ -60,4 +66,4 @@ def remove_add_files(timer):
         elif os.path.isfile(p):
             os.remove(p)
         else:
-            raise Exception("specialize for this monster, '%s'." % p)
+            raise Exception("specialize for '%s'." % p)

@@ -15,7 +15,9 @@ set -u
 
 # PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro
 # CORPUS="play"
-CORPUS="wiki"
+# CORPUS="wiki"
+# CORPUS="wiki-1m"
+CORPUS="nih"
 # CORPUS="corpus"
 
 # Data blend.
@@ -36,8 +38,8 @@ RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORP
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
-RETRO_TASKS="index-train"
-# RETRO_TASKS="index-add"
+# RETRO_TASKS="index-train"
+RETRO_TASKS="index-add"
 # RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-pretraining-test-retro-dataset"
@@ -63,15 +65,8 @@ RETRO_TASKS="index-train"
 
 # RETRO_INDEX_TY=faiss-base
 RETRO_INDEX_TY=faiss-par-add
-# RETRO_INDEX_TY=faiss-decomp
 
 # >>>
-# RETRO_NCLUSTERS=4194304
-# # RETRO_NCLUSTERS=32768 # for 169320 training samples
-# RETRO_HNSW_M=32
-# RETRO_PQ_M=32
-# RETRO_IVF_DIM=256
-# +++
 RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
 # RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=1 LR_WARMUP_SAMPLES=1
 RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1

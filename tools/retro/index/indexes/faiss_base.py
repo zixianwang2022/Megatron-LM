@@ -17,20 +17,18 @@ from datetime import timedelta
 import faiss
 import os
 import torch
+from tqdm import tqdm
 
 from megatron import get_retro_args, print_rank_0
+from tools.bert_embedding import BertEmbedder
 from tools.retro.index import Index
-
-# >>>
-from lutil import pax, print_seq
-# <<<
+from tools.retro.index.utils import num_samples_to_block_ranges
 
 
 class FaissBaseIndex(Index):
 
-    # def _train(self, input_data_paths, dir_path, timer):
-    # def _train(self, inp, dir_path, timer):
-    def _train(self, input_data_loader, dir_path, timer):
+    def _train(self, input_data_loader, dir_path):
+        '''Train index (rank 0's method).'''
 
         args = get_retro_args()
 
@@ -45,23 +43,11 @@ class FaissBaseIndex(Index):
         if os.path.isfile(empty_index_path):
             return
 
-        # >>>
-        # # Load data.
-        # timer.push("load-data")
-        # inp = load_data(input_data_paths, timer)["data"]
-        # timer.pop()
-        # <<<
-
-        # print_seq("n_threads = %s." % faiss.omp_get_max_threads())
+        # Load data.
         inp = input_data_loader()
-        # pax(0, {"inp": inp})
 
         # Init index.
-        timer.push("init")
-        # index_str = get_index_str()
-        # index = faiss.index_factory(args.retro_nfeats, index_str)
         index = faiss.index_factory(args.retro_nfeats, args.retro_index_str)
-        timer.pop()
 
         # Move to GPU.
         index_ivf = faiss.extract_index_ivf(index)
@@ -74,84 +60,73 @@ class FaissBaseIndex(Index):
         self.c_verbose(index_ivf.clustering_index, True)
 
         # Train index.
-        timer.push("train")
         index.train(inp)
-        timer.pop()
 
         # Save index.
-        timer.push("save")
         faiss.write_index(index, empty_index_path)
-        timer.pop()
 
 
-    # def train(self, input_data_paths, dir_path, timer):
-    # def train(self, input_data, dir_path, timer):
-    def train(self, input_data_loader, dir_path, timer):
+    def train(self, input_data_loader, dir_path):
+        '''Train index.'''
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            timer.push("train")
-            # self._train(input_data_paths, dir_path, timer)
-            # self._train(input_data, dir_path, timer)
-            self._train(input_data_loader, dir_path, timer)
-            timer.pop()
+            self._train(input_data_loader, dir_path)
 
         torch.distributed.barrier()
 
 
-    def _add(self, input_data_paths, dir_path, timer):
+    def _add(self, text_dataset, dataset_sample_ranges, dir_path):
+        '''Add to index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
+
+        args = get_retro_args()
 
         # Set num threads (torch.distributed reset it to 1).
         faiss.omp_set_num_threads(64)
 
+        # Bert embedder.
+        embedder = BertEmbedder(args.retro_bert_batch_size,
+                                args.retro_bert_max_chunk_length)
+
         # Empty/added index paths.
         empty_index_path = self.get_empty_index_path(dir_path)
-        added_index_path = self.get_added_index_path(input_data_paths, dir_path)
+        added_index_path = self.get_added_index_path(dataset_sample_ranges,
+                                                     dir_path)
 
+        # Skip adding, if index exists.
         if os.path.isfile(added_index_path):
             return
 
         # Read trained index.
-        timer.push("init")
         index = faiss.read_index(empty_index_path)
-        timer.pop()
 
-        # Iterate data blocks.
-        for batch_id, input_data_path in enumerate(input_data_paths):
+        # Iterate data blocks & add.
+        for sample_range in tqdm(dataset_sample_ranges, "faiss_base.add"):
 
-            print_rank_0("faiss-base / add ... batch %d / %d." % (
-                batch_id,
-                len(input_data_paths),
-            ))
-
-            # Load data.
-            timer.push("load-data")
-            inp = load_data([ input_data_path ], timer)["data"]
-            timer.pop()
+            # Embed text.
+            embeds = self.embed_text_dataset_block(
+                embedder, text_dataset, sample_range)
 
             # Add to index.
-            timer.push("add")
-            index.add(inp)
-            timer.pop()
+            index.add(embeds)
 
         # Write index.
-        timer.push("save")
         faiss.write_index(index, added_index_path)
-        timer.pop()
 
 
-    def add(self, input_data_paths, dir_path, timer):
+    def add(self, text_dataset, dir_path):
+        '''Add to index.'''
+
+        dataset_sample_ranges = num_samples_to_block_ranges(len(text_dataset))
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            timer.push("add")
-            self._add(input_data_paths, dir_path, timer)
-            timer.pop()
+            self._add(text_dataset, dataset_sample_ranges, dir_path)
 
         # Wait for rank 0.
         torch.distributed.barrier()
 
-        return self.get_added_index_path(input_data_paths, dir_path)
-
+        # Get output index path, for return.
+        return self.get_added_index_path(dataset_sample_ranges, dir_path)

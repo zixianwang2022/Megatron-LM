@@ -35,12 +35,9 @@ from .utils import (
     get_training_data_merged,
 )
 
-# >>>
-from lutil import pax, print_seq
-# <<<
-
 
 def get_empty_index_path():
+    '''Path of empty index.'''
     args = get_retro_args()
     index = IndexFactory.get_index(args.retro_index_ty)
     empty_index_path = index.get_empty_index_path(get_index_dir())
@@ -48,6 +45,11 @@ def get_empty_index_path():
 
 
 def embed_db():
+    '''Embed DB chunks.
+
+    Store chunks in blocks on disk. These blocks will later be merged into
+    a single dataset for training the index.
+    '''
 
     # Embed only if index not already trained.
     empty_index_path = get_empty_index_path()
@@ -69,6 +71,7 @@ def embed_db():
 
 
 def train_on_embeddings():
+    '''Train index on embedded DB chunks.'''
     args = get_retro_args()
     workdir = get_index_dir()
     index = IndexFactory.get_index(args.retro_index_ty)
@@ -76,6 +79,7 @@ def train_on_embeddings():
 
 
 def remove_embeddings():
+    '''Remove embeddings after training.'''
     torch.distributed.barrier()
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
@@ -83,6 +87,7 @@ def remove_embeddings():
 
 
 def train_index():
+    '''Train index on DB chunks.'''
     embed_db()
     train_on_embeddings()
-    # remove_embeddings()
+    # remove_embeddings() # uncomment, or manually remove 'training_data_tmp/'

@@ -27,13 +27,14 @@ from tools.retro.utils import get_num_chunks_per_sample
 
 from .utils import get_pretraining_workdir
 
-# >>>
-from lutil import pax
-# <<<
 
-
-# class GPTChunkDataset(torch.utils.data.Dataset):
 class ChunkDataset(torch.utils.data.Dataset):
+    '''Pretraining chunk dataset wraps a standard GPT dataset.
+
+    This dataset conceptually divides each sample (e.g., length 2048)
+    into chunks (e.g., length 64) and restructures them into a list of
+    chunks (e.g., length num_samples * num_chunks_per_sample).
+    '''
 
     def __init__(self, sample_dataset, chunk_length):
 
@@ -53,17 +54,21 @@ class ChunkDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
+        # Convert global chunk index to global sample index & local chunk index.
         sample_idx = idx // self.n_chunks_per_sample
         chunk_idx = idx % self.n_chunks_per_sample
 
+        # Extract sample data.
         sample = self.sample_dataset[sample_idx]
         sample_token_ids = sample["text"]
         sample_doc_ids = sample["doc_ids"]
 
+        # Chunk start/end token idxs.
         token_start_idx = chunk_idx * self.chunk_length
         token_end_idx = token_start_idx + self.chunk_length
         chunk_token_ids = sample_token_ids[token_start_idx:token_end_idx]
 
+        # Sample.
         return {
             "doc_ids" : sample_doc_ids,
             "text" : chunk_token_ids,
@@ -71,12 +76,15 @@ class ChunkDataset(torch.utils.data.Dataset):
 
 
 def verify_indexed_dataset_order():
+    '''Verify pretraining order same as DB order.'''
 
     args = get_retro_args()
 
+    # DB dataset prefixes.
     db_indexed_dataset_infos = get_indexed_dataset_infos()
     db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
 
+    # Verify order & prefixes.
     assert len(args.data_path) >= 2, "blendable dataset supported only."
     pretraining_prefixes = args.data_path[1:None:2]
 
@@ -107,8 +115,8 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
-# def get_gpt_chunk_dataset_map():
 def get_chunk_dataset_map():
+    '''Get train, valid, test chunk datasets.'''
 
     args = get_retro_args()
 

@@ -26,22 +26,6 @@ from tqdm import tqdm
 from megatron import get_retro_args, print_rank_0
 from tools.retro.db.utils import get_indexed_dataset_infos
 
-# >>>
-from lutil import pax
-# <<<
-
-
-# def get_index_str():
-#     """Faiss notation for index structure."""
-#     args = get_retro_args()
-#     return "OPQ%d_%d,IVF%d_HNSW%d,PQ%d" % (
-#         args.retro_pq_m,
-#         args.retro_ivf_dim,
-#         args.retro_nclusters,
-#         args.retro_hnsw_m,
-#         args.retro_pq_m,
-#     )
-
 
 def get_index_dir():
     """Create sub-directory for this index."""
@@ -53,7 +37,6 @@ def get_index_dir():
         args.retro_workdir,
         "index",
         args.retro_index_ty,
-        # get_index_str(),
         args.retro_index_str,
     )
 
@@ -61,6 +44,17 @@ def get_index_dir():
     os.makedirs(index_dir_path, exist_ok = True)
 
     return index_dir_path
+
+
+def num_samples_to_block_ranges(num_samples):
+    '''Split a range (length num_samples) into sequence of block ranges
+    of size block_size.'''
+    args = get_retro_args()
+    block_size = args.retro_block_size
+    start_idxs = list(range(0, num_samples, block_size))
+    end_idxs = [min(num_samples, s + block_size) for s in start_idxs]
+    ranges = list(zip(start_idxs, end_idxs))
+    return ranges
 
 
 def get_training_data_dir():
@@ -75,50 +69,8 @@ def get_training_data_block_paths():
     return sorted(glob.glob(get_training_data_block_dir() + "/*.hdf5"))
 
 
-# def get_training_data_merged_path():
-#     return os.path.join(get_training_data_dir(), "merged.hdf5")
-
-
-# def get_training_data_merged():
-#     with h5py.File(get_training_data_merged_path(), "r") as f:
-#         shape = f["data"].shape
-
-#         # # # >>> **debug**
-#         # # # np.random.default_rng().standard_normal(size = 1, dtype = "f4")
-#         # # np.random.default_rng().random(size = 1, dtype = "f4")
-#         # # return np.random.rand(*shape).astype("f4")
-#         # print_rank_0("rando merged.")
-#         # return np.random.rand(int(1e6), shape[1]).astype("f4")
-#         return np.zeros(shape, dtype = "f4")
-#         # # # <<<
-
-#         data = np.empty(shape, dtype = "f4")
-#         block_size = 10000000
-#         # >>>
-#         # pbar = tqdm(range(0, shape[0], block_size))
-#         # pbar.set_description("loading merged training data")
-#         # for start_idx in pbar:
-#         #     end_idx = min(shape[0], start_idx + block_size)
-#         #     data[start_idx:end_idx] = f["data"][start_idx:end_idx]
-#         # +++
-#         for start_idx in range(0, shape[0], block_size):
-#             print_rank_0("loading merged block %d / %d." % (
-#                 int(start_idx / block_size),
-#                 int(np.ceil(shape[0] / block_size)),
-#             ))
-#             end_idx = min(shape[0], start_idx + block_size)
-#             data[start_idx:end_idx] = f["data"][start_idx:end_idx]
-#         # <<<
-
-#         print_rank_0("finished loading merged data.")
-
-#         return data
-# def get_training_data_merged():
-#     # pax(0, {"block_paths": get_training_data_block_paths()})
-#     from tools.bert_embedding.utils import load_data
-#     from tools.retro.utils import Timer
-#     return load_data(get_training_data_block_paths(), Timer())
 def get_training_data_merged():
+    '''Merge embeddings into single dataset.'''
 
     args = get_retro_args()
 
@@ -129,7 +81,7 @@ def get_training_data_merged():
 
     # Initialize merged data.
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
-    # data.fill(0) # ... allocates 1.2TB, for real
+    # data.fill(0) # ... allocates 1.2TB for real; np.empty does not allocate
 
     # Load data blocks.
     start_idx = 0
@@ -157,17 +109,11 @@ def get_training_data_merged():
     # Verify.
     assert start_idx == n_chunks_sampled
 
-    # pax(0, {
-    #     # "block_paths" : block_paths,
-    #     "ds_infos" : ds_infos,
-    #     "n_chunks_sampled" : n_chunks_sampled,
-    #     "data" : "%s / %s / %s" % (data.shape, data.dtype, str(data)),
-    # })
-
     return data
 
 
 def remove_training_data():
+    '''Delete embeddings that were used for training.'''
     if torch.distributed.get_rank() != 0:
         return
     raise Exception("ready to delete?")

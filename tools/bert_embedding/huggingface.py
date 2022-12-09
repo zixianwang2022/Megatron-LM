@@ -70,7 +70,7 @@ class MyFeatureExtractionPipeline(FeatureExtractionPipeline):
         for embedding, mask in zip(embeddings, masks):
             output = torch.mean(embedding[1: mask - 1], dim=0)
             # pax(0, {"output": output})
-            # if torch.isnan(output).any():
+            # if torch.isnan(output).any(): # unnecessary & expensive.
             if torch.isnan(output.view(-1)[0]).any():
                 output.zero_()
             outputs.append(output)

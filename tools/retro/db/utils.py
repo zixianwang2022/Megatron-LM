@@ -24,22 +24,20 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
 from .dataset import DBDataset
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def get_base_db_workdir():
+    '''Sub-directory for DB data.'''
     args = get_retro_args()
     return os.path.join(args.retro_workdir, "db")
 
 
 def get_indexed_dataset_infos_path():
+    '''Path to indexed dataset meta-infos.'''
     return os.path.join(get_base_db_workdir(), "indexed_dataset_infos.json")
 
 
 def save_indexed_dataset_infos(indexed_dataset_infos):
-    """Save dataset order."""
+    '''Save dataset order & meta-info.'''
 
     # Remove 'dataset' field.
     clean_infos = []
@@ -54,6 +52,7 @@ def save_indexed_dataset_infos(indexed_dataset_infos):
 
 
 def get_indexed_dataset_infos():
+    '''Load indexed dataset meta-infos.'''
 
     # Load json.
     path = get_indexed_dataset_infos_path()
@@ -67,14 +66,15 @@ def get_indexed_dataset_infos():
     return infos
 
 
-def get_individual_db_info(name):
-    return {
-        "db_dir" : os.path.join(get_base_db_workdir(), "individual", name, "db"),
-    }
+def get_individual_db_dir(name):
+    '''Individual DB's directory.'''
+    return os.path.join(get_base_db_workdir(), "individual", name, "db")
 
 
 def get_individual_db(ds_id, ds_info):
+    '''Load individual dataset's chunk DB.'''
     db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
+    # *Note*: convert to dataset, rather than copying to memory.
     db = np.zeros((ds_info["n_chunks"], 5), dtype = "i8")
     db[:, 0] = ds_id
     start_idx = 0
@@ -91,6 +91,7 @@ def get_individual_db(ds_id, ds_info):
 
 
 def get_merged_db_path_map():
+    '''Paths to merged datasets.'''
     base_dir = get_base_db_workdir()
     return {
         "train" : os.path.join(base_dir, "merged", "train.hdf5"),
@@ -99,6 +100,7 @@ def get_merged_db_path_map():
 
 
 def get_merged_dataset(db_type, indexed_dataset_infos = None):
+    '''Get merged dataset.'''
 
     args = get_retro_args()
 

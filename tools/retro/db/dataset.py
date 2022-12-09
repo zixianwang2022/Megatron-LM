@@ -21,13 +21,14 @@ import torch
 from megatron import get_args, print_rank_0
 from tools.retro.utils import get_gpt_tokenizer
 
-# >>>
-from lutil import pax, print_seq
-# <<<
 
-
-# class GPTChunkDataset(torch.utils.data.Dataset):
 class DBDataset(torch.utils.data.Dataset):
+    '''Dataset for iterating chunks.
+    
+    Requires:
+    - List of indexed datasets
+    - Chunk index array (with format [dataset_idx, doc_id, start_idx, end_idx, bert_length])
+    '''
 
     def __init__(
             self,
@@ -56,10 +57,12 @@ class DBDataset(torch.utils.data.Dataset):
         chunk_length = token_end_idx - token_start_idx
         indexed_dataset = self.indexed_datasets[indexed_dataset_id]
 
+        # Chunk token ids.
         token_ids = indexed_dataset.get(doc_id,
                                         offset = token_start_idx,
                                         length = chunk_length)
 
+        # Extend chunks to max_chunk_length by padding with EOD tokens.
         if chunk_length != self.max_chunk_length:
             assert chunk_length < self.max_chunk_length, "invalid chunk len."
             token_ids = token_ids.tolist()

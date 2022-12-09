@@ -20,11 +20,11 @@ echo "RETRO_PREPROCESS_CMD = '$RETRO_PREPROCESS_CMD'."
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 # eval $RETRO_PREPROCESS_CMD
 
-NPROCS=1
+# NPROCS=1
 # NPROCS=2
 # NPROCS=4
 # NPROCS=8
-# NPROCS=16
+NPROCS=16
 # NPROCS=128
 
 # REPO="retro-preprocess-corpus"

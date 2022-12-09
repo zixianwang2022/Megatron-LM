@@ -17,15 +17,7 @@ import os
 
 from megatron import get_retro_args
 
-# >>>
-from lutil import pax
-# <<<
 
-
-# def get_base_nbr_workdir(args):
-#     return os.path.join(args.retro_workdir, "nbr")
-# def get_base_pretraining_workdir(args):
-#     return os.path.join(args.retro_workdir, "pretraining")
 def get_pretraining_workdir():
     args = get_retro_args()
     return os.path.join(args.retro_workdir, "pretraining")
