@@ -51,13 +51,6 @@ def get_datasets_weights_and_num_samples(data_prefix,
     weights = [0]*num_datasets
     prefixes = [0]*num_datasets
     for i in range(num_datasets):
-        # >>>
-        # from lutil import pax
-        # pax(0, {
-        #     "data_prefix" : data_prefix,
-        #     "train_valid_test_num_samples" : train_valid_test_num_samples,
-        # })
-        # <<<
         weights[i] = float(data_prefix[2*i])
         prefixes[i] = (data_prefix[2*i+1]).strip()
     # Normalize weights
@@ -453,11 +446,8 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             prefixes[i], data_impl, splits_string,
             datasets_train_valid_test_num_samples[i],
             max_seq_length, masked_lm_prob, short_seq_prob,
-            # >>>
-            # seed, skip_warmup, binary_head, dataset_type=dataset_type)
-            # +++
-            seed, skip_warmup, binary_head, max_seq_length_dec, dataset_type=dataset_type)
-            # <<<
+            seed, skip_warmup, binary_head, max_seq_length_dec,
+            dataset_type=dataset_type)
         if train_ds:
             train_datasets.append(train_ds)
         if valid_ds:
@@ -495,18 +485,6 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     indexed_dataset = get_indexed_dataset_(data_prefix,
                                            data_impl,
                                            skip_warmup)
-
-    # >>>
-    # from lutil import pax
-    # pax(0, {
-    #     "indexed_dataset" : {
-    #         "ty" : type(indexed_dataset).__name__,
-    #         "_index" : indexed_dataset._index,
-    #         "doc_idx" : indexed_dataset.doc_idx,
-    #         "sizes" : indexed_dataset.sizes,
-    #     },
-    # })
-    # <<<
 
     if dataset_type == DSET_TYPE_ICT:
         args = get_args()
