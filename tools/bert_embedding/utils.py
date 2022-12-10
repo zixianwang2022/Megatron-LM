@@ -22,13 +22,11 @@ from tqdm import tqdm
 
 from megatron import mpu, print_rank_0
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def save_data(data_map, *args):
+    '''Save map of numpy arrays to hdf5 file.'''
 
+    # Parse args.
     if len(args) == 1:
         path = args[0]
     elif len(args) == 2:
@@ -37,9 +35,9 @@ def save_data(data_map, *args):
     else:
         raise Exception("specialize for len(args) == %d." % len(args))
 
+    # Save data.
     if not os.path.isfile(path):
         f = h5py.File(path, "w")
-        # f.create_dataset("data", data = input_data)
         for k, v in data_map.items():
             f.create_dataset(k, data = v)
         f.close()
@@ -48,7 +46,9 @@ def save_data(data_map, *args):
 
 
 def load_data(paths, timer):
+    '''Load multiple hdf5 files to single numpy array.'''
 
+    # Read data shapes.
     if timer: timer.push("shape")
     shape_map = defaultdict(lambda : (0, None))
     for p in paths:
@@ -59,18 +59,14 @@ def load_data(paths, timer):
         f.close()
     if timer: timer.pop()
 
+    # Allocate output array.
     if timer: timer.push("alloc")
     data_map = { k : np.empty(s, dtype = "f4") for k, s in shape_map.items() }
     start_map = { k : 0 for k in shape_map }
     if timer: timer.pop()
 
+    # Load files.
     if timer: timer.push("load")
-    # for pi, p in enumerate(paths):
-    #     print_rank_0("load path %d / %d ... '%s'." %
-    #                  (pi, len(paths), os.path.basename(p)))
-    # pbar = tqdm(paths)
-    # pbar.set_description("load data")
-    # for pi, p in enumerate(pbar):
     for pi, p in enumerate(tqdm(paths, "load data")):
         f = h5py.File(p, "r")
         for k in f.keys():
@@ -81,18 +77,18 @@ def load_data(paths, timer):
         f.close()
     if timer: timer.pop()
 
-    # pax(0, {
-    #     "paths" : paths,
-    #     "shape_map" : shape_map,
-    #     "start_map" : start_map,
-    #     "data_map" : data_map,
-    # })
-    
     return data_map
 
 
 def get_missing_blocks_by_rank(workdir, n_samples, block_size,
                                validate = lambda f : None):
+    '''Divide range [0, num_samples) to sequence of block ranges.
+
+    This is a core method within the concept of block processing. The idea
+    is to divide a range (size n_samples) into a sequence of blocks, and
+    map them to each rank via interleaving. This way, each rank has a roughly
+    equal number of blocks to process for each operation.
+    '''
 
     # Block ranges.
     block_start_idxs = list(range(0, n_samples, block_size))
@@ -158,13 +154,5 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     max_n_missing = n_missing_tensor.item()
     rank_missing_block_items += \
         [None] * (max_n_missing - len(rank_missing_block_items))
-
-    # >>>
-    # print_seq("missing blocks [%d] : %s ... %s." % (
-    #     len(rank_missing_block_items),
-    #     str(rank_missing_block_items[0]["range"]),
-    #     str(rank_missing_block_items[-1]["range"]) if rank_missing_block_items[-1] else str(rank_missing_block_items[-2]["range"]),
-    # ))
-    # <<<
 
     return len(missing_block_items), rank_missing_block_items

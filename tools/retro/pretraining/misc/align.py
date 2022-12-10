@@ -15,7 +15,6 @@
 
 import hashlib
 import h5py
-# import json
 import numpy as np
 import os
 import pickle
@@ -23,10 +22,6 @@ from tqdm import tqdm
 import types
 
 from ..utils import get_pretraining_workdir
-
-# >>>
-from lutil import pax
-# <<<
 
 
 def get_pickle_hash(value):
@@ -86,12 +81,10 @@ def align_db_idxs(old_db_ds, new_chunk_ds):
     return align_idxs(
         "db",
         {
-            # "key" : None,
             "data" : old_db_ds.chunks,
             "post" : lambda token_ids : token_ids.tolist(),
         },
         {
-            # "key" : None,
             "data" : new_chunk_ds,
             "post" : lambda sample : sample["text"].tolist(),
         },
@@ -101,12 +94,10 @@ def align_pt_idxs(dkey, old_ds, new_ds):
     return align_idxs(
         f"pt_{dkey}",
         {
-            # "key" : dkey,
             "data" : old_ds.tokens,
             "post" : lambda tokens : tokens.tolist(),
         },
         {
-            # "key" : dkey,
             "data" : new_ds.chunk_dataset.seq_dataset,
             "post" : lambda sample : sample["text"][:2048].tolist(),
         },

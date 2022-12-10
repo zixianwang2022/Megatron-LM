@@ -26,10 +26,6 @@ from ..retro_dataset import get_retro_datasets as get_new_retro_datasets
 from .align import align_db_idxs, align_pt_idxs, get_pickle_hash
 from .pt_neighbors import print_pt_neighbors, print_nbrs
 
-# >>>
-from lutil import pax
-# <<<
-
 
 class OldDBDataset(torch.utils.data.Dataset):
 
@@ -56,7 +52,6 @@ class OldRetroDataset(torch.utils.data.Dataset):
         super().__init__()
         args = get_retro_args()
         self.db_ds = db_ds
-        # pax({"keys": list(h5py.File(token_path).keys())})
         self.tokens = h5py.File(token_path, "r")["tokens"]
         self.nbrs = h5py.File(nbr_path, "r")["neighbors"]
         self.nnbrs = args.retro_nnbrs_pretraining
@@ -78,17 +73,10 @@ class OldRetroDataset(torch.utils.data.Dataset):
             for ni in range(self.nnbrs):
                 crnt_nbr_chunk_ids.append(nbrs[ci][ni])
                 crnt_nbr_token_ids.append(self.db_ds[nbrs[ci][ni]]["text"])
-            # pax({"crnt_nbr_token_ids": crnt_nbr_token_ids})
             nbr_chunk_ids.append(crnt_nbr_chunk_ids)
             nbr_token_ids.append(crnt_nbr_token_ids)
         nbr_chunk_ids = np.array(nbr_chunk_ids)
         nbr_token_ids = np.array(nbr_token_ids)
-
-        # pax(0, {
-        #     "tokens" : tokens,
-        #     "nbrs" : nbrs,
-        #     "nbr_token_ids" : nbr_token_ids,
-        # })
 
         return {
             "text" : tokens,
@@ -113,11 +101,6 @@ def get_old_retro_datasets():
         "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/wiki.valid.h5py_start_0_end_25600_ns_2037248_sl2048_seed_1234_with_offset.tokens.feat.h5py_neighbors.wiki.hdf5",
     )
 
-    # pax(0, {
-    #     "train_ds" : train_ds,
-    #     "valid_ds" : valid_ds,
-    # })
-
     return train_ds, valid_ds, None
 
 
@@ -129,24 +112,13 @@ def test_old_new():
     old_pt_train_ds, old_pt_valid_ds, _ = get_old_retro_datasets()
     new_pt_train_ds, new_pt_valid_ds, _ = get_new_retro_datasets()
 
-    # pax({
-    #     "old chunk" : old_pt_train_ds.db_ds[0],
-    #     "new chunk" : new_pt_train_ds.db_chunk_dataset[0],
-    #     "old sample" : old_pt_train_ds[0],
-    #     "new sample" : new_pt_train_ds[0],
-    # })
-
     pt_train_hashes = align_pt_idxs("train", old_pt_train_ds, new_pt_train_ds)
     pt_valid_hashes = align_pt_idxs("valid", old_pt_valid_ds, new_pt_valid_ds)
-
-    # pax({"pt_train_hashes": pt_train_hashes})
 
     db_hashes = align_db_idxs(
         old_pt_train_ds.db_ds,
         new_pt_train_ds.db_chunk_dataset,
     )
-
-    # pax({"db_hashes": db_hashes})
 
     meta = types.SimpleNamespace(
         tokenizer = get_gpt_tokenizer(),
@@ -216,24 +188,12 @@ def query(
     old_sample = old_pt_train_ds[sample_idx]
     old_nbr_token_ids = old_sample["neighbor_tokens"][chunk_idx]
 
-    # pax({
-    #     "old_sample" : old_sample,
-    #     "old_nbr_token_ids" : old_nbr_token_ids,
-    # })
-
     print("embed sample.")
     sample = new_pt_train_ds[sample_idx]
     sample_token_ids = sample["text"] \
         [(chunk_idx*meta.chunk_length):((chunk_idx+1)*meta.chunk_length)]
     sample_text = meta.tokenizer.detokenize(sample_token_ids)
     sample_embed = meta.embedder.embed_text(sample_text).reshape((1, -1))
-
-    # pax({
-    #     "sample" : sample,
-    #     "sample_token_ids" : str(sample_token_ids),
-    #     "sample_text" : sample_text,
-    #     "sample_embed" : sample_embed,
-    # })
 
     print("get banned chunk map.")
     db_ds = new_pt_train_ds.db_chunk_dataset
@@ -267,8 +227,3 @@ def query(
             "[[NEW]]" if nbr_id in filtered_nbr_ids else "  NEW  ",
             text,
         ))
-
-    pax({
-        "unfiltered_nbr_ids" : str(unfiltered_nbr_ids),
-        "filtered_nbr_ids" : str(filtered_nbr_ids),
-    })

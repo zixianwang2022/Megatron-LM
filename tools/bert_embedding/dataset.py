@@ -19,12 +19,9 @@ import torch
 from megatron import get_args, get_tokenizer
 from megatron.data.bert_dataset import build_training_sample
 
-# >>>
-from lutil import pax, print_seq
-# <<<
-
 
 class BertEmbeddingDataset(torch.utils.data.Dataset):
+    '''Dataset to convert a text dataset to Bert tokens.'''
 
     def __init__(self, text_dataset, max_seq_length):
 
@@ -37,7 +34,6 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         self.bert_tokenizer = get_tokenizer()
 
         # Params to store.
-        # self.max_model_seq_length = args.seq_length
         self.max_seq_length = max_seq_length
         self.seed = args.seed
         self.masked_lm_prob = args.mask_prob

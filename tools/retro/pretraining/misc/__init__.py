@@ -13,28 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import faiss
-# import h5py
-# import hashlib
-# import itertools
-# import json
-# import numpy as np
-# import os
-# import pickle
-# from tqdm import tqdm
-
-# from megatron import get_retro_args
-# from tools.bert_embedding.huggingface import HuggingfaceEmbedder
-# from tools.retro.utils import get_gpt_tokenizer
-
-# from .retro_dataset import get_retro_datasets
-# from .utils import get_pretraining_workdir
-
 from .test_old_new import test_old_new
-
-# >>>
-from lutil import pax
-# <<<
 
 
 def print_pretraining_neighbors():
@@ -45,14 +24,9 @@ def print_pretraining_neighbors():
     # <<<
 
     for ds in (train_ds, valid_ds):
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         # for sample_idx in range(0, len(ds), len(ds) // 50):
         for sample_idx in range(0, len(ds), len(ds) // 10):
-
-            # >>> ... for fun
-            # if sample_idx == 0:
-            #     continue
-            # <<<
 
             chunk_index = np.random.randint(ds.n_chunks_per_seq)
 
@@ -72,9 +46,9 @@ def print_pretraining_neighbors():
             sample = ds[sample_idx]
             seq_token_ids = sample["text"].tolist()
 
+            # Iterate chunks.
             chunk_length = retro_args.retro_gpt_chunk_length
             # for chunk_index in range(ds.n_chunks_per_seq):
-            # >>>>>>>>>>>>>>>
             chunk_token_ids = seq_token_ids \
                 [(chunk_index * chunk_length):((chunk_index + 1) * chunk_length)]
 
@@ -89,37 +63,3 @@ def print_pretraining_neighbors():
                 print()
                 print_tokens("NBR", nbr_token_ids)
                 print_tokens("CNT", cnt_token_ids)
-
-                # pax(0, {
-                #     "sample_idx" : sample_idx,
-                #     "chunk_index" : chunk_index,
-                #     "nbr_index" : nbr_index,
-                #     "seq_token_ids" :
-                #     "%d / %s" % (len(seq_token_ids), str(seq_token_ids)),
-                #     "chunk_token_ids" :
-                #     "%d / %s" % (len(chunk_token_ids), str(chunk_token_ids)),
-                #     "retrieved_token_ids" :
-                #     "%d / %s"%(len(retrieved_token_ids),str(retrieved_token_ids)),
-                # })
-            # <<<<<<<<<<<<<<<
-
-            # pax(0, {
-            #     "ds" : ds,
-            #     "sample" : sample,
-            #     "sample_idx" : sample_idx,
-            #     "chunk_idxs" : "%d / %s" % (len(chunk_idxs), str(chunk_idxs)),
-            # })
-
-    pax(0, {
-        "train_ds" : train_ds,
-        "valid_ds" : valid_ds,
-        "test_ds" : test_ds,
-        "train_ds / len" : len(train_ds),
-        "valid_ds / len" : len(valid_ds),
-        "sample" : sample,
-    })
-
-
-def compare_old_neighbors():
-
-    dddd

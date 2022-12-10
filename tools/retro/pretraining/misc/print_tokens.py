@@ -15,10 +15,6 @@
 
 from tools.retro.utils import get_gpt_tokenizer
 
-# >>>
-from lutil import pax
-# <<<
-
 
 gpt_tokenizer = None
 

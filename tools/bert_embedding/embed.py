@@ -30,11 +30,6 @@ from megatron.training import setup_model_and_optimizer
 from .dataset import BertEmbeddingDataset
 from .utils import get_missing_blocks_by_rank
 
-# >>>
-from lutil import pax, print_seq
-from lutil.pax import print_mem_stats, get_mem_stats_str
-# <<<
-
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
@@ -104,11 +99,6 @@ def forward_step(data_iterator, model):
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
 
-    # >>>
-    # pax(0, {"output_tensor": output_tensor})
-    # raise Exception("verify pooled output.")
-    # <<<
-
     return output_tensor, partial(loss_func, loss_mask, sentence_order,
                                   seq_lengths)
 
@@ -156,9 +146,6 @@ def collate_batch(samples):
     return batch
 
 
-# def get_block_data_loader(full_dataset, sample_start_idx, sample_end_idx):
-# def get_subset_data_loader(full_dataset, sample_start_idx, sample_end_idx):
-# def get_data_loader(dataset):
 def get_data_loader(dataset, batch_size):
     """Build data loader over data subset.
 
@@ -171,7 +158,6 @@ def get_data_loader(dataset, batch_size):
     # Sequential & batch samplers.
     batch_sampler = BatchSampler(
         sampler = SequentialSampler(dataset),
-        # batch_size = args.micro_batch_size,
         batch_size = batch_size,
         drop_last = False,
     )
@@ -186,8 +172,8 @@ def get_data_loader(dataset, batch_size):
     return data_loader
 
 
-# def embed_batches(models, data_loader):
 def embed_data_loader(models, data_loader, n_samples_world):
+    '''Iterate data loader and compute embeddings.'''
 
     # Data iterator.
     data_iterator = iter(data_loader)
@@ -198,7 +184,6 @@ def embed_data_loader(models, data_loader, n_samples_world):
 
     # World info (for printing progress).
     n_gpus_world = torch.distributed.get_world_size()
-    # n_samples_world = len(data_loader.dataset.dataset) # i.e., subset.dataset
 
     # Compute embeddings.
     forward_backward_func = get_forward_backward_func()
@@ -253,15 +238,13 @@ def embed_data_loader(models, data_loader, n_samples_world):
 
 
 class BertEmbedder:
+    '''Compute Bert embeddings, from a text dataset.'''
 
-    # def __init__(self, max_bert_seq_length):
     def __init__(self, batch_size, max_bert_seq_length):
 
         args = get_args()
 
-        # >>>
         assert args.output_bert_embeddings
-        # <<<
 
         self.models, optimizer, opt_param_scheduler = \
             setup_model_and_optimizer(model_provider,
@@ -270,31 +253,37 @@ class BertEmbedder:
         self.max_bert_seq_length = max_bert_seq_length
 
         # >>>
+        # **Note**: we currently only use the HuggingfaceEmbedder
         from .huggingface import HuggingfaceEmbedder
         # self.huggingface_embedder = None
         self.huggingface_embedder = HuggingfaceEmbedder(
-            # args.micro_batch_size,
             batch_size,
             max_bert_seq_length,
         )
-        # pax(0, {"huggingface_embedder": self.huggingface_embedder})
         # <<<
 
 
     def embed_text_dataset(self, text_dataset, n_samples_world):
-        bert_dataset = BertEmbeddingDataset(text_dataset,
-                                            self.max_bert_seq_length)
-        data_loader = get_data_loader(bert_dataset, self.batch_size)
+        '''Embed a text dataset.'''
+
         # >>>
+        # **Note**: we currently only use the HuggingfaceEmbedder
         if self.huggingface_embedder:
             return self.huggingface_embedder.embed_text_dataset(text_dataset)
         raise Exception("using huggingface.")
         # <<<
+
+        # Wrap in a BertEmbeddingDataset to tokenize samples.
+        bert_dataset = BertEmbeddingDataset(text_dataset,
+                                            self.max_bert_seq_length)
+        data_loader = get_data_loader(bert_dataset, self.batch_size)
+
         embeddings = embed_data_loader(self.models, data_loader, n_samples_world)
         return embeddings
 
 
 class DiskDataParallelBertEmbedder:
+    '''Process embeddings in blocks & save to disk.'''
 
     def __init__(self, batch_size, max_bert_seq_length, block_size):
         self.embedder = BertEmbedder(batch_size, max_bert_seq_length)
@@ -303,6 +292,7 @@ class DiskDataParallelBertEmbedder:
 
     def embed_text_blocks(self, name, workdir, text_dataset,
                           missing_embedding_blocks):
+        '''Process a text dataset in blocks.'''
 
         # Iterate blocks.
         for block_index, block_info in enumerate(missing_embedding_blocks):
@@ -311,6 +301,7 @@ class DiskDataParallelBertEmbedder:
             # lists. Skip the Nones.
             if block_info is not None:
 
+                # Progress.
                 print_rank_0("embed '%s' block %d / %d ... %s." % (
                     name,
                     block_index,
@@ -334,6 +325,7 @@ class DiskDataParallelBertEmbedder:
 
 
     def embed_text_dataset(self, name, workdir, text_dataset):
+        '''Embed a text dataset.'''
 
         # Dataset workdir.
         os.makedirs(workdir, exist_ok = True)
@@ -355,10 +347,11 @@ class DiskDataParallelBertEmbedder:
                                missing_embedding_blocks)
 
 
-    def embed_text_datasets(self, text_dataset_map):
+    # def embed_text_datasets(self, text_dataset_map):
+    #     '''Deprecated.'''
 
-        # Embed each (i.e., full, sampled) dataset.
-        for name, info in text_dataset_map.items():
-            print_rank_0(" > embed '%s' dataset ... %d samples." %
-                         (name, len(info["data"])))
-            self.embed_text_dataset_on_disk(name, info["embed_dir"], info["data"])
+    #     # Embed each (i.e., full, sampled) dataset.
+    #     for name, info in text_dataset_map.items():
+    #         print_rank_0(" > embed '%s' dataset ... %d samples." %
+    #                      (name, len(info["data"])))
+    #         self.embed_text_dataset_on_disk(name, info["embed_dir"], info["data"])

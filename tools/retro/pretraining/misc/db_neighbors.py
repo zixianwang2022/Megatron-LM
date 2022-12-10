@@ -49,23 +49,19 @@ def _print_db_neighbors(
         new_nbr_dists, new_nbr_ids = \
             new_index.search(new_embed.reshape((1, -1)), 10)
 
-        pax(0, {
-            "db_hash" : db_hash,
-            "old_chunk_idx" : old_chunk_idx,
-            "new_chunk_idx" : new_chunk_idx,
-            "old_tokens" : old_tokens,
-            "new_tokens" : new_tokens,
-            "old_text" : old_text,
-            "new_text" : new_text,
-            "old_embed" : old_embed,
-            "new_embed" : new_embed,
-            "old_nbr_dists" : old_nbr_dists,
-            "new_nbr_dists" : new_nbr_dists,
-            "old_nbr_ids" : old_nbr_ids,
-            "new_nbr_ids" : new_nbr_ids,
-        })
-
-        # pax(0, {"old_pt_nbrs_train": old_pt_nbrs_train})
+        # "db_hash" : db_hash,
+        # "old_chunk_idx" : old_chunk_idx,
+        # "new_chunk_idx" : new_chunk_idx,
+        # "old_tokens" : old_tokens,
+        # "new_tokens" : new_tokens,
+        # "old_text" : old_text,
+        # "new_text" : new_text,
+        # "old_embed" : old_embed,
+        # "new_embed" : new_embed,
+        # "old_nbr_dists" : old_nbr_dists,
+        # "new_nbr_dists" : new_nbr_dists,
+        # "old_nbr_ids" : old_nbr_ids,
+        # "new_nbr_ids" : new_nbr_ids,
 
         old_nbr_ids = old_pt_nbrs_train[old_sample_idx][:, :nnbrs]
         new_nbrs = new_sample["neighbor_tokens"]
@@ -150,21 +146,16 @@ def _print_db_neighbors(
 
             old_nbr_id = old_db_hash_map[old_nbr_hashes[0]]
             new_nbr_id = new_db_hash_map[old_nbr_hashes[0]]
-            pax(0, {
-                "old 0 hash" : old_nbr_hashes[0],
-                "old 0 in old db?" : old_nbr_hashes[0] in old_db_hash_map,
-                "old 0 in new db?" : old_nbr_hashes[0] in new_db_hash_map,
-                "old_nbr_id" : old_nbr_id,
-                "new_nbr_id" : new_nbr_id,
-                "old nbr" : str(old_db_chunks[old_nbr_id]),
-                "new nbr" :
-                str(new_pt_retro_train_ds.db_chunk_dataset[new_nbr_id]["text"]),
-                # "seq_embed" : seq_embed,
-                # "old_nbr_embeds" : old_nbr_embeds,
-                # "new_nbr_embeds" : new_nbr_embeds,
-                "old_nbr_dists" : str(old_nbr_dists),
-                "new_nbr_dists" : str(new_nbr_dists),
-            })
-        # <<<
-
-    pax(0, {"acc" : np.mean(accs)})
+            # "old 0 hash" : old_nbr_hashes[0],
+            # "old 0 in old db?" : old_nbr_hashes[0] in old_db_hash_map,
+            # "old 0 in new db?" : old_nbr_hashes[0] in new_db_hash_map,
+            # "old_nbr_id" : old_nbr_id,
+            # "new_nbr_id" : new_nbr_id,
+            # "old nbr" : str(old_db_chunks[old_nbr_id]),
+            # "new nbr" :
+            # str(new_pt_retro_train_ds.db_chunk_dataset[new_nbr_id]["text"]),
+            # # "seq_embed" : seq_embed,
+            # # "old_nbr_embeds" : old_nbr_embeds,
+            # # "new_nbr_embeds" : new_nbr_embeds,
+            # "old_nbr_dists" : str(old_nbr_dists),
+            # "new_nbr_dists" : str(new_nbr_dists),

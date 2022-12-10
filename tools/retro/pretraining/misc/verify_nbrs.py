@@ -20,6 +20,7 @@ import torch
 
 from tools.retro.index import FaissBaseIndex, IndexFactory
 
+
 def verify_nbrs(args, timer):
 
     timer.push("add-base")
