@@ -91,7 +91,7 @@ RETRO_DOC_BLOCK_SIZE=100000
 RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
 RETRO_NNBRS_QUERY=2000
 RETRO_NNBRS_TARGET=200
-RETRO_NNBRS_PRETRAINING=2
+# RETRO_NNBRS_PRETRAINING=2
 
 SEED=1234 # default
 # SEED=1001
@@ -144,6 +144,7 @@ MEGATRON_ARGS=" \
 # --retro-ivf-dim ${RETRO_IVF_DIM} \
 # --retro-hnsw-m ${RETRO_HNSW_M} \
 # --retro-pq-m ${RETRO_PQ_M} \
+# --retro-nnbrs-pretraining ${RETRO_NNBRS_PRETRAINING} \
 RETRO_ARGS=" \
     --output-bert-embeddings \
 
@@ -169,7 +170,6 @@ RETRO_ARGS=" \
     --retro-block-size ${RETRO_BLOCK_SIZE} \
     --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \
     --retro-nnbrs-target ${RETRO_NNBRS_TARGET} \
-    --retro-nnbrs-pretraining ${RETRO_NNBRS_PRETRAINING} \
 
     --retro-return-doc-ids \
 "

@@ -412,7 +412,7 @@ def _add_retro_args(parser):
                        type=float, default=0.1)
     group.add_argument('--retro-encoder-attention-dropout',
                        type=float, default=0.1)
-    # group.add_argument("--retro-nnbrs", type=int, default=2)
+    group.add_argument("--retro-nnbrs", type=int, default=2)
     group.add_argument("--retro-return-doc-ids", action="store_true",
                        help="Turn this on when preprocessing retro data.")
 

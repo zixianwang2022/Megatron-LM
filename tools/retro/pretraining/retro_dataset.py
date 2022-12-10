@@ -20,7 +20,7 @@ import numpy as np
 import os
 import torch
 
-from megatron import get_retro_args
+from megatron import get_args, get_retro_args
 from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
 from tools.retro.pretraining.chunk_dataset import get_chunk_dataset_map
 
@@ -169,7 +169,8 @@ def get_chunk_path_map(_dir):
 def get_retro_datasets():
     '''Get train, valid, test retro datasets.'''
 
-    args = get_retro_args()
+    args = get_args()
+    retro_args = get_retro_args()
 
     # DB dataset.
     db_dataset = get_db_dataset()
@@ -204,8 +205,8 @@ def get_retro_datasets():
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
-            n_nbrs = args.retro_nnbrs_pretraining,
-            block_size = args.retro_block_size,
+            n_nbrs = args.retro_nnbrs,
+            block_size = retro_args.retro_block_size,
             db_dataset = db_dataset,
             chunk_dataset = chunk_dataset,
             nbr_path_map = nbr_path_map,

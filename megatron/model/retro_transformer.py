@@ -656,9 +656,10 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
 
         args = get_args()
         retro_args = get_retro_args()
+
         chunk_length = retro_args.retro_gpt_chunk_length
         retrieved_length = retro_args.retro_gpt_retrieved_length
-        nnbrs = retro_args.retro_nnbrs_pretraining
+        nnbrs = args.retro_nnbrs
 
         ns, bs, d = layernorm_output.shape
         l = int(np.ceil(ns / chunk_length))
@@ -1057,8 +1058,9 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
         # for each neighbor:
         args = get_args()
         retro_args = get_retro_args()
+
         retrieved_length = retro_args.retro_gpt_retrieved_length
-        nnbrs = retro_args.retro_nnbrs_pretraining
+        nnbrs = args.retro_nnbrs
 
         ns, bs, d = layernorm_output.shape   # [r, bs * l * k, d]
         # print(ns, bs, d, layernorm_output.shape)
