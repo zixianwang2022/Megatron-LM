@@ -1,17 +1,4 @@
-# coding=utf-8
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 """GPT style dataset."""
 
@@ -21,7 +8,8 @@ import time
 import numpy as np
 import torch
 
-from megatron import mpu, print_rank_0
+from megatron import print_rank_0
+from megatron.core import mpu
 from megatron.data.blendable_dataset import BlendableDataset
 from megatron.data.dataset_utils import get_datasets_weights_and_num_samples
 from megatron.data.dataset_utils import get_train_valid_test_split_
@@ -31,7 +19,7 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
                                     seq_length, seed, skip_warmup,
-                                    return_doc_ids):
+                                    return_doc_ids = False):
     """Build train, valid, and test datasets."""
 
     # Single dataset.
@@ -82,7 +70,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      train_valid_test_num_samples,
                                      seq_length, seed, skip_warmup,
-                                     return_doc_ids):
+                                     return_doc_ids = False):
     """Build train, valid, and test datasets."""
 
     # Indexed dataset.
@@ -124,6 +112,63 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     return (train_dataset, valid_dataset, test_dataset)
 
 
+def build_dataset(dataset_name, data_prefix, data_impl, num_samples,
+                  seq_length, seed, skip_warmup):
+    dataset = None
+    if len(data_prefix) == 1:
+        dataset = _build_dataset(dataset_name,
+                        data_prefix[0], data_impl,
+                        num_samples, seq_length,
+                        seed, skip_warmup)
+    else:
+        # Blending dataset.
+        # Parse the values.
+        output = get_datasets_weights_and_num_samples(data_prefix, num_samples)
+        prefixes, weights, dataset_num_samples = output
+
+        # Build individual datasets.
+        datasets = []
+        for i in range(len(prefixes)):
+            ds = _build_dataset(dataset_name, prefixes[i],
+                            data_impl, dataset_num_samples[i],
+                            seq_length, seed, skip_warmup)
+            if ds:
+                datasets.append(ds)
+
+        if datasets:
+            dataset = BlendableDataset(datasets, weights)
+
+    return dataset
+
+
+def _build_dataset(dataset_name, data_prefix, data_impl,
+                   num_samples, seq_length, seed, skip_warmup):
+    """
+    Build dataset. This method is called when individual
+    train, valid, test datasets are provided
+    """
+
+    # Indexed dataset.
+    indexed_dataset = get_indexed_dataset_(data_prefix,
+                                           data_impl,
+                                           skip_warmup)
+
+    total_num_of_documents = indexed_dataset.sizes.shape[0]
+
+    print_rank_0('    {}:'.format(dataset_name))
+    print_rank_0('     document indices in [0, {}) total of {} '
+                 'documents'.format(total_num_of_documents, total_num_of_documents))
+
+    documents = np.arange(start=0, stop=total_num_of_documents,
+                        step=1, dtype=np.int32)
+
+    dataset = GPTDataset(dataset_name, data_prefix,
+                        documents, indexed_dataset,
+                        num_samples, seq_length, seed)
+
+    return dataset
+
+
 def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
     """Build indexed dataset."""
     print_rank_0(' > building dataset index ...')
@@ -144,7 +189,7 @@ class GPTDataset(torch.utils.data.Dataset):
 
     def __init__(self, name, data_prefix, documents, indexed_dataset,
                  num_samples, seq_length, seed,
-                 return_doc_ids):
+                 return_doc_ids = False):
 
         self.name = name
         self.indexed_dataset = indexed_dataset
