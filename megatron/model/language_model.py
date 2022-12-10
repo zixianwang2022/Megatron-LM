@@ -28,12 +28,6 @@ from .transformer import ParallelTransformer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
 
-# >>>
-from lutil import pax
-from lutil.pax import print_mem_stats
-from .retro_transformer import debug_tensors
-# <<<
-
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
                        bias=None):
@@ -365,7 +359,6 @@ class TransformerLanguageModel(MegatronModule):
 
         # Retriever (bi-directional transformer with cross attention)
         if args.retro_add_retriever:
-            # self.retriever = ParallelRetroEncoderTransformer(
             self.retriever = ParallelRetroEncoder(
                 self.init_method,
                 output_layer_init_method,
@@ -375,15 +368,11 @@ class TransformerLanguageModel(MegatronModule):
             )
             self._retriever_key = 'retriever'
         else:
-            # >>>
-            # raise Exception("not this way.")
-            # <<<
             self.retriever = None
 
         # Encoder (usually set to True, False if part of an encoder-decoder
         # architecture and in encoder-only stage).
         if self.add_encoder:
-            # >>>
             if args.retro_add_retriever:
                 self.encoder = ParallelRetroTransformer(
                     self.init_method,
@@ -400,9 +389,7 @@ class TransformerLanguageModel(MegatronModule):
                     self_attn_mask_type=self.encoder_attn_mask_type,
                     pre_process=self.pre_process,
                     post_process=self.post_process,
-                    # retriever=self.retriever,
                 )
-            # <<<
             self._encoder_key = 'encoder'
         else:
             self.encoder = None
@@ -463,19 +450,6 @@ class TransformerLanguageModel(MegatronModule):
                 pooling_sequence_index=0,
                 enc_hidden_states=None, output_enc_hidden=False):
 
-        # >>>
-        # raise Exception("enc_input_ids = %s." % str(enc_input_ids.shape))
-        # raise Exception("enc_position_ids = %s." % str(enc_position_ids.shape))
-        debug_tensors("LanguageModel.forward", {
-            "enc_input_ids" : enc_input_ids,
-            "enc_position_ids" : enc_position_ids,
-            "enc_attn_mask" : enc_attn_mask,
-            "ret_int_ids" : ret_int_ids,
-            "ret_position_ids" : ret_position_ids,
-            "ret_attn_mask" : ret_attn_mask,
-        })
-        # <<<
-
         # Retriever embedding.
         if self.retriever and self.pre_process:
             retriever_input = self.embedding(ret_int_ids, ret_position_ids,
@@ -490,18 +464,9 @@ class TransformerLanguageModel(MegatronModule):
         else:
             encoder_input = None
 
-        # >>>
-        debug_tensors("LanguageModel.forward-1", {
-            "encoder_input" : encoder_input,
-            "retriever_input" : retriever_input,
-        })
-        # <<<
-
         # Run encoder.
         if enc_hidden_states is None:
             if self.encoder is not None:
-                # >>>
-                # raise Exception("encoder_input = %s."%str(encoder_input.shape))
                 if self.retriever:
                     encoder_output = self.encoder(
                         encoder_input,
@@ -514,15 +479,10 @@ class TransformerLanguageModel(MegatronModule):
                         encoder_input,
                         enc_attn_mask,
                         inference_params=inference_params)
-                # <<<
             else:
                 encoder_output = self.encoder_hidden_state
         else:
             encoder_output = enc_hidden_states.to(encoder_input.dtype)
-
-        # >>>
-        # raise Exception("encoder_output = %s." % str(encoder_output.shape))
-        # <<<
 
         if self.post_process:
             if self.add_pooler:
@@ -536,7 +496,6 @@ class TransformerLanguageModel(MegatronModule):
             if self.add_pooler and self.post_process:
                 return encoder_output, pooled_output
             else:
-                # print("encoder_output", encoder_output.shape, encoder_output)
                 return encoder_output
 
         # Decoder embedding.
