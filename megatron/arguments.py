@@ -16,17 +16,13 @@
 """Megatron arguments."""
 
 import argparse
+import json
 import os
 import torch
-
-# >>>
-import json
 import types
 
 from megatron.global_vars import set_retro_args, get_retro_args
-
 from tools.retro.utils import get_args_path as get_retro_args_path
-# <<<
 
 
 def parse_args(extra_args_provider=None, ignore_unknown_args=False):
@@ -335,7 +331,7 @@ def validate_args(args, defaults={}):
     if args.sequence_parallel:
         args.async_tensor_model_parallel_allreduce = False
 
-    # >>>
+    # Load retro args.
     if args.retro_workdir:
         retro_args_path = get_retro_args_path(args.retro_workdir)
         if os.path.exists(retro_args_path):
@@ -344,29 +340,20 @@ def validate_args(args, defaults={}):
                 retro_args.retro_return_doc_ids = args.retro_return_doc_ids
                 retro_args.retro_gpt_retrieved_length = \
                     2 * retro_args.retro_gpt_chunk_length
-                # args.retro_args = retro_args
-                # >>>
-                # retro_args.retro_nnbrs_pretraining = 10 # 2, 4, 10
-                # <<<
                 set_retro_args(retro_args)
-    # <<<
 
-    # >>>
-    # _print_args(args)
+    # Print arguments.
     _print_args("arguments", args)
     retro_args = get_retro_args()
     if retro_args and args != retro_args:
         _print_args("retro arguments", types.SimpleNamespace(**{k:v for k,v in vars(retro_args).items() if k.startswith("retro") or k.startswith("rank")}))
-    # <<<
+
     return args
 
 
-# >>>
-# def _print_args(args):
 def _print_args(title, args):
     """Print arguments."""
     if args.rank == 0:
-        # print('------------------------ arguments ------------------------',
         print(f'------------------------ {title} ------------------------',
               flush=True)
         str_list = []
@@ -375,10 +362,8 @@ def _print_args(title, args):
             str_list.append('  {} {} {}'.format(arg, dots, getattr(args, arg)))
         for arg in sorted(str_list, key=lambda x: x.lower()):
             print(arg, flush=True)
-        # print('-------------------- end of arguments ---------------------',
         print(f'-------------------- end of {title} ---------------------',
               flush=True)
-# <<<
 
 
 def _check_arg_is_not_none(args, arg):
@@ -393,17 +378,14 @@ def _add_inference_args(parser):
                        help='During inference, if batch-size times '
                        'sequence-length is smaller than this threshold '
                        'then we will not use pipelining, otherwise we will.')
-    # >>>
     group.add_argument('--output-bert-embeddings', action='store_true',
                        help='Output Bert embeddings directly (i.e., the pooled '
                        'output), rather than its binary head output or entire '
                        'hidden batch.')
-    # <<<
 
     return parser
 
 
-# >>>
 def _add_retro_args(parser):
     group = parser.add_argument_group(title='retro')
 
@@ -415,19 +397,16 @@ def _add_retro_args(parser):
     group.add_argument('--retro-cyclic-train-iters', type=int, default=None)
     group.add_argument('--retro-eval-ppl', action='store_true', default=False)
     group.add_argument('--retro-debug', action='store_true', default=False)
-    group.add_argument('--retro-encoder-layers', type=int, default=2) # 12)
+    group.add_argument('--retro-encoder-layers', type=int, default=2)
     group.add_argument('--retro-encoder-hidden-dropout',
                        type=float, default=0.1)
     group.add_argument('--retro-encoder-attention-dropout',
                        type=float, default=0.1)
-    # group.add_argument("--retro-chunk-length", type=int, default=64)
-    # group.add_argument("--retro-retrieved-length", type=int, default=128)
     # group.add_argument("--retro-nnbrs", type=int, default=2)
     group.add_argument("--retro-return-doc-ids", action="store_true",
                        help="Turn this on when preprocessing retro data.")
 
     return parser
-# <<<
 
 
 def _add_network_size_args(parser):
@@ -820,10 +799,8 @@ def _add_distributed_args(parser):
     group.add_argument('--distributed-backend', default='nccl',
                        choices=['nccl', 'gloo'],
                        help='Which backend to use for distributed training.')
-    # >>>
     group.add_argument('--distributed-timeout-minutes', type=int, default=10,
                        help='Timeout minutes for torch.distributed.')
-    # <<<
     group.add_argument('--DDP-impl', default='local',
                        choices=['local', 'torch'],
                        help='which DistributedDataParallel implementation '

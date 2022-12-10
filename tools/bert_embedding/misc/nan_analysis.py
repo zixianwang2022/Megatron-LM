@@ -13,12 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import argparse
 import h5py
-# import json
 import numpy as np
 import os
-# import pickle
 import torch
 from torch.utils.data import IterableDataset
 from tqdm import tqdm
@@ -29,11 +26,8 @@ from transformers import (
 )
 from types import SimpleNamespace
 
-# import sys
-# sys.path.append("/home/boxinw-src/megatron-lm/megatron")
-# sys.path.append("/home/boxinw-src/megatron-lm/")
-
 from megatron.tokenizer import build_tokenizer
+
 
 model = BertModel.from_pretrained("bert-large-cased")
 tokenizer = AutoTokenizer.from_pretrained(
@@ -41,9 +35,6 @@ tokenizer = AutoTokenizer.from_pretrained(
     model_max_length = 256,
 )
 
-# >>>
-from lutil import pax, print_rank, print_seq
-# <<<
 
 class HDF5Dataset(IterableDataset):
     def __init__(self, file, args):
@@ -60,15 +51,6 @@ class HDF5Dataset(IterableDataset):
         start = split_size * args.pointer
         end = min(split_size * (args.pointer + 1), size)
 
-        # pax({
-        #     "keys" : list(self.file.keys()),
-        #     "data" : data,
-        #     "size" : size,
-        #     "split_size" : split_size,
-        #     "start" : start,
-        #     "end" : end,
-        # })
-
         self.data = data[start:end]
         if 'tokens' in self.file:
             self.data = np.reshape(self.data, (len(self.data) * 32, 64)) #chunk it
@@ -76,34 +58,19 @@ class HDF5Dataset(IterableDataset):
         self.file.close()
         self.tokenizer = build_tokenizer(args)
 
-        # pax({"tokenizer": self.tokenizer})
-
     def __iter__(self):
         for data in self.data:
             sample = self.tokenizer.detokenize(data)
             text = sample.replace("<|endoftext|>", "")
-            # pax({
-            #     "self.data / shape" : self.data.shape,
-            #     "data / shape" : data.shape,
-            #     "data" : data,
-            #     "sample" : sample,
-            #     "text" : text,
-            # })
             yield text
 
 
 class MyFeatureExtractionPipeline(FeatureExtractionPipeline):
     def _forward(self, model_inputs):
-        pax({
-            "model_inputs" : str(model_inputs),
-            "model_inputs / shape" : str(model_inputs.shape),
-        })
         model_outputs = self.model(**model_inputs)
         print("model input shape", model_inputs['attention_mask'].shape)
         embeddings = model_outputs[0]
         masks = torch.sum(model_inputs['attention_mask'], dim=1)
-
-        # print(torch.mean(embeddings[0,1:-1], dim=0))
 
         outputs = []
         for embedding, mask in zip(embeddings, masks):
@@ -113,10 +80,6 @@ class MyFeatureExtractionPipeline(FeatureExtractionPipeline):
     def postprocess(self, model_outputs):
         raise Exception("hi.")
         return model_outputs["embedding"].numpy()
-
-# >>>
-# for i in {0..99}; do j=$((i+1)); start=$((i*60000)); end=$((j*60000)); submit_job --image gitlab-master.nvidia.com/adlr/megatron-lm/boxinw/faissgpu  --email_mode fail --partition batch_dgx1_m3 --mounts "$SHARE_SOURCE,/lustre/fs1/projects/gpu_adlr/,/home/dcg-adlr-boxinw-data,/home/dcg-adlr-boxinw-output,/home/universal-lm-data.cosmos549/datasets/gpt3/pile-cc1-cc2-shuf" --gpu 1 -c  "python generation/generate_embeddings_bert_hdf5.py --device 0   --input  /lustre/fs1/projects/gpu_adlr/outputs/boxinw/chunks/pretraining_dump.h5py_start_${start}_end_${end}_ns_192000000_sl2048_seed_1234_with_offset.tokens.h5py --output /lustre/fs1/projects/gpu_adlr/outputs/boxinw/chunks/pretraining_dump.h5py_start_${start}_end_${end}_ns_192000000_sl2048_seed_1234_with_offset.tokens.feat.hdf5 --split 1 --pointer 0 --bs 128"; done
-# <<<
 
 def run_bert_nan_analysis(args, timer):
 
@@ -151,9 +114,6 @@ def run_bert_nan_analysis(args, timer):
     args.pointer = 0
     args.bs = 128
 
-    # pax({"args": args})
-    # raise Exception("hi.")
-
     args.tokenizer_type = "GPT2BPETokenizer"
     # args.vocab_file = "/home/boxinw-src/megatron-lm//gpt2-vocab.json"
     # args.merge_file = "/home/boxinw-src/megatron-lm/gpt2-merges.txt"
@@ -165,7 +125,6 @@ def run_bert_nan_analysis(args, timer):
     args.vocab_extra_ids = 0
 
     dataset = HDF5Dataset(args.input, args)
-    # pax({"dataset": dataset})
 
     pipe = MyFeatureExtractionPipeline(
         model = model,
@@ -174,7 +133,6 @@ def run_bert_nan_analysis(args, timer):
         truncation = True,
         max_length = 256,
     )
-    # pax({"pipe": pipe})
 
     batch_size = args.bs
 

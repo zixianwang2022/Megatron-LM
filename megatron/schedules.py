@@ -28,11 +28,6 @@ from megatron.model import DistributedDataParallel as LocalDDP
 from megatron.model import Float16Module
 from megatron.model import ModelType
 
-# >>>
-from lutil import pax
-from lutil.pax import print_mem_stats
-# <<<
-
 
 def get_forward_backward_func():
     args = get_args()
@@ -134,10 +129,6 @@ def forward_step(forward_step_func,
     unwrapped_model.set_input_tensor(input_tensor)
     output_tensor, loss_func = forward_step_func(data_iterator, model)
     if mpu.is_pipeline_last_stage():
-        # >>>
-        # from lutil import pax
-        # pax(0, {"output_tensor": output_tensor})
-        # <<<
         if not collect_non_loss_data:
             output_tensor = loss_func(output_tensor)
             loss, loss_reduced = output_tensor
@@ -145,7 +136,6 @@ def forward_step(forward_step_func,
             forward_data_store.append(loss_reduced)
         else:
             data = loss_func(output_tensor, non_loss_data=True)
-            # pax({"data": data})
             forward_data_store.append(data)
 
     timers('forward-compute').stop()

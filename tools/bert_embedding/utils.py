@@ -125,7 +125,6 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
                 continue
 
             try:
-                # assert f["data"].shape[1] == 1024
                 validate(f)
             except:
                 raise Exception("delete block file.")
