@@ -22,7 +22,7 @@ from megatron import get_args, get_retro_args
 from megatron import get_timers
 from megatron import get_tokenizer
 from megatron import print_rank_0
-from megatron.core import mpu
+from megatron.core import mpu, tensor_parallel
 from megatron.model import GPTModel, ModelType
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
@@ -54,7 +54,7 @@ def get_batch(data_iterator):
     else:
         data = None
 
-    data_b = mpu.broadcast_data(keys, data, datatype)
+    data_b = tensor_parallel.broadcast_data(keys, data, datatype)
 
     # Unpack.
     tokens_ = data_b['text'].long()

@@ -149,7 +149,7 @@ def get_chunk_dataset_map():
                 workdir,
                 os.path.basename(loader.dataset.datasets[0].index_prefix),
             ),
-            "data" : GPTChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
+            "data" : ChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
         }
         for key, loader in data_loader_map.items() if loader
     }

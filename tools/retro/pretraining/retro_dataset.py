@@ -198,10 +198,10 @@ def get_retro_datasets():
             assert n_sample_chunks == n_nbr_chunks, \
                 "inconsistent n_chunks; %d vs. %d." % \
                 (n_sample_chunks, n_nbr_chunks)
-        except:
+        except Exception as e:
             print("nbr_dir : %s" % nbr_dir)
             print("nbr_path_map : %s" % nbr_path_map)
-            exit()
+            raise e
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(

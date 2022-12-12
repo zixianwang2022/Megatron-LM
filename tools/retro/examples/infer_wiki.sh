@@ -19,6 +19,7 @@ RETRO_NNBRS=2
 CHECKPOINT_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/checkpoints/inference
 
 options=" \
+    --no-async-tensor-model-parallel-allreduce \
     --load ${CHECKPOINT_DIR} \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
@@ -71,10 +72,10 @@ else
 fi
 
 unset NCCL_DEBUG
-export CUDA_DEVICE_MAX_CONNECTIONS=1
+# export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-# NPROCS=1
-NPROCS=16
+NPROCS=1
+# NPROCS=16
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \
