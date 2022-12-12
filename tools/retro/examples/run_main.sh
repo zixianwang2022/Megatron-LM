@@ -1,16 +1,7 @@
 #!/bin/bash
 
 set -u
-
 unset NCCL_DEBUG
-
-PARENT_PATH=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-source $PARENT_PATH/get_cmd.sh
-
-echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo "PARENT_PATH = '$PARENT_PATH'."
-echo "RETRO_PREPROCESS_CMD = '$RETRO_PREPROCESS_CMD'."
-echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 # NPROCS=1
 # NPROCS=2
@@ -18,10 +9,30 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 # NPROCS=8
 NPROCS=16
 
+######## Data corpus. ########
+# CORPUS="play"
+CORPUS="wiki"
+# CORPUS="wiki-1m"
+# CORPUS="nih"
+# CORPUS="corpus"
+
+######## Repo. ########
 REPO="retro"
 # REPO="retro-wiki"
 # REPO="retro-corpus"
 
+######## Environment vars. ########
+DIR=$(dirname "$0")
+echo "DIR = $DIR."
+exit
+source ./get_cmd.sh
+
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
+echo "PARENT_PATH = '$PARENT_PATH'."
+echo "RETRO_PREPROCESS_CMD = '$RETRO_PREPROCESS_CMD'."
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
+
+######## Command. ########
 FULL_CMD="\
     pwd && cd $SHARE_SOURCE/megatrons/megatron-lm-${REPO} && pwd && \
     export PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-${REPO}&&\

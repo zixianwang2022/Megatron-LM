@@ -4,21 +4,13 @@ set -u
 
 # . ./get_vars.sh
 
-######## Data corpus. ########
-# CORPUS="play"
-CORPUS="wiki"
-# CORPUS="wiki-1m"
-# CORPUS="nih"
-# CORPUS="corpus"
-
-######## Retro workdir. ########
-RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
-
 ######## Data blend. ########
 . ${BLEND_SCRIPT_DIR}/gpt3_blend_${CORPUS}.sh
 DATA_PATH=${DATA_BLEND}
 
-######## Retro args. ########
+######## Retro setup. ########
+RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
+
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"

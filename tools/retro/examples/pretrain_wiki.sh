@@ -1,34 +1,38 @@
 #!/bin/bash
 
 set -u
+unset NCCL_DEBUG
+# export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc/gpt3_blend_wiki.sh
+# . ./get_vars.sh
+
+. ${BLEND_SCRIPT_DIR}/gpt3_blend_wiki.sh
 DATA_PATH=${DATA_BLEND}
 
-# BPE_DIR="/lustre/fsw/adlr/adlr-nlp/data/pile-cc1-cc2-shuf/bpe"
-# VOCAB_FILE=${BPE_DIR}/gpt2-vocab.json \
-# MERGE_FILE=${BPE_DIR}/gpt2-merges.txt \
-VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-vocab.json
-MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-merges.txt
+echo "hi."
+exit
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-NUM_LAYERS=12 # 4, [*12]
-HIDDEN_SIZE=768 # 256, [512], *768
-NUM_HEADS=12 # [4], 8, *12
-MICRO_BATCH_SIZE=4 # 2[k=10], 4[draco-rno], *8
-ADD_RETRIEVER=1
+RETRO_ADD_RETRIEVER=1
+RETRO_WORKDIR=${RETRO_WORKDIRS}/wiki
+RETRO_CYCLIC_TRAIN_ITERS=750000
+RETRO_NNBRS=2 # *2, 10
 
-# >>>
-CHECKPOINT_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/checkpoints/interactive
+NUM_LAYERS=12
+HIDDEN_SIZE=768
+NUM_HEADS=12
+MICRO_BATCH_SIZE=4
+
+CHECKPOINT_DIR=${RETRO_WORKDIR}/checkpoints/interactive
+# CHECKPOINT_DIR=${RETRO_WORKDIR}/checkpoints/inference
 TENSORBOARD_DIR="${CHECKPOINT_DIR}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
-# <<<
 
+#     --save-interval 10000 \
 #     --tensorboard-dir ${TENSORBOARD_DIR} \
 #     --log-validation-ppl-to-tensorboard \
-#     --loss-scale 1024 \
 options=" \
-
+    --load ${CHECKPOINT_DIR} \
+    --no-async-tensor-model-parallel-allreduce \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers ${NUM_LAYERS} \
@@ -48,9 +52,8 @@ options=" \
     --eval-iters 100 \
     --eval-interval 2000 \
     --data-path ${DATA_PATH} \
-    --vocab-file ${VOCAB_FILE} \
-    --merge-file ${MERGE_FILE} \
-    --save-interval 10000 \
+    --vocab-file ${GPT_VOCAB_FILE} \
+    --merge-file ${GPT_MERGE_FILE} \
     --split 98,2,0 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
@@ -68,18 +71,14 @@ options=" \
 if [ "$ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py
 else
-    RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
-    RETRO_CYCLIC_TRAIN_ITERS=750000
-    # RETRO_CYCLIC_TRAIN_ITERS=100 # 1, 20
     options="${options} \
-    --retro-workdir ${RETRO_WORKDIR} \
     --retro-add-retriever \
+    --retro-workdir ${RETRO_WORKDIR} \
     --retro-cyclic-train-iters ${RETRO_CYCLIC_TRAIN_ITERS} \
+    --retro-nnbrs ${RETRO_NNBRS} \
     "
     SCRIPT=pretrain_gpt_retro.py
 fi
-
-unset NCCL_DEBUG
 
 # NPROCS=1
 NPROCS=16
@@ -91,3 +90,5 @@ python -m torch.distributed.launch \
     --master_port 6000 \
     ${SCRIPT} \
     ${options} \
+
+# eof.
