@@ -45,9 +45,11 @@ def verify_codes(timer):
         return
 
     # >>>
-    empty_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/empty.faissindex"
-    base_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added_base.faissindex"
-    test_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added_0667_0000-0666.faissindex"
+    base_index_wrapper = IndexFactory.get_index("base")
+    test_index_wrapper = IndexFactory.get_index()
+    empty_index_path = base_index_wrapper.get_empty_index_path()
+    base_index_path = base_index_wrapper.get_added_index_path()
+    test_index_path = test_index_wrapper.get_added_index_path()
 
     if not os.path.exists(base_index_path):
         base_index = faiss.read_index(empty_index_path)

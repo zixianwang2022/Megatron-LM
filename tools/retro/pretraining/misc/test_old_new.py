@@ -31,7 +31,7 @@ class OldDBDataset(torch.utils.data.Dataset):
 
     def __init__(self):
         super().__init__()
-        f = h5py.File("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5")
+        f = h5py.File(os.environ["OLD_RETRO_WIKI_DB"])
         self.doc_ids = f["document_id"]
         self.chunks = f["chunks"]
 
@@ -91,14 +91,14 @@ def get_old_retro_datasets():
 
     train_ds = OldRetroDataset(
         db_ds,
-        "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/wiki.train.h5py_start_0_end_2037248_ns_2037248_sl2048_seed_1234_with_offset.tokens.h5py",
-        "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/wiki.train.h5py_start_0_end_2037248_ns_2037248_sl2048_seed_1234_with_offset.tokens.neighbors.wiki.hdf5",
+        os.environ["OLD_RETRO_WIKI_TRAIN_DATA"],
+        os.environ["OLD_RETRO_WIKI_TRAIN_NBRS"],
     )
 
     valid_ds = OldRetroDataset(
         db_ds,
-        "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/wiki.valid.h5py_start_0_end_25600_ns_2037248_sl2048_seed_1234_with_offset.tokens.h5py",
-        "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/wiki.valid.h5py_start_0_end_25600_ns_2037248_sl2048_seed_1234_with_offset.tokens.feat.h5py_neighbors.wiki.hdf5",
+        os.environ["OLD_RETRO_WIKI_VALID_DATA"],
+        os.environ["OLD_RETRO_WIKI_VALID_NBRS"],
     )
 
     return train_ds, valid_ds, None

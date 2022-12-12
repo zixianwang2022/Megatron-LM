@@ -79,10 +79,10 @@ class OldEmbedDataset(torch.utils.data.Dataset):
     def __init__(self):
         super().__init__()
 
-        chunk_path = "/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5"
+        chunk_path = os.environ["OLD_RETRO_WIKI_DB"]
         self.chunks = h5py.File(chunk_path)["chunks"]
 
-        self.embed_paths = sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/wiki-cls-indexes/*.hdf5"))
+        self.embed_paths = sorted(glob.glob(os.environ["OLD_RETRO_WIKI_DB_EMBED_DIR"] + "/*.hdf5"))
         self.embed_offsets = [0]
         for p in self.embed_paths:
             with h5py.File(p) as f:
@@ -113,12 +113,13 @@ class NewEmbedDataset(torch.utils.data.Dataset):
     def __init__(self):
         super().__init__()
 
+        from tools.retro.index.utils import get_training_data_block_dir
         from tools.retro.pretraining.retro_dataset import get_chunk_path_map
         args = get_retro_args()
 
         self.block_size = args.retro_block_size
         self.chunk_ds = get_merged_train_dataset()
-        self.embed_path_map = get_chunk_path_map("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/training_data_tmp/blocks")
+        self.embed_path_map = get_chunk_path_map(get_training_data_block_dir())
 
 
     def __getitem__(self, idx):
@@ -153,11 +154,6 @@ def print_db_embeddings():
 
     accs = []
     n_common = len(common_db_hashes)
-    # for db_hash_idx in range(0, n_common, n_common // 100):
-    #     db_hash = common_db_hashes[db_hash_idx]
-    # for db_hash_idx in range(10):
-    #     old_id = db_hash_idx
-    #     new_id = db_hash_idx
     sampled_db_hashes = common_db_hashes[0:n_common:(n_common//1000)]
     for db_hash in sampled_db_hashes:
 

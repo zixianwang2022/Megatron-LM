@@ -197,7 +197,7 @@ def print_nbrs(
 
     # >>>
     # print("load old index.")
-    # old_index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/Wikipedia_IVF262144_HNSW32_Flat_index.bin", faiss.IO_FLAG_MMAP)
+    # old_index = faiss.read_index(os.environ["OLD_RETRO_WIKI_INDEX"], faiss.IO_FLAG_MMAP)
     # print("load new index.")
     # new_index = get_new_index(new_db_ds, ondisk = True)
     # print("finished loading indexes.")

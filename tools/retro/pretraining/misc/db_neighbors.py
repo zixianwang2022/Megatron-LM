@@ -24,10 +24,12 @@ def _print_db_neighbors(
 ):
 
     print("read old index.")
-    old_index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/Wikipedia_IVF262144_HNSW32_Flat_index.bin")
+    old_index = faiss.read_index(os.environ["OLD_RETRO_WIKI_INDEX"],
+                                 faiss.IO_FLAG_MMAP)
 
     print("read new index.")
-    new_index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added_0667_0000-0666.faissindex")
+    new_index_path = index_wrapper.get_added_index_path()
+    new_index = faiss.read_index(new_index_path, faiss.IO_FLAG_MMAP)
 
     accs = []
     n_common = len(common_db_hashes)

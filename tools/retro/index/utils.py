@@ -61,12 +61,8 @@ def get_training_data_dir():
     return os.path.join(get_index_dir(), "training_data_tmp")
 
 
-def get_training_data_block_dir():
-    return os.path.join(get_training_data_dir(), "blocks")
-
-
-def get_training_data_block_paths():
-    return sorted(glob.glob(get_training_data_block_dir() + "/*.hdf5"))
+def get_training_data_paths():
+    return sorted(glob.glob(get_training_data_dir() + "/*.hdf5"))
 
 
 def get_training_data_merged():
@@ -75,7 +71,7 @@ def get_training_data_merged():
     args = get_retro_args()
 
     # Setup.
-    block_paths = get_training_data_block_paths()
+    block_paths = get_training_data_paths()
     ds_infos = get_indexed_dataset_infos()
     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
 

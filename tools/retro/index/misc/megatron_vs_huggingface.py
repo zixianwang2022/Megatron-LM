@@ -27,9 +27,6 @@ from tools.retro.pretraining.misc.acc.test_index_acc import rowwise_intersection
 from tools.retro.utils import Timer
 
 
-db_dir = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/db/individual/Wikipedia_en_ftfy_id_shuf_text_document/db"
-index_dir = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/OPQ32_256,IVF4194304_HNSW32,PQ32/training_data_tmp"
-
 n_docs         = 5861214
 n_docs_train   = 5743989
 n_docs_valid   = 117225
@@ -38,23 +35,8 @@ n_chunks_train = 66625331
 n_chunks_valid = 1358415
 
 
-def get_block_data_dir(model_key):
-    return os.path.join(index_dir, "data", "%s_blocks" % model_key)
-
-
-def get_block_data_paths(model_key):
-    return sorted(glob.glob(get_block_data_dir(model_key) + "/*.hdf5"))
-
-# def get_train_valid_data_paths(model_key):
-#     return (
-#         os.path.join(index_dir, "%s_train_data.hdf5" % model_key),
-#         os.path.join(index_dir, "%s_valid_data.hdf5" % model_key),
-#     )
-# def get_train_data_path(model_key):
-#     raise Exception("deprecated; merged train data.")
-#     return os.path.join(index_dir, "data", "%s_train_data.hdf5" % model_key)
 def get_valid_data_path(model_key):
-    return os.path.join(index_dir, "data", "%s_valid_data.hdf5" % model_key)
+    return os.path.join(get_index_dir(), "compare", "data", "%s_valid_data.hdf5" % model_key)
 
 def merge_split_data(model_key):
 

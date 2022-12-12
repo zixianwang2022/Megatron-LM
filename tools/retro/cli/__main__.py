@@ -17,4 +17,4 @@ from . import retro
 
 
 if __name__ == "__main__":
-    retro.init("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki")
+    retro.init(os.environ["RETRO_WORKDIR"])

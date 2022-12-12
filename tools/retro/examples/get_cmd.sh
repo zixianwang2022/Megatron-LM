@@ -2,40 +2,23 @@
 
 set -u
 
-# echo "SLURM_TASKS_PER_NODE = $SLURM_TASKS_PER_NODE"
-# NPROCS=$SLURM_TASKS_PER_NODE
-# >>>
-# NPROCS=1
-# NPROCS=2
-# NPROCS=4
-# NPROCS=8
-# NPROCS=16
-# NPROCS=128
-# >>>
+# . ./get_vars.sh
 
-# PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro
+######## Data corpus. ########
 # CORPUS="play"
 CORPUS="wiki"
 # CORPUS="wiki-1m"
 # CORPUS="nih"
 # CORPUS="corpus"
 
-# Data blend.
-# . /gpfs/fs1/projects/gpu_adlr/datasets/boxinw/pretrained_data/gpt3_blend.sh
-. /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc/gpt3_blend_${CORPUS}.sh
+######## Retro workdir. ########
+RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
+
+######## Data blend. ########
+. ${BLEND_SCRIPT_DIR}/gpt3_blend_${CORPUS}.sh
 DATA_PATH=${DATA_BLEND}
 
-GPT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
-GPT_MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
-GPT_TOKENIZER_TYPE=GPT2BPETokenizer
-
-BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
-BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
-BERT_TOKENIZER_TYPE=BertWordPieceLowerCase
-
-# >>>>>>>>>>>>>>>>>>>>>>>
-RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/${CORPUS}
-
+######## Retro args. ########
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
@@ -68,7 +51,6 @@ RETRO_INDEX_TY=faiss-par-add
 
 # >>>
 RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-# RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=1 LR_WARMUP_SAMPLES=1
 RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
 # +++
 # RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
@@ -93,20 +75,14 @@ RETRO_NNBRS_QUERY=2000
 RETRO_NNBRS_TARGET=200
 # RETRO_NNBRS_PRETRAINING=2
 
+######## Megatron args. ########
 SEED=1234 # default
-# SEED=1001
-DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
-# MICRO_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
-
-#     --log-interval 100 \
-#     --save-interval 10000 \
-#     --cyclic-train-iters 750000 \ # ... retro pretraining only
-#     --no-load-optim \ # ... just experimenting
+DISTRIBUTED_TIMEOUT_MINUTES=600
 MEGATRON_ARGS=" \
     --seed ${SEED} \
     --no-async-tensor-model-parallel-allreduce \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \
-    --tokenizer-type ${BERT_TOKENIZER_TYPE} \
+    --tokenizer-type BertWordPieceLowerCase \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 24 \
@@ -138,24 +114,17 @@ MEGATRON_ARGS=" \
     --no-data-sharding \
 "
 
-# --retro-precompute-bert-lengths \
-# --retro-embedder ${RETRO_EMBEDDER} \
-# --retro-dump-huggingface-embeddings \
-# --retro-nclusters ${RETRO_NCLUSTERS} \
-# --retro-ivf-dim ${RETRO_IVF_DIM} \
-# --retro-hnsw-m ${RETRO_HNSW_M} \
-# --retro-pq-m ${RETRO_PQ_M} \
-# --retro-nnbrs-pretraining ${RETRO_NNBRS_PRETRAINING} \
+######## Retro args. ########
 RETRO_ARGS=" \
     --output-bert-embeddings \
 
     --retro-gpt-vocab-file ${GPT_VOCAB_FILE} \
     --retro-gpt-merge-file ${GPT_MERGE_FILE} \
-    --retro-gpt-tokenizer-type ${GPT_TOKENIZER_TYPE} \
+    --retro-gpt-tokenizer-type GPT2BPETokenizer \
     --retro-gpt-seq-length ${RETRO_GPT_SEQ_LENGTH} \
     --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-bert-vocab-file ${BERT_VOCAB_FILE} \
-    --retro-bert-tokenizer-type ${BERT_TOKENIZER_TYPE} \
+    --retro-bert-tokenizer-type BertWordPieceLowerCase \
     --retro-bert-batch-size ${RETRO_BERT_BATCH_SIZE} \
     --retro-bert-max-chunk-length ${RETRO_BERT_MAX_CHUNK_LENGTH} \
 
@@ -175,22 +144,11 @@ RETRO_ARGS=" \
     --retro-return-doc-ids \
 "
 
-# RETRO_PREPROCESS_CMD=" \
-#     python -m torch.distributed.launch \
-#     --nproc_per_node ${NPROCS} \
-#     --nnodes 1 \
-#     --node_rank ${NODE_RANK} \
-#     --master_addr ${MASTER_ADDR} \
-#     --master_port 6000 \
-#     ./tools/retro/main.py \
-#     ${MEGATRON_ARGS} \
-#     ${RETRO_ARGS} \
-# "
-# python -u ./tools/retro/main.py \
+######## Command. ########
 RETRO_PREPROCESS_CMD=" \
     ./tools/retro/main.py \
     ${MEGATRON_ARGS} \
     ${RETRO_ARGS} \
 "
 
-# eof
+# eof.

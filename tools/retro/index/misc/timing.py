@@ -25,7 +25,7 @@ def time_hnsw(args, timer):
     timer = Timer()
 
     timer.push("read-index")
-    empty_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/index/faiss-base-corpus-clean/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000__trained.faissindex"
+    empty_index_path = index_wrapper.get_empty_index_path()
     index = faiss.read_index(empty_index_path)
     index_ivf = faiss.extract_index_ivf(index)
     quantizer = index_ivf.quantizer
@@ -100,7 +100,7 @@ def time_query(args, timer):
     timer = Timer()
 
     timer.push("read-index")
-    added_index_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/index/faiss-par-add-corpus-clean/OPQ32_256,IVF4194304_HNSW32,PQ32__t100000000/added_064_000-063.faissindex"
+    added_index_path = index_wrapper.get_added_index_path()
     index = faiss.read_index(added_index_path)
     index_ivf = faiss.extract_index_ivf(index)
     timer.pop()
