@@ -27,17 +27,15 @@ class DBDataset(torch.utils.data.Dataset):
     
     Requires:
     - List of indexed datasets
-    - Chunk index array (with format [dataset_idx, doc_id, start_idx, end_idx, bert_length])
+    - Chunk index array, with format:
+        [dataset_idx, doc_id, start_idx, end_idx, bert_length])
     '''
 
-    def __init__(
-            self,
-            indexed_datasets,
-            chunks,
-            max_chunk_length,
-    ):
+    def __init__(self, indexed_datasets, chunks, max_chunk_length):
 
-        assert chunks.shape[1] == 5, "expected 5 columns (dataset_idx, doc_idx, token_start_idx, token_end_idx, bert_chunk_length); found %d columns." % chunks.shape[1]
+        assert chunks.shape[1] == 5, "expected 5 columns (dataset_idx, " \
+        "doc_idx, token_start_idx, token_end_idx, bert_chunk_length); " \
+        "found %d columns." % chunks.shape[1]
 
         self.indexed_datasets = indexed_datasets
         self.chunks = chunks
@@ -52,6 +50,7 @@ class DBDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, chunk_id):
 
+        # Chunk start/end indexes.
         indexed_dataset_id, doc_id, token_start_idx, token_end_idx, _ = \
             [ value.item() for value in self.chunks[chunk_id] ]
         chunk_length = token_end_idx - token_start_idx
