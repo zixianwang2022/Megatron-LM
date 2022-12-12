@@ -35,10 +35,6 @@ from tools.retro.pretraining.chunk_dataset import \
     get_gpt_chunk_dataset_map as get_pt_gpt_chunk_dataset_map
 from tools.retro.utils import get_args_path, get_bert_tokenizer, get_gpt_tokenizer
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def shorten_str(s, n):
     return s if len(s) <= n else "%s ... %s" % (s[:n//2], s[-n//2:])
@@ -53,10 +49,8 @@ class retro:
     ##############################################
 
     @classmethod
-    # def load_args(cls, workdir):
     def init_megatron(cls, workdir):
-
-        # initialize_megatron(extra_args_provider = add_retro_args)
+        '''Custom initialization of Megatron.'''
 
         # Load args.
         args_path = get_args_path(workdir)
@@ -74,17 +68,13 @@ class retro:
 
     @classmethod
     def init(cls, workdir):
+        '''Initialize Megatron, tokenizers, and datasets.'''
 
         # Load args.
         cls.init_megatron(workdir)
 
         cls.gpt_tokenizer = get_gpt_tokenizer()
         cls.bert_tokenizer = get_bert_tokenizer()
-
-        # pax(0, {
-        #     "gpt_tokenizer" : cls.gpt_tokenizer,
-        #     "bert_tokenizer" : cls.bert_tokenizer,
-        # })
 
         # Load chunk dbs.
         cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos()
@@ -103,11 +93,13 @@ class retro:
 
     @classmethod
     def gpt_to_text(cls, token_ids):
+        '''GPT tokens to text.'''
         return cls.gpt_tokenizer.detokenize(token_ids)
 
 
     @classmethod
     def text_to_bert(cls, text):
+        '''Text to Bert tokens.'''
         return cls.bert_tokenizer.tokenize(text)
 
 
@@ -117,46 +109,52 @@ class retro:
 
     @classmethod
     def get_db_n_indexed_datasets(cls):
+        '''Number of indexed datasets within blendable dataset.'''
         return len(cls.db_indexed_dataset_infos)
 
 
     @classmethod
     def get_db_indexed_dataset_infos(cls):
+        '''Dataset infos, including number of training & sampled sets.'''
         return [(info["ratio"], info["name"])
                 for info in cls.db_indexed_dataset_infos]
 
     @classmethod
     def get_db_n_chunks(cls, data_key):
+        '''Number of DB chunks.'''
         return len(cls.db_gpt_chunk_dataset_map[data_key]["data"].chunk_index)
 
 
     @classmethod
     def get_db_chunk_gpt(cls, data_key, idx):
-        # pax(0, {"chunky": cls.db_gpt_chunk_dataset_map[data_key]})
+        '''Get DB chunk as GPT token ids.'''
         return cls.db_gpt_chunk_dataset_map[data_key]["data"][idx]["text"].tolist()
 
 
     @classmethod
     def get_db_chunk_bert(cls, data_key, idx):
+        '''Get DB chunk as Bert token ids.'''
         return cls.text_to_bert(cls.get_db_chunk_text(data_key, idx))
 
 
     @classmethod
     def get_db_chunk_text(cls, data_key, idx):
+        '''Get DB chunk as text.'''
         return cls.gpt_to_text(cls.get_db_chunk_gpt(data_key, idx))
 
 
     @classmethod
     def get_db_chunk_and_continuation_text(cls, data_key, idx):
+        '''Get DB chunk along with continuation, as text.'''
+
+        # Modulus used here to match original implementation (i.e., last
+        # chunks continuation wraps around to first chunk).
         gpt_chunks = [
             cls.get_db_chunk_gpt(data_key, idx),
-            cls.get_db_chunk_gpt(data_key, idx + 1),
+            cls.get_db_chunk_gpt(data_key, (idx + 1) % len(
+                cls.db_gpt_chunk_dataset_map[data_key]["data"])),
         ]
         text_chunks = [ cls.gpt_to_text(g) for g in gpt_chunks ]
-        # pax(0, {
-        #     "gpt_chunks" : gpt_chunks,
-        #     "text_chunks" : text_chunks,
-        # })
         return text_chunks
 
     
@@ -166,6 +164,7 @@ class retro:
 
     @classmethod
     def get_pt_n_seqs_n_chunks(cls, data_key):
+        '''Number of samples & chunks (e.g., 32*n_samples) in corpus.'''
         assert data_key in cls.pt_gpt_chunk_dataset_map, \
             "pretraining set '%s' not found (choices: %s)." % (
                 data_key, ", ".join(cls.pt_dataset_map.keys()))
@@ -177,11 +176,13 @@ class retro:
 
     @classmethod
     def get_pt_n_seqs(cls, data_key):
+        '''Number of pretraining samples.'''
         return cls.get_pt_n_seqs_n_chunks(data_key)[0]
 
 
     @classmethod
     def get_pt_n_chunks(cls, data_key):
+        '''Number of pretraining chunks (e.g., 32*n_samples).'''
         return cls.get_pt_n_seqs_n_chunks(data_key)[1]
 
 
@@ -192,8 +193,8 @@ class retro:
 
 
     @classmethod
-    # def get_pt_seq_chunk_gpt(cls, data_key, si, ci):
     def get_pt_chunk_gpt(cls, data_key, si, ci):
+        '''Get pretraining chunk, as GPT token ids.'''
         chunk_start_idx = cls.args.retro_gpt_chunk_length * ci
         chunk_end_idx = cls.args.retro_gpt_chunk_length * (ci + 1)
         return cls.get_pt_seq_gpt(data_key, si) \
@@ -202,6 +203,7 @@ class retro:
 
     @classmethod
     def get_pt_chunks_gpt(cls, data_key, si):
+        '''Get all pretraining chunks for a given sample, as GPT token ids.'''
         n_chunks_per_seq = cls.args.retro_gpt_seq_length // \
             cls.args.retro_gpt_chunk_length
         return [cls.get_pt_chunk_gpt(data_key, si, ci)
@@ -210,6 +212,7 @@ class retro:
 
     @classmethod
     def get_pt_chunk_nbrs(cls, data_key, si, ci):
+        '''Get pretraining chunk's neighbors.'''
         # >>> [ placeholder. ]
         return [943293, 513093, 141571, 148219, 427765, 718675, 20879, 937286]
         # <<<
@@ -217,6 +220,7 @@ class retro:
 
     @classmethod
     def get_pt_chunk_banned_doc_ids(cls, data_key, si, ci):
+        '''Get pretraining chunk's banned document ids.'''
         # >>> [ placeholder. ]
         return [218178, 522268, 839392, 124746, 68821, 799736, 322920, 964471]
         # <<<
@@ -228,6 +232,7 @@ class retro:
 
     @classmethod
     def print_usage(cls):
+        '''Print usage.'''
 
         print()
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -301,6 +306,3 @@ class retro:
         print("retro.get_pt_chunk_banned_doc_ids('train', si, ci) : %s" %
               shorten_str(str(cls.get_pt_chunk_banned_doc_ids("train", 0, 0)),50))
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
-
-
-# eof

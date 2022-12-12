@@ -143,23 +143,17 @@ def pretrain(train_valid_test_dataset_provider,
 
     iteration = 0
 
-    # >>>
     if args.dataloader_type == 'cyclic' and args.retro_add_retriever:
         print_rank_0("args.train_iters %d" % args.train_iters)
         args.train_iters = args.retro_cyclic_train_iters
         print_rank_0("args.retro_cyclic_train_iters %d" % args.train_iters)
-    # <<<
 
-    # >>>
-    # args.eval_ppl = True
     if args.retro_eval_ppl:
         prefix = 'the beginning of training for val data'
         evaluate_and_print_results(prefix, forward_step_func,
                                    valid_data_iterator, model,
                                    iteration, process_non_loss_data_func,
                                    False)
-        exit(0)
-    # <<<
 
     if args.do_train and args.train_iters > 0:
         iteration = train(forward_step_func,
@@ -389,10 +383,6 @@ def setup_model_and_optimizer(model_provider_func,
         args.iteration = load_checkpoint(model, optimizer, opt_param_scheduler)
         timers('load-checkpoint').stop(barrier=True)
         timers.log(['load-checkpoint'])
-        # >>>
-        # from lutil import pax
-        # pax(0, {"args": args, "hi": "there"})
-        # <<<
     else:
         args.iteration = 0
 
@@ -880,7 +870,7 @@ def cyclic_iter(iter):
         for x in iter:
             yield x
 
-# >>>
+
 def build_train_valid_test_data_loaders(
         build_train_valid_test_datasets_provider):
     """XXX"""
@@ -950,6 +940,7 @@ def build_train_valid_test_data_loaders(
 
     return train_dataloader, valid_dataloader, test_dataloader
 
+
 def build_train_valid_test_data_iterators(
         build_train_valid_test_datasets_provider):
 
@@ -983,4 +974,3 @@ def build_train_valid_test_data_iterators(
         test_data_iterator = None
 
     return train_data_iterator, valid_data_iterator, test_data_iterator
-# <<<
