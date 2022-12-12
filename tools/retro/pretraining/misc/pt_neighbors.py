@@ -16,7 +16,7 @@
 import faiss
 import numpy as np
 
-from tools.retro.pretraining.query import get_index as get_new_index,
+from tools.retro.pretraining.query import get_index as get_new_index
 from tools.retro.utils import get_gpt_tokenizer
 
 from .align import get_pickle_hash

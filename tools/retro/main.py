@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Build an index for similarity search.
+"""Preprocess data for Retro GPT model.
 
 Tasks:
-- Preprocess chunks
-- Embed chunks.
-- Index : train, add.
-- Neighbors : query, verify.
+- Build chunk database (DB).
+- Build index (train, add).
+- Query pretraining neighbors.
 """
 
 import json

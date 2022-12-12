@@ -15,9 +15,9 @@ set -u
 
 # PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-retro
 # CORPUS="play"
-# CORPUS="wiki"
+CORPUS="wiki"
 # CORPUS="wiki-1m"
-CORPUS="nih"
+# CORPUS="nih"
 # CORPUS="corpus"
 
 # Data blend.
@@ -104,6 +104,7 @@ DISTRIBUTED_TIMEOUT_MINUTES=600 # 180
 #     --no-load-optim \ # ... just experimenting
 MEGATRON_ARGS=" \
     --seed ${SEED} \
+    --no-async-tensor-model-parallel-allreduce \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \
     --tokenizer-type ${BERT_TOKENIZER_TYPE} \
     --tensor-model-parallel-size 1 \

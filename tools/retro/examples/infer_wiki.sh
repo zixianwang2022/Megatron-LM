@@ -13,8 +13,10 @@ HIDDEN_SIZE=768 # 256, [512], *768
 NUM_HEADS=12 # [4], 8, *12
 MICRO_BATCH_SIZE=4 # 2[k=10], 4[draco-rno], *8
 RETRO_ADD_RETRIEVER=1
-RETRO_NNBRS=2
-# RETRO_NNBRS=10
+RETRO_NNBRS=2 # *2, 10
+RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
+RETRO_CYCLIC_TRAIN_ITERS=750000
+# RETRO_CYCLIC_TRAIN_ITERS=100 # 1, 20
 
 CHECKPOINT_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/checkpoints/inference
 
@@ -59,9 +61,6 @@ options=" \
 if [ "$RETRO_ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py
 else
-    RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
-    RETRO_CYCLIC_TRAIN_ITERS=750000
-    # RETRO_CYCLIC_TRAIN_ITERS=100 # 1, 20
     options="${options} \
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-add-retriever \
@@ -74,8 +73,8 @@ fi
 unset NCCL_DEBUG
 # export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NPROCS=1
-# NPROCS=16
+# NPROCS=1
+NPROCS=16
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \

@@ -26,14 +26,19 @@ from megatron.initialize import (
     _initialize_distributed,
     _set_random_seed,
 )
-from tools.retro.db.dataset import \
-    get_gpt_chunk_dataset_map as get_db_gpt_chunk_dataset_map
-from tools.retro.db.utils import get_db_info_map, \
-    get_indexed_dataset_infos as get_db_indexed_dataset_infos
+# from tools.retro.db.dataset import \
+#     get_gpt_chunk_dataset_map as get_db_gpt_chunk_dataset_map
+# from tools.retro.db.utils import get_db_info_map, \
+#     get_indexed_dataset_infos as get_db_indexed_dataset_infos
+from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
 from tools.retro.main import add_retro_args
 from tools.retro.pretraining.chunk_dataset import \
-    get_gpt_chunk_dataset_map as get_pt_gpt_chunk_dataset_map
+    get_chunk_dataset_map as get_pt_chunk_dataset_map
 from tools.retro.utils import get_args_path, get_bert_tokenizer, get_gpt_tokenizer
+
+# >>>
+from lutil import pax
+# <<<
 
 
 def shorten_str(s, n):
