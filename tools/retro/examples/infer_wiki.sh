@@ -5,30 +5,21 @@ set -u
 . /gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc/gpt3_blend_wiki.sh
 DATA_PATH=${DATA_BLEND}
 
-# BPE_DIR="/lustre/fsw/adlr/adlr-nlp/data/pile-cc1-cc2-shuf/bpe"
-# VOCAB_FILE=${BPE_DIR}/gpt2-vocab.json \
-# MERGE_FILE=${BPE_DIR}/gpt2-merges.txt \
 VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-vocab.json
 MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/mpatwary/checkpoints/gpt3/gpt3-357m/gpt2-merges.txt
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 NUM_LAYERS=12 # 4, [*12]
 HIDDEN_SIZE=768 # 256, [512], *768
 NUM_HEADS=12 # [4], 8, *12
 MICRO_BATCH_SIZE=4 # 2[k=10], 4[draco-rno], *8
-ADD_RETRIEVER=1
+RETRO_ADD_RETRIEVER=1
+RETRO_NNBRS=2
+# RETRO_NNBRS=10
 
-# >>>
-CHECKPOINT_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/checkpoints/interactive
-TENSORBOARD_DIR="${CHECKPOINT_DIR}/tensorboard"
-mkdir -p ${TENSORBOARD_DIR}
-# <<<
+CHECKPOINT_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/checkpoints/inference
 
-#     --tensorboard-dir ${TENSORBOARD_DIR} \
-#     --log-validation-ppl-to-tensorboard \
-#     --loss-scale 1024 \
 options=" \
-
+    --load ${CHECKPOINT_DIR} \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers ${NUM_LAYERS} \
@@ -50,7 +41,6 @@ options=" \
     --data-path ${DATA_PATH} \
     --vocab-file ${VOCAB_FILE} \
     --merge-file ${MERGE_FILE} \
-    --save-interval 10000 \
     --split 98,2,0 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
@@ -65,7 +55,7 @@ options=" \
     --no-data-sharding \
 "
 
-if [ "$ADD_RETRIEVER" = "0" ]; then
+if [ "$RETRO_ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py
 else
     RETRO_WORKDIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki
@@ -75,11 +65,13 @@ else
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-add-retriever \
     --retro-cyclic-train-iters ${RETRO_CYCLIC_TRAIN_ITERS} \
+    --retro-nnbrs ${RETRO_NNBRS} \
     "
     SCRIPT=pretrain_gpt_retro.py
 fi
 
 unset NCCL_DEBUG
+export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 # NPROCS=1
 NPROCS=16

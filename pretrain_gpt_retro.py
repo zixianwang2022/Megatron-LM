@@ -21,8 +21,8 @@ import torch
 from megatron import get_args, get_retro_args
 from megatron import get_timers
 from megatron import get_tokenizer
-from megatron import mpu
 from megatron import print_rank_0
+from megatron.core import mpu
 from megatron.model import GPTModel, ModelType
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids

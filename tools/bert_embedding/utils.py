@@ -20,7 +20,8 @@ import os
 import torch
 from tqdm import tqdm
 
-from megatron import mpu, print_rank_0
+from megatron import print_rank_0
+from megatron.core import mpu
 
 
 def save_data(data_map, *args):

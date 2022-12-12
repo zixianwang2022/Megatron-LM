@@ -35,7 +35,7 @@ from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
 from .utils import (
     get_individual_db,
-    get_individual_db_info,
+    get_individual_db_dir,
     get_merged_db_path_map,
     save_indexed_dataset_infos,
 )

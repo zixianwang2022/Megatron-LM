@@ -6,7 +6,6 @@ import torch
 import torch.nn.functional as F
 
 from megatron import get_args
-from megatron import mpu
 from megatron.core import mpu, tensor_parallel
 
 from .enums import LayerType, AttnMaskType

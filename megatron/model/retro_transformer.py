@@ -21,8 +21,8 @@ import torch
 import torch.nn.functional as F
 
 from megatron import get_args, get_retro_args, get_tensorboard_writer
-from megatron import mpu
 from .module import MegatronModule
+from megatron.core import mpu
 from megatron.model.enums import AttnMaskType, ModelType, LayerType, AttnType
 from megatron.model import LayerNorm
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
