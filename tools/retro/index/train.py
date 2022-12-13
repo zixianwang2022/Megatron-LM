@@ -30,8 +30,7 @@ from tools.retro.utils import GPTToTextDataset
 
 from .utils import (
     get_index_dir,
-    get_training_data_block_dir,
-    get_training_data_block_paths,
+    get_training_data_dir,
     get_training_data_merged,
 )
 
@@ -66,8 +65,7 @@ def embed_db():
     embedder = DiskDataParallelBertEmbedder(args.retro_bert_batch_size,
                                             args.retro_bert_max_chunk_length,
                                             args.retro_block_size)
-    embedder.embed_text_dataset("index", get_training_data_block_dir(),
-                                text_dataset)
+    embedder.embed_text_dataset("index", get_training_data_dir(), text_dataset)
 
 
 def train_on_embeddings():

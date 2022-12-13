@@ -11,9 +11,9 @@ NPROCS=16
 
 ######## Data corpus. ########
 # CORPUS="play"
-CORPUS="wiki"
+# CORPUS="wiki"
 # CORPUS="wiki-1m"
-# CORPUS="nih"
+CORPUS="nih"
 # CORPUS="corpus"
 
 ######## Repo. ########
@@ -23,12 +23,13 @@ REPO="retro"
 
 ######## Environment vars. ########
 DIR=$(dirname "$0")
-echo "DIR = $DIR."
-exit
-source ./get_cmd.sh
+source ${DIR}/get_cmd.sh
+
+# echo "RETRO_PREPROCESS_CMD = ${RETRO_PREPROCESS_CMD}"
+# exit
 
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo "PARENT_PATH = '$PARENT_PATH'."
+echo "DIR = '$DIR'."
 echo "RETRO_PREPROCESS_CMD = '$RETRO_PREPROCESS_CMD'."
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 

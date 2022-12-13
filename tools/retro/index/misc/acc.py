@@ -21,9 +21,6 @@ import numpy as np
 import os
 import torch
 
-from tools.retro.query.acc.test_index_acc import vis_acc
-from tools.retro.index import FaissBaseIndex
-
 
 def count_nvecs(base_path, index_path):
 
@@ -160,6 +157,8 @@ def plot_query_acc():
 
     if torch.distributed.get_rank() != 0:
         return
+
+    timer = Timer()
 
     timer.push("get-index-paths")
     base_index = FaissBaseIndex(args)

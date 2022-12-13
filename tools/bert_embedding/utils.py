@@ -46,11 +46,10 @@ def save_data(data_map, *args):
     return path
 
 
-def load_data(paths, timer):
+def load_data(paths):
     '''Load multiple hdf5 files to single numpy array.'''
 
     # Read data shapes.
-    if timer: timer.push("shape")
     shape_map = defaultdict(lambda : (0, None))
     for p in paths:
         f = h5py.File(p, "r")
@@ -58,16 +57,12 @@ def load_data(paths, timer):
             shape = tuple(f[k].shape)
             shape_map[k] = (shape_map[k][0] + shape[0], shape[1])
         f.close()
-    if timer: timer.pop()
 
     # Allocate output array.
-    if timer: timer.push("alloc")
     data_map = { k : np.empty(s, dtype = "f4") for k, s in shape_map.items() }
     start_map = { k : 0 for k in shape_map }
-    if timer: timer.pop()
 
     # Load files.
-    if timer: timer.push("load")
     for pi, p in enumerate(tqdm(paths, "load data")):
         f = h5py.File(p, "r")
         for k in f.keys():
@@ -76,7 +71,6 @@ def load_data(paths, timer):
             data_map[k][i0:i1] = f[k]
             start_map[k] += len(f[k])
         f.close()
-    if timer: timer.pop()
 
     return data_map
 

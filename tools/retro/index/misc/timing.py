@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from tools.retro.utils import Timer
 
-def time_hnsw(args, timer):
+
+def time_hnsw():
     """Timing model for HNSW cluster assignment."""
 
     if torch.distributed.get_rank() != 0:
         return
-
-    from tools.retro.utils import Timer
 
     timer = Timer()
 
@@ -85,13 +85,11 @@ def time_hnsw(args, timer):
     exit(0)
 
 
-def time_query(args, timer):
+def time_query():
     """Timing model for querying."""
 
     if torch.distributed.get_rank() != 0:
         return
-
-    from tools.retro.utils import Timer
 
     # >>>
     faiss.omp_set_num_threads(1) # 128)
@@ -200,13 +198,12 @@ def time_query(args, timer):
     exit(0)
 
 
-def time_merge_partials(args, timer):
+def time_merge_partials():
     """Timing model for merging partial indexes."""
 
     if torch.distributed.get_rank() != 0:
         return
 
-    from retro.utils import Timer
     timer = Timer()
 
     get_cluster_ids = lambda n : np.random.randint(

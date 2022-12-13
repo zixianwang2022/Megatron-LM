@@ -2,11 +2,16 @@
 
 set -u
 
-# . ./get_vars.sh
+DIR=$(dirname "$0")
+. ${DIR}/get_vars.sh
 
 ######## Data blend. ########
 . ${BLEND_SCRIPT_DIR}/gpt3_blend_${CORPUS}.sh
 DATA_PATH=${DATA_BLEND}
+
+# echo "BLEND_SCRIPT_DIR = $BLEND_SCRIPT_DIR."
+# echo "DATA_PATH = $DATA_PATH"
+# exit
 
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
@@ -14,8 +19,8 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
-RETRO_TASKS="index-add"
-# RETRO_TASKS="pretraining-query-nbrs"
+# RETRO_TASKS="index-add"
+RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-pretraining-test-retro-dataset"
 # RETRO_TASKS="misc-pretraining-plot-acc"

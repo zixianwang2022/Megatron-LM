@@ -23,8 +23,8 @@ import torch
 from tqdm import tqdm
 
 from tools.bert_embedding.utils import load_data as load_hdf5_data
-from tools.retro.pretraining.misc.acc.test_index_acc import rowwise_intersection
-from tools.retro.utils import Timer
+
+from .acc import rowwise_intersection
 
 
 n_docs         = 5861214
@@ -49,7 +49,7 @@ def merge_split_data(model_key):
     raise Exception("already merged + split?")
 
     block_data_paths = get_block_data_paths(model_key)
-    all_data = load_hdf5_data(block_data_paths, Timer())["data"]
+    all_data = load_hdf5_data(block_data_paths)["data"]
     train_data = all_data[:n_chunks_train]
     valid_data = all_data[n_chunks_train:]
     assert len(all_data) == n_chunks
@@ -123,8 +123,8 @@ def train_index(model_key):
     # Load data.
     print("load data.")
     # inp = get_train_data(model_key)
-    # inp = load_hdf5_data(get_block_data_paths(model_key)[:100], Timer())["data"]
-    inp = load_hdf5_data(get_block_data_paths(model_key), Timer())["data"]
+    # inp = load_hdf5_data(get_block_data_paths(model_key)[:100])["data"]
+    inp = load_hdf5_data(get_block_data_paths(model_key))["data"]
     inp = inp[:n_chunks_train]
 
     # Init index.
@@ -231,16 +231,12 @@ def query_flat_nbrs(model_key, n_nbrs):
 
 def query_hier_nbrs(model_key, n_nbrs):
 
-    timer = Timer()
-
     hier_nbr_path = get_hier_nbr_path(model_key)
     if os.path.exists(hier_nbr_path):
         return
 
-    timer.push("load index")
     added_index_path = get_added_index_path(model_key)
     index = faiss.read_index(added_index_path)
-    timer.pop()
 
     print("ntotal %d." % index.ntotal)
 
@@ -349,7 +345,7 @@ def print_nbrs():
                     print("[sample %d] %s" % (nbr_idx, nbr_text))
 
 
-def run_bert_comparison(timer):
+def run_bert_comparison():
 
     if torch.distributed.get_rank() != 0:
         return

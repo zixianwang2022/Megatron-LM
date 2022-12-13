@@ -205,7 +205,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
         torch.distributed.barrier()
 
 
-def query_pretraining_neighbors(timer):
+def query_pretraining_neighbors():
     '''Query pretraining datasets (train & valid).'''
 
     args = get_retro_args()

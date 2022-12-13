@@ -23,37 +23,25 @@ from tqdm import tqdm
 # from tools.retro.add import add_to_index
 # from tools.retro.index import FaissBaseIndex, IndexFactory
 
-from ..utils import get_training_data_block_paths
+from ..utils import get_training_data_paths
 
 
-def verify_codes(timer):
-
-    # timer.push("add-base")
-    # base_index = FaissBaseIndex(args)
-    # base_index_path = base_index.add(args.add_paths, args.index_dir_path, timer)
-    # timer.pop()
-
-    # timer.push("add-test")
-    # test_index = IndexFactory.get_index(args)
-    # test_index_path = test_index.add(args.add_paths, args.index_dir_path, timer)
-    # # test_index_path = add_to_index(args, timer)
-    # timer.pop()
-
-    # torch.distributed.barrier()
+def verify_codes():
 
     if torch.distributed.get_rank() != 0:
         return
 
-    # >>>
-    base_index_wrapper = IndexFactory.get_index("base")
+    # Index paths.
+    base_index_wrapper = FaissBaseIndex()
     test_index_wrapper = IndexFactory.get_index()
     empty_index_path = base_index_wrapper.get_empty_index_path()
     base_index_path = base_index_wrapper.get_added_index_path()
     test_index_path = test_index_wrapper.get_added_index_path()
 
+    # Build base index.
     if not os.path.exists(base_index_path):
         base_index = faiss.read_index(empty_index_path)
-        input_paths = get_training_data_block_paths()
+        input_paths = get_training_data_paths()
         for input_index, input_path in enumerate(tqdm(input_paths)):
             with h5py.File(input_path) as f:
                 base_index.add(np.copy(f["data"]))
@@ -62,8 +50,6 @@ def verify_codes(timer):
 
     # Read indexes.
     timer.push("read")
-    # base_index = faiss.read_index(base_index_path)
-    # test_index = faiss.read_index(test_index_path)
     base_index = faiss.read_index(base_index_path, faiss.IO_FLAG_MMAP)
     test_index = faiss.read_index(test_index_path, faiss.IO_FLAG_MMAP)
     base_invlists = faiss.extract_index_ivf(base_index).invlists
@@ -91,11 +77,7 @@ def verify_codes(timer):
     timer.push("add")
     nlist = base_invlists.nlist
     code_size = base_invlists.code_size
-    # for list_id in range(args.ncluster):
-    for list_id in tqdm(range(nlist)):
-
-        # if list_id % 100000 == 0:
-        #     print("verify list %d / %d." % (list_id, nlist), flush = True)
+    for list_id in tqdm(range(nlist), "verify lists"):
 
         # Get list size, ids, codes.
         base_list_size = base_invlists.list_size(list_id)
@@ -126,6 +108,3 @@ def verify_codes(timer):
     print("verified %d codes." % base_index.ntotal)
 
     timer.pop()
-
-    # Final sync. [ unnecessary ]
-    # torch.distributed.barrier()

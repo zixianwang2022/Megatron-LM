@@ -23,8 +23,6 @@ from megatron.tokenizer.tokenizer import (
     _GPT2BPETokenizer,
 )
 
-from .timer import Timer
-
 
 def get_args_path(workdir):
     '''Argument copy stored within retro workdir.'''
