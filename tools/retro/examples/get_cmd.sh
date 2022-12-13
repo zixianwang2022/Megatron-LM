@@ -2,8 +2,21 @@
 
 set -u
 
-DIR=$(dirname "$0")
+# DIR=$(dirname "$0")
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 . ${DIR}/get_vars.sh
+
+######## Data corpus. ########
+# CORPUS="play"
+# CORPUS="wiki"
+# CORPUS="wiki-1m"
+# CORPUS="nih"
+CORPUS="corpus"
+
+######## Repo. ########
+REPO="retro"
+# REPO="retro-wiki"
+# REPO="retro-corpus"
 
 ######## Data blend. ########
 . ${BLEND_SCRIPT_DIR}/gpt3_blend_${CORPUS}.sh
@@ -18,9 +31,9 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
-# RETRO_TASKS="index-train"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="pretraining-query-nbrs"
+# RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-pretraining-test-retro-dataset"
 # RETRO_TASKS="misc-pretraining-plot-acc"
@@ -60,7 +73,7 @@ RETRO_NPROBE=4096 # 65536
 # RETRO_PRECOMPUTE_BERT_LENGTHS
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
-RETRO_GPT_MICRO_BATCH_SIZE=8
+RETRO_GPT_MICRO_BATCH_SIZE=4 # *8
 RETRO_GPT_GLOBAL_BATCH_SIZE=256
 RETRO_BERT_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
 RETRO_BERT_MAX_CHUNK_LENGTH=256
@@ -114,7 +127,7 @@ MEGATRON_ARGS=" \
 ######## Retro args. ########
 RETRO_ARGS=" \
     --output-bert-embeddings \
-
+    \
     --retro-gpt-vocab-file ${GPT_VOCAB_FILE} \
     --retro-gpt-merge-file ${GPT_MERGE_FILE} \
     --retro-gpt-tokenizer-type GPT2BPETokenizer \
@@ -124,20 +137,20 @@ RETRO_ARGS=" \
     --retro-bert-tokenizer-type BertWordPieceLowerCase \
     --retro-bert-batch-size ${RETRO_BERT_BATCH_SIZE} \
     --retro-bert-max-chunk-length ${RETRO_BERT_MAX_CHUNK_LENGTH} \
-
+    \
     --retro-tasks ${RETRO_TASKS} \
     --retro-index-ty ${RETRO_INDEX_TY} \
     --retro-index-str ${RETRO_INDEX_STR} \
     --retro-ef-search ${RETRO_EF_SEARCH} \
     --retro-nprobe ${RETRO_NPROBE} \
-
+    \
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-nchunks-sampled ${RETRO_NCHUNKS_SAMPLED} \
     --retro-doc-block-size ${RETRO_DOC_BLOCK_SIZE} \
     --retro-block-size ${RETRO_BLOCK_SIZE} \
     --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \
     --retro-nnbrs-target ${RETRO_NNBRS_TARGET} \
-
+    \
     --retro-return-doc-ids \
 "
 

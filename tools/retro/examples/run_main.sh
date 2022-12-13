@@ -9,20 +9,9 @@ unset NCCL_DEBUG
 # NPROCS=8
 NPROCS=16
 
-######## Data corpus. ########
-# CORPUS="play"
-# CORPUS="wiki"
-# CORPUS="wiki-1m"
-CORPUS="nih"
-# CORPUS="corpus"
-
-######## Repo. ########
-REPO="retro"
-# REPO="retro-wiki"
-# REPO="retro-corpus"
-
 ######## Environment vars. ########
-DIR=$(dirname "$0")
+# DIR=$(dirname "$0")
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source ${DIR}/get_cmd.sh
 
 # echo "RETRO_PREPROCESS_CMD = ${RETRO_PREPROCESS_CMD}"
