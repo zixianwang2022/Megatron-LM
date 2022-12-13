@@ -84,7 +84,7 @@ def embed_block(gpt_dataset, block, embedder):
 
 
 def query_embeddings(index, banned_chunk_map, chunk_id_range,
-                     embeddings, sample_map, n_chunks_per_seq):
+                     embeddings, sample_map, n_chunks_per_sample):
     '''Query neighbors of a block of embeddings.'''
 
     args = get_retro_args()
@@ -123,7 +123,7 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
     min_chunk_id, max_chunk_id = chunk_id_range
     for chunk_id in range(min_chunk_id, max_chunk_id):
 
-        sample_id = chunk_id // n_chunks_per_seq
+        sample_id = chunk_id // n_chunks_per_sample
 
         # Get valid neighbors (!= -1).
         query_row = [ i for i in query_nbr_ids[chunk_id-min_chunk_id] if i >= 0 ]
@@ -139,24 +139,26 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
     return query_nbr_ids, filtered_nbr_ids
 
 
-def query_block_neighbors(index, banned_chunk_map, dataset, block, embedder):
+def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
+                          block, embedder):
     '''Query neighbors of a dataset block (i.e., range).'''
 
     args = get_retro_args()
+    n_chunks_per_sample = chunk_dataset.n_chunks_per_sample
 
     # Sample map.
-    sample_ids = sorted(list(set(chunk_id // n_chunks_per_seq
+    sample_ids = sorted(list(set(chunk_id // n_chunks_per_sample
                                  for chunk_id in range(*block["range"]))))
-    sample_map = {i:dataset.seq_dataset[i] for i in sample_ids}
+    sample_map = {i:chunk_dataset.sample_dataset[i] for i in sample_ids}
 
     # Embed block.
-    embeddings = embed_block(dataset, block, embedder)
+    embeddings = embed_block(chunk_dataset, block, embedder)
 
     # Query embeddings.
     _, filtered_nbr_ids = query_embeddings(
         index, banned_chunk_map, block["range"],
         embeddings, sample_map,
-        dataset.n_chunks_per_seq)
+        n_chunks_per_sample)
 
     # Save neighbors.
     print_rank_0("save neighbors.")
@@ -167,7 +169,7 @@ def query_block_neighbors(index, banned_chunk_map, dataset, block, embedder):
 
 
 def query_dataset_neighbors(index, banned_chunk_map,
-                            prefix, dataset, nbr_dir,
+                            prefix, chunk_dataset, nbr_dir,
                             embedder):
     '''Query neighbors of each chunk within a dataset.'''
 
@@ -177,7 +179,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
         assert f["neighbors"].shape[1] == args.retro_nnbrs_target
     n_missing_blocks, missing_nbr_blocks = get_missing_blocks_by_rank(
         nbr_dir,
-        len(dataset),
+        len(chunk_dataset),
         args.retro_block_size,
         validate = validate,
     )
@@ -198,7 +200,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
 
             # Query block neighbors.
             query_block_neighbors(index, banned_chunk_map,
-                                  dataset, block, embedder)
+                                  chunk_dataset, block, embedder)
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")
@@ -237,10 +239,10 @@ def query_pretraining_neighbors():
     index = get_index(chunk_db_dataset)
 
     print_rank_0(" > get banned doc-chunk id map.")
-    banned_chunk_map = get_banned_chunk_map(chunk_db_dataset.chunk_db)
+    banned_chunk_map = get_banned_chunk_map(chunk_db_dataset.chunks)
 
     print_rank_0(" > get dataset map.")
-    chunk_dataset_map = get_gpt_chunk_dataset_map()
+    chunk_dataset_map = get_chunk_dataset_map()
 
     # Bert embedder.
     embedder = BertEmbedder(args.retro_bert_batch_size,
