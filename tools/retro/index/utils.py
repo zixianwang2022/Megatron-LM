@@ -76,10 +76,14 @@ def get_training_data_merged():
     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
 
     # Initialize merged data.
+    print("allocate training data array.")
+    t = time.time()
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
-    # data.fill(0) # ... allocates 1.2TB for real; np.empty does not allocate
+    data.fill(0) # ... allocates 1.2TB for real; np.empty does not allocate
+    print("  time : %.3f sec." % (time.time() - t))
 
     # Load data blocks.
+    print("load training data blocks.")
     start_idx = 0
     pbar = tqdm(block_paths)
     for path_index, path in enumerate(pbar):

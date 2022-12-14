@@ -18,6 +18,7 @@ import faiss
 import h5py
 import numpy as np
 import os
+import time
 import torch
 from tqdm import tqdm
 
@@ -90,17 +91,11 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
     args = get_retro_args()
 
     # Query neighbor ids.
-    # >>>
-    from tools.retro.utils import Timer
-    timer = Timer()
-    timer.push("search")
-    # <<<
     print_rank_0("search.")
+    t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_nbr_ids = index.search(embeddings, args.retro_nnbrs_query)
-    # >>>
-    timer.pop()
-    # <<<
+    print("  time : %.3f sec." % (time.time() - t))
 
     # Banned neighbor ids.
     print_rank_0("get banned neighbor ids.")

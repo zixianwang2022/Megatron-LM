@@ -117,8 +117,8 @@ def test_alloc_performance():
 def train_index():
     '''Train index on DB chunks.'''
     # >>>
-    test_alloc_performance()
-    exit()
+    # test_alloc_performance()
+    # exit()
     # <<<
     embed_db()
     train_on_embeddings()
