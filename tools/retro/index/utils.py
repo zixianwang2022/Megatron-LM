@@ -79,7 +79,7 @@ def get_training_data_merged():
     print("allocate training data array.")
     t = time.time()
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
-    data.fill(0) # ... allocates 1.2TB for real; np.empty does not allocate
+    data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
     print("  time : %.3f sec." % (time.time() - t))
 
     # Load data blocks.
@@ -91,20 +91,10 @@ def get_training_data_merged():
             psutil.virtual_memory()[3] / 1024**3,
             psutil.virtual_memory()[2],
         ))
-        # t = time.time()
         with h5py.File(path, "r") as f:
             n_current = len(f["data"])
             data[start_idx:(start_idx+n_current)] = f["data"]
             start_idx += n_current
-        # t = time.time() - t
-        # if path_index % 50 == 0:
-        #     print("load train block %d / %d ... %s sec, mem %.0f gb [ %.1f ]." % (
-        #         path_index,
-        #         len(block_paths),
-        #         t,
-        #         psutil.virtual_memory()[3] / 1024**3,
-        #         psutil.virtual_memory()[2],
-        #     ))
 
     # Verify.
     assert start_idx == n_chunks_sampled
