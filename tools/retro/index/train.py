@@ -84,8 +84,42 @@ def remove_embeddings():
     remove_embedding_dir(EMBED_KEY)
 
 
+# >>>
+def test_alloc_performance():
+
+    import gc
+    from lutil import pax
+    from tools.retro.utils import Timer
+
+    if torch.distributed.get_rank() == 0:
+        def time_alloc(n):
+            timer = Timer()
+
+            timer.push(f"n {n}")
+            data = np.empty((n, 1024), dtype = "f4")
+            data.fill(0)
+            timer.pop()
+
+            del data
+            gc.collect()
+
+        for _pow in range(9):
+            n = int(np.power(10, _pow))
+            time_alloc(n)
+        time_alloc(int(300e6))
+
+    torch.distributed.barrier()
+    exit()
+
+# <<<
+
+
 def train_index():
     '''Train index on DB chunks.'''
+    # >>>
+    test_alloc_performance()
+    exit()
+    # <<<
     embed_db()
     train_on_embeddings()
     # remove_embeddings() # uncomment, or manually remove 'training_data_tmp/'
