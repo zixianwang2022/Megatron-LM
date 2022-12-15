@@ -52,7 +52,7 @@ class FaissBaseIndex(Index):
 
         # >>>
         # faiss.omp_set_num_threads(32)
-        faiss.omp_set_num_threads(8)
+        # faiss.omp_set_num_threads(8)
         # <<<
 
         # Init index.

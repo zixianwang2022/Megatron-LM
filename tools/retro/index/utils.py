@@ -65,25 +65,75 @@ def get_training_data_paths():
     return sorted(glob.glob(get_training_data_dir() + "/*.hdf5"))
 
 
+# >>>
+# def get_training_data_merged():
+#     # >>>
+#     raise Exception("merge to np.memmap.")
+#     # <<<
+#     '''Merge embeddings into single dataset.'''
+
+#     args = get_retro_args()
+
+#     # Setup.
+#     block_paths = get_training_data_paths()
+#     ds_infos = get_indexed_dataset_infos()
+#     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
+
+#     # Initialize merged data.
+#     print("allocate training data array.")
+#     t = time.time()
+#     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
+#     data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
+#     print("  time : %.3f sec." % (time.time() - t))
+
+#     # Load data blocks.
+#     print("load training data blocks.")
+#     start_idx = 0
+#     pbar = tqdm(block_paths)
+#     for path_index, path in enumerate(pbar):
+#         pbar.set_description("mem %.0f gb, %.1f%%" % (
+#             psutil.virtual_memory()[3] / 1024**3,
+#             psutil.virtual_memory()[2],
+#         ))
+#         with h5py.File(path, "r") as f:
+#             n_current = len(f["data"])
+#             data[start_idx:(start_idx+n_current)] = f["data"]
+#             start_idx += n_current
+
+#     # Verify.
+#     assert start_idx == n_chunks_sampled
+
+#     return data
+# +++
+from lutil import pax
+
 def get_training_data_merged():
-    # >>>
-    raise Exception("merge to np.memmap.")
-    # <<<
     '''Merge embeddings into single dataset.'''
 
     args = get_retro_args()
+    # >>>
+    # load_ratio = 1.
+    load_ratio = 2.5 / 3
+    # load_ratio = 0.1 / 3
+    # <<<
 
-    # Setup.
+    # Compute num samples.
     block_paths = get_training_data_paths()
-    ds_infos = get_indexed_dataset_infos()
-    n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
+    n_chunks_sampled = 0
+    for path in tqdm(block_paths, "compute n_chunks_sampled"):
+        with h5py.File(path, "r") as f:
+            n_chunks_sampled += int(load_ratio * f["data"].shape[0])
+
+    # >>>
+    # pax(0, {"n_chunks_sampled": n_chunks_sampled})
+    # <<<
 
     # Initialize merged data.
     print("allocate training data array.")
     t = time.time()
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
     data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
-    print("  time : %.3f sec." % (time.time() - t))
+    print("  time : %.3f sec. (n %d)" % (time.time() - t, n_chunks_sampled))
 
     # Load data blocks.
     print("load training data blocks.")
@@ -95,14 +145,16 @@ def get_training_data_merged():
             psutil.virtual_memory()[2],
         ))
         with h5py.File(path, "r") as f:
-            n_current = len(f["data"])
-            data[start_idx:(start_idx+n_current)] = f["data"]
+            # n_current = len(f["data"])
+            n_current = int(load_ratio * f["data"].shape[0])
+            data[start_idx:(start_idx+n_current)] = f["data"][:n_current]
             start_idx += n_current
 
     # Verify.
     assert start_idx == n_chunks_sampled
 
     return data
+# <<<
 
 
 def remove_training_data():
