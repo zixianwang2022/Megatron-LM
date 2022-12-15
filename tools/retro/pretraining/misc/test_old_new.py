@@ -15,16 +15,21 @@
 
 import h5py
 import numpy as np
+import os
 import torch
 import types
 
-from megatron import get_retro_args
+from megatron import get_args, get_retro_args
 from tools.bert_embedding.huggingface import HuggingfaceEmbedder
 from tools.retro.utils import get_gpt_tokenizer
 
 from ..retro_dataset import get_retro_datasets as get_new_retro_datasets
 from .align import align_db_idxs, align_pt_idxs, get_pickle_hash
-from .pt_neighbors import print_pt_neighbors, print_nbrs
+from .pt_neighbors import (
+    print_nbrs,
+    print_pt_neighbors,
+    print_pt_neighbors_var_histo,
+)
 
 
 class OldDBDataset(torch.utils.data.Dataset):
@@ -48,10 +53,10 @@ class OldDBDataset(torch.utils.data.Dataset):
 
 class OldRetroDataset(torch.utils.data.Dataset):
 
-    def __init__(self, db_ds, token_path, nbr_path):
+    def __init__(self, db_dataset, token_path, nbr_path):
         super().__init__()
         args = get_retro_args()
-        self.db_ds = db_ds
+        self.db_dataset = db_dataset
         self.tokens = h5py.File(token_path, "r")["tokens"]
         self.nbrs = h5py.File(nbr_path, "r")["neighbors"]
         self.nnbrs = args.retro_nnbrs_pretraining
@@ -72,7 +77,7 @@ class OldRetroDataset(torch.utils.data.Dataset):
             crnt_nbr_token_ids = []
             for ni in range(self.nnbrs):
                 crnt_nbr_chunk_ids.append(nbrs[ci][ni])
-                crnt_nbr_token_ids.append(self.db_ds[nbrs[ci][ni]]["text"])
+                crnt_nbr_token_ids.append(self.db_dataset[nbrs[ci][ni]]["text"])
             nbr_chunk_ids.append(crnt_nbr_chunk_ids)
             nbr_token_ids.append(crnt_nbr_token_ids)
         nbr_chunk_ids = np.array(nbr_chunk_ids)
@@ -87,16 +92,16 @@ class OldRetroDataset(torch.utils.data.Dataset):
 
 def get_old_retro_datasets():
 
-    db_ds = OldDBDataset()
+    db_dataset = OldDBDataset()
 
     train_ds = OldRetroDataset(
-        db_ds,
+        db_dataset,
         os.environ["OLD_RETRO_WIKI_TRAIN_DATA"],
         os.environ["OLD_RETRO_WIKI_TRAIN_NBRS"],
     )
 
     valid_ds = OldRetroDataset(
-        db_ds,
+        db_dataset,
         os.environ["OLD_RETRO_WIKI_VALID_DATA"],
         os.environ["OLD_RETRO_WIKI_VALID_NBRS"],
     )
@@ -107,7 +112,10 @@ def get_old_retro_datasets():
 def test_old_new():
 
     args = get_retro_args()
-    args.retro_nnbrs_pretraining = 10
+
+    nnbrs = 40
+    args.retro_nnbrs_pretraining = nnbrs
+    get_args().retro_nnbrs = nnbrs
 
     old_pt_train_ds, old_pt_valid_ds, _ = get_old_retro_datasets()
     new_pt_train_ds, new_pt_valid_ds, _ = get_new_retro_datasets()
@@ -116,8 +124,8 @@ def test_old_new():
     pt_valid_hashes = align_pt_idxs("valid", old_pt_valid_ds, new_pt_valid_ds)
 
     db_hashes = align_db_idxs(
-        old_pt_train_ds.db_ds,
-        new_pt_train_ds.db_chunk_dataset,
+        old_pt_train_ds.db_dataset,
+        new_pt_train_ds.db_dataset,
     )
 
     meta = types.SimpleNamespace(
@@ -125,7 +133,7 @@ def test_old_new():
         embedder = HuggingfaceEmbedder(128, 256),
         chunk_length = args.retro_gpt_chunk_length,
         nnbrs = args.retro_nnbrs_pretraining,
-        n_chunks_per_seq = new_pt_train_ds.chunk_dataset.n_chunks_per_seq,
+        n_chunks_per_sample = new_pt_train_ds.chunk_dataset.n_chunks_per_sample,
     )
 
     # print_db_neighbors(
@@ -143,7 +151,14 @@ def test_old_new():
     #     pt_train_hashes,
     #     db_hashes,
     # )
-    print_pt_neighbors(
+    # print_pt_neighbors(
+    #     meta,
+    #     old_pt_valid_ds,
+    #     new_pt_valid_ds,
+    #     pt_valid_hashes,
+    #     db_hashes,
+    # )
+    print_pt_neighbors_var_histo(
         meta,
         old_pt_valid_ds,
         new_pt_valid_ds,
@@ -202,12 +217,12 @@ def query(
     print("get index.")
     index = get_index(db_ds, ondisk = True)
 
-    n_chunks_per_seq = new_pt_train_ds.chunk_dataset.n_chunks_per_seq
-    chunk_id = sample_idx * n_chunks_per_seq + chunk_idx
+    n_chunks_per_sample = new_pt_train_ds.chunk_dataset.n_chunks_per_sample
+    chunk_id = sample_idx * n_chunks_per_sample + chunk_idx
     unfiltered_nbr_ids, filtered_nbr_ids = query_embeddings(
         index, banned_chunk_map, (chunk_id, chunk_id + 1), sample_embed,
-        {sample_idx: new_pt_train_ds.chunk_dataset.seq_dataset[sample_idx]},
-        n_chunks_per_seq,
+        {sample_idx: new_pt_train_ds.chunk_dataset.sample_dataset[sample_idx]},
+        n_chunks_per_sample,
     )
 
     for nbr_id in range(len(old_nbr_token_ids)):

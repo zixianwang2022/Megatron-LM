@@ -35,7 +35,11 @@ class FaissBaseIndex(Index):
         assert torch.distributed.get_rank() == 0
 
         # Set num threads (torch.distributed reset it to 1).
+        # >>>
         faiss.omp_set_num_threads(64)
+        # faiss.omp_set_num_threads(32)
+        # faiss.omp_set_num_threads(128)
+        # <<<
 
         empty_index_path = self.get_empty_index_path(dir_path)
 
@@ -45,6 +49,11 @@ class FaissBaseIndex(Index):
 
         # Load data.
         inp = input_data_loader()
+
+        # >>>
+        # faiss.omp_set_num_threads(32)
+        faiss.omp_set_num_threads(8)
+        # <<<
 
         # Init index.
         index = faiss.index_factory(args.retro_nfeats, args.retro_index_str)

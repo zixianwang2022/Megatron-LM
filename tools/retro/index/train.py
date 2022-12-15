@@ -106,6 +106,9 @@ def test_alloc_performance():
         for _pow in range(9):
             n = int(np.power(10, _pow))
             time_alloc(n)
+        time_alloc(int(150e6))
+        time_alloc(int(200e6))
+        time_alloc(int(250e6))
         time_alloc(int(300e6))
 
     torch.distributed.barrier()
@@ -117,8 +120,8 @@ def test_alloc_performance():
 def train_index():
     '''Train index on DB chunks.'''
     # >>>
-    # test_alloc_performance()
-    # exit()
+    test_alloc_performance()
+    exit()
     # <<<
     embed_db()
     train_on_embeddings()

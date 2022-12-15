@@ -28,11 +28,11 @@ def get_pickle_hash(value):
     return int(hashlib.sha256(pickle.dumps(value)).hexdigest()[:10], 16)
 
 
-def get_seq_hashes(prefix, seq_iter, get_token_id_list):
+def get_sample_hashes(prefix, sample_iter, get_token_id_list):
     hash_map = {}
-    for seq_id, seq in enumerate(tqdm(seq_iter, "seq hashes / %s" % prefix)):
-        token_ids = get_token_id_list(seq)
-        hash_map[get_pickle_hash(token_ids)] = seq_id
+    for sample_id, sample in enumerate(tqdm(sample_iter, "sample hashes / %s" % prefix)):
+        token_ids = get_token_id_list(sample)
+        hash_map[get_pickle_hash(token_ids)] = sample_id
     return hash_map
 
 
@@ -50,19 +50,19 @@ def align_idxs(prefix, old_dict, new_dict):
 
         print("get hashes.")
         old_hash_map = \
-            get_seq_hashes(f"{prefix} / old", old_dict["data"], old_dict["post"])
+            get_sample_hashes(f"{prefix} / old", old_dict["data"], old_dict["post"])
         new_hash_map = \
-            get_seq_hashes(f"{prefix} / new", new_dict["data"], new_dict["post"])
+            get_sample_hashes(f"{prefix} / new", new_dict["data"], new_dict["post"])
 
         print("common hashes.")
         common_hashes = list(set(old_hash_map) & set(new_hash_map))
-        old_seq_ids = [ old_hash_map[h] for h in common_hashes ]
-        new_seq_ids = [ new_hash_map[h] for h in common_hashes ]
+        old_sample_ids = [ old_hash_map[h] for h in common_hashes ]
+        new_sample_ids = [ new_hash_map[h] for h in common_hashes ]
 
         print("save hashes.")
         with h5py.File(path, "w") as f:
             f.create_dataset("data", data = np.stack(
-                [old_seq_ids, new_seq_ids, common_hashes],
+                [old_sample_ids, new_sample_ids, common_hashes],
                 axis = 1,
             ))
 
@@ -98,7 +98,7 @@ def align_pt_idxs(dkey, old_ds, new_ds):
             "post" : lambda tokens : tokens.tolist(),
         },
         {
-            "data" : new_ds.chunk_dataset.seq_dataset,
+            "data" : new_ds.chunk_dataset.sample_dataset,
             "post" : lambda sample : sample["text"][:2048].tolist(),
         },
     )
