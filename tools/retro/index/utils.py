@@ -66,6 +66,9 @@ def get_training_data_paths():
 
 
 def get_training_data_merged():
+    # >>>
+    raise Exception("merge to np.memmap.")
+    # <<<
     '''Merge embeddings into single dataset.'''
 
     args = get_retro_args()

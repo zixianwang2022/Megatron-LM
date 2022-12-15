@@ -22,10 +22,6 @@ from tools.retro.utils import get_gpt_tokenizer
 from .align import get_pickle_hash
 from .print_tokens import print_tokens
 
-# >>>
-from lutil import pax
-# <<<
-
 
 tokenizer = None
 def tokens2str(ts):
@@ -343,9 +339,6 @@ def print_pt_neighbors_var_histo(
         db_hashes,
 ):
 
-    # print(np.copy(pt_hashes.data))
-    # pax(0, {"pt_hashes / data": pt_hashes.data})
-
     old_dists = []
     new_dists = []
     for pt_entry in pt_hashes.data:
@@ -356,14 +349,6 @@ def print_pt_neighbors_var_histo(
         new_sample = new_pt_ds[new_sample_idx]
 
         assert str(old_sample["text"][:2048]) == str(new_sample["text"][:2048])
-
-        # pax(0, {
-        #     "old_sample_idx" : old_sample_idx,
-        #     "new_sample_idx" : new_sample_idx,
-        #     "sample_hash" : sample_hash,
-        #     "old_sample" : str(old_sample["text"]),
-        #     "new_sample" : str(new_sample["text"]),
-        # })
 
         for chunk_idx in range(new_pt_ds.chunk_dataset.n_chunks_per_sample):
 
@@ -379,8 +364,6 @@ def print_pt_neighbors_var_histo(
             old_dists.extend(_old_dists)
             new_dists.extend(_new_dists)
 
-            # pax({"old_dists": old_dists, "new_dists": new_dists})
-
         # accs.append(acc)
         # n_causal += int(causal)
         # old_dists.append(old_dist)
@@ -389,14 +372,12 @@ def print_pt_neighbors_var_histo(
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print(np.histogram(old_dists))
     print(np.histogram(new_dists))
-    pax(0, {
-        "old_dists" : "%d / %s" % (len(old_dists), str(old_dists)),
-        "new_dists" : "%d / %s" % (len(new_dists), str(new_dists)),
-        "old_dists / mean" : np.mean(old_dists).item(),
-        "new_dists / mean" : np.mean(new_dists).item(),
-        "old_dists / var" : np.var(old_dists).item(),
-        "new_dists / var" : np.var(new_dists).item(),
-    })
+    # "old_dists" : "%d / %s" % (len(old_dists), str(old_dists)),
+    # "new_dists" : "%d / %s" % (len(new_dists), str(new_dists)),
+    # "old_dists / mean" : np.mean(old_dists).item(),
+    # "new_dists / mean" : np.mean(new_dists).item(),
+    # "old_dists / var" : np.var(old_dists).item(),
+    # "new_dists / var" : np.var(new_dists).item(),
 
     # acc = np.mean(accs)
     # causal_rate = n_causal
