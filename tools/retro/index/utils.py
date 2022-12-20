@@ -105,50 +105,146 @@ def get_training_data_paths():
 
 #     return data
 # +++
+# from lutil import pax
+
+# def get_training_data_merged():
+#     '''Merge embeddings into single dataset.'''
+
+#     args = get_retro_args()
+#     # >>>
+#     load_ratio = 1.
+#     # load_ratio = 2.5 / 3
+#     # load_ratio = 0.1 / 3
+#     # <<<
+
+#     # Compute num samples.
+#     block_paths = get_training_data_paths()
+#     n_chunks_sampled = 0
+#     for path in tqdm(block_paths, "compute n_chunks_sampled"):
+#         with h5py.File(path, "r") as f:
+#             n_chunks_sampled += int(load_ratio * f["data"].shape[0])
+
+#     # >>>
+#     # pax(0, {"n_chunks_sampled": n_chunks_sampled})
+#     # <<<
+
+#     # Initialize merged data.
+#     print("allocate training data array.")
+#     t = time.time()
+#     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
+#     data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
+#     print("  time : %.3f sec. (n %d)" % (time.time() - t, n_chunks_sampled))
+
+#     # Load data blocks.
+#     print("load training data blocks.")
+#     start_idx = 0
+#     pbar = tqdm(block_paths)
+#     for path_index, path in enumerate(pbar):
+#         pbar.set_description("mem %.0f gb, %.1f%%" % (
+#             psutil.virtual_memory()[3] / 1024**3,
+#             psutil.virtual_memory()[2],
+#         ))
+#         with h5py.File(path, "r") as f:
+#             # n_current = len(f["data"])
+#             n_current = int(load_ratio * f["data"].shape[0])
+#             data[start_idx:(start_idx+n_current)] = f["data"][:n_current]
+#             start_idx += n_current
+
+#     # Verify.
+#     assert start_idx == n_chunks_sampled
+
+#     return data
+# +++
 from lutil import pax
+
+# def get_block_path_groups():
+def get_training_data_groups():
+
+    args = get_retro_args()
+
+    block_paths = get_training_data_paths()
+    max_group_size = args.retro_index_train_block_size
+
+    groups = []
+    group = []
+    group_size = 0
+    for block_path in block_paths:
+        with h5py.File(block_path) as f:
+            block_size = f["data"].shape[0]
+        group.append(block_path)
+        group_size += block_size
+
+        if group_size >= max_group_size:
+            groups.append({
+                "paths" : group,
+                "size" : group_size,
+            })
+            group = []
+            group_size = 0
+    if group:
+        groups.append({
+            "paths" : group,
+            "size" : group_size,
+        })
+
+    # pax(0, {
+    #     "groups" : groups,
+    #     "groups / 0" : groups[0],
+    #     "groups / 0 / block paths" : groups[0]["paths"],
+    #     "total group size" : sum(g["size"] for g in groups),
+    # })
+
+    return groups
+    
 
 def get_training_data_merged():
     '''Merge embeddings into single dataset.'''
 
     args = get_retro_args()
-    # >>>
-    load_ratio = 1.
-    # load_ratio = 2.5 / 3
-    # load_ratio = 0.1 / 3
-    # <<<
 
-    # Compute num samples.
-    block_paths = get_training_data_paths()
-    n_chunks_sampled = 0
-    for path in tqdm(block_paths, "compute n_chunks_sampled"):
-        with h5py.File(path, "r") as f:
-            n_chunks_sampled += int(load_ratio * f["data"].shape[0])
+    # Setup.
+    # block_paths = get_training_data_paths()
+    ds_infos = get_indexed_dataset_infos()
+    n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
 
     # >>>
-    # pax(0, {"n_chunks_sampled": n_chunks_sampled})
+    block_groups = get_training_data_groups()
+    # pax(0, {"block_path_groups": block_path_groups})
     # <<<
 
     # Initialize merged data.
     print("allocate training data array.")
     t = time.time()
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
-    data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
-    print("  time : %.3f sec. (n %d)" % (time.time() - t, n_chunks_sampled))
+    # data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
+    print("  time : %.3f sec." % (time.time() - t))
 
     # Load data blocks.
     print("load training data blocks.")
     start_idx = 0
-    pbar = tqdm(block_paths)
-    for path_index, path in enumerate(pbar):
+    pbar = tqdm(block_groups)
+    for block_group in pbar:
+
         pbar.set_description("mem %.0f gb, %.1f%%" % (
             psutil.virtual_memory()[3] / 1024**3,
             psutil.virtual_memory()[2],
         ))
-        with h5py.File(path, "r") as f:
-            # n_current = len(f["data"])
-            n_current = int(load_ratio * f["data"].shape[0])
-            data[start_idx:(start_idx+n_current)] = f["data"][:n_current]
-            start_idx += n_current
+
+        block_paths = block_group["paths"]
+        group_size = block_group["size"]
+        group_data = np.empty((group_size, args.retro_nfeats), dtype = "f4")
+        # group_data.fill(0)
+        group_start_idx = 0
+        for block_path in block_paths:
+            with h5py.File(block_path) as f:
+                n_current = len(f["data"])
+                group_data[group_start_idx:(group_start_idx+n_current)] = \
+                    f["data"]
+                group_start_idx += n_current
+        assert group_start_idx == group_size
+        data[start_idx:(start_idx+group_size)] = group_data
+        start_idx += group_size
+        # pax(0, {"group_data": group_data})
 
     # Verify.
     assert start_idx == n_chunks_sampled

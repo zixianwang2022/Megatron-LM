@@ -55,11 +55,8 @@ def add_retro_args(parser):
     group.add_argument("--retro-bert-max-chunk-length", type=int, required=True)
 
     group.add_argument("--retro-tasks", required = True)
-    group.add_argument("--retro-index-ty", required = True, choices = [
-        "faiss-base",
-        "faiss-decomp",
-        "faiss-par-add",
-    ])
+    group.add_argument("--retro-index-ty", required = True,
+                       choices = ["faiss-base", "faiss-par-add"])
     group.add_argument("--retro-nfeats", "-f", type = int, default = 1024)
     group.add_argument("--retro-index-str", required = True)
     group.add_argument("--retro-ef-search", type = int, default = 256)
@@ -68,6 +65,8 @@ def add_retro_args(parser):
     group.add_argument("--retro-nchunks-sampled", type = int, required = True)
     group.add_argument("--retro-doc-block-size", type = int, required = True)
     group.add_argument("--retro-block-size", type = int, required = True)
+    group.add_argument("--retro-index-train-block-size",
+                       type = int, default=3750000)
     group.add_argument("--retro-nnbrs-query", type = int, required = True)
     group.add_argument("--retro-nnbrs-target", type = int, required=True)
     # group.add_argument("--retro-nnbrs-pretraining", type = int, required=True)

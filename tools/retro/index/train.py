@@ -237,11 +237,11 @@ def test_iterative_alloc_performance():
 def train_index():
     '''Train index on DB chunks.'''
     # >>>
-    if torch.distributed.get_rank() == 0:
-        # test_monolithic_alloc_performance()
-        test_iterative_alloc_performance()
-    torch.distributed.barrier()
-    exit()
+    # if torch.distributed.get_rank() == 0:
+    #     # test_monolithic_alloc_performance()
+    #     test_iterative_alloc_performance()
+    # torch.distributed.barrier()
+    # exit()
     # <<<
     embed_db()
     # >>>
