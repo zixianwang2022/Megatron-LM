@@ -75,14 +75,15 @@ def load_data(paths):
     return data_map
 
 
-def get_missing_blocks_by_rank(workdir, n_samples, block_size,
-                               validate = lambda f : None):
+def get_missing_blocks(workdir, n_samples, block_size,
+                       validate = lambda f : None):
     '''Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
-    is to divide a range (size n_samples) into a sequence of blocks, and
-    map them to each rank via interleaving. This way, each rank has a roughly
-    equal number of blocks to process for each operation.
+    is to divide a range (size n_samples) into a sequence of blocks. Each
+    block corresponds to a file within 'workdir' with name
+    '{start_idx}-{end_idx}.hdf5'. This method checks for the existence of
+    these files, and returns a list of the ones that are missing.
     '''
 
     # Block ranges.
@@ -92,23 +93,22 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
 
     # All block files (existing + missing).
     n_digits = int(np.ceil(np.log(n_samples) / np.log(10)) + 1)
-    all_block_items = [{
+    all_blocks = [{
         "range" : r,
         "path" : os.path.join(
             workdir,
             "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
         )
     } for r in block_ranges]
-    all_block_path_set = set(item["path"] for item in all_block_items)
+    all_block_path_set = set(block["path"] for block in all_blocks)
 
     # Delete corrupt files.
     if torch.distributed.get_rank() == 0:
-        existing_block_paths = [item["path"]
-                                for item in all_block_items
-                                if os.path.exists(item["path"])]
-        pbar = tqdm(existing_block_paths)
-        for index, path in enumerate(pbar):
-            pbar.set_description("validating block.")
+        existing_block_paths = [block["path"]
+                                for block in all_blocks
+                                if os.path.exists(block["path"])]
+        for index, path in enumerate(
+                tqdm(existing_block_paths, "validating block.")):
 
             assert path in all_block_path_set, "unexpected filename, '%s'." % path
 
@@ -131,22 +131,37 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     torch.distributed.barrier()
 
     # Filter missing files.
-    missing_block_items = [item
-                           for item in all_block_items
-                           if not os.path.exists(item["path"])]
+    missing_blocks = [block
+                      for block in all_blocks
+                      if not os.path.exists(block["path"])]
+
+    return missing_blocks
+
+
+def get_missing_blocks_by_rank(workdir, n_samples, block_size,
+                               validate = lambda f : None):
+    '''Divide missing blocks evenly across all ranks.
+
+    See 'get_missing_blocks()' above for description. The returned list of
+    missing blocks is split evenly across ranks via interleaving. This way,
+    each rank has a roughly equal number of blocks to process for a
+    downstream operation.
+    '''
+
+    missing_blocks = get_missing_blocks(workdir, n_samples, block_size,
+                                             validate)
 
     # This rank's missing files.
     data_parallel_rank = mpu.get_data_parallel_rank()
     data_parallel_world_size = mpu.get_data_parallel_world_size()
-    rank_missing_block_items = missing_block_items[data_parallel_rank:len(missing_block_items):data_parallel_world_size]
+    rank_missing_blocks = missing_blocks[data_parallel_rank:len(missing_blocks):data_parallel_world_size]
 
-    # Extend rank's missing items (with None) such that all ranks have equal
+    # Extend rank's missing blocks (with None) such that all ranks have equal
     # length lists. This allows for easier tracking of global progress.
-    n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_block_items)])
+    n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_blocks)])
     torch.distributed.all_reduce(n_missing_tensor,
                                  op = torch.distributed.ReduceOp.MAX)
     max_n_missing = n_missing_tensor.item()
-    rank_missing_block_items += \
-        [None] * (max_n_missing - len(rank_missing_block_items))
+    rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
 
-    return len(missing_block_items), rank_missing_block_items
+    return len(missing_blocks), rank_missing_blocks

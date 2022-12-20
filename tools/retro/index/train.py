@@ -210,8 +210,8 @@ def test_iterative_alloc_performance():
 
     n_feats = 1024
     n_samples = 300000000
-    block_size = 1000000
-    # block_size = 3750000 # *
+    # block_size = 1000000
+    block_size = 3750000 # *
     # block_size = 10000000
 
     data = np.empty((n_samples, n_feats), dtype = "f4")
