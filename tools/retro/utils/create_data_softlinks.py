@@ -45,14 +45,12 @@ def create_data_softlinks(global_dirs, local_root_dir):
 
 
 if __name__ == "__main__":
-    # . /mnt/fsx-outputs-chipdesign/plegresley/data/gpt3/gpt3_blend.sh
-    # /mnt/fsx-outputs-chipdesign/plegresley/data/gpt3/
 
     global_prefixes = sorted([
         f
-        for f in glob.glob("/mnt/fsx-outputs-chipdesign/plegresley/data/gpt3/*")
+        for f in glob.glob("/from/dir/*")
         if os.path.isdir(f)
     ])
-    local_root_dir = "/mnt/fsx-outputs-chipdesign/lmcafee/retro/data"
+    local_root_dir = "/to/dir"
 
     create_data_softlinks(global_prefixes, local_root_dir)

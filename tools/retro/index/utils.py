@@ -112,8 +112,8 @@ def get_training_data_merged():
 
     args = get_retro_args()
     # >>>
-    # load_ratio = 1.
-    load_ratio = 2.5 / 3
+    load_ratio = 1.
+    # load_ratio = 2.5 / 3
     # load_ratio = 0.1 / 3
     # <<<
 

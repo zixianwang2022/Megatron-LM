@@ -218,7 +218,7 @@ def time_merge_partials():
     num_rows = get_num_rows(num_blocks)
 
     raise Exception("switch to IVF4194304.")
-    empty_index_path = "/mnt/fsx-outputs-chipdesign/lmcafee/retro/index/faiss-decomp-rand-100k/OPQ32_256,IVF1048576_HNSW32,PQ32__t3000000/cluster/ivfpq/empty.faissindex"
+    empty_index_path = index_wrapper.get_empty_index_path()
 
     data = np.random.rand(block_size, args.ivf_dim).astype("f4")
 
@@ -236,11 +236,11 @@ def time_merge_partials():
         ))
 
         input_index_path = os.path.join(
-            "/mnt/fsx-outputs-chipdesign/lmcafee/retro/index/tmp",
+            "/path/to/input",
             "index-r%03d.faissindex" % (row - 1),
         )
         output_index_path = os.path.join(
-            "/mnt/fsx-outputs-chipdesign/lmcafee/retro/index/tmp",
+            "/path/to/output",
             "index-r%03d.faissindex" % row,
         )
 
