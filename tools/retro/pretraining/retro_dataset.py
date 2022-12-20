@@ -13,49 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
-import glob
-import h5py
-import numpy as np
-import os
+# from collections import defaultdict
+# import glob
+# import h5py
+# import numpy as np
+# import os
 import torch
 
-from megatron import get_args, get_retro_args
-from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
-from tools.retro.pretraining.chunk_dataset import get_chunk_dataset_map
-
-
-class IdPathMap:
-    '''Maps indexes to the containing block path.
-
-    This class optimizing the mapping of a large number of indexes to the
-    path of its containing block. For example, with block_size 1M, this class
-    stores 1/1M as many (long) path strings, saving memory.
-    '''
-
-    def __init__(self, paths):
-        self.paths = paths
-        self.path_index_map = {p:i for i,p in enumerate(paths)}
-        self.id_index_map = {}
-
-
-    def __str__(self):
-        return "%d paths; %d ids" % (len(self.paths), len(self.id_index_map))
-
-
-    def add(self, id, path):
-        '''Map index to a path.'''
-        self.id_index_map[id] = self.path_index_map[path]
-
-
-    def __contains__(self, idx):
-        '''Index added to this object?'''
-        return idx in self.id_index_map
-
-
-    def __getitem__(self, idx):
-        '''Get path from index.'''
-        return self.paths[self.id_index_map[idx]]
+# from megatron import get_args, get_retro_args
+# from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
+# from tools.retro.pretraining.chunk_dataset import get_chunk_dataset_map
 
 
 class RetroDataset(torch.utils.data.Dataset):
@@ -143,27 +110,29 @@ class RetroDataset(torch.utils.data.Dataset):
         return sample
 
 
-def path_to_chunk_idxs(path):
-    '''Parse start/end indexes from block path name (e.g., 00010-00011.hdf5 ->
-    (10, 11).'''
-    return tuple([
-        int(i) for i in os.path.splitext(
-            os.path.basename(path))[0].split("-")])
+# >>>
+# def path_to_chunk_idxs(path):
+#     '''Parse start/end indexes from block path name (e.g., 00010-00011.hdf5 ->
+#     (10, 11).'''
+#     return tuple([
+#         int(i) for i in os.path.splitext(
+#             os.path.basename(path))[0].split("-")])
 
 
-def get_chunk_path_map(_dir):
-    '''Map chunk indexes to neighbor block path (on disk).'''
+# def get_chunk_path_map(_dir):
+#     '''Map chunk indexes to neighbor block path (on disk).'''
 
-    paths = sorted(glob.glob(_dir + "/*.hdf5"))
+#     paths = sorted(glob.glob(_dir + "/*.hdf5"))
 
-    # Build id-path map.
-    chunk_path_map = IdPathMap(paths)
-    for path in paths:
-        chunk_start_idx, chunk_end_idx = path_to_chunk_idxs(path)
-        for chunk_idx in range(chunk_start_idx, chunk_end_idx):
-            chunk_path_map.add(chunk_idx, path)
+#     # Build id-path map.
+#     chunk_path_map = IdPathMap(paths)
+#     for path in paths:
+#         chunk_start_idx, chunk_end_idx = path_to_chunk_idxs(path)
+#         for chunk_idx in range(chunk_start_idx, chunk_end_idx):
+#             chunk_path_map.add(chunk_idx, path)
 
-    return chunk_path_map
+#     return chunk_path_map
+# <<<
 
 
 def get_retro_datasets():
@@ -182,7 +151,10 @@ def get_retro_datasets():
 
         chunk_dataset = chunk_ds_info["data"]
         nbr_dir = chunk_ds_info["nbr_dir"]
-        nbr_path_map = get_chunk_path_map(nbr_dir)
+        # >>>
+        # nbr_path_map = get_chunk_path_map(nbr_dir)
+        nbr_path_map = get_index_path_map(nbr_dir)
+        # <<<
 
         # Verify dataset prefixes.
         sample_prefix = chunk_dataset.sample_dataset.datasets[0].index_prefix

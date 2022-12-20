@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from collections import defaultdict
+import glob
 import h5py
 import numpy as np
 import os
@@ -165,3 +166,59 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
 
     return len(missing_blocks), rank_missing_blocks
+
+
+class IdPathMap:
+    '''Maps indexes to the containing block path.
+
+    This class optimizing the mapping of a large number of indexes to the
+    path of its containing block. For example, with block_size 1M, this class
+    stores 1/1M as many (long) path strings, saving memory.
+    '''
+
+    def __init__(self, paths):
+        self.paths = paths
+        self.path_index_map = {p:i for i,p in enumerate(paths)}
+        self.id_index_map = {}
+
+
+    def __str__(self):
+        return "%d paths; %d ids" % (len(self.paths), len(self.id_index_map))
+
+
+    def add(self, id, path):
+        '''Map index to a path.'''
+        self.id_index_map[id] = self.path_index_map[path]
+
+
+    def __contains__(self, idx):
+        '''Index added to this object?'''
+        return idx in self.id_index_map
+
+
+    def __getitem__(self, idx):
+        '''Get path from index.'''
+        return self.paths[self.id_index_map[idx]]
+
+
+def path_to_range(path):
+    '''Parse start/end indexes from block path name (e.g., 00010-00011.hdf5 ->
+    (10, 11).'''
+    return tuple([
+        int(i) for i in os.path.splitext(
+            os.path.basename(path))[0].split("-")])
+
+
+def get_index_path_map(_dir):
+    '''Map contained indexes to block file path (on disk).'''
+
+    paths = sorted(glob.glob(_dir + "/*.hdf5"))
+
+    # Build index-path map.
+    idx_path_map = IdPathMap(paths)
+    for path in paths:
+        start_idx, end_idx = path_to_range(path)
+        for idx in range(start_idx, end_idx):
+            idx_path_map.add(idx, path)
+
+    return idx_path_map
