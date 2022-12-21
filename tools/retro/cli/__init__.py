@@ -239,7 +239,7 @@ class retro:
         print()
         print("~~~~ tokens, text ~~~~")
         print("retro.get_db_chunk_gpt(chunk_id) : %s" %
-              shorten_str(str(retro.get_db_chunk_gpt( 0)), 50))
+              shorten_str(str(retro.get_db_chunk_gpt(0)), 50))
         print("retro.get_db_chunk_bert(chunk_id) : %s" %
               shorten_str(str(retro.get_db_chunk_bert(0)), 50))
         print("retro.get_db_chunk_text(chunk_id) : %s" %

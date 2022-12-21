@@ -109,7 +109,7 @@ class HuggingfaceEmbedder:
         # Wrap iterator in tqdm for verbose output.
         _iter = self.pipe(dataset, batch_size = self.batch_size)
         if verbose:
-            _iter = tqdm(_iter, total = n_samples)
+            _iter = tqdm(_iter, "hf embed", total = n_samples)
 
         # Embed dataset.
         for idx, out_dict in enumerate(_iter):

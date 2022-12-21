@@ -14,7 +14,8 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 CORPUS="corpus"
 
 ######## Repo. ########
-REPO="retro"
+# REPO="retro"
+REPO="retro-embed"
 # REPO="retro-wiki"
 # REPO="retro-corpus"
 
@@ -31,7 +32,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
-RETRO_TASKS="index-train"
+# RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
@@ -51,7 +52,8 @@ RETRO_TASKS="index-train"
 # RETRO_TASKS="misc-db-bert-nan-analysis"
 # RETRO_TASKS="misc-db-print-embeddings"
 # RETRO_TASKS="misc-db-print-neighbors"
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison"
+# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v0"
+RETRO_TASKS="misc-index-megatron-huggingface-comparison-v1"
 # RETRO_TASKS="misc-index-check-train-valid-split"
 # RETRO_TASKS="misc-pretraining-compare-embeds"
 # RETRO_TASKS="misc-pretraining-print-neighbors"

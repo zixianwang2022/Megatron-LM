@@ -24,7 +24,7 @@ from tqdm import tqdm
 
 from tools.bert_embedding.utils import load_data as load_hdf5_data
 
-from .acc import rowwise_intersection
+from ..acc import rowwise_intersection
 
 
 n_docs         = 5861214

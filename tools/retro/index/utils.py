@@ -155,10 +155,14 @@ def get_training_data_paths():
 
 #     return data
 # +++
+import concurrent
+import gc
+
 from lutil import pax
 
 # def get_block_path_groups():
-def get_training_data_groups():
+# def get_training_data_groups():
+def get_training_data_group_infos():
 
     args = get_retro_args()
 
@@ -197,6 +201,43 @@ def get_training_data_groups():
     return groups
     
 
+def load_training_block(path, load_ratio):
+    with h5py.File(path) as f:
+        n_load = int(load_ratio * f["data"].shape[0])
+        return np.copy(f["data"][:n_load])
+
+
+def load_training_group(executor, group_info, load_ratio):
+
+    # Launch threads to load block data.
+    futures = []
+    for path in group_info["paths"]:
+        futures.append(executor.submit(load_training_block, path, load_ratio))
+
+    # Collect block data.
+    block_datas = []
+    for future in futures:
+        block_datas.append(future.result())
+
+    # Concatenate blocks.
+    group_data = np.concatenate(block_datas, axis = 0)
+
+    # Verify.
+    # assert group_data.shape[0] == group_info["size"]
+
+    # Garbage collect (likely useless).
+    for d in block_datas:
+        del d
+    gc.collect()
+
+    # pax(0, {
+    #     "group_info" : group_info,
+    #     "group_data / shape" : str(group_data.shape),
+    #     "group_data" : str(group_data),
+    # })
+
+    return group_data
+
 def get_training_data_merged():
     '''Merge embeddings into single dataset.'''
 
@@ -208,8 +249,10 @@ def get_training_data_merged():
     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
 
     # >>>
-    block_groups = get_training_data_groups()
-    # pax(0, {"block_path_groups": block_path_groups})
+    # load_ratio = 1. # [ bad ]
+    # load_ratio = 2.8 / 3 # [ timeout ]
+    load_ratio = 2.5 / 3 # [ ? ]
+    # load_ratio = 0.1 / 3
     # <<<
 
     # Initialize merged data.
@@ -219,35 +262,72 @@ def get_training_data_merged():
     # data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
     print("  time : %.3f sec." % (time.time() - t))
 
-    # Load data blocks.
-    print("load training data blocks.")
-    start_idx = 0
-    pbar = tqdm(block_groups)
-    for block_group in pbar:
+    # Data groups (minimizing fragmentation).
+    group_infos = get_training_data_group_infos()
 
-        pbar.set_description("mem %.0f gb, %.1f%%" % (
-            psutil.virtual_memory()[3] / 1024**3,
-            psutil.virtual_memory()[2],
-        ))
+    # # Load data blocks.
+    # print("load training data blocks.")
+    # start_idx = 0
+    # pbar = tqdm(block_groups)
+    # for block_group in pbar:
 
-        block_paths = block_group["paths"]
-        group_size = block_group["size"]
-        group_data = np.empty((group_size, args.retro_nfeats), dtype = "f4")
-        # group_data.fill(0)
-        group_start_idx = 0
-        for block_path in block_paths:
-            with h5py.File(block_path) as f:
-                n_current = len(f["data"])
-                group_data[group_start_idx:(group_start_idx+n_current)] = \
-                    f["data"]
-                group_start_idx += n_current
-        assert group_start_idx == group_size
-        data[start_idx:(start_idx+group_size)] = group_data
-        start_idx += group_size
-        # pax(0, {"group_data": group_data})
+    #     pbar.set_description("mem %.0f gb, %.1f%%" % (
+    #         psutil.virtual_memory()[3] / 1024**3,
+    #         psutil.virtual_memory()[2],
+    #     ))
 
-    # Verify.
-    assert start_idx == n_chunks_sampled
+    #     block_paths = block_group["paths"]
+    #     group_size = block_group["size"]
+    #     group_data = np.empty((group_size, args.retro_nfeats), dtype = "f4")
+    #     # group_data.fill(0)
+    #     group_start_idx = 0
+    #     for block_path in block_paths:
+    #         with h5py.File(block_path) as f:
+    #             n_current = len(f["data"])
+    #             group_data[group_start_idx:(group_start_idx+n_current)] = \
+    #                 f["data"]
+    #             group_start_idx += n_current
+    #     assert group_start_idx == group_size
+    #     data[start_idx:(start_idx+group_size)] = group_data
+    #     start_idx += group_size
+    #     # pax(0, {"group_data": group_data})
+    n_threads = max(len(group["paths"]) for group in group_infos)
+    # pax(0, {"n_threads": n_threads})
+    with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
+
+        # Load data blocks.
+        print("load training data blocks.")
+        start_idx = 0
+        pbar = tqdm(group_infos)
+        for group_info in pbar:
+
+            pbar.set_description("mem %.0f gb, %.1f%%" % (
+                psutil.virtual_memory()[3] / 1024**3,
+                psutil.virtual_memory()[2],
+            ))
+
+            group_data = load_training_group(executor, group_info, load_ratio)
+            data[start_idx:(start_idx+len(group_data))] = group_data
+            start_idx += len(group_data)
+
+            # Garbage collect (likely useless).
+            del group_data
+            gc.collect()
+
+        # >>>
+        # Handle load ratio <1.
+        data = data[:start_idx]
+        print(">>>>>> data.shape = %s." % str(data.shape))
+        # <<<
+
+        # Verify.
+        # assert start_idx == n_chunks_sampled
+
+    # pax(0, {
+    #     "data" : str(data),
+    #     "data / shape" : str(data.shape),
+    #     "data / dtype" : str(data.dtype),
+    # })
 
     return data
 # <<<

@@ -22,13 +22,18 @@ import torch
 from torch.utils.data import BatchSampler, DataLoader, SequentialSampler, Subset
 from torch.utils.data._utils.collate import default_collate
 
-from megatron import get_args, get_tokenizer, mpu, print_rank_0
+from megatron import get_args, get_tokenizer, print_rank_0
+from megatron import core
 from megatron.model import BertModel, ModelType
 from megatron.schedules import get_forward_backward_func
 from megatron.training import setup_model_and_optimizer
 
 from .dataset import BertEmbeddingDataset
 from .utils import get_missing_blocks_by_rank
+
+# >>>
+from lutil import pax
+# <<<
 
 
 def model_provider(pre_process=True, post_process=True):
@@ -58,10 +63,22 @@ def get_batch(data_iterator):
 
     # Broadcast data.
     if data_iterator is not None:
+        # >>>
         data = next(data_iterator)
+        # +++
+        # try:
+        #     data = next(data_iterator)
+        # except Exception as e:
+        #     raise e
+        #     pax({
+        #         "data_iterator" : data_iterator,
+        #         # "data" : data,
+        #         "e" : e,
+        #     })
+        # <<<
     else:
         data = None
-    data_b = mpu.broadcast_data(keys, data, datatype)
+    data_b = core.tensor_parallel.broadcast_data(keys, data, datatype)
 
     # Unpack.
     tokens = data_b['text'].long()
@@ -87,10 +104,18 @@ def forward_step(data_iterator, model):
     """Forward step."""
 
     args = get_args()
+    # >>>
+    # print("~~~~~~~~~~~~~~~~~~~~~~~~~ forward_step. ~~~~~~~~~~~~~~~~~~~~~~~~~")
+    # <<<
 
     # Get the batch.
+    # >>>
+    # try:
     tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
         seq_lengths = get_batch(data_iterator)
+    # except StopIteration:
+    #     return None
+    # <<<
 
     if not args.bert_binary_head:
         types = None
@@ -98,6 +123,10 @@ def forward_step(data_iterator, model):
     # Forward pass through the model.
     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
                           lm_labels=lm_labels)
+
+    # >>>
+    # pax({"output_tensor": output_tensor})
+    # <<<
 
     return output_tensor, partial(loss_func, loss_mask, sentence_order,
                                   seq_lengths)
@@ -143,6 +172,11 @@ def collate_batch(samples):
     # Build batch with padded samples.
     batch = default_collate(padded_samples)
 
+    # >>>
+    # pax({"batch": batch})
+    # <<<
+
+
     return batch
 
 
@@ -182,6 +216,38 @@ def embed_data_loader(models, data_loader, n_samples_world):
     for m in models:
         m.eval()
 
+    # >>>
+    from tqdm import tqdm
+
+    # def print_mem(key):
+    #     stats = torch.cuda.memory_stats()
+    #     print("%s ... alloc %.1f gb, res %.1f gb." % (
+    #         key,
+    #         stats["allocated_bytes.all.current"] / 1024**3,
+    #         stats["reserved_bytes.all.current"] / 1024**3,
+    #     ))
+
+    # print_mem("before")
+    embeddings = []
+    # while True:
+    # while tqdm(
+    n_batches = int(np.ceil(n_samples_world / 128))
+    for _ in tqdm(range(n_batches), "mt embed"):
+        # print_mem("during")
+        try:
+            with torch.no_grad():
+                result = forward_step(data_iterator, models[0])
+        except Exception as e:
+            # print_mem("after")
+            # raise e
+            break
+        # pax({"result": result})
+        embeddings.append(result[0].detach().cpu().numpy())
+    embeddings = np.concatenate(embeddings, axis = 0)
+    # pax({"embeddings": embeddings})
+    return embeddings
+    # <<<
+
     # World info (for printing progress).
     n_gpus_world = torch.distributed.get_world_size()
 
@@ -199,6 +265,9 @@ def embed_data_loader(models, data_loader, n_samples_world):
 
             # Forward pass.
             batch_start_time = time.time()
+            # >>>
+            # raise Exception("hi.") # good.
+            # <<<
             results = forward_backward_func(
                 forward_step,
                 data_iterator,
@@ -208,9 +277,16 @@ def embed_data_loader(models, data_loader, n_samples_world):
                 forward_only = True,
                 collect_non_loss_data = True,
             )
+            # >>>
+            raise Exception("hi.")
+            # <<<
             batch_end_time = time.time()
             batch_times.append(batch_end_time - batch_start_time)
             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
+
+            # >>>
+            pax({"results": results})
+            # <<<
 
             # Collect embeddings.
             assert len(results) == 1, "assert len(models) == 1 before this"
@@ -240,7 +316,7 @@ def embed_data_loader(models, data_loader, n_samples_world):
 class BertEmbedder:
     '''Compute Bert embeddings, from a text dataset.'''
 
-    def __init__(self, batch_size, max_bert_seq_length):
+    def __init__(self, batch_size, max_bert_seq_length, force_megatron = False):
 
         args = get_args()
 
@@ -255,11 +331,13 @@ class BertEmbedder:
         # >>>
         # **Note**: we currently only use the HuggingfaceEmbedder
         from .huggingface import HuggingfaceEmbedder
-        # self.huggingface_embedder = None
-        self.huggingface_embedder = HuggingfaceEmbedder(
-            batch_size,
-            max_bert_seq_length,
-        )
+        if force_megatron:
+            self.huggingface_embedder = None
+        else:
+            self.huggingface_embedder = HuggingfaceEmbedder(
+                batch_size,
+                max_bert_seq_length,
+            )
         # <<<
 
 
@@ -270,7 +348,7 @@ class BertEmbedder:
         # **Note**: we currently only use the HuggingfaceEmbedder
         if self.huggingface_embedder:
             return self.huggingface_embedder.embed_text_dataset(text_dataset)
-        raise Exception("using huggingface.")
+        # raise Exception("use huggingface.")
         # <<<
 
         # Wrap in a BertEmbeddingDataset to tokenize samples.

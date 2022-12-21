@@ -30,7 +30,10 @@ from megatron.global_vars import set_retro_args
 from tools.retro.db import build_db
 from tools.retro.db.misc import print_db_embeddings
 from tools.retro.index.build import add_to_index, build_index, train_index
-from tools.retro.index.misc.megatron_vs_huggingface import run_bert_comparison
+from tools.retro.index.misc.megatron_vs_huggingface import (
+    run_bert_comparison_v0,
+    run_bert_comparison_v1,
+)
 from tools.retro.index.misc.update_block_size import update_training_block_size
 from tools.retro.index.misc.verify_codes import verify_codes as verify_index_codes
 from tools.retro.pretraining.query import query_pretraining_neighbors
@@ -147,8 +150,10 @@ if __name__ == "__main__":
         elif task == "misc-index-time-hnsw":
             from tools.retro.index import FaissParallelAddIndex
             FaissParallelAddIndex.time_hnsw()
-        elif task == "misc-index-bert-comparison":
-            run_bert_comparison()
+        elif task == "misc-index-megatron-huggingface-comparison-v0":
+            run_bert_comparison_v0()
+        elif task == "misc-index-megatron-huggingface-comparison-v1":
+            run_bert_comparison_v1()
         elif task == "misc-index-check-train-valid-split":
             check_index_train_valid_split()
         elif task == "misc-index-update-training-block-size":
