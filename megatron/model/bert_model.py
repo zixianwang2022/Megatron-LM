@@ -190,6 +190,13 @@ class BertModel(MegatronModule):
 
             # Return pooled output (e.g., when computing Bert embeddings).
             if self.return_pooled_output:
+                # >>>
+                from lutil import pax
+                pax({"model_outputs": {
+                    "lm_output": lm_output,
+                    "pooled_output": pooled_output,
+                }})
+                # <<<
                 return pooled_output
 
         else:
