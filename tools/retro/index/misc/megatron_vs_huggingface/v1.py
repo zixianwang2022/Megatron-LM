@@ -49,22 +49,42 @@ def run_bert_comparison():
         force_megatron = False,
     )
 
-    n_samples = 10000 # 1024
-    text_dataset = torch.utils.data.Subset(text_dataset, range(n_samples))
+    n_samples = {
+        "train" : 10000,
+        "valid" : 10000,
+    }
+    text_datasets = {
+        "train" :
+        torch.utils.data.Subset(text_dataset, range(n_samples["train"])),
+        "valid" :
+        torch.utils.data.Subset(text_dataset,
+                                range(n_samples["train"],
+                                      n_samples["train"] + n_samples["valid"])),
+    }
 
-    megatron_embeds = \
-        megatron_embedder.embed_text_dataset(text_dataset, n_samples)
-    huggingface_embeds = \
-        huggingface_embedder.embed_text_dataset(text_dataset, n_samples)
+    megatron_embeds = {
+        k : megatron_embedder.embed_text_dataset(text_datasets[k], n_samples[k])
+        for k in n_samples
+    }
+    huggingface_embeds = {
+        k : huggingface_embedder.embed_text_dataset(text_datasets[k],n_samples[k])
+        for k in n_samples
+    }
+
+    # pax({"n_samples": n_samples})
 
     megatron_index = faiss.IndexFlatL2(1024)
     huggingface_index = faiss.IndexFlatL2(1024)
-    megatron_index.add(megatron_embeds)
-    huggingface_index.add(huggingface_embeds)
+    megatron_index.add(megatron_embeds["train"])
+    huggingface_index.add(huggingface_embeds["train"])
 
     max_nbrs = 200
-    _, megatron_nbrs = megatron_index.search(megatron_embeds, max_nbrs)
-    _, huggingface_nbrs = huggingface_index.search(huggingface_embeds, max_nbrs)
+    _, megatron_nbrs = \
+        megatron_index.search(megatron_embeds["valid"], max_nbrs)
+    _, huggingface_nbrs = \
+        huggingface_index.search(huggingface_embeds["valid"], max_nbrs)
+    # megatron_nbrs = megatron_nbrs[:, 1:]
+    # huggingface_nbrs = huggingface_nbrs[:, 1:]
 
     acc_map = {}
     for n_nbrs in (1, 2, 5, 10, 20, 50, 100, 200):

@@ -229,8 +229,6 @@ def embed_data_loader(models, data_loader, n_samples_world):
 
     # print_mem("before")
     embeddings = []
-    # while True:
-    # while tqdm(
     n_batches = int(np.ceil(n_samples_world / 128))
     for _ in tqdm(range(n_batches), "mt embed"):
         # print_mem("during")

@@ -8,10 +8,10 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 ######## Data corpus. ########
 # CORPUS="play"
-# CORPUS="wiki"
+CORPUS="wiki"
 # CORPUS="wiki-1m"
 # CORPUS="nih"
-CORPUS="corpus"
+# CORPUS="corpus"
 
 ######## Repo. ########
 # REPO="retro"
@@ -92,11 +92,13 @@ RETRO_NNBRS_TARGET=200
 ######## Megatron args. ########
 SEED=1234 # default
 DISTRIBUTED_TIMEOUT_MINUTES=600
+# --no-load-rng \
 MEGATRON_ARGS=" \
+    --no-load-optim \
     --seed ${SEED} \
     --no-async-tensor-model-parallel-allreduce \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \
-    --tokenizer-type BertWordPieceLowerCase \
+    --tokenizer-type ${BERT_TOKENIZER} \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 24 \

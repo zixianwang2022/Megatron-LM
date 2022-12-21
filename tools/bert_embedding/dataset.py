@@ -56,6 +56,7 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         # Text.
         text_sample = self.text_dataset[idx]
         text = text_sample["text"]
+        text = text.replace("<|endoftext|>", "")
 
         # Bert/Wordpiece tokens (+truncate).
         bert_token_ids = self.bert_tokenizer.tokenize(text)
