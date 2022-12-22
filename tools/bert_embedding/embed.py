@@ -237,7 +237,7 @@ def embed_data_loader(models, data_loader, n_samples_world):
                 result = forward_step(data_iterator, models[0])
         except Exception as e:
             # print_mem("after")
-            # raise e
+            raise e
             break
         # pax({"result": result})
         embeddings.append(result[0].detach().cpu().numpy())

@@ -44,14 +44,18 @@ class MyFeatureExtractionPipeline(FeatureExtractionPipeline):
         # Embed inputs.
         model_outputs = self.model(**model_inputs)
 
-        # >>>
-        from lutil import pax
-        pax({"model_outputs": model_outputs})
-        # <<<
-
         # Attention mask.
         embeddings = model_outputs[0]
         masks = torch.sum(model_inputs['attention_mask'], dim=1)
+
+        # >>>
+        # from lutil import pax
+        # pax({"model_outputs": {
+        #     **model_outputs,
+        #     "attention_mask" : model_inputs["attention_mask"],
+        #     "masks" : masks,
+        # }})
+        # <<<
 
         # Collect embeddings & check for nan.
         outputs = []
