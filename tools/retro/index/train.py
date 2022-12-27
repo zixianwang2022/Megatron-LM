@@ -29,7 +29,6 @@ from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
 
 from .utils import (
-    get_index_dir,
     get_training_data_dir,
     get_training_data_merged,
 )
@@ -39,7 +38,7 @@ def get_empty_index_path():
     '''Path of empty index.'''
     args = get_retro_args()
     index = IndexFactory.get_index(args.retro_index_ty)
-    empty_index_path = index.get_empty_index_path(get_index_dir())
+    empty_index_path = index.get_empty_index_path()
     return empty_index_path
 
 
@@ -161,9 +160,8 @@ def embed_db():
 def train_on_embeddings():
     '''Train index on embedded DB chunks.'''
     args = get_retro_args()
-    workdir = get_index_dir()
     index = IndexFactory.get_index(args.retro_index_ty)
-    index.train(get_training_data_merged, workdir)
+    index.train(get_training_data_merged)
 
 
 def remove_embeddings():
@@ -171,7 +169,7 @@ def remove_embeddings():
     torch.distributed.barrier()
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
-    remove_embedding_dir(EMBED_KEY)
+    remove_training_data_dir()
 
 
 # >>>

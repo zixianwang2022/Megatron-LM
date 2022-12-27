@@ -18,7 +18,7 @@ import numpy as np
 import os
 import torch
 
-from tools.retro import utils
+from .utils import get_index_dir
 
 
 class Index:
@@ -37,45 +37,12 @@ class Index:
         return faiss.swig_ptr(np.ascontiguousarray(x))
 
 
-    @classmethod
-    def get_empty_index_path(cls, dir_path):
-        return os.path.join(dir_path, "empty.faissindex")
+    def get_empty_index_path(self):
+        return os.path.join(get_index_dir(), "empty.faissindex")
 
 
-    @classmethod
-    def get_added_index_path(cls, input_data_paths, dir_path):
-        return os.path.join(dir_path, "added.faissindex")
-
-
-    # @classmethod
-    # def get_output_data_path(cls, dir_path, task, suffix):
-    #     return os.path.join(dir_path, "%s_output%s_%s.hdf5" % (task, suffix))
-
-
-    # @classmethod
-    # def get_output_data_path(cls, dir_path, task, suffix):
-    #     sub_dir_name = "%s_output" % task
-    #     utils.make_sub_dir(dir_path, sub_dir_name)
-    #     return os.path.join(dir_path, sub_dir_name, "%s.hdf5" % suffix)
-
-
-    # def get_missing_output_data_path_map(self, input_paths, dir_path, task):
-
-    #     all_output_paths = []
-    #     missing_output_path_map = {}
-    #     missing_index = 0
-    #     for input_index, input_path in enumerate(input_paths):
-    #         output_path = self.get_output_data_path(dir_path, task, input_index)
-    #         all_output_paths.append(output_path)
-    #         if not os.path.isfile(output_path):
-    #             if missing_index % torch.distributed.get_world_size() == \
-    #                torch.distributed.get_rank():
-    #                 missing_output_path_map[input_index] = output_path
-    #             missing_index += 1
-
-    #     torch.distributed.barrier()
-
-    #     return all_output_paths, missing_output_path_map
+    def get_added_index_path(self, dataset_ranges):
+        return os.path.join(get_index_dir(), "added.faissindex")
 
 
     def train(self, *args):

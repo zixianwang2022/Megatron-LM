@@ -27,7 +27,7 @@ from tools.retro.index.utils import num_samples_to_block_ranges
 
 class FaissBaseIndex(Index):
 
-    def _train(self, input_data_loader, dir_path):
+    def _train(self, input_data_loader):
         '''Train index (rank 0's method).'''
 
         args = get_retro_args()
@@ -41,7 +41,7 @@ class FaissBaseIndex(Index):
         # faiss.omp_set_num_threads(128)
         # <<<
 
-        empty_index_path = self.get_empty_index_path(dir_path)
+        empty_index_path = self.get_empty_index_path()
 
         # Index already exists? -> return.
         if os.path.isfile(empty_index_path):
@@ -75,17 +75,17 @@ class FaissBaseIndex(Index):
         faiss.write_index(index, empty_index_path)
 
 
-    def train(self, input_data_loader, dir_path):
+    def train(self, input_data_loader):
         '''Train index.'''
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            self._train(input_data_loader, dir_path)
+            self._train(input_data_loader)
 
         torch.distributed.barrier()
 
 
-    def _add(self, text_dataset, dataset_sample_ranges, dir_path):
+    def _add(self, text_dataset, dataset_sample_ranges):
         '''Add to index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
@@ -100,9 +100,8 @@ class FaissBaseIndex(Index):
                                 args.retro_bert_max_chunk_length)
 
         # Empty/added index paths.
-        empty_index_path = self.get_empty_index_path(dir_path)
-        added_index_path = self.get_added_index_path(dataset_sample_ranges,
-                                                     dir_path)
+        empty_index_path = self.get_empty_index_path()
+        added_index_path = self.get_added_index_path(dataset_sample_ranges)
 
         # Skip adding, if index exists.
         if os.path.isfile(added_index_path):
@@ -125,17 +124,17 @@ class FaissBaseIndex(Index):
         faiss.write_index(index, added_index_path)
 
 
-    def add(self, text_dataset, dir_path):
+    def add(self, text_dataset):
         '''Add to index.'''
 
         dataset_sample_ranges = num_samples_to_block_ranges(len(text_dataset))
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            self._add(text_dataset, dataset_sample_ranges, dir_path)
+            self._add(text_dataset, dataset_sample_ranges)
 
         # Wait for rank 0.
         torch.distributed.barrier()
 
         # Get output index path, for return.
-        return self.get_added_index_path(dataset_sample_ranges, dir_path)
+        return self.get_added_index_path(dataset_sample_ranges)

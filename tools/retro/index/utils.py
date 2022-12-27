@@ -58,11 +58,19 @@ def num_samples_to_block_ranges(num_samples):
 
 
 def get_training_data_dir():
-    return os.path.join(get_index_dir(), "training_data_tmp")
+    return os.path.join(get_index_dir(), "train_tmp")
 
 
 def get_training_data_paths():
     return sorted(glob.glob(get_training_data_dir() + "/*.hdf5"))
+
+
+def get_added_codes_dir():
+    return os.path.join(get_index_dir(), "add_tmp")
+
+
+def get_added_codes_paths():
+    return sorted(glob.glob(get_added_codes_dir() + "/*.hdf5"))
 
 
 # >>>

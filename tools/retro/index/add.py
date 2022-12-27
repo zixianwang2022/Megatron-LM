@@ -18,8 +18,6 @@ from tools.retro.db.utils import get_merged_train_dataset
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
 
-from .utils import get_index_dir
-
 
 def add_to_index():
     '''Add DB chunks to index.'''
@@ -27,7 +25,6 @@ def add_to_index():
     args = get_retro_args()
 
     # Get index.
-    workdir = get_index_dir()
     index = IndexFactory.get_index(args.retro_index_ty)
 
     # Get text dataset.
@@ -35,17 +32,21 @@ def add_to_index():
     text_dataset = GPTToTextDataset(gpt_dataset)
 
     # Add to index.
-    output_index_path = index.add(text_dataset, workdir)
+    output_index_path = index.add(text_dataset)
 
     return output_index_path
 
 
-def remove_add_files():
-    '''Remove 'add*' files.
+def remove_add_tmp_files():
+    '''Remove 'add_tmp/' directory.
 
     This method is rarely needed, but here in case adding gets canceled
     partway through.
     '''
+
+    # >>>
+    raise Exception("only remove add_tmp directory.")
+    # <<<
 
     # Single process only.
     if torch.distributed.get_rank() != 0:
