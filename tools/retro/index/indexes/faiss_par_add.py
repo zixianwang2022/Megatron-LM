@@ -194,6 +194,48 @@ class FaissParallelAddIndex(Index):
         return index_path_map["output_index_path"]
 
 
+    # def encode_partial(self, partial_index_path_map, dir_path,
+    #                    text_dataset, embedder):
+    #     """Encode partial indexes (embarrassingly parallel).
+
+    #     Encode the partial indexes, generally in blocks of 1M vectors each.
+    #     For each block, the empty/trained index is loaded, and index.add() is
+    #     called on each block of data.
+    #     """
+
+    #     # Index & data paths.
+    #     empty_index_path = self.get_empty_index_path(dir_path)
+    #     partial_index_path = partial_index_path_map["output_index_path"]
+
+    #     # If partial index exists, return.
+    #     if os.path.isfile(partial_index_path):
+    #         return
+
+    #     # Embed data block.
+    #     input_data = self.embed_text_dataset_block(
+    #         embedder,
+    #         text_dataset,
+    #         partial_index_path_map["dataset_sample_range"],
+    #     )
+
+    #     # Print progress.
+    #     nvecs = len(input_data)
+    #     print_rank_0("ivfpq / add / partial,  block %d / %d. [ %d vecs ]" % (
+    #         partial_index_path_map["block_id"],
+    #         partial_index_path_map["num_blocks"],
+    #         nvecs,
+    #     ))
+
+    #     # Read index.
+    #     index = faiss.read_index(empty_index_path)
+    #     # self.c_verbose(index, True) # with block_size <1M, too verbose
+    #     # self.c_verbose(index.quantizer, True)
+
+    #     # Add to index.
+    #     index.add(input_data)
+
+    #     # Write index.
+    #     faiss.write_index(index, partial_index_path)
     def encode_partial(self, partial_index_path_map, dir_path,
                        text_dataset, embedder):
         """Encode partial indexes (embarrassingly parallel).
@@ -210,6 +252,36 @@ class FaissParallelAddIndex(Index):
         # If partial index exists, return.
         if os.path.isfile(partial_index_path):
             return
+
+        # >>>
+        data = np.random.randn(10000, 1024).astype("f4")
+        index = faiss.read_index(empty_index_path)
+        # index.add(data)
+        # invlists = faiss.extract_index_ivf(index).invlists
+
+        # import pickle
+        # b_invlists = pickle.dumps(invlists)
+        # faiss.write_index(invlists, partial_index_path)
+
+        codes = index.sa_encode(data)
+        index.add_sa_codes(codes)
+
+        invlists = faiss.extract_index_ivf(index).invlists
+        for list_id in range(invlists.nlist):
+            list_size = invlists.list_size(list_id)
+            if list_size >= 10:
+                print("%d. %d." % (list_id, list_size))
+
+        from lutil import pax
+        pax({
+            "index" : index,
+            # "invlists" : invlists,
+            # "b_invlists" : b_invlists,
+            "code_size" : index.sa_code_size(),
+            "codes" : codes,
+        })
+        raise Exception("encode test.")
+        # <<<
 
         # Embed data block.
         input_data = self.embed_text_dataset_block(
@@ -232,9 +304,11 @@ class FaissParallelAddIndex(Index):
         # self.c_verbose(index.quantizer, True)
 
         # Add to index.
-        index.add(input_data)
+        # index.add(input_data)
+        code
 
         # Write index.
+        raise Exception("extract codes.")
         faiss.write_index(index, partial_index_path)
 
 

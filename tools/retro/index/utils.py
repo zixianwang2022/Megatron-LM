@@ -251,7 +251,8 @@ def get_training_data_merged():
     # >>>
     # load_ratio = 1. # [ bad ]
     # load_ratio = 2.8 / 3 # [ timeout ]
-    load_ratio = 2.5 / 3 # [ ? ]
+    # load_ratio = 2.5 / 3 # [ timeout ]
+    load_ratio = 2.0 / 3 # [ success ]
     # load_ratio = 0.1 / 3
     # <<<
 
