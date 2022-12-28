@@ -39,10 +39,14 @@ class Index:
 
     def get_empty_index_path(self):
         return os.path.join(get_index_dir(), "empty.faissindex")
+    def get_empty_index(self):
+        return faiss.read_index(self.get_empty_index_path())
 
 
-    def get_added_index_path(self, dataset_ranges):
+    def get_added_index_path(self):
         return os.path.join(get_index_dir(), "added.faissindex")
+    def get_added_index(self):
+        return faiss.read_index(self.get_added_index_path())
 
 
     def train(self, *args):

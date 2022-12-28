@@ -16,6 +16,7 @@
 import h5py
 import numpy as np
 import os
+import shutil
 import torch
 from tqdm import tqdm
 
@@ -167,9 +168,13 @@ def train_on_embeddings():
 def remove_embeddings():
     '''Remove embeddings after training.'''
     torch.distributed.barrier()
+    if torch.distributed.get_rank() != 0:
+        return
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
-    remove_training_data_dir()
+    raise Exception("ready to delete?")
+    shutil.rmtree(get_training_data_dir())
+
 
 
 # >>>
@@ -246,4 +251,4 @@ def train_index():
     # merge_embeddings()
     # <<<
     train_on_embeddings()
-    # remove_embeddings() # uncomment, or manually remove 'training_data_tmp/'
+    # remove_embeddings() # uncomment, or manually remove 'train_tmp/'

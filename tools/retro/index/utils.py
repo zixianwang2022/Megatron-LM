@@ -18,7 +18,6 @@ import h5py
 import numpy as np
 import os
 import psutil
-import shutil
 import time
 import torch
 from tqdm import tqdm
@@ -69,7 +68,7 @@ def get_added_codes_dir():
     return os.path.join(get_index_dir(), "add_tmp")
 
 
-def get_added_codes_paths():
+def get_added_code_paths():
     return sorted(glob.glob(get_added_codes_dir() + "/*.hdf5"))
 
 
@@ -246,6 +245,7 @@ def load_training_group(executor, group_info, load_ratio):
 
     return group_data
 
+
 def get_training_data_merged():
     '''Merge embeddings into single dataset.'''
 
@@ -340,11 +340,3 @@ def get_training_data_merged():
 
     return data
 # <<<
-
-
-def remove_training_data():
-    '''Delete embeddings that were used for training.'''
-    if torch.distributed.get_rank() != 0:
-        return
-    raise Exception("ready to delete?")
-    shutil.rmtree(get_training_data_dir())
