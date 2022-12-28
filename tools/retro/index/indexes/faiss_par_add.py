@@ -43,7 +43,7 @@ class FaissParallelAddIndex(Index):
         return FaissBaseIndex().train(*args)
 
 
-    def encode_block(self, embedder, text_dataset, block):
+    def encode_block(self, index, embedder, text_dataset, block):
         '''Encode sub-dataset block, to be later added to index.
 
         Encode the data subset, generally in blocks of 1M vectors each. For
