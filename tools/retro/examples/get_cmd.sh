@@ -8,10 +8,10 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 ######## Data corpus. ########
 # CORPUS="play"
-# CORPUS="wiki"
+CORPUS="wiki"
 # CORPUS="wiki-1m"
 # CORPUS="nih"
-CORPUS="corpus"
+# CORPUS="corpus"
 
 ######## Repo. ########
 REPO="retro"
@@ -34,7 +34,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
-RETRO_TASKS="index-add"
+# RETRO_TASKS="index-add"
 # RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-index-update-training-block-size"
@@ -54,7 +54,7 @@ RETRO_TASKS="index-add"
 # RETRO_TASKS="misc-db-print-embeddings"
 # RETRO_TASKS="misc-db-print-neighbors"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v0"
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v1"
+RETRO_TASKS="misc-index-megatron-huggingface-comparison-v1"
 # RETRO_TASKS="misc-index-check-train-valid-split"
 # RETRO_TASKS="misc-pretraining-compare-embeds"
 # RETRO_TASKS="misc-pretraining-print-neighbors"
@@ -64,13 +64,13 @@ RETRO_TASKS="index-add"
 RETRO_INDEX_TY=faiss-par-add
 
 # >>>
-# RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-# RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
-# RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
+RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
+RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
+RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
 # +++
-RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
-RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
-RETRO_EF_SEARCH=32 RETRO_NPROBE=4096
+# RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
+# RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
+# RETRO_EF_SEARCH=32 RETRO_NPROBE=4096
 
 # RETRO_EF_SEARCH=16 # 32 # 256
 # RETRO_NPROBE=4096 # 65536
