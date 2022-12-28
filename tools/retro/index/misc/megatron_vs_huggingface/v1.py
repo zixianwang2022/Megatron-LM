@@ -30,7 +30,47 @@ from lutil import pax
 # <<<
 
 
-def get_datasets(n_samples):
+n_samples = {
+    # "train": 100, "valid": 100,
+    "train": 1000, "valid": 1000,
+    # "train": 10000, "valid": 10000,
+    # "train": 100000, "valid": 10000,
+}
+index_infos = {
+    "exact" : {
+        "name" : "Flat", # "FlatL2",
+        "search" : {},
+    },
+    # "approx" : args.retro_index_str,
+    # "approx" : {
+    #     "name" : "IVF262144_HNSW32,Flat",
+    #     "search" : {
+    #         "efSearch" : 32,
+    #         "nprobe" : 4096,
+    #     },
+    # },
+    "approx" : { # n 1000
+        "name" : "IVF512_HNSW8,Flat",
+        "search" : {"efSearch" : 8, "nprobe" : 32},
+    },
+    # "approx" : { # n 10000
+    #     "name" : "IVF512_HNSW8,Flat",
+    #     "search" : {"efSearch" : 8, "nprobe" : 32},
+    # },
+    # "approx" : { # n 100000
+    #     "name" : "IVF4096_HNSW8,Flat",
+    #     "search" : {"efSearch" : 8, "nprobe" : 256},
+    # },
+}
+
+def get_root_dir():
+    dirname = os.path.join(
+        get_index_dir(),
+        "compare",
+        "t%d-v%d" % (n_samples["train"], n_samples["valid"]),
+    )
+
+def get_datasets():
 
     gpt_dataset = get_merged_train_dataset()
     text_dataset = GPTToTextDataset(gpt_dataset)
@@ -75,34 +115,6 @@ def get_embeddings(datasets, embedders):
 
 
 def get_indexes(embedders):
-    index_infos = {
-        "exact" : {
-            "name" : "Flat", # "FlatL2",
-            "search" : {},
-        },
-        # "approx" : args.retro_index_str,
-        # "approx" : {
-        #     "name" : "IVF262144_HNSW32,Flat",
-        #     "search" : {
-        #         "efSearch" : 32,
-        #         "nprobe" : 4096,
-        #     },
-        # },
-        "approx" : {
-            "name" : "IVF512_HNSW8,Flat",
-            "search" : {
-                "efSearch" : 8,
-                "nprobe" : 32,
-            },
-        },
-    }
-    # indexes = {
-    #     mkey : {
-    #         ikey : faiss.index_factory(1024, iinfo["name"])
-    #         for ikey, iinfo in index_infos.items()
-    #     }
-    #     for mkey in embedders
-    # }
     indexes = defaultdict(dict)
     for model_key in embedders:
         for index_key, index_info in index_infos.items():
@@ -127,13 +139,6 @@ def get_nbrs(embeddings, indexes):
 
     max_nbrs = 200
 
-    # nbrs = {
-    #     mkey : {
-    #         ikey : index.search(embeddings[mkey]["valid"], max_nbrs)
-    #         for ikey, index in indexes[mkey].items()
-    #     }
-    #     for mkey in indexes
-    # }
     nbrs = defaultdict(dict)
     for model_key in indexes:
         for index_key, index_info in indexes[model_key].items():
@@ -141,8 +146,6 @@ def get_nbrs(embeddings, indexes):
             index = index_info["index"]
 
             search_params = index_info["search"]
-            # if search_params:
-            #     pax({"index": index, "search_params": search_params})
             for k, p in search_params.items():
                 faiss.ParameterSpace().set_index_parameter(index, k, p)
 
@@ -154,20 +157,16 @@ def get_nbrs(embeddings, indexes):
     return nbrs
 
 
-def get_acc(indexes, nbrs):
+def get_acc(nbrs):
     acc_map = defaultdict(dict)
-    for mkey0 in indexes:
-        for ikey0 in indexes[mkey0]:
-            for mkey1 in indexes:
-                for ikey1 in indexes[mkey1]:
+    for mkey0 in nbrs:
+        for ikey0 in nbrs[mkey0]:
+            for mkey1 in nbrs:
+                for ikey1 in nbrs[mkey1]:
                     if mkey0 == mkey1 and ikey0 == ikey1 or \
                        mkey0 < mkey1 or ikey0 < ikey1 or \
                        mkey0 != mkey1 and ikey0 != ikey1:
                         continue
-                    # if mkey0 == mkey1 or ikey0 == ikey1:
-                    #     pass
-                    # else:
-                    #     continue
                     for n_nbrs in (1, 2, 5, 10, 20, 50, 100, 200):
                         intsec = rowwise_intersection(
                             nbrs[mkey0][ikey0][:, :n_nbrs],
@@ -182,45 +181,56 @@ def get_acc(indexes, nbrs):
 def run_bert_comparison():
 
     from tools.retro.cli import shorten_str
+    from tools.retro.utils import Timer
 
     args = get_retro_args()
-
-    n_samples = {
-        # "train": 100, "valid": 100,
-        # "train": 1000, "valid": 1000,
-        "train": 10000, "valid": 10000,
-    }
+    timer = Timer()
 
     print("datasets.")
-    datasets = get_datasets(n_samples)
-    # pax(datasets)
+    if timer: timer.push("datasets")
+    datasets = get_datasets()
+    if timer: timer.pop()
 
     print("embedders.")
+    if timer: timer.push("embedders")
     embedders = get_embedders()
-    # pax(embedders)
+    if timer: timer.pop()
 
     print("embeddings.")
+    if timer: timer.push("embeddings")
     embeddings = get_embeddings(datasets, embedders)
-    # pax(embeddings)
+    if timer: timer.pop()
 
     print("indexes.")
+    if timer: timer.push("indexes")
     indexes = get_indexes(embedders)
-    # pax(indexes)
+    if timer: timer.pop()
 
-    print("train, add.")
+    print("build.")
+    if timer: timer.push("build")
     build_indexes(embeddings, indexes)
-    # >>>
-    # indexes = [index for imap in indexes.values() for index in imap.values()]
-    # pax({str(i):index for i, index in enumerate(indexes)})
-    # <<<
+    if timer: timer.pop()
 
     print("search.")
+    if timer: timer.push("search")
     nbrs = get_nbrs(embeddings, indexes)
-    # pax(nbrs)
+    if timer: timer.pop()
 
     print("acc.")
-    acc_map = get_acc(indexes, nbrs)
-    pax(acc_map)
+    if timer: timer.push("acc")
+    acc_map = get_acc(nbrs)
+    if timer: timer.pop()
+
+    pax({
+        "n_samples" : n_samples,
+        "indexes" : sorted(list(set(
+            "%s ... %s" % (info["name"], info["search"])
+            for imap in indexes.values()
+            for info in imap.values()
+        ))),
+        "acc_map" : acc_map,
+        "time_map" : timer.time_map,
+    })
 
     print("~~~~ megatron nbrs ~~~~")
     print(megatron_nbrs)
