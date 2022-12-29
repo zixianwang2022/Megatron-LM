@@ -284,6 +284,7 @@ def get_data_loader(dataset, batch_size):
 def embed_data_loader(models, data_loader):
     '''Iterate data loader and compute embeddings.'''
 
+    # Verify no model parallelism.
     args = get_args()
     assert args.tensor_model_parallel_size == 1 and \
         args.pipeline_model_parallel_size == 1, \
@@ -296,50 +297,13 @@ def embed_data_loader(models, data_loader):
     for m in models:
         m.eval()
 
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # Number of batches.
-    # batch_size = data_loader.batch_sampler.batch_size
-    # n_batches_0 = int(np.ceil(n_samples_world / batch_size)) # /128
-    # n_batches_1 = int(np.ceil(len(data_loader.dataset) / batch_size)) # /128
-    # n_batches_2 = len(data_loader)
-    # n_batches_3 = len(data_iterator)
-    # pax(0, {
-    #     "n_batches_0" : n_batches_0,
-    #     "n_batches_1" : n_batches_1,
-    #     "n_batches_2" : n_batches_2,
-    #     "n_batches_3" : n_batches_3,
-    # })
-    #pax({"data_loader": data_loader, "batch_sampler": data_loader.batch_sampler})
-
-    # >>>
-    # from tqdm import tqdm
-
-    # def print_mem(key):
-    #     stats = torch.cuda.memory_stats()
-    #     print("%s ... alloc %.1f gb, res %.1f gb." % (
-    #         key,
-    #         stats["allocated_bytes.all.current"] / 1024**3,
-    #         stats["reserved_bytes.all.current"] / 1024**3,
-    #     ))
-
-    # print_mem("before")
     embeddings = []
     for _ in tqdm(range(len(data_loader)), "mt embed"):
-        # print_mem("during")
-        # try:
         with torch.no_grad():
             result = forward_step(data_iterator, models[0])
-        # except Exception as e:
-        #     # print_mem("after")
-        #     raise e
-        #     break
-        # pax({"result": result})
-        embeddings.append(result[0].detach().cpu().numpy())
+            embeddings.append(result[0].detach().cpu().numpy())
     embeddings = np.concatenate(embeddings, axis = 0)
-    # pax({"embeddings": embeddings})
     return embeddings
-    # <<<
-    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 class BertEmbedder:

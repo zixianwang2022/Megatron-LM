@@ -27,7 +27,7 @@ from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
 from tools.bert_embedding.utils import load_data
 from tools.retro.db.utils import get_merged_train_dataset
 from tools.retro.index.utils import get_index_dir
-from tools.retro.utils import GPTToTextDataset, Timer
+from tools.retro.utils import GPTToTextDataset # , Timer
 
 from ..acc import rowwise_intersection
 
@@ -70,7 +70,7 @@ index_infos = {
     #     "name" : "IVF4096_HNSW8,Flat",
     #     "search" : {"efSearch" : 8, "nprobe" : 256},
     # },
-    "approx" : { # n 100000
+    "approx" : { # n 1000000
         "name" : "IVF8192_HNSW8,Flat",
         "search" : {"efSearch" : 8, "nprobe" : 256},
     },
@@ -108,18 +108,6 @@ def get_datasets():
 
 def get_embedders():
     args = get_retro_args()
-    # return {
-    #     "megatron" : BertEmbedder(
-    #         args.retro_bert_batch_size,
-    #         args.retro_bert_max_chunk_length,
-    #         force_megatron = True,
-    #     ),
-    #     "huggingface" : BertEmbedder(
-    #         args.retro_bert_batch_size,
-    #         args.retro_bert_max_chunk_length,
-    #         force_megatron = False,
-    #     ),
-    # }
     return {
         "megatron" : DiskDataParallelBertEmbedder(
             args.retro_bert_batch_size,
@@ -136,8 +124,7 @@ def get_embedders():
     }
 
 
-# def get_embeddings(datasets, embedders):
-def get_embeddings(timer):
+def get_embeddings():
 
     datasets = get_datasets()
     embedders = get_embedders()
@@ -146,46 +133,14 @@ def get_embeddings(timer):
     for model_key, embedder in embedders.items():
         for data_key, dataset in datasets.items():
 
-            # >>>
-            # from tools.bert_embedding.dataset import BertEmbeddingDataset
-            # from tools.bert_embedding.embed import get_data_loader
-            # args = get_retro_args()
-            # max_seq_length = args.retro_bert_max_chunk_length
-            # batch_size = args.retro_bert_batch_size
-
-            # dataset = datasets[data_key]
-            # sub_dataset = torch.utils.data.Subset(dataset, range(100000))
-            # bert_dataset = BertEmbeddingDataset(sub_dataset, max_seq_length)
-            # data_loader = get_data_loader(bert_dataset, batch_size)
-            # data_iterator = iter(data_loader)
-            # n_samples_world = len(dataset)
-            # n_samples_block = len(sub_dataset)
-            # n_batches_world = int(np.ceil(n_samples_world / batch_size)) # /128
-            # n_batches_block = int(np.ceil(n_samples_block / batch_size)) # /128
-            # pax({
-            #     "dataset" : len(dataset),
-            #     "sub_dataset" : len(sub_dataset),
-            #     "bert_dataset" : len(bert_dataset),
-            #     "max_seq_length" : max_seq_length,
-            #     "batch_size" : batch_size,
-            #     "n_samples_world" : n_samples_world,
-            #     "n_samples_block" : len(sub_dataset),
-            #     "n_batches_world" : n_batches_world,
-            #     "n_batches_block" : n_batches_block,
-            # })
-            # for _ in tqdm(range(n_batches), "mt embed"):
-            #     data = next(data_iterator)
-            #     # pax({"data": data})
-
-            # pax({"dataset": dataset})
-            # <<<
-
             embed_dir = os.path.join(get_root_dir(), "embed", model_key, data_key)
+
+            # Embed dataset.
             embedders[model_key].embed_text_dataset(data_key, embed_dir,
                                                     datasets[data_key])
+
+            # Load embeddings.
             embed_paths = sorted(glob.glob(embed_dir + "/*.hdf5"))
-            if len(embed_paths) > 1:
-                pax({"embed_paths": embed_paths})
             embeddings[model_key][data_key] = load_data(embed_paths)["data"]
 
     # pax(embeddings)
@@ -193,10 +148,9 @@ def get_embeddings(timer):
     return embeddings
 
 
-# def get_indexes(embedders):
-def get_indexes(timer):
+def get_indexes():
 
-    embeddings = get_embeddings(timer)
+    embeddings = get_embeddings()
 
     indexes = defaultdict(dict)
     for model_key in embeddings:
@@ -231,16 +185,14 @@ def get_indexes(timer):
     return indexes
 
 
-# def get_nbrs(embeddings, indexes):
-def get_nbrs(timer):
+def get_nbrs():
 
     nbr_path = os.path.join(get_root_dir(), "nbrs.json")
     if not os.path.exists(nbr_path):
 
-        embeddings = get_embeddings(timer)
-        indexes = get_indexes(timer)
+        embeddings = get_embeddings()
+        indexes = get_indexes()
 
-        timer.push("nbrs")
         nbrs = defaultdict(dict)
         for model_key in indexes:
             for index_key, index_info in indexes[model_key].items():
@@ -253,7 +205,6 @@ def get_nbrs(timer):
 
                 _, _nbrs = index.search(embeddings[model_key]["valid"], max_nbrs)
                 nbrs[model_key][index_key] = _nbrs.tolist()
-        timer.pop()
 
         with open(nbr_path, "w") as f:
             json.dump(nbrs, f)
@@ -269,15 +220,13 @@ def get_nbrs(timer):
     return nbrs
 
 
-# def get_acc(nbrs):
-def get_acc(timer):
+def get_acc():
 
     acc_path = os.path.join(get_root_dir(), "accs.json")
     if not os.path.exists(acc_path):
 
-        nbrs = get_nbrs(timer)
+        nbrs = get_nbrs()
 
-        timer.push("accs")
         accs = defaultdict(dict)
         for mkey0 in nbrs:
             for ikey0 in nbrs[mkey0]:
@@ -298,7 +247,6 @@ def get_acc(timer):
                             )
                             accs["%s/%s-%s/%s"%(mkey0,ikey0,mkey1,ikey1)][n_nbrs]\
                                 = np.mean(intsec) / n_nbrs
-        timer.pop()
 
         with open(acc_path, "w") as f:
             json.dump(accs, f)
@@ -313,9 +261,6 @@ def get_acc(timer):
 
 def run_bert_comparison():
 
-    # from tools.retro.cli import shorten_str
-
-    # args = get_retro_args()
     timer = Timer()
 
     indexes = get_indexes(timer)
