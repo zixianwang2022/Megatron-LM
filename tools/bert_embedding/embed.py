@@ -314,7 +314,8 @@ def embed_data_loader(models, data_loader, n_samples_world):
 class BertEmbedder:
     '''Compute Bert embeddings, from a text dataset.'''
 
-    def __init__(self, batch_size, max_bert_seq_length, force_megatron = False):
+    def __init__(self, batch_size, max_bert_seq_length,
+                 force_megatron = False):
 
         args = get_args()
 
@@ -361,8 +362,10 @@ class BertEmbedder:
 class DiskDataParallelBertEmbedder:
     '''Process embeddings in blocks & save to disk.'''
 
-    def __init__(self, batch_size, max_bert_seq_length, block_size):
-        self.embedder = BertEmbedder(batch_size, max_bert_seq_length)
+    def __init__(self, batch_size, max_bert_seq_length, block_size,
+                 force_megatron = False):
+        self.embedder = BertEmbedder(batch_size, max_bert_seq_length,
+                                     force_megatron = force_megatron)
         self.block_size = block_size
 
 

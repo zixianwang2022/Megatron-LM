@@ -15,3 +15,4 @@
 
 from .v0 import run_bert_comparison as run_bert_comparison_v0
 from .v1 import run_bert_comparison as run_bert_comparison_v1
+from .v2 import run_bert_comparison as run_bert_comparison_v2
