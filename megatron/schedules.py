@@ -15,6 +15,10 @@ from megatron.model import DistributedDataParallel as LocalDDP
 from megatron.model import Float16Module
 from megatron.model import ModelType
 
+# >>>
+from lutil import pax
+# <<<
+
 
 def get_forward_backward_func():
     args = get_args()
@@ -116,6 +120,9 @@ def forward_step(forward_step_func,
 
     unwrapped_model.set_input_tensor(input_tensor)
     output_tensor, loss_func = forward_step_func(data_iterator, model)
+    # >>>
+    # pax(0, {"output_tensor": output_tensor, "loss_func": loss_func})
+    # <<<
     if mpu.is_pipeline_last_stage():
         if not collect_non_loss_data:
             output_tensor = loss_func(output_tensor)
@@ -125,6 +132,14 @@ def forward_step(forward_step_func,
         else:
             data = loss_func(output_tensor, non_loss_data=True)
             forward_data_store.append(data)
+            # >>>
+            # pax(0, {
+            #     "output_tensor" : output_tensor,
+            #     "loss_func" : loss_func,
+            #     "data" : data,
+            # })
+            # raise Exception("hi.")
+            # <<<
 
     if timers is not None:
         timers('forward-compute').stop()
@@ -135,6 +150,9 @@ def forward_step(forward_step_func,
     if mpu.is_pipeline_stage_after_split() and \
             args.model_type == ModelType.encoder_and_decoder:
         return [output_tensor, input_tensor[-1]]
+    # >>>
+    # raise Exception("unwrap_output_tensor = %s." % unwrap_output_tensor)
+    # <<<
     if unwrap_output_tensor:
         return output_tensor
     return [output_tensor]
@@ -231,6 +249,9 @@ def forward_backward_no_pipelining(forward_step_func,
     forward_data_store = []
     input_tensor, output_tensor_grad = None, None
     with context_handler():
+        # >>>
+        pax({"num microbatches": get_num_microbatches()})
+        # <<<
         for i in range(get_num_microbatches() - 1):
             output_tensor = forward_step(forward_step_func, data_iterator,
                                          model, input_tensor, forward_data_store,
@@ -244,9 +265,16 @@ def forward_backward_no_pipelining(forward_step_func,
     output_tensor = forward_step(forward_step_func, data_iterator,
                                  model, input_tensor, forward_data_store,
                                  timers, collect_non_loss_data)
+    # >>>
+    # raise Exception("hi.")
+    # <<<
     if not forward_only:
         backward_step(optimizer, input_tensor, output_tensor,
                       output_tensor_grad, timers)
+
+    # >>>
+    # raise Exception("hi.")
+    # <<<
 
     return forward_data_store
 

@@ -145,6 +145,41 @@ def get_embeddings(timer):
     embeddings = defaultdict(dict)
     for model_key, embedder in embedders.items():
         for data_key, dataset in datasets.items():
+
+            # >>>
+            # from tools.bert_embedding.dataset import BertEmbeddingDataset
+            # from tools.bert_embedding.embed import get_data_loader
+            # args = get_retro_args()
+            # max_seq_length = args.retro_bert_max_chunk_length
+            # batch_size = args.retro_bert_batch_size
+
+            # dataset = datasets[data_key]
+            # sub_dataset = torch.utils.data.Subset(dataset, range(100000))
+            # bert_dataset = BertEmbeddingDataset(sub_dataset, max_seq_length)
+            # data_loader = get_data_loader(bert_dataset, batch_size)
+            # data_iterator = iter(data_loader)
+            # n_samples_world = len(dataset)
+            # n_samples_block = len(sub_dataset)
+            # n_batches_world = int(np.ceil(n_samples_world / batch_size)) # /128
+            # n_batches_block = int(np.ceil(n_samples_block / batch_size)) # /128
+            # pax({
+            #     "dataset" : len(dataset),
+            #     "sub_dataset" : len(sub_dataset),
+            #     "bert_dataset" : len(bert_dataset),
+            #     "max_seq_length" : max_seq_length,
+            #     "batch_size" : batch_size,
+            #     "n_samples_world" : n_samples_world,
+            #     "n_samples_block" : len(sub_dataset),
+            #     "n_batches_world" : n_batches_world,
+            #     "n_batches_block" : n_batches_block,
+            # })
+            # for _ in tqdm(range(n_batches), "mt embed"):
+            #     data = next(data_iterator)
+            #     # pax({"data": data})
+
+            # pax({"dataset": dataset})
+            # <<<
+
             embed_dir = os.path.join(get_root_dir(), "embed", model_key, data_key)
             embedders[model_key].embed_text_dataset(data_key, embed_dir,
                                                     datasets[data_key])
