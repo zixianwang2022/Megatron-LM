@@ -27,7 +27,7 @@ from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
 from tools.bert_embedding.utils import load_data
 from tools.retro.db.utils import get_merged_train_dataset
 from tools.retro.index.utils import get_index_dir
-from tools.retro.utils import GPTToTextDataset # , Timer
+from tools.retro.utils import GPTToTextDataset
 
 from ..acc import rowwise_intersection
 
@@ -260,8 +260,6 @@ def get_acc():
 
 
 def run_bert_comparison():
-
-    timer = Timer()
 
     indexes = get_indexes(timer)
     acc_map = get_acc(timer)

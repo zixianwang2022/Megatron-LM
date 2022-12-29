@@ -7,11 +7,18 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 . ${DIR}/get_vars.sh
 
 ######## Data corpus. ########
-# CORPUS="play"
+# >>>
 CORPUS="wiki"
-# CORPUS="wiki-1m"
-# CORPUS="nih"
+RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
+RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
+RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
+# +++
 # CORPUS="corpus"
+# RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
+# RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
+# RETRO_EF_SEARCH=32 RETRO_NPROBE=4096
+# [x] ... RETRO_EF_SEARCH=256 RETRO_NPROBE=65536
+# <<<
 
 ######## Repo. ########
 REPO="retro"
@@ -24,16 +31,12 @@ REPO="retro"
 . ${BLEND_SCRIPT_DIR}/gpt3_blend_${CORPUS}.sh
 DATA_PATH=${DATA_BLEND}
 
-# echo "BLEND_SCRIPT_DIR = $BLEND_SCRIPT_DIR."
-# echo "DATA_PATH = $DATA_PATH"
-# exit
-
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
-# RETRO_TASKS="index-train"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
@@ -55,7 +58,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="misc-db-print-neighbors"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v0"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v1"
-RETRO_TASKS="misc-index-megatron-huggingface-comparison-v2"
+# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v2"
 # RETRO_TASKS="misc-index-check-train-valid-split"
 # RETRO_TASKS="misc-pretraining-compare-embeds"
 # RETRO_TASKS="misc-pretraining-print-neighbors"
@@ -63,19 +66,6 @@ RETRO_TASKS="misc-index-megatron-huggingface-comparison-v2"
 
 # RETRO_INDEX_TY=faiss-base
 RETRO_INDEX_TY=faiss-par-add
-
-# >>>
-RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
-RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
-# +++
-# RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
-# RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
-# RETRO_EF_SEARCH=32 RETRO_NPROBE=4096
-
-# RETRO_EF_SEARCH=16 # 32 # 256
-# RETRO_NPROBE=4096 # 65536
-# <<<
 
 # RETRO_PRECOMPUTE_BERT_LENGTHS
 RETRO_GPT_SEQ_LENGTH=2048
