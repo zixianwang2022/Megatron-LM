@@ -94,8 +94,9 @@ def get_merged_db_path_map():
     '''Paths to merged datasets.'''
     base_dir = get_base_db_workdir()
     return {
-        "train" : os.path.join(base_dir, "merged", "train.hdf5"),
         "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
+        "train" : os.path.join(base_dir, "merged", "train.hdf5"),
+        "valid" : os.path.join(base_dir, "merged", "valid.hdf5"),
     }
 
 
@@ -120,9 +121,13 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
     return dataset
 
 
+def get_merged_sampled_dataset(indexed_dataset_infos = None):
+    return get_merged_dataset("sampled", indexed_dataset_infos)
+
+
 def get_merged_train_dataset(indexed_dataset_infos = None):
     return get_merged_dataset("train", indexed_dataset_infos)
 
 
-def get_merged_sampled_dataset(indexed_dataset_infos = None):
-    return get_merged_dataset("sampled", indexed_dataset_infos)
+def get_merged_valid_dataset(indexed_dataset_infos = None):
+    return get_merged_dataset("valid", indexed_dataset_infos)

@@ -40,6 +40,10 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
+# >>>
+from lutil import pax
+# <<<
+
 
 def init_indexed_dataset_infos():
     '''Gather meta-info about each indexed dataset.
@@ -351,13 +355,22 @@ def merge_dbs(indexed_dataset_infos, db_type):
     if db_type == "full":
         raise Exception("deprecated; use 'train' or 'sampled'.")
         n_chunks_key = "n_chunks"
-    elif db_type == "train":
-        n_chunks_key = "n_chunks_train"
     elif db_type == "sampled":
         n_chunks_key = "n_chunks_sampled"
+    elif db_type == "train":
+        n_chunks_key = "n_chunks_train"
+    elif db_type == "valid":
+        pass
     else:
         raise Exception("handle db_type '%s'." % db_type)
-    n_chunks = sum(m[n_chunks_key] for m in indexed_dataset_infos)
+
+    # >>>
+    if db_type == "valid":
+        n_chunks = sum(m["n_chunks"] - m["n_chunks_train"]
+                       for m in indexed_dataset_infos)
+    else:
+        n_chunks = sum(m[n_chunks_key] for m in indexed_dataset_infos)
+    # <<<
 
     # DB path.
     db_path = get_merged_db_path_map()[db_type]
@@ -387,6 +400,10 @@ def merge_dbs(indexed_dataset_infos, db_type):
     # Build merged chunk db.
     if not os.path.exists(db_path):
 
+        # >>>
+        # pax({"db_path": db_path})
+        # <<<
+
         os.makedirs(os.path.dirname(db_path), exist_ok = True)
         f = h5py.File(db_path, "w")
 
@@ -401,7 +418,12 @@ def merge_dbs(indexed_dataset_infos, db_type):
             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
                   (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
             individual_db = get_individual_db(ds_idx, ds_info)
-            individual_db = individual_db[:ds_info[n_chunks_key]]
+            # >>>
+            if db_type == "valid":
+                individual_db = individual_db[ds_info["n_chunks_train"]:]
+            else:
+                individual_db = individual_db[:ds_info[n_chunks_key]]
+            # <<<
             merged_db[start_index:start_index+len(individual_db)] = individual_db
             start_index += len(individual_db)
             n_written[0] = start_index
@@ -430,8 +452,9 @@ def build_db():
     update_chunk_counts(indexed_dataset_infos)
 
     # Merge dbs.
-    merge_dbs(indexed_dataset_infos, "train")
     merge_dbs(indexed_dataset_infos, "sampled")
+    merge_dbs(indexed_dataset_infos, "train")
+    merge_dbs(indexed_dataset_infos, "valid")
 
     # Save (fully annotated) indexed dataset infos.
     save_indexed_dataset_infos(indexed_dataset_infos)

@@ -60,4 +60,4 @@ class Index:
     def embed_text_dataset_block(self, embedder, text_dataset, _range):
         '''Embed a range of a text dataset.'''
         sub_dataset = torch.utils.data.Subset(text_dataset, range(*_range))
-        return embedder.embed_text_dataset(sub_dataset, len(text_dataset))
+        return embedder.embed_text_dataset(sub_dataset)

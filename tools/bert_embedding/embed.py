@@ -30,7 +30,7 @@ from megatron.schedules import get_forward_backward_func
 from megatron.training import setup_model_and_optimizer
 
 from .dataset import BertEmbeddingDataset
-# from .huggingface import HuggingfaceEmbedder
+from .huggingface import HuggingfaceEmbedder
 from .utils import get_missing_blocks_by_rank
 
 # >>>
@@ -299,14 +299,14 @@ class BertEmbedder:
         self.max_bert_seq_length = max_bert_seq_length
 
         # >>> [ huggingface. ]
-        # # **Note**: we currently only use the HuggingfaceEmbedder
-        # if force_megatron:
-        #     self.huggingface_embedder = None
-        # else:
-        #     self.huggingface_embedder = HuggingfaceEmbedder(
-        #         batch_size,
-        #         max_bert_seq_length,
-        #     )
+        # **Note**: we currently only use the HuggingfaceEmbedder
+        if force_megatron:
+            self.huggingface_embedder = None
+        else:
+            self.huggingface_embedder = HuggingfaceEmbedder(
+                batch_size,
+                max_bert_seq_length,
+            )
         # <<<
 
 
@@ -314,9 +314,9 @@ class BertEmbedder:
         '''Embed a text dataset.'''
 
         # >>> [ huggingface. ]
-        # # Huggingface.
-        # if self.huggingface_embedder:
-        #     return self.huggingface_embedder.embed_text_dataset(text_dataset)
+        # Huggingface.
+        if self.huggingface_embedder:
+            return self.huggingface_embedder.embed_text_dataset(text_dataset)
         # <<<
 
         # Wrap in a BertEmbeddingDataset to tokenize samples.

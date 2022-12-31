@@ -13,55 +13,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
+# from collections import defaultdict
 import faiss
-import glob
-import h5py
-import numpy as np
-import os
+# import glob
+# import h5py
+# import numpy as np
+# import os
 import torch
-from tqdm import tqdm
+# from tqdm import tqdm
 
-from tools.bert_embedding.utils import load_data as load_hdf5_data
+# from tools.bert_embedding.utils import load_data as load_hdf5_data
+from tools.retro.db.utils import get_merged_valid_dataset
+# from tools.retro.index.utils import get_index_dir
+from tools.retro.utils import GPTToTextDataset
 
-from ..acc import rowwise_intersection
+# from ..acc import rowwise_intersection
+from .v1 import get_embedders
+
+# >>>
+from lutil import pax
+# <<<
 
 
-n_docs         = 5861214
-n_docs_train   = 5743989
-n_docs_valid   = 117225
-n_chunks       = 67983746
-n_chunks_train = 66625331
-n_chunks_valid = 1358415
+# n_docs         = 5861214
+# n_docs_train   = 5743989
+# n_docs_valid   = 117225
+# n_chunks       = 67983746
+# n_chunks_train = 66625331
+# n_chunks_valid = 1358415
+
+def get_compare_dir():
+    return os.path.join(get_index_dir(), "compare")
 
 
-def get_valid_data_path(model_key):
-    return os.path.join(get_index_dir(), "compare", "data", "%s_valid_data.hdf5" % model_key)
+# def get_valid_data_path(model_key):
+#     return os.path.join(get_index_dir(), "compare", "data", "%s_valid_data.hdf5" % model_key)
 
-def merge_split_data(model_key):
 
-    train_data_path = get_train_data_path(model_key)
-    valid_data_path = get_valid_data_path(model_key)
+# def merge_split_data(model_key):
 
-    if os.path.exists(train_data_path) and os.path.exists(valid_data_path):
-        return
+#     train_data_path = get_train_data_path(model_key)
+#     valid_data_path = get_valid_data_path(model_key)
 
-    raise Exception("already merged + split?")
+#     if os.path.exists(train_data_path) and os.path.exists(valid_data_path):
+#         return
 
-    block_data_paths = get_block_data_paths(model_key)
-    all_data = load_hdf5_data(block_data_paths)["data"]
-    train_data = all_data[:n_chunks_train]
-    valid_data = all_data[n_chunks_train:]
-    assert len(all_data) == n_chunks
-    assert len(train_data) == n_chunks_train
-    assert len(valid_data) == n_chunks_valid
+#     raise Exception("already merged + split?")
 
-    print("save train data.")
-    with h5py.File(train_data_path, "w") as f:
-        f.create_dataset("data", data = train_data)
-    print("save valid data.")
-    with h5py.File(valid_data_path, "w") as f:
-        f.create_dataset("data", data = valid_data)
+#     block_data_paths = get_block_data_paths(model_key)
+#     all_data = load_hdf5_data(block_data_paths)["data"]
+#     train_data = all_data[:n_chunks_train]
+#     valid_data = all_data[n_chunks_train:]
+#     assert len(all_data) == n_chunks
+#     assert len(train_data) == n_chunks_train
+#     assert len(valid_data) == n_chunks_valid
+
+#     print("save train data.")
+#     with h5py.File(train_data_path, "w") as f:
+#         f.create_dataset("data", data = train_data)
+#     print("save valid data.")
+#     with h5py.File(valid_data_path, "w") as f:
+#         f.create_dataset("data", data = valid_data)
     
 
 # def get_train_data(model_key):
@@ -92,16 +104,16 @@ def get_sampled_valid_data(model_key):
     return sampled_data
 
 
-def get_empty_index_path(model_key):
-    return os.path.join(index_dir, "index", "%s_empty.faissindex" % model_key)
+# def get_empty_index_path(model_key):
+#     return os.path.join(get_compare_dir(),"index",f"{model_key}_empty.faissindex")
 
 
 def get_added_index_path(model_key):
-    return os.path.join(index_dir, "index", "%s_added.faissindex" % model_key)
+    return os.path.join(get_compare_dir(),"index",f"{model_key}_added.faissindex")
 
 
 def get_nbr_path(model_key, nbr_key):
-    return os.path.join(index_dir, "nbr", f"{model_key}_{nbr_key}.hdf5")
+    return os.path.join(get_compare_dir(), "nbr", f"{model_key}_{nbr_key}.hdf5")
 
 
 def get_flat_nbr_path(model_key):
@@ -112,83 +124,114 @@ def get_hier_nbr_path(model_key):
     return get_nbr_path(model_key, "hier")
 
 
-def train_index(model_key):
+# def train_index(model_key):
 
-    empty_index_path = get_empty_index_path(model_key)
+#     raise Exception("train again?")
 
-    # Index already exists? -> return.
-    if os.path.isfile(empty_index_path):
-        return
+#     empty_index_path = get_empty_index_path(model_key)
 
-    # Load data.
-    print("load data.")
-    # inp = get_train_data(model_key)
-    # inp = load_hdf5_data(get_block_data_paths(model_key)[:100])["data"]
-    inp = load_hdf5_data(get_block_data_paths(model_key))["data"]
-    inp = inp[:n_chunks_train]
+#     # Index already exists? -> return.
+#     if os.path.isfile(empty_index_path):
+#         return
 
-    # Init index.
-    print("init index.")
-    # index = faiss.index_factory(1024, "OPQ32_256,IVF4194304_HNSW32,PQ32")
-    index = faiss.index_factory(1024, "IVF262144_HNSW32,Flat")
+#     # Load data.
+#     print("load data.")
+#     # inp = get_train_data(model_key)
+#     # inp = load_hdf5_data(get_block_data_paths(model_key)[:100])["data"]
+#     inp = load_hdf5_data(get_block_data_paths(model_key))["data"]
+#     inp = inp[:n_chunks_train]
 
-    # Move to GPU.
-    print("move index to gpu.")
-    index_ivf = faiss.extract_index_ivf(index)
-    clustering_index = \
-        faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-    index_ivf.clustering_index = clustering_index
-    index.verbose = True
-    index_ivf.verbose = True
-    index_ivf.quantizer.verbose = True
-    index_ivf.clustering_index.verbose = True
+#     # Init index.
+#     print("init index.")
+#     # index = faiss.index_factory(1024, "OPQ32_256,IVF4194304_HNSW32,PQ32")
+#     index = faiss.index_factory(1024, "IVF262144_HNSW32,Flat")
 
-    # Train index.
-    print("train index.")
-    index.train(inp)
+#     # Move to GPU.
+#     print("move index to gpu.")
+#     index_ivf = faiss.extract_index_ivf(index)
+#     clustering_index = \
+#         faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+#     index_ivf.clustering_index = clustering_index
+#     index.verbose = True
+#     index_ivf.verbose = True
+#     index_ivf.quantizer.verbose = True
+#     index_ivf.clustering_index.verbose = True
 
-    # Save index.
-    print("write index.")
-    faiss.write_index(index, empty_index_path)
+#     # Train index.
+#     print("train index.")
+#     index.train(inp)
+
+#     # Save index.
+#     print("write index.")
+#     faiss.write_index(index, empty_index_path)
 
 
-def add_to_index(model_key):
+# def add_to_index(model_key):
 
-    empty_index_path = get_empty_index_path(model_key)
-    added_index_path = get_added_index_path(model_key)
+#     raise Exception("add again?")
 
-    # Index already exists? -> return.
-    if os.path.isfile(added_index_path):
-        return
-    assert os.path.isfile(empty_index_path)
+#     empty_index_path = get_empty_index_path(model_key)
+#     added_index_path = get_added_index_path(model_key)
 
-    # Init index.
-    print("load index.")
-    index = faiss.read_index(empty_index_path)
-    index_ivf = faiss.extract_index_ivf(index)
-    # index.verbose = True
-    # index_ivf.verbose = True
-    # index_ivf.quantizer.verbose = True
-    # index_ivf.clustering_index.verbose = True
+#     # Index already exists? -> return.
+#     if os.path.isfile(added_index_path):
+#         return
+#     assert os.path.isfile(empty_index_path)
 
-    # Add to index.
-    print("add to index.")
-    n_added = 0
-    for data_path in tqdm(get_block_data_paths(model_key)):
-        # data = load_hdf5_data([data_path], None)["data"]
-        with h5py.File(data_path, "r") as f:
-            data = np.copy(f["data"])
-        end_idx = min(len(data), n_chunks_train - n_added)
-        if end_idx == 0:
-            break
-        index.add(data[:end_idx])
-        n_added += end_idx
+#     # Init index.
+#     print("load index.")
+#     index = faiss.read_index(empty_index_path)
+#     index_ivf = faiss.extract_index_ivf(index)
+#     # index.verbose = True
+#     # index_ivf.verbose = True
+#     # index_ivf.quantizer.verbose = True
+#     # index_ivf.clustering_index.verbose = True
 
-    # Save index.
-    print("write index.")
-    faiss.write_index(index, added_index_path)
+#     # Add to index.
+#     print("add to index.")
+#     n_added = 0
+#     for data_path in tqdm(get_block_data_paths(model_key)):
+#         # data = load_hdf5_data([data_path], None)["data"]
+#         with h5py.File(data_path, "r") as f:
+#             data = np.copy(f["data"])
+#         end_idx = min(len(data), n_chunks_train - n_added)
+#         if end_idx == 0:
+#             break
+#         index.add(data[:end_idx])
+#         n_added += end_idx
+
+#     # Save index.
+#     print("write index.")
+#     faiss.write_index(index, added_index_path)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def get_valid_embeddings(n_valid):
+
+    embedders = get_embedders()
+
+    gpt_dataset = get_merged_valid_dataset()
+    text_dataset = GPTToTextDataset(gpt_dataset)
+
+    idxs = range(0, len(text_dataset), len(text_dataset) // n_valid)
+    sub_dataset = torch.utils.data.Subset(text_dataset, idxs)
+
+    embeddings = {}
+    for model_key, embedder in embedders.items():
+        embeddings[model_key] = embedder.embed_text_dataset(sub_dataset)
+
+    # pax({
+    #     "n_valid" : n_valid,
+    #     "gpt_dataset" : gpt_dataset,
+    #     "text_dataset" : text_dataset,
+    #     "gpt_dataset / 0" : gpt_dataset[0],
+    #     "text_dataset / 0" : text_dataset[0],
+    #     # "idxs" : list(idxs),
+    #     "embedders" : embedders,
+    #     "embeddings" : embeddings,
+    # })
+
+    return embeddings
+
 def query_flat_nbrs(model_key, n_nbrs):
 
     flat_nbr_path = get_flat_nbr_path(model_key)
@@ -353,15 +396,19 @@ def run_bert_comparison():
     # Set num threads (torch.distributed reset it to 1).
     faiss.omp_set_num_threads(64)
 
+    n_valid = 100
+    valid_embeddings = get_valid_embeddings(n_valid)
+    pax({"n_valid": n_valid, "valid_embeddings": valid_embeddings})
+
     n_nbrs = 2000
 
     for model_key in [
             "megatron",
             "huggingface",
     ]:
-        merge_split_data(model_key)
-        train_index(model_key)
-        add_to_index(model_key)
+        # merge_split_data(model_key)
+        # train_index(model_key)
+        # add_to_index(model_key)
         query_flat_nbrs(model_key, n_nbrs)
         query_hier_nbrs(model_key, n_nbrs)
     compare_nbrs()
@@ -370,9 +417,9 @@ def run_bert_comparison():
     print("hi.")
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    # torch.distributed.init_process_group("gloo", world_size = 1, rank = 0)
-    torch.distributed.init_process_group("nccl", world_size = 1, rank = 0)
+#     # torch.distributed.init_process_group("gloo", world_size = 1, rank = 0)
+#     torch.distributed.init_process_group("nccl", world_size = 1, rank = 0)
 
-    compare_bert_models()
+#     compare_bert_models()

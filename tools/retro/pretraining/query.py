@@ -46,8 +46,7 @@ def get_index(chunk_db_dataset, ondisk = False):
     # Load index.
     index_wrapper = IndexFactory.get_index(args.retro_index_ty)
     index_dir = get_index_dir()
-    added_index_path = index_wrapper.get_added_index_path(dataset_block_ranges,
-                                                          index_dir)
+    added_index_path = index_wrapper.get_added_index_path()
     if ondisk:
         index = faiss.read_index(added_index_path, faiss.IO_FLAG_MMAP)
     else:
@@ -81,7 +80,7 @@ def embed_block(gpt_dataset, block, embedder):
         GPTToTextDataset(gpt_dataset),
         range(*block["range"]),
     )
-    return embedder.embed_text_dataset(text_block_dataset, len(gpt_dataset))
+    return embedder.embed_text_dataset(text_block_dataset)
 
 
 def query_embeddings(index, banned_chunk_map, chunk_id_range,
@@ -189,7 +188,6 @@ def query_dataset_neighbors(index, banned_chunk_map,
                 prefix,
                 block_index,
                 len(missing_nbr_blocks),
-                # block["nbr_path"],
                 block["path"],
             ))
 

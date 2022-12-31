@@ -39,16 +39,16 @@ from lutil import pax
 n_samples = {
     # "train": 100, "valid": 100,
     # "train": 1000, "valid": 1000,
-    # "train": 10000, "valid": 10000,
+    "train": 10000, "valid": 10000,
     # "train": 100000, "valid": 100000,
     # "train": 100000, "valid": 10000,
-    "train": 1000000, "valid": 10000,
+    # "train": 1000000, "valid": 10000,
 }
 index_infos = {
-    "exact" : {
-        "name" : "Flat", # "FlatL2",
-        "search" : {},
-    },
+    # "exact" : {
+    #     "name" : "Flat", # "FlatL2",
+    #     "search" : {},
+    # },
     # "approx" : args.retro_index_str,
     # "approx" : {
     #     "name" : "IVF262144_HNSW32,Flat",
@@ -59,24 +59,27 @@ index_infos = {
     # },
 
     # "approx" : { # n 1000
-    #     "name" : "IVF512_HNSW8,Flat",
-    #     "search" : {"efSearch" : 8, "nprobe" : 32},
+    #     # "name" : "IVF512_HNSW8,Flat",
+    #     # "search" : {"efSearch" : 8, "nprobe" : 32},
+    #     "name" : "IVF64_HNSW4,Flat",
+    #     "search" : {"efSearch" : 4, "nprobe" : 8},
     # },
-    # "approx" : { # n 10000
-    #     "name" : "IVF512_HNSW8,Flat",
-    #     "search" : {"efSearch" : 8, "nprobe" : 32},
-    # },
+    "approx" : { # n 10000
+        "name" : "IVF512_HNSW8,Flat",
+        "search" : {"efSearch" : 8, "nprobe" : 32},
+    },
     # "approx" : { # n 100000
     #     "name" : "IVF4096_HNSW8,Flat",
     #     "search" : {"efSearch" : 8, "nprobe" : 256},
     # },
-    "approx" : { # n 1000000
-        "name" : "IVF8192_HNSW8,Flat",
-        "search" : {"efSearch" : 8, "nprobe" : 256},
-    },
+    # "approx" : { # n 1000000
+    #     "name" : "IVF8192_HNSW8,Flat",
+    #     "search" : {"efSearch" : 8, "nprobe" : 256},
+    # },
 }
 max_nbrs = 200
-
+# save_to_disk = False
+persist_data = False
 
 def get_root_dir():
     dirname = os.path.join(
@@ -121,6 +124,17 @@ def get_embedders():
             block_size = args.retro_block_size,
             force_megatron = False,
         ),
+    } if persist_data else {
+        "megatron" : BertEmbedder(
+            args.retro_bert_batch_size,
+            args.retro_bert_max_chunk_length,
+            force_megatron = True,
+        ),
+        "huggingface" : BertEmbedder(
+            args.retro_bert_batch_size,
+            args.retro_bert_max_chunk_length,
+            force_megatron = False,
+        ),
     }
 
 
@@ -136,12 +150,18 @@ def get_embeddings():
             embed_dir = os.path.join(get_root_dir(), "embed", model_key, data_key)
 
             # Embed dataset.
-            embedders[model_key].embed_text_dataset(data_key, embed_dir,
-                                                    datasets[data_key])
+            if persist_data:
 
-            # Load embeddings.
-            embed_paths = sorted(glob.glob(embed_dir + "/*.hdf5"))
-            embeddings[model_key][data_key] = load_data(embed_paths)["data"]
+                embedders[model_key].embed_text_dataset(data_key, embed_dir,
+                                                        datasets[data_key])
+
+                # Load embeddings.
+                embed_paths = sorted(glob.glob(embed_dir + "/*.hdf5"))
+                embeddings[model_key][data_key] = load_data(embed_paths)["data"]
+
+            else:
+                embeddings[model_key][data_key] = \
+                    embedders[model_key].embed_text_dataset(datasets[data_key])
 
     # pax(embeddings)
 
@@ -161,7 +181,7 @@ def get_indexes():
                 "index",
                 "%s_%s.faiss_index" % (model_key, index_key),
             )
-            if not os.path.exists(index_path):
+            if not persist_data or not os.path.exists(index_path):
 
                 index = faiss.index_factory(1024, index_info["name"])
                 data = embeddings[model_key]["train"]
@@ -170,28 +190,38 @@ def get_indexes():
                 index.train(data)
 
                 print("%s, %s ... add to index." % (model_key, index_key))
-                index.add(data)
+                # >>>
+                # index.add(data)
+                # +++
+                codes = index.sa_encode(data)
+                # pax({"codes": codes})
+                index.add_sa_codes(codes)
+                # <<<
 
+                # if save_to_disk:
                 os.makedirs(os.path.dirname(index_path), exist_ok = True)
                 faiss.write_index(index, index_path)
 
             indexes[model_key][index_key] = {
                 **index_info,
                 "index" : faiss.read_index(index_path),
+                # "index" : faiss.read_index(index_path) if save_to_disk else index,
             }
 
     # pax(indexes)
 
-    return indexes
+    # return indexes
+    return embeddings, indexes
 
 
 def get_nbrs():
 
     nbr_path = os.path.join(get_root_dir(), "nbrs.json")
-    if not os.path.exists(nbr_path):
+    if not persist_data or not os.path.exists(nbr_path):
 
-        embeddings = get_embeddings()
-        indexes = get_indexes()
+        # embeddings = get_embeddings()
+        # indexes = get_indexes()
+        embeddings, indexes = get_indexes()
 
         nbrs = defaultdict(dict)
         for model_key in indexes:
@@ -223,7 +253,7 @@ def get_nbrs():
 def get_acc():
 
     acc_path = os.path.join(get_root_dir(), "accs.json")
-    if not os.path.exists(acc_path):
+    if not persist_data or not os.path.exists(acc_path):
 
         nbrs = get_nbrs()
 
@@ -261,16 +291,20 @@ def get_acc():
 
 def run_bert_comparison():
 
-    indexes = get_indexes(timer)
-    acc_map = get_acc(timer)
+    # indexes = get_indexes()
+    acc_map = get_acc()
 
     pax({
         "n_samples" : n_samples,
-        "indexes" : sorted(list(set(
+        # "indexes" : sorted(list(set(
+        #     "%s ... %s" % (info["name"], info["search"])
+        #     for imap in indexes.values()
+        #     for info in imap.values()
+        # ))),
+        "indexes" : [
             "%s ... %s" % (info["name"], info["search"])
-            for imap in indexes.values()
-            for info in imap.values()
-        ))),
+            for info in index_infos.values()
+        ],
         "acc_map" : acc_map,
-        "time_map" : timer.time_map,
+        # "time_map" : timer.time_map,
     })
