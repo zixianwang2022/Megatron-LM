@@ -286,7 +286,8 @@ class BertEmbedder:
     '''Compute Bert embeddings, from a text dataset.'''
 
     def __init__(self, batch_size, max_bert_seq_length,
-                 force_megatron = False):
+                 # force_megatron = False):
+                 force_megatron = True):
 
         args = get_args()
 

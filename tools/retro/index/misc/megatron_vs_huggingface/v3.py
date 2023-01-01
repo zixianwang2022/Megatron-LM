@@ -36,9 +36,9 @@ from lutil import pax
 # <<<
 
 
-n_valid = 10
+# n_valid = 10
 # n_valid = 1000
-# n_valid = 10000
+n_valid = 10000
 max_nbrs = 200
 # index_infos = {
 #     "exact" : {},
@@ -134,8 +134,8 @@ def get_indexes():
     for model_key in "megatron", "huggingface":
         print("read index '%s'." % model_key)
         path = os.path.join(get_root_dir(), "index", f"{model_key}_approx.faissindex")
-        indexes[model_key]["approx"] = faiss.read_index(path, faiss.IO_FLAG_MMAP)
-        # indexes[model_key]["approx"] = faiss.read_index(path)
+        #indexes[model_key]["approx"] = faiss.read_index(path, faiss.IO_FLAG_MMAP)
+        indexes[model_key]["approx"] = faiss.read_index(path)
         print("read > done.")
     # pax({k:i["approx"] for k,i in indexes.items()})
     return indexes
@@ -154,10 +154,10 @@ def get_nbrs():
         for model_key in indexes:
             for index_key, index in indexes[model_key].items():
 
-                pax({
-                    "model_key" : model_key,
-                    "index_key" : index_key,
-                })
+                # pax({
+                #     "model_key" : model_key,
+                #     "index_key" : index_key,
+                # })
 
                 if index_key == "approx":
                     search_params = {
@@ -171,10 +171,10 @@ def get_nbrs():
                 _, _nbrs = index.search(embeddings[model_key], max_nbrs)
                 nbrs[model_key][index_key] = _nbrs.tolist()
 
-        pax({
-            **{f"emb/{k}":e.tolist() for k,e in embeddings.items()},
-            **{f"nbr/{k}":d["approx"] for k,d in nbrs.items()},
-        })
+        # pax({
+        #     **{f"emb/{k}":e.tolist() for k,e in embeddings.items()},
+        #     **{f"nbr/{k}":d["approx"] for k,d in nbrs.items()},
+        # })
         with open(nbr_path, "w") as f:
             json.dump(nbrs, f)
 
@@ -184,7 +184,7 @@ def get_nbrs():
             for i in nbrs[m]:
                 nbrs[m][i] = np.array(nbrs[m][i]).astype("i8")
 
-    pax(nbrs)
+    # pax(nbrs)
 
     return nbrs
 
@@ -232,6 +232,8 @@ def get_acc():
 # >>>
 def test_megatron_index(index):
 
+    print("test megatron index.")
+
     args = get_retro_args()
 
     faiss.ParameterSpace().set_index_parameter(index, "efSearch", 16)
@@ -256,10 +258,15 @@ def test_megatron_index(index):
     })
 
 
-def run_megatron_test_v0():
+def run_megatron_test_added_bak():
+    print("read added.bak.")
+    index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.BAK.faissindex", faiss.IO_FLAG_MMAP)
+    test_megatron_index(index)
 
+
+def run_megatron_test_added_new():
+    print("read added.new.")
     index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP)
-
     test_megatron_index(index)
 
 
@@ -352,6 +359,34 @@ def run_megatron_test_v1():
         "train_paths" : train_paths,
         "index" : index,
     })
+
+def run_megatron_test_v2():
+
+    import glob
+    import h5py
+
+    index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/empty.faissindex")
+    index_ivf = faiss.extract_index_ivf(index)
+    train_paths = sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/*.hdf5"))
+    code_paths = sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/add_tmp/*.hdf5"))
+
+    codes = []
+    for code_path in tqdm(code_paths, "read codes"):
+        with h5py.File(code_path) as f:
+            codes.append(np.copy(f["data"]))
+
+    index_ivf = faiss.extract_index_ivf(index)
+    for code in tqdm(codes, "add codes"):
+        index_ivf.add_sa_codes(code)
+
+    test_megatron_index(index)
+
+    pax({
+        "train_paths" : train_paths,
+        "code_paths" : code_paths,
+        # "codes" : codes,
+        "index" : index,
+    })
     
 # <<<
 
@@ -359,9 +394,12 @@ def run_megatron_test_v1():
 def run_bert_comparison():
 
     # >>>
+    # run_megatron_test_added_bak() # bad.
+    # run_megatron_test_added_new() # good.
     # run_megatron_test_v0()
-    run_megatron_test_v1()
-    exit()
+    # run_megatron_test_v1()
+    # run_megatron_test_v2()
+    # exit()
     # <<<
 
     faiss.omp_set_num_threads(64)

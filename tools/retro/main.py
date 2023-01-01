@@ -35,6 +35,7 @@ from tools.retro.index.misc.megatron_vs_huggingface import (
     run_bert_comparison_v1,
     run_bert_comparison_v2,
     run_bert_comparison_v3,
+    run_bert_comparison_v4,
 )
 from tools.retro.index.misc.update_block_size import update_training_block_size
 from tools.retro.index.misc.verify_codes import verify_codes as verify_index_codes
@@ -160,6 +161,8 @@ if __name__ == "__main__":
             run_bert_comparison_v2()
         elif task == "misc-index-megatron-huggingface-comparison-v3":
             run_bert_comparison_v3()
+        elif task == "misc-index-megatron-huggingface-comparison-v4":
+            run_bert_comparison_v4()
         elif task == "misc-index-check-train-valid-split":
             check_index_train_valid_split()
         elif task == "misc-index-update-training-block-size":
