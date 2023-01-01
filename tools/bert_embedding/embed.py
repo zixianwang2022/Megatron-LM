@@ -331,6 +331,30 @@ class BertEmbedder:
         return embeddings
 
 
+    def embed_text(self, text):
+        '''Embed a single text string.
+
+        Primarily used for on-the-fly embeddings, particularly during
+        analysis or debugging. For large scale, use 'embed_text_dataset()'.
+        '''
+
+        class SingleTextDataset(torch.utils.data.Dataset):
+            '''Dataset that holds single string.'''
+            def __init__(self, text):
+                assert isinstance(text, str)
+                self.text = text
+            def __len__(self):
+                return 1
+            def __getitem__(self, i):
+                return {"text": self.text}
+
+        # Embed text.
+        text_ds = SingleTextDataset(text)
+        embed = self.embed_text_dataset(text_ds)[0]
+
+        return embed
+
+
 class DiskDataParallelBertEmbedder:
     '''Process embeddings in blocks & save to disk.'''
 
