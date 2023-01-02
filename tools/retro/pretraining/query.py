@@ -94,7 +94,7 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
     t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_nbr_ids = index.search(embeddings, args.retro_nnbrs_query)
-    print("  time : %.3f sec." % (time.time() - t))
+    print_rank_0("  time : %.3f sec." % (time.time() - t))
 
     # Banned neighbor ids.
     print_rank_0("get banned neighbor ids.")
@@ -133,6 +133,38 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
     return query_nbr_ids, filtered_nbr_ids
 
 
+def query_embedding_block(index, banned_chunk_map, chunk_id_range,
+                          embeddings, sample_map, n_chunks_per_sample):
+
+    query_nbr_ids = []
+    filtered_nbr_ids = []
+
+    partial_block_size = 1000
+    for partial_start_idx in tqdm(
+            range(0, len(embeddings), partial_block_size),
+            "search",
+    ):
+        partial_end_idx = min(len(embeddings),
+                              partial_start_idx + partial_block_size)
+        partial_embeddings = embeddings[partial_start_idx:partial_end_idx]
+        partial_chunk_id_range = (
+            chunk_id_range[0] + partial_start_idx,
+            chunk_id_range[0] + partial_end_idx,
+        )
+        partial_query_nbr_ids, partial_filtered_nbr_ids = \
+            query_embeddings(index, banned_chunk_map, partial_chunk_id_range,
+                             partial_embeddings, sample_map, n_chunks_per_sample)
+        query_nbr_ids.append(partial_query_nbr_ids)
+        filtered_nbr_ids.append(partial_filtered_nbr_ids)
+
+    pax(0, {
+        "query_nbr_ids" : query_nbr_ids,
+        "filtered_nbr_ids" : filtered_nbr_ids,
+    })
+
+    return query_nbr_ids, filtered_nbr_ids
+
+
 def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
                           block, embedder):
     '''Query neighbors of a dataset block (i.e., range).'''
@@ -149,10 +181,13 @@ def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
     embeddings = embed_block(chunk_dataset, block, embedder)
 
     # Query embeddings.
-    _, filtered_nbr_ids = query_embeddings(
+    # >>>
+    # _, filtered_nbr_ids = query_embeddings(
+    _, filtered_nbr_ids = query_embedding_block(
         index, banned_chunk_map, block["range"],
         embeddings, sample_map,
         n_chunks_per_sample)
+    # <<<
 
     # Save neighbors.
     print_rank_0("save neighbors.")

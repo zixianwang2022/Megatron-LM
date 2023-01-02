@@ -389,9 +389,13 @@ def _add_inference_args(parser):
                        'tokens here is # in prompt + # to generate'
                        'Allows us to throw an error before OOM crashes server')
     group.add_argument('--output-bert-embeddings', action='store_true',
-                       help='Output Bert embeddings directly (i.e., the pooled '
-                       'output), rather than its binary head output or entire '
+                       help='Output Bert embeddings (via mean pooling) from '
+                       'model, rather than its binary head output or entire '
                        'hidden batch.')
+    group.add_argument('--bert-embedder-type', default="megatron",
+                       choices=["megatron", "huggingface"],
+                       help='Select either Megatron or Huggingface as the '
+                       'Bert embedder.')
 
     return parser
 

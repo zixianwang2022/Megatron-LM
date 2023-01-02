@@ -285,9 +285,7 @@ def embed_data_loader(models, data_loader):
 class BertEmbedder:
     '''Compute Bert embeddings, from a text dataset.'''
 
-    def __init__(self, batch_size, max_bert_seq_length,
-                 # force_megatron = False):
-                 force_megatron = True):
+    def __init__(self, batch_size, max_bert_seq_length):
 
         args = get_args()
 
@@ -299,26 +297,23 @@ class BertEmbedder:
         self.batch_size = batch_size
         self.max_bert_seq_length = max_bert_seq_length
 
-        # >>> [ huggingface. ]
-        # # **Note**: we currently only use the HuggingfaceEmbedder
-        # if force_megatron:
-        #     self.huggingface_embedder = None
-        # else:
-        #     self.huggingface_embedder = HuggingfaceEmbedder(
-        #         batch_size,
-        #         max_bert_seq_length,
-        #     )
-        # <<<
+        # Init Huggingface, if in use.
+        if args.bert_embedder_type == "megatron":
+            self.huggingface_embedder = None
+        elif args.bert_embedder_type == "huggingface":
+            self.huggingface_embedder = HuggingfaceEmbedder(batch_size,
+                                                            max_bert_seq_length)
+        else:
+            raise Exception("specialize for embedder type '%s'." %
+                            args.bert_embedder_type)
 
 
     def embed_text_dataset(self, text_dataset):
         '''Embed a text dataset.'''
 
-        # >>> [ huggingface. ]
-        # # Huggingface.
-        # if self.huggingface_embedder:
-        #     return self.huggingface_embedder.embed_text_dataset(text_dataset)
-        # <<<
+        # Huggingface.
+        if self.huggingface_embedder:
+            return self.huggingface_embedder.embed_text_dataset(text_dataset)
 
         # Wrap in a BertEmbeddingDataset to tokenize samples.
         bert_dataset = BertEmbeddingDataset(text_dataset,
