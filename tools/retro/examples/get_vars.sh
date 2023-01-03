@@ -10,13 +10,21 @@ export BLEND_SCRIPT_DIR=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc
 export GPT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-vocab.json
 export GPT_MERGE_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/gpt3/bpe/gpt2-merges.txt
 
-# export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
-# export BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
-# export BERT_TOKENIZER=BertWordPieceLowerCase
+# ~~ bert / uncased. ~~
+export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+export BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
+export BERT_TOKENIZER=BertWordPieceLowerCase
 
-export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
-export BERT_VOCAB_FILE=/home/universal-lm-data-netapp/scratch/mshoeybi/data/bert_vocab/cased/bert-large-cased-vocab.txt
-export BERT_TOKENIZER=BertWordPieceCase
+# ~~ bert / cased. ~~
+# # >>>> [ critical arg for slow batch search. ] >>>>
+# # export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
+# export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+# # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# # export BERT_VOCAB_FILE=/home/universal-lm-data-netapp/scratch/mshoeybi/data/bert_vocab/cased/bert-large-cased-vocab.txt
+# export BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc/bert-large-cased-vocab.txt
+# # export BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
+# export BERT_TOKENIZER=BertWordPieceCase
+# # export BERT_TOKENIZER=BertWordPieceLowerCase
 
 ######## Pipeline. ########
 export OLD_RETRO_WIKI_DB="/gpfs/fs1/projects/gpu_adlr/datasets/boxinw/processed_data/chunks/Wikipedia_en_ftfy_id_shuf_text_document.chunks.hdf5"

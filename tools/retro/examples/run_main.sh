@@ -3,9 +3,9 @@
 set -u
 unset NCCL_DEBUG
 
-# NPROCS=1
+NPROCS=1
 # NPROCS=2
-NPROCS=4 # query.
+# NPROCS=4 # query.
 # NPROCS=8 # index.
 # NPROCS=16 # index.
 

@@ -78,6 +78,9 @@ class TextListDataset(torch.utils.data.Dataset):
 
 def run_bert_comparison():
 
+    if torch.distributed.get_rank() != 0:
+        return
+
     datasets = get_datasets()
     embedders = get_embedders()
     indexes = get_indexes()
@@ -85,7 +88,11 @@ def run_bert_comparison():
     max_nbrs = 40
     # max_nbrs = 200
 
-    valid_text_subset = torch.utils.data.Subset(datasets["valid"], range(10))
+    # valid_text_subset = torch.utils.data.Subset(datasets["valid"], range(10))
+    valid_text_subset = torch.utils.data.Subset(
+        datasets["valid"],
+        range(0, len(datasets["valid"]), len(datasets["valid"]) // 100),
+    )
     query_embeddings = {
         k : e.embed_text_dataset(valid_text_subset)
         for k, e in embedders.items()
