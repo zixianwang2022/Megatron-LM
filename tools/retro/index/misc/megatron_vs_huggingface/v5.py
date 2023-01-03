@@ -46,12 +46,12 @@ def get_embedders():
         "megatron" : BertEmbedder(
             args.retro_bert_batch_size,
             args.retro_bert_max_chunk_length,
-            force_megatron = True,
+            embedder_type = "megatron",
         ),
         "huggingface" : BertEmbedder(
             args.retro_bert_batch_size,
             args.retro_bert_max_chunk_length,
-            force_megatron = False,
+            embedder_type = "huggingface",
         ),
     }
 

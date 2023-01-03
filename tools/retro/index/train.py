@@ -64,7 +64,8 @@ def embed_db():
     # Embed dataset.
     embedder = DiskDataParallelBertEmbedder(args.retro_bert_batch_size,
                                             args.retro_bert_max_chunk_length,
-                                            args.retro_block_size)
+                                            args.retro_block_size,
+                                            args.bert_embedder_type)
     embedder.embed_text_dataset("index", get_training_data_dir(), text_dataset)
 
 

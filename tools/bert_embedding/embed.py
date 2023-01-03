@@ -30,7 +30,7 @@ from megatron.schedules import get_forward_backward_func
 from megatron.training import setup_model_and_optimizer
 
 from .dataset import BertEmbeddingDataset
-# from .huggingface import HuggingfaceEmbedder
+from .huggingface import HuggingfaceEmbedder
 from .utils import get_missing_blocks_by_rank
 
 # >>>
@@ -285,7 +285,7 @@ def embed_data_loader(models, data_loader):
 class BertEmbedder:
     '''Compute Bert embeddings, from a text dataset.'''
 
-    def __init__(self, batch_size, max_bert_seq_length):
+    def __init__(self, batch_size, max_bert_seq_length, embedder_type):
 
         args = get_args()
 
@@ -298,14 +298,13 @@ class BertEmbedder:
         self.max_bert_seq_length = max_bert_seq_length
 
         # Init Huggingface, if in use.
-        if args.bert_embedder_type == "megatron":
+        if embedder_type == "megatron":
             self.huggingface_embedder = None
-        elif args.bert_embedder_type == "huggingface":
+        elif embedder_type == "huggingface":
             self.huggingface_embedder = HuggingfaceEmbedder(batch_size,
                                                             max_bert_seq_length)
         else:
-            raise Exception("specialize for embedder type '%s'." %
-                            args.bert_embedder_type)
+            raise Exception("specialize for embedder type '%s'." % embedder_type)
 
 
     def embed_text_dataset(self, text_dataset):
@@ -354,9 +353,9 @@ class DiskDataParallelBertEmbedder:
     '''Process embeddings in blocks & save to disk.'''
 
     def __init__(self, batch_size, max_bert_seq_length, block_size,
-                 force_megatron = False):
+                 embedder_type):
         self.embedder = BertEmbedder(batch_size, max_bert_seq_length,
-                                     force_megatron = force_megatron)
+                                     embedder_type)
         self.block_size = block_size
 
 

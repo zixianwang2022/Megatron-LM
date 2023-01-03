@@ -97,7 +97,8 @@ class FaissBaseIndex(Index):
 
         # Bert embedder.
         embedder = BertEmbedder(args.retro_bert_batch_size,
-                                args.retro_bert_max_chunk_length)
+                                args.retro_bert_max_chunk_length,
+                                args.bert_embedder_type)
 
         # Empty/added index paths.
         empty_index_path = self.get_empty_index_path()

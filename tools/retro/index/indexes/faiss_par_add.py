@@ -82,7 +82,8 @@ class FaissParallelAddIndex(Index):
 
         # Bert embedder.
         embedder = BertEmbedder(args.retro_bert_batch_size,
-                                args.retro_bert_max_chunk_length)
+                                args.retro_bert_max_chunk_length,
+                                args.bert_embedder_type)
 
         # Missing code blocks.
         def validate(f):

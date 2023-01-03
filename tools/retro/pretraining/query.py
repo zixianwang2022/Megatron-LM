@@ -274,7 +274,8 @@ def query_pretraining_neighbors():
 
     # Bert embedder.
     embedder = BertEmbedder(args.retro_bert_batch_size,
-                            args.retro_bert_max_chunk_length)
+                            args.retro_bert_max_chunk_length,
+                            args.bert_embedder_type)
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")
