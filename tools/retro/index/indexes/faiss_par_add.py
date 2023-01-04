@@ -28,7 +28,6 @@ from tools.bert_embedding import BertEmbedder
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
 from tools.retro.index import Index
 from tools.retro.index.indexes.faiss_base import FaissBaseIndex
-# from tools.retro.index.utils import num_samples_to_block_ranges
 from tools.retro.index.utils import get_added_codes_dir, get_added_code_paths
 
 # >>>
@@ -63,36 +62,6 @@ class FaissParallelAddIndex(Index):
         # Encode block.
         print_rank_0("encode.")
         codes = index.sa_encode(embeddings)
-
-        # >>>
-        # pax(3, {
-        #     "block" : block,
-        #     "embeddings" : str(embeddings),
-        #     "codes 0" : str(codes),
-        #     "codes 1" : str(faiss.extract_index_ivf(index).sa_encode(embeddings)),
-        # })
-        # <<<
-
-        # >>>
-        # index0 = index
-        # index1 = faiss.clone_index(index0)
-
-        # print_rank_0("index0 / add.")
-        # index0.add(embeddings)
-
-        # print_rank_0("index1 / encode.")
-        # codes1 = index1.sa_encode(embeddings)
-
-        # print_rank_0("index1 / add.")
-        # index1.add_sa_codes(codes1)
-
-        # pax(0, {
-        #     "index0" : index0,
-        #     "index1" : index1,
-        #     "index0 / imbal" : index0.invlists.imbalance_factor(),
-        #     "index1 / imbal" : index1.invlists.imbalance_factor(),
-        # })
-        # <<<
 
         # Save neighbors.
         print_rank_0("save codes.")

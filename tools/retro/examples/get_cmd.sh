@@ -38,7 +38,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
-# RETRO_TASKS="index-train"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
@@ -65,7 +65,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v4" # use train embeds
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v5" # dist comparison
 # RETRO_TASKS="misc-index-check-train-valid-split"
-RETRO_TASKS="misc-index-debug-embeddings-codes"
+# RETRO_TASKS="misc-index-debug-embeddings-codes"
 # RETRO_TASKS="misc-pretraining-compare-embeds"
 # RETRO_TASKS="misc-pretraining-print-neighbors"
 # RETRO_TASKS="misc-pretraining-compare-old-nbrs"
