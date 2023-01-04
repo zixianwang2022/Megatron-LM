@@ -85,12 +85,14 @@ class FaissBaseIndex(Index):
         torch.distributed.barrier()
 
 
-    def _add(self, text_dataset, dataset_sample_ranges):
+    def _add(self, text_dataset):
         '''Add to index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
 
         args = get_retro_args()
+
+        dataset_sample_ranges = num_samples_to_block_ranges(len(text_dataset))
 
         # Set num threads (torch.distributed reset it to 1).
         faiss.omp_set_num_threads(64)
@@ -102,7 +104,7 @@ class FaissBaseIndex(Index):
 
         # Empty/added index paths.
         empty_index_path = self.get_empty_index_path()
-        added_index_path = self.get_added_index_path(dataset_sample_ranges)
+        added_index_path = self.get_added_index_path()
 
         # Skip adding, if index exists.
         if os.path.isfile(added_index_path):
@@ -128,14 +130,12 @@ class FaissBaseIndex(Index):
     def add(self, text_dataset):
         '''Add to index.'''
 
-        dataset_sample_ranges = num_samples_to_block_ranges(len(text_dataset))
-
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            self._add(text_dataset, dataset_sample_ranges)
+            self._add(text_dataset)
 
         # Wait for rank 0.
         torch.distributed.barrier()
 
         # Get output index path, for return.
-        return self.get_added_index_path(dataset_sample_ranges)
+        return self.get_added_index_path()

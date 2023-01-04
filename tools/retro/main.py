@@ -30,6 +30,8 @@ from megatron.global_vars import set_retro_args
 from tools.retro.db import build_db
 from tools.retro.db.misc import print_db_embeddings
 from tools.retro.index.build import add_to_index, build_index, train_index
+from tools.retro.index.misc.debug_embeddings_codes \
+    import  debug_embeddings_codes as debug_index_embeddings_codes
 from tools.retro.index.misc.megatron_vs_huggingface import (
     run_bert_comparison_v0,
     run_bert_comparison_v1,
@@ -166,6 +168,8 @@ if __name__ == "__main__":
             run_bert_comparison_v4()
         elif task == "misc-index-megatron-huggingface-comparison-v5":
             run_bert_comparison_v5()
+        elif task == "misc-index-debug-embeddings-codes":
+            debug_index_embeddings_codes()
         elif task == "misc-index-check-train-valid-split":
             check_index_train_valid_split()
         elif task == "misc-index-update-training-block-size":

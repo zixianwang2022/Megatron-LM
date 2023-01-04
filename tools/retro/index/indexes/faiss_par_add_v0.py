@@ -194,6 +194,8 @@ class FaissParallelAddIndex(Index):
         return index_path_map["output_index_path"]
 
 
+    # >>>
+    ? ? ? ... ? ? ? ... remove this file
     # def encode_partial(self, partial_index_path_map, dir_path,
     #                    text_dataset, embedder):
     #     """Encode partial indexes (embarrassingly parallel).
@@ -313,6 +315,7 @@ class FaissParallelAddIndex(Index):
         raise Exception("extract codes.")
         faiss.write_index(index, partial_index_path)
         np.save(partial_codes_path, codes)
+    # <<<
 
 
     def merge_partial(self, partial_index_path_map, dir_path):

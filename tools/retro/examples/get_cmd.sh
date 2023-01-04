@@ -38,7 +38,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
-RETRO_TASKS="index-train"
+# RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
@@ -65,6 +65,7 @@ RETRO_TASKS="index-train"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v4" # use train embeds
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v5" # dist comparison
 # RETRO_TASKS="misc-index-check-train-valid-split"
+RETRO_TASKS="misc-index-debug-embeddings-codes"
 # RETRO_TASKS="misc-pretraining-compare-embeds"
 # RETRO_TASKS="misc-pretraining-print-neighbors"
 # RETRO_TASKS="misc-pretraining-compare-old-nbrs"
@@ -93,8 +94,10 @@ RETRO_NNBRS_TARGET=200
 SEED=1234 # default
 DISTRIBUTED_TIMEOUT_MINUTES=600
 # --no-load-rng \
+# --no-initialization \
 MEGATRON_ARGS=" \
     --no-load-optim \
+    --exit-on-missing-checkpoint \
     --seed ${SEED} \
     --no-async-tensor-model-parallel-allreduce \
     --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \

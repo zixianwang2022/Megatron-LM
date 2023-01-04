@@ -57,10 +57,29 @@ def get_embedders():
 
 
 def get_indexes():
-    return {
+
+    args = get_retro_args()
+
+    # Read indexes.
+    indexes = {
         "megatron" : faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP),
         "huggingface" : faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP),
     }
+
+    assert len(set([ index.ntotal for index in indexes.values() ])) == 1
+    # pax({
+    #     "indexes" : indexes,
+    #     "imbalance_factor" : {k:i.invlists.imbalance_factor() for k,i in indexes.items()},
+    # })
+
+    # Search parameters.
+    for index in indexes.values():
+        faiss.ParameterSpace().set_index_parameter(index, "efSearch",
+                                                   args.retro_ef_search)
+        faiss.ParameterSpace().set_index_parameter(index, "nprobe",
+                                                   args.retro_nprobe)
+
+    return indexes
 
 
 class TextListDataset(torch.utils.data.Dataset):
@@ -88,10 +107,13 @@ def run_bert_comparison():
     max_nbrs = 40
     # max_nbrs = 200
 
+    # pax(embedders)
+    # pax({"datasets": datasets, "embedders": embedders, "indexes": indexes})
+
     # valid_text_subset = torch.utils.data.Subset(datasets["valid"], range(10))
     valid_text_subset = torch.utils.data.Subset(
         datasets["valid"],
-        range(0, len(datasets["valid"]), len(datasets["valid"]) // 100),
+        range(0, len(datasets["valid"]), len(datasets["valid"]) // 10),
     )
     query_embeddings = {
         k : e.embed_text_dataset(valid_text_subset)
@@ -102,12 +124,94 @@ def run_bert_comparison():
         for k, i in indexes.items()
     }
 
+    # pax({"query_embeddings": query_embeddings, "nbrs": nbrs})
+
+    # >>>
+    # self_nbr_dists = defaultdict(list)
+    # cross_nbr_dists = defaultdict(list)
+    # for valid_idx in range(len(valid_text_subset)):
+    #     print("valid_idx %d / %d." % (valid_idx, len(valid_text_subset)))
+    #     megatron_nbr_ids = nbrs["megatron"][valid_idx]
+    #     huggingface_nbr_ids = nbrs["huggingface"][valid_idx]
+    #     self_nbr_texts = {
+    #         "megatron" : TextListDataset([
+    #             datasets["train"][nbr_id]["text"]
+    #             for nbr_id in megatron_nbr_ids
+    #         ]),
+    #         "huggingface" : TextListDataset([
+    #             datasets["train"][nbr_id]["text"]
+    #             for nbr_id in huggingface_nbr_ids
+    #         ]),
+    #     }
+    #     cross_nbr_texts = {
+    #         "megatron" : TextListDataset([
+    #             datasets["train"][nbr_id]["text"]
+    #             for nbr_id in huggingface_nbr_ids
+    #         ]),
+    #         "huggingface" : TextListDataset([
+    #             datasets["train"][nbr_id]["text"]
+    #             for nbr_id in megatron_nbr_ids
+    #         ]),
+    #     }
+    #     self_nbr_embeddings = {
+    #         k : e.embed_text_dataset(self_nbr_texts[k])
+    #         for k, e in embedders.items()
+    #     }
+    #     cross_nbr_embeddings = {
+    #         k : e.embed_text_dataset(cross_nbr_texts[k])
+    #         for k, e in embedders.items()
+    #     }
+    #     # _self_nbr_dists = {
+    #     #     k : np.mean([np.linalg.norm(query_embeddings[k][valid_idx] - e)
+    #     #                 for e in self_nbr_embeddings[k]])
+    #     #     for k in self_nbr_embeddings
+    #     # }
+    #     # _cross_nbr_dists = {
+    #     #     k : np.mean([np.linalg.norm(query_embeddings[k][valid_idx] - e)
+    #     #                 for e in cross_nbr_embeddings[k]])
+    #     #     for k in cross_nbr_embeddings
+    #     # }
+    #     for k in self_nbr_embeddings:
+    #         self_nbr_dists[k].append(np.mean([
+    #             np.linalg.norm(query_embeddings[k][valid_idx] - e)
+    #             for e in self_nbr_embeddings[k]]))
+    #     for k in cross_nbr_embeddings:
+    #         cross_nbr_dists[k].append(np.mean([
+    #             np.linalg.norm(query_embeddings[k][valid_idx] - e)
+    #             for e in cross_nbr_embeddings[k]]))
+
+    #     # pax({
+    #     #     # "crnt_query_embeddings" : crnt_query_embeddings,
+    #     #     "megatron_nbr_ids" : megatron_nbr_ids,
+    #     #     "huggingface_nbr_ids" : huggingface_nbr_ids,
+    #     #     "nbr id / overlap" :
+    #     #     len(set(megatron_nbr_ids) & set(huggingface_nbr_ids)) / max_nbrs,
+    #     #     "self_nbr_texts" : self_nbr_texts,
+    #     #     "cross_nbr_texts" : cross_nbr_texts,
+    #     #     "self_nbr_embeddings" : self_nbr_embeddings,
+    #     #     "cross_nbr_embeddings" : cross_nbr_embeddings,
+    #     # })
+    # +++
+    from tools.retro.cli import shorten_str
     self_nbr_dists = defaultdict(list)
     cross_nbr_dists = defaultdict(list)
     for valid_idx in range(len(valid_text_subset)):
         print("valid_idx %d / %d." % (valid_idx, len(valid_text_subset)))
         megatron_nbr_ids = nbrs["megatron"][valid_idx]
         huggingface_nbr_ids = nbrs["huggingface"][valid_idx]
+        megatron_nbr_texts = \
+            [ datasets["train"][i]["text"] for i in megatron_nbr_ids ]
+        huggingface_nbr_texts = \
+            [ datasets["train"][i]["text"] for i in huggingface_nbr_ids ]
+        pax({
+            "query text" : shorten_str(valid_text_subset[valid_idx]["text"], 100),
+            # "megatron_nbr_ids" : megatron_nbr_ids,
+            # "huggingface_nbr_ids" : huggingface_nbr_ids,
+            "megatron_nbr_texts" :
+            [ shorten_str(t, 100) for t in megatron_nbr_texts ],
+            "huggingface_nbr_texts" :
+            [ shorten_str(t, 100) for t in huggingface_nbr_texts ],
+        })
         self_nbr_texts = {
             "megatron" : TextListDataset([
                 datasets["train"][nbr_id]["text"]
@@ -136,16 +240,6 @@ def run_bert_comparison():
             k : e.embed_text_dataset(cross_nbr_texts[k])
             for k, e in embedders.items()
         }
-        # _self_nbr_dists = {
-        #     k : np.mean([np.linalg.norm(query_embeddings[k][valid_idx] - e)
-        #                 for e in self_nbr_embeddings[k]])
-        #     for k in self_nbr_embeddings
-        # }
-        # _cross_nbr_dists = {
-        #     k : np.mean([np.linalg.norm(query_embeddings[k][valid_idx] - e)
-        #                 for e in cross_nbr_embeddings[k]])
-        #     for k in cross_nbr_embeddings
-        # }
         for k in self_nbr_embeddings:
             self_nbr_dists[k].append(np.mean([
                 np.linalg.norm(query_embeddings[k][valid_idx] - e)
@@ -154,18 +248,7 @@ def run_bert_comparison():
             cross_nbr_dists[k].append(np.mean([
                 np.linalg.norm(query_embeddings[k][valid_idx] - e)
                 for e in cross_nbr_embeddings[k]]))
-
-        # pax({
-        #     # "crnt_query_embeddings" : crnt_query_embeddings,
-        #     "megatron_nbr_ids" : megatron_nbr_ids,
-        #     "huggingface_nbr_ids" : huggingface_nbr_ids,
-        #     "nbr id / overlap" :
-        #     len(set(megatron_nbr_ids) & set(huggingface_nbr_ids)) / max_nbrs,
-        #     "self_nbr_texts" : self_nbr_texts,
-        #     "cross_nbr_texts" : cross_nbr_texts,
-        #     "self_nbr_embeddings" : self_nbr_embeddings,
-        #     "cross_nbr_embeddings" : cross_nbr_embeddings,
-        # })
+    # <<<
 
     pax({
         "self_nbr_dists" : {k:np.mean(d) for k,d in self_nbr_dists.items()},
