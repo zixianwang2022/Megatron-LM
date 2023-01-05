@@ -62,7 +62,8 @@ def get_indexes():
 
     # Read indexes.
     indexes = {
-        "megatron" : faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP),
+        # "megatron" : faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP),
+        "megatron" : faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-mt-cased/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP),
         "huggingface" : faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP),
     }
 
@@ -199,46 +200,32 @@ def run_bert_comparison():
         print("valid_idx %d / %d." % (valid_idx, len(valid_text_subset)))
         megatron_nbr_ids = nbrs["megatron"][valid_idx]
         huggingface_nbr_ids = nbrs["huggingface"][valid_idx]
-        megatron_nbr_texts = \
-            [ datasets["train"][i]["text"] for i in megatron_nbr_ids ]
-        huggingface_nbr_texts = \
-            [ datasets["train"][i]["text"] for i in huggingface_nbr_ids ]
-        pax({
-            "query text" : shorten_str(valid_text_subset[valid_idx]["text"], 100),
-            # "megatron_nbr_ids" : megatron_nbr_ids,
-            # "huggingface_nbr_ids" : huggingface_nbr_ids,
-            "megatron_nbr_texts" :
-            [ shorten_str(t, 100) for t in megatron_nbr_texts ],
-            "huggingface_nbr_texts" :
-            [ shorten_str(t, 100) for t in huggingface_nbr_texts ],
-        })
-        self_nbr_texts = {
-            "megatron" : TextListDataset([
-                datasets["train"][nbr_id]["text"]
-                for nbr_id in megatron_nbr_ids
-            ]),
-            "huggingface" : TextListDataset([
-                datasets["train"][nbr_id]["text"]
-                for nbr_id in huggingface_nbr_ids
-            ]),
+        nbr_texts = {
+            "megatron" : TextListDataset([datasets["train"][i]["text"]
+                                          for i in megatron_nbr_ids]),
+            "huggingface" : TextListDataset([datasets["train"][i]["text"]
+                                             for i in huggingface_nbr_ids]),
         }
-        cross_nbr_texts = {
-            "megatron" : TextListDataset([
-                datasets["train"][nbr_id]["text"]
-                for nbr_id in huggingface_nbr_ids
-            ]),
-            "huggingface" : TextListDataset([
-                datasets["train"][nbr_id]["text"]
-                for nbr_id in megatron_nbr_ids
-            ]),
-        }
+        # pax({
+        #     "query text" : shorten_str(valid_text_subset[valid_idx]["text"], 100),
+        #     # "megatron_nbr_ids" : megatron_nbr_ids,
+        #     # "huggingface_nbr_ids" : huggingface_nbr_ids,
+        #     "megatron_nbr_texts" :
+        #     [ shorten_str(t, 100) for t in megatron_nbr_texts ],
+        #     "huggingface_nbr_texts" :
+        #     [ shorten_str(t, 100) for t in huggingface_nbr_texts ],
+        # })
         self_nbr_embeddings = {
-            k : e.embed_text_dataset(self_nbr_texts[k])
-            for k, e in embedders.items()
+            "megatron" :
+            embedders["megatron"].embed_text_dataset(nbr_texts["megatron"]),
+            "huggingface" :
+            embedders["huggingface"].embed_text_dataset(nbr_texts["huggingface"]),
         }
         cross_nbr_embeddings = {
-            k : e.embed_text_dataset(cross_nbr_texts[k])
-            for k, e in embedders.items()
+            "megatron" :
+            embedders["megatron"].embed_text_dataset(nbr_texts["huggingface"]),
+            "huggingface" :
+            embedders["huggingface"].embed_text_dataset(nbr_texts["megatron"]),
         }
         for k in self_nbr_embeddings:
             self_nbr_dists[k].append(np.mean([

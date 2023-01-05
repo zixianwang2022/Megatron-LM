@@ -351,7 +351,7 @@ def validate_args(args, defaults={}):
     _print_args("arguments", args)
     retro_args = get_retro_args()
     if retro_args and args != retro_args:
-        _print_args("retro arguments", types.SimpleNamespace(**{k:v for k,v in vars(retro_args).items() if k.startswith("retro") or k.startswith("rank")}))
+        _print_args("retro arguments", types.SimpleNamespace(**{k:v for k,v in vars(retro_args).items() if k.startswith("retro")}, rank=args.rank))
 
     return args
 

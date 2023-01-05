@@ -17,11 +17,11 @@ export BERT_TOKENIZER=BertWordPieceLowerCase
 
 # ~~ bert / cased. ~~
 # # >>>> [ critical arg for slow batch search. ] >>>>
-# # export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
-# export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
+# export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345m_cased
+# # export BERT_LOAD_PATH=/home/universal-lm-data-netapp/chkpts/bert/345M_no_rng
 # # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-# # export BERT_VOCAB_FILE=/home/universal-lm-data-netapp/scratch/mshoeybi/data/bert_vocab/cased/bert-large-cased-vocab.txt
-# export BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc/bert-large-cased-vocab.txt
+# export BERT_VOCAB_FILE=/home/universal-lm-data-netapp/scratch/mshoeybi/data/bert_vocab/cased/bert-large-cased-vocab.txt
+# # export BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/misc/bert-large-cased-vocab.txt
 # # export BERT_VOCAB_FILE=/gpfs/fs1/projects/gpu_adlr/datasets/nlp/roberta_mmap/vocab.txt
 # export BERT_TOKENIZER=BertWordPieceCase
 # # export BERT_TOKENIZER=BertWordPieceLowerCase
