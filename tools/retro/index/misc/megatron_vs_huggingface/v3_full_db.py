@@ -15,7 +15,8 @@
 
 from collections import defaultdict
 import faiss
-# import glob
+import glob
+import h5py
 import json
 import numpy as np
 import os
@@ -37,6 +38,7 @@ from lutil import pax
 
 
 # n_valid = 10
+# n_valid = 100
 # n_valid = 1000
 n_valid = 10000
 max_nbrs = 200
@@ -73,12 +75,12 @@ def get_embedders():
         "megatron" : BertEmbedder(
             args.retro_bert_batch_size,
             args.retro_bert_max_chunk_length,
-            force_megatron = True,
+            embedder_type = "megatron",
         ),
         "huggingface" : BertEmbedder(
             args.retro_bert_batch_size,
             args.retro_bert_max_chunk_length,
-            force_megatron = False,
+            embedder_type = "huggingface",
         ),
     }
 
@@ -129,15 +131,82 @@ def get_valid_embeddings():
 #     pax(indexes)
 
 #     return indexes
+# def get_indexes():
+#     indexes = defaultdict(dict)
+#     for model_key in "megatron", "huggingface":
+#         print("read index '%s'." % model_key)
+#         path = os.path.join(get_root_dir(), "index", f"{model_key}_approx.faissindex")
+#         #indexes[model_key]["approx"] = faiss.read_index(path, faiss.IO_FLAG_MMAP)
+#         indexes[model_key]["approx"] = faiss.read_index(path)
+#         print("read > done.")
+#     # pax({k:i["approx"] for k,i in indexes.items()})
+#     return indexes
+# def get_indexes():
+
+#     indexes = defaultdict(dict)
+#     for model_key in "megatron", "huggingface":
+#         print("read index '%s'." % model_key)
+#         path = os.path.join(get_root_dir(), "index", f"{model_key}_approx.faissindex")
+#         #indexes[model_key]["approx"] = faiss.read_index(path, faiss.IO_FLAG_MMAP)
+#         indexes[model_key]["approx"] = faiss.read_index(path)
+#         print("read > done.")
+#     # pax({k:i["approx"] for k,i in indexes.items()})
+#     return indexes
 def get_indexes():
+
+    index_dir = os.path.join(get_root_dir(), "index")
+    os.makedirs(index_dir, exist_ok = True)
+
+    exact_index_paths = {
+        "megatron" : os.path.join(index_dir, "megatron_exact.faissindex"),
+        "huggingface" : os.path.join(index_dir, "huggingface_exact.faissindex"),
+    }
+    embed_paths = {
+        "megatron" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/*.hdf5")),
+        "huggingface" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/blocks/*.hdf5")),
+    }
+
+    # exact_indexes = {}
+    for model_key, exact_index_path in exact_index_paths.items():
+        if os.path.exists(exact_index_path):
+            continue
+        raise Exception("re-build?")
+        print("index / add.")
+        exact_index = faiss.index_factory(1024, "Flat")
+        for embed_path in tqdm(embed_paths[model_key], f"{model_key}/exact/add"):
+            with h5py.File(embed_path) as f:
+                exact_index.add(np.copy(f["data"]))
+        print("index / write.")
+        faiss.write_index(exact_index, exact_index_path)
+        # exact_indexes[model_key] = exact_index
+
+    index_paths = {
+        "megatron" : {
+            "exact" : exact_index_paths["megatron"],
+            # "approx" : "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex",
+            # "approx" : "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-mt-cased/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex",
+        },
+        "huggingface" : {
+            "exact" : exact_index_paths["huggingface"],
+            # "approx" : "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex",
+        },
+    }
+    # pax(index_paths)
+    # indexes = {m:{i:faiss.read_index(p, faiss.IO_FLAG_MMAP) for i,p in ip.items()} for m,ip in index_paths.items()}
     indexes = defaultdict(dict)
-    for model_key in "megatron", "huggingface":
-        print("read index '%s'." % model_key)
-        path = os.path.join(get_root_dir(), "index", f"{model_key}_approx.faissindex")
-        #indexes[model_key]["approx"] = faiss.read_index(path, faiss.IO_FLAG_MMAP)
-        indexes[model_key]["approx"] = faiss.read_index(path)
-        print("read > done.")
-    # pax({k:i["approx"] for k,i in indexes.items()})
+    for model_key in index_paths:
+        for index_key, index_path in index_paths[model_key].items():
+            print("read index ... %s / %s ... %s." %
+                  (model_key, index_key, index_path))
+            indexes[model_key][index_key] = faiss.read_index(index_path) # , faiss.IO_FLAG_MMAP)
+
+    # pax({
+    #     "exact_index_paths" : exact_index_paths,
+    #     "embed_paths" : {k:pp[-5:] for k,pp in embed_paths.items()},
+    #     "index_paths" : index_paths,
+    #     "indexes" : indexes,
+    # })
+
     return indexes
 
 
@@ -159,11 +228,15 @@ def get_nbrs():
                 #     "index_key" : index_key,
                 # })
 
-                if index_key == "approx":
+                if index_key == "exact":
+                    search_params = {}
+                elif index_key == "approx":
                     search_params = {
                         "efSearch" : 16, # args.retro_ef_search,
                         "nprobe" : 4096, # args.retro_nprobe,
                     }
+                else:
+                    raise Exception("specialize for '%s'." % index_key)
                 for k, p in search_params.items():
                     faiss.ParameterSpace().set_index_parameter(index, k, p)
 

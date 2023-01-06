@@ -8,18 +8,18 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 ######## Data corpus. ########
 # >>>
-CORPUS="wiki"
-RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
-RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
-BERT_EMBEDDER_TYPE=megatron
+# CORPUS="wiki"
+# RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
+# RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
+# RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
+# BERT_EMBEDDER_TYPE=megatron
 # +++
-# CORPUS="corpus"
-# RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
-# RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
-# RETRO_EF_SEARCH=32 RETRO_NPROBE=4096
-# # [x] ... RETRO_EF_SEARCH=256 RETRO_NPROBE=65536
-# BERT_EMBEDDER_TYPE=huggingfacee
+CORPUS="corpus"
+RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
+RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
+RETRO_EF_SEARCH=32 RETRO_NPROBE=4096
+# [x] ... RETRO_EF_SEARCH=256 RETRO_NPROBE=65536
+BERT_EMBEDDER_TYPE=huggingface
 # <<<
 
 ######## Repo. ########
@@ -40,7 +40,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-# RETRO_TASKS="pretraining-query-nbrs"
+RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-index-update-training-block-size"
 # RETRO_TASKS="misc-pretraining-test-retro-dataset"
@@ -63,7 +63,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v2" # save to disk
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v3-full-db" # use merged valids
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v4-partial-db" # use train embeds
-RETRO_TASKS="misc-index-megatron-huggingface-comparison-v5-dist-comp" # dist comparison
+# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v5-dist-comp" # dist comparison
 # RETRO_TASKS="misc-index-check-train-valid-split"
 # RETRO_TASKS="misc-index-debug-embeddings-codes"
 # RETRO_TASKS="misc-pretraining-compare-embeds"

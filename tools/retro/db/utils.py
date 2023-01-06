@@ -115,7 +115,7 @@ def get_merged_dataset(db_type, indexed_dataset_infos = None):
 
     # DB dataset.
     indexed_datasets = [ info["dataset"] for info in indexed_dataset_infos ]
-    dataset = DBDataset(indexed_datasets, chunks,
+    dataset = DBDataset(db_path, indexed_datasets, chunks,
                         args.retro_gpt_chunk_length)
 
     return dataset

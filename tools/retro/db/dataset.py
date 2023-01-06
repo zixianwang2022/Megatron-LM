@@ -31,12 +31,13 @@ class DBDataset(torch.utils.data.Dataset):
         [dataset_idx, doc_id, start_idx, end_idx, bert_length])
     '''
 
-    def __init__(self, indexed_datasets, chunks, max_chunk_length):
+    def __init__(self, db_path, indexed_datasets, chunks, max_chunk_length):
 
         assert chunks.shape[1] == 5, "expected 5 columns (dataset_idx, " \
         "doc_idx, token_start_idx, token_end_idx, bert_chunk_length); " \
         "found %d columns." % chunks.shape[1]
 
+        self.db_path = db_path
         self.indexed_datasets = indexed_datasets
         self.chunks = chunks
 
@@ -45,7 +46,10 @@ class DBDataset(torch.utils.data.Dataset):
 
 
     def __len__(self):
-        return len(self.chunks)
+        # >>>
+        # return len(self.chunks)
+        return self.chunks.shape[0]
+        # <<<
 
 
     def __getitem__(self, chunk_id):
