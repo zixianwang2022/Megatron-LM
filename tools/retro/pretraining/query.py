@@ -139,6 +139,8 @@ from concurrent.futures import (
     # ThreadPoolExecutor,
     as_completed,
 )
+import json
+import zlib
 
 
 # def get_partial_banned_chunk_map(chunk_db, chunk_id_range):
@@ -177,12 +179,19 @@ def get_partial_banned_chunk_map(proc_id,
                                  db_path):
 
     with h5py.File(db_path) as f:
+        # >>>
         sub_chunk_db = np.copy(f["chunks"][start_chunk_id:end_chunk_id, :2])
+        # sub_chunk_db = np.copy( # .......... debuggggggging .....
+        #     f["chunks"][start_chunk_id:start_chunk_id+10000000, :2])
+        # <<<
 
     # pax({"sub_chunk_db": sub_chunk_db})
 
     # Map docs to chunks.
-    banned_chunk_map = defaultdict(set)
+    # >>>
+    # banned_chunk_map = defaultdict(set)
+    banned_chunk_map = defaultdict(list)
+    # <<<
     for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
             sub_chunk_db,
             "map banned docs, proc %d" % proc_id,
@@ -190,9 +199,18 @@ def get_partial_banned_chunk_map(proc_id,
             # disable = proc_id % 8 == 0,
     )):
         chunk_id = start_chunk_id + rel_chunk_id
-        banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
+        # >>>
+        # banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
+        banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
+            .append(chunk_id)
+        # <<<
 
-    return proc_id, banned_chunk_map
+    # >>>
+    # return proc_id, banned_chunk_map
+    # +++
+    z = zlib.compress(json.dumps(banned_chunk_map).encode())
+    return proc_id, z
+    # <<<
 
 
 # def get_banned_chunk_map(chunk_db):
@@ -200,7 +218,8 @@ def get_banned_chunk_map(db_dataset):
     '''Get mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
 
     # n_procs = 128
-    n_procs = 32
+    n_procs = 32 # *
+    # n_procs = 1
 
     # n_chunks = chunk_db.shape[0]
     n_chunks = db_dataset.chunks.shape[0]
@@ -243,17 +262,40 @@ def get_banned_chunk_map(db_dataset):
                 db_dataset.db_path,
             ))
 
-        banned_chunk_map = defaultdict(set)
+        compressed_banned_chunk_map = {}
         for finished_idx, future in enumerate(as_completed(futures)):
             print("finished %d / %d." % (finished_idx, n_procs))
             proc_id, proc_banned_chunk_map = future.result()
-            for key, chunk_ids in proc_banned_chunk_map.items():
+            # for key, chunk_ids in proc_banned_chunk_map.items():
+            #     banned_chunk_map[key].update(chunk_ids)
+            compressed_banned_chunk_map[proc_id] = proc_banned_chunk_map
+
+        banned_chunk_map = defaultdict(set)
+        for join_idx, (proc_id, proc_banned_chunk_map) \
+            in enumerate(compressed_banned_chunk_map.items()):
+
+            proc_banned_chunk_map = \
+                json.loads(zlib.decompress(proc_banned_chunk_map).decode())
+            
+            for key, chunk_ids in tqdm(
+                    proc_banned_chunk_map.items(),
+                    "join map %d / %d" % (
+                        join_idx,
+                        len(compressed_banned_chunk_map),
+                    ),
+            ):
                 banned_chunk_map[key].update(chunk_ids)
-            # pax({"proc_id": proc_id, "proc_banned_chunk_map": proc_banned_chunk_map})
+
+            # pax({"proc_banned_chunk_map": proc_banned_chunk_map})
 
         pax({
             "num keys" : len(banned_chunk_map),
             "num chunks" : sum(len(v) for v in banned_chunk_map.values()),
+
+            # "num keys" : sum(len(m) for m in banned_chunk_map.values()),
+            # "num chunks" : sum(sum(len(v) for v in m.values()) for m in banned_chunk_map.values()),
+
+            # "banned_chunk_map" : banned_chunk_map,
         })
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
