@@ -13,16 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import concurrent.futures
+from collections import defaultdict
+from concurrent.futures import as_completed, ProcessPoolExecutor
 from functools import reduce
 import glob
 import h5py
+import json
 import numpy as np
 import os
 from pathlib import Path
 import threading
 import torch
 from tqdm import tqdm
+# import zlib
 
 from megatron import get_retro_args, print_rank_0
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
@@ -36,7 +39,9 @@ from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 from .utils import (
     get_individual_db,
     get_individual_db_dir,
+    get_merged_dataset,
     get_merged_db_path_map,
+    get_train_doc_chunk_map_dir,
     save_indexed_dataset_infos,
 )
 
@@ -217,7 +222,7 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
         n_procs = 8
 
     # Process documents in parallel.
-    with concurrent.futures.ProcessPoolExecutor(max_workers=n_procs) as executor:
+    with ProcessPoolExecutor(max_workers = n_procs) as executor:
         for block_idx, block in enumerate(missing_db_blocks):
 
             if block is not None:
@@ -239,7 +244,7 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
                         tokenizers,
                     ))
                 partial_chunk_dbs = []
-                for future in concurrent.futures.as_completed(futures):
+                for future in as_completed(futures):
                     partial_chunk_dbs.append(future.result())
 
                 # Concatenate chunks.
@@ -400,10 +405,6 @@ def merge_dbs(indexed_dataset_infos, db_type):
     # Build merged chunk db.
     if not os.path.exists(db_path):
 
-        # >>>
-        # pax({"db_path": db_path})
-        # <<<
-
         os.makedirs(os.path.dirname(db_path), exist_ok = True)
         f = h5py.File(db_path, "w")
 
@@ -431,8 +432,100 @@ def merge_dbs(indexed_dataset_infos, db_type):
         f.close()
 
 
-def build_doc_map(db_type):
-    '''Build mapping from tuple(dataset_id, doc_id) -> chunk_ids.'''
+def get_partial_banned_chunk_map(proc_id, db_path, chunk_range_info):
+    '''Build partial mapping of {(dataset_id,doc_id):[chunk_ids]}.
+
+    In this method, only chunks within the range (start_chunk_id, end_chunk_id]
+    are processed.'''
+
+    start_chunk_id = chunk_range_info["start"]
+    end_chunk_id = chunk_range_info["end"]
+    output_path = chunk_range_info["path"]
+
+    # Skip, if output file exists.
+    if os.path.exists(output_path):
+        return
+
+    # Chunk subset.
+    with h5py.File(db_path) as f:
+        sub_chunk_db = np.copy(f["chunks"][start_chunk_id:end_chunk_id, :2])
+
+    # Map docs to chunks.
+    banned_chunk_map = defaultdict(list)
+    for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
+            sub_chunk_db,
+            "map banned docs, proc %d" % proc_id,
+            total = sub_chunk_db.shape[0],
+            # disable = proc_id % 8 == 0,
+    )):
+        chunk_id = start_chunk_id + rel_chunk_id
+        banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
+            .append(chunk_id)
+
+    # Save output.
+    # with open(output_path, "wb") as f:
+    #     f.write(zlib.compress(json.dumps(banned_chunk_map).encode()))
+    with open(output_path, "w") as f:
+        json.dump(banned_chunk_map, f)
+
+
+def build_doc_chunk_map(db_type):
+    '''Build mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
+
+    if torch.distributed.get_rank() != 0:
+        return
+
+    print(" > build %s doc-chunk map." % db_type)
+
+    n_procs = 128
+
+    # Get dataset.
+    db_dataset = get_merged_dataset(db_type)
+
+    # Sub-ranges for parallel processing.
+    n_chunks = db_dataset.chunks.shape[0]
+    n_chunks_per_proc = max(1, int(np.ceil(n_chunks / n_procs)))
+    chunk_id_starts = list(range(0, n_chunks, n_chunks_per_proc))
+    chunk_id_ranges = [(s, min(n_chunks, s + n_chunks_per_proc))
+                       for s in chunk_id_starts]
+
+    # Wrap range info with output path.
+    n_digits = int(np.ceil(np.log(n_chunks) / np.log(10)) + 1)
+    output_dirname = get_train_doc_chunk_map_dir()
+    chunk_range_infos = [{
+        "start" : start_id,
+        "end" : end_id,
+        "path" : os.path.join(output_dirname, "%s-%s.json" % (
+            str(start_id).zfill(n_digits),
+            str(end_id).zfill(n_digits),
+        )),
+    } for start_id, end_id in chunk_id_ranges ]
+
+    # Build doc-chunk map.
+    print_rank_0("build doc-chunk-map.")
+    with ProcessPoolExecutor(max_workers = n_procs) as executor:
+
+        # Build partial chunk maps.
+        futures = []
+        for proc_id, chunk_range_info in enumerate(chunk_range_infos):
+
+            if os.path.exists(chunk_range_info["path"]):
+                continue
+
+            # Submit job.
+            futures.append(executor.submit(
+                get_partial_banned_chunk_map,
+                proc_id,
+                db_dataset.db_path,
+                chunk_range_info,
+            ))
+
+        # Wait for processes to finish.
+        banned_chunk_paths = []
+        for finished_idx, future in enumerate(as_completed(futures)):
+            print("finished %d / %d." % (finished_idx, n_procs))
+            future.result() # necessary?
+
 
 def build_db():
     '''Extract token chunks from each indexed dataset.
@@ -440,6 +533,12 @@ def build_db():
     Iterate each document of each indexed dataset, extract that document's
     chunks, and save to a 'DB' (hdf5 file).
     '''
+
+    # >>>
+    # build_doc_chunk_map("train")
+    # torch.distributed.barrier()
+    # exit()
+    # <<<
 
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()
@@ -458,7 +557,7 @@ def build_db():
     merge_dbs(indexed_dataset_infos, "sampled")
     merge_dbs(indexed_dataset_infos, "train")
     merge_dbs(indexed_dataset_infos, "valid")
-    build_doc_map("train")
+    build_doc_chunk_map("train")
 
     # Save (fully annotated) indexed dataset infos.
     save_indexed_dataset_infos(indexed_dataset_infos)

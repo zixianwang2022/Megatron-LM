@@ -13,11 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 import glob
 import h5py
 import json
 import numpy as np
 import os
+from tqdm import tqdm
 
 from megatron import get_retro_args, print_rank_0
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
@@ -131,3 +133,29 @@ def get_merged_train_dataset(indexed_dataset_infos = None):
 
 def get_merged_valid_dataset(indexed_dataset_infos = None):
     return get_merged_dataset("valid", indexed_dataset_infos)
+
+
+def get_train_doc_chunk_map_dir():
+    dirname = os.path.join(get_base_db_workdir(), "merged", "train_doc_chunk_map")
+    os.makedirs(dirname, exist_ok = True)
+    return dirname
+
+
+def get_train_doc_chunk_map():
+
+    paths = sorted(glob.glob(get_train_doc_chunk_map_dir() + "/*.json"))
+
+    doc_map = defaultdict(set)
+    for path in tqdm(paths, "load train doc maps"):
+
+        # Read file.
+        # crnt_doc_map = json.loads(zlib.decompress(data).decode())
+        with open(path) as f:
+            crnt_doc_map = json.load(f)
+
+        # Add to doc map.
+        for key, chunk_ids in crnt_doc_map.items():
+            key = tuple(int(i) for i in key.split(","))
+            doc_map[key].update(chunk_ids)
+
+    return doc_map

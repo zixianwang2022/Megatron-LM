@@ -25,8 +25,10 @@ from tqdm import tqdm
 from megatron import get_retro_args, mpu, print_rank_0
 from tools.bert_embedding import BertEmbedder
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
-from tools.retro.db.utils import get_merged_train_dataset \
-    as get_db_merged_train_dataset
+from tools.retro.db.utils import (
+    get_merged_train_dataset as get_db_merged_train_dataset,
+    get_train_doc_chunk_map,
+)
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_dir, num_samples_to_block_ranges
 from tools.retro.utils import GPTToTextDataset
@@ -68,248 +70,6 @@ def get_index(chunk_db_dataset, ondisk = False):
     return index
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# def get_banned_chunk_map(chunk_db):
-#     '''Get mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
-
-#     # Map docs to chunks.
-#     print_rank_0("build doc-chunk-id-map.")
-#     banned_chunk_map = defaultdict(set)
-#     for chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
-#             chunk_db[:, :2],
-#             "map banned chunks",
-#             total = chunk_db.shape[0],
-#     )):
-#         banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
-
-#     return banned_chunk_map
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# def get_banned_chunk_map(chunk_db):
-#     '''Get mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
-
-#     # print("copy chunk db.")
-#     # # n = 1000000
-#     # # n = 10000000
-#     # n = 100000000
-#     # t = time.time()
-#     # np.copy(chunk_db[:n])
-#     # print("end copy ... n %d, %.3f sec." % (n, time.time() - t))
-#     # torch.distributed.barrier()
-#     # exit()
-
-#     n_chunks = chunk_db.shape[0]
-#     block_size = 100000000
-
-#     # Map docs to chunks.
-#     print_rank_0("build doc-chunk-id-map.")
-#     banned_chunk_map = defaultdict(set)
-#     for chunk_start_id in range(0, n_chunks, block_size):
-
-#         chunk_end_id = min(n_chunks, chunk_start_id + block_size)
-#         sub_chunk_db = np.copy(chunk_db[chunk_start_id:chunk_end_id, :2])
-
-#         # if chunk_start_id > 0:
-#         #     pax({
-#         #         "sub_chunk_db" : sub_chunk_db,
-#         #         "n_chunks" : n_chunks,
-#         #         "block_size" : block_size,
-#         #         "chunk_start_id" : chunk_start_id,
-#         #         "chunk_end_id" : chunk_end_id,
-#         #     })
-
-#         # continue
-
-#         for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
-#                 sub_chunk_db,
-#                 "map banned chunks, %d / %d" % (
-#                     chunk_start_id // block_size,
-#                     n_chunks // block_size,
-#                 ),
-#                 total = chunk_end_id - chunk_start_id,
-#         )):
-#             chunk_id = chunk_start_id + rel_chunk_id
-#             banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
-
-#     pax(0, {"banned_chunk_map": banned_chunk_map})
-
-#     return banned_chunk_map
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-from concurrent.futures import (
-    ProcessPoolExecutor,
-    # ThreadPoolExecutor,
-    as_completed,
-)
-import json
-import zlib
-
-
-# def get_partial_banned_chunk_map(chunk_db, chunk_id_range):
-
-#     # sub_chunk_db = chunk_db[chunk_id_range[0]:chunk_id_range[1], :2]
-#     sub_chunk_db = np.copy(chunk_db[chunk_id_range[0]:chunk_id_range[1], :2])
-
-#     # Map docs to chunks.
-#     banned_chunk_map = defaultdict(set)
-#     for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
-#             sub_chunk_db,
-#             "map banned chunks",
-#             total = chunk_id_range[1] - chunk_id_range[0],
-#     )):
-#         chunk_id = chunk_id_range[0] + rel_chunk_id
-#         banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
-
-#     return banned_chunk_map
-# def get_partial_banned_chunk_map(thread_id, start_chunk_id, sub_chunk_db):
-
-#     # Map docs to chunks.
-#     banned_chunk_map = defaultdict(set)
-#     for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
-#             sub_chunk_db,
-#             "map banned docs, thread %d" % thread_id,
-#             total = sub_chunk_db.shape[0],
-#             # disable = thread_id % 8 == 0,
-#     )):
-#         chunk_id = start_chunk_id + rel_chunk_id
-#         banned_chunk_map[(dataset_id.item(), doc_id.item())].add(chunk_id)
-
-#     return banned_chunk_map
-def get_partial_banned_chunk_map(proc_id,
-                                 n_chunks,
-                                 start_chunk_id,
-                                 end_chunk_id,
-                                 db_path):
-
-    # >>>
-    n_digits = int(np.ceil(np.log(n_chunks) / np.log(10)) + 1)
-    output_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus/banned_tmp/%s-%s.json" % (str(start_chunk_id).zfill(n_digits), str(end_chunk_id).zfill(n_digits))
-
-    if os.path.exists(output_path):
-        return proc_id, output_path
-    # <<<
-
-    # Chunk subset.
-    with h5py.File(db_path) as f:
-        # >>>
-        sub_chunk_db = np.copy(f["chunks"][start_chunk_id:end_chunk_id, :2])
-        # sub_chunk_db = np.copy( # .......... debuggggggging .....
-        #     f["chunks"][start_chunk_id:start_chunk_id+1000000, :2])
-        # <<<
-
-    # Map docs to chunks.
-    banned_chunk_map = defaultdict(list)
-    for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
-            sub_chunk_db,
-            "map banned docs, proc %d" % proc_id,
-            total = sub_chunk_db.shape[0],
-            # disable = proc_id % 8 == 0,
-    )):
-        chunk_id = start_chunk_id + rel_chunk_id
-        banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
-            .append(chunk_id)
-
-    # >>>
-    # # Compress map.
-    # compressed_map = zlib.compress(json.dumps(banned_chunk_map).encode())
-
-    # return proc_id, compressed_map
-    # +++
-    with open(output_path, "w") as f:
-        json.dump(banned_chunk_map, f)
-
-    return proc_id, output_path
-    # <<<
-
-
-def get_banned_chunk_map(db_dataset):
-    '''Get mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
-
-    # >>>
-    # n_procs = 128
-    n_procs = 32 # *
-    # n_procs = 1
-    # <<<
-
-    n_chunks = db_dataset.chunks.shape[0]
-    n_chunks_per_proc = max(1, int(np.ceil(n_chunks / n_procs)))
-    chunk_id_starts = list(range(0, n_chunks, n_chunks_per_proc))
-    chunk_id_ranges = [(s, min(n_chunks, s + n_chunks_per_proc))
-                       for s in chunk_id_starts]
-    
-    print_rank_0("build doc-chunk-id-map.")
-    with ProcessPoolExecutor(max_workers = n_procs) as executor:
-
-        # Build partial chunk maps.
-        futures = []
-        for proc_id, (start_chunk_id, end_chunk_id) \
-            in enumerate(chunk_id_ranges):
-            futures.append(executor.submit(
-                get_partial_banned_chunk_map,
-                proc_id,
-                n_chunks,
-                start_chunk_id,
-                end_chunk_id,
-                db_dataset.db_path,
-            ))
-
-        # >>>
-        # # Wait for processes to finish.
-        # compressed_banned_chunk_map = {}
-        # for finished_idx, future in enumerate(as_completed(futures)):
-        #     print("finished %d / %d." % (finished_idx, n_procs))
-        #     proc_id, proc_banned_chunk_map = future.result()
-        #     compressed_banned_chunk_map[proc_id] = proc_banned_chunk_map
-        # +++
-        # Wait for processes to finish.
-        banned_chunk_paths = []
-        for finished_idx, future in enumerate(as_completed(futures)):
-            print("finished %d / %d." % (finished_idx, n_procs))
-            _, banned_chunk_path = future.result()
-            banned_chunk_paths.append(banned_chunk_path)
-
-        banned_chunk_paths.sort() # non-essential
-        # <<<
-
-        # >>>
-        banned_chunk_map = {}
-        for banned_chunk_path in tqdm(banned_chunk_paths,
-                                      "load banned chunk paths"):
-            with open(banned_chunk_path) as f:
-                crnt_banned_chunk_map = json.load(f)
-                print("... do something. ...")
-        # <<<
-
-        pax(0, {"banned_chunk_paths": banned_chunk_paths})
-
-        # Merge partial maps into one.
-        banned_chunk_map = defaultdict(set)
-        for join_idx, (proc_id, proc_banned_chunk_map) \
-            in enumerate(compressed_banned_chunk_map.items()):
-
-            # De-compress.
-            proc_banned_chunk_map = \
-                json.loads(zlib.decompress(proc_banned_chunk_map).decode())
-
-            # Merge.
-            for key, chunk_ids in tqdm(
-                    proc_banned_chunk_map.items(),
-                    "join map %d / %d" % (
-                        join_idx,
-                        len(compressed_banned_chunk_map),
-                    ),
-            ):
-                key = tuple(int(i) for i in key.split(","))
-                banned_chunk_map[key].update(chunk_ids)
-
-        pax({
-            "num keys" : len(banned_chunk_map),
-            "num chunks" : sum(len(v) for v in banned_chunk_map.values()),
-        })
-
-        return banned_chunk_map
-
-# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-
 def embed_block(gpt_dataset, block, embedder):
     '''Embed block of chunks.'''
     text_block_dataset = torch.utils.data.Subset(
@@ -342,6 +102,10 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
         for doc_id in doc_ids:
             banned_chunk_ids.update(banned_chunk_map[(dataset_idx, doc_id)])
         sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
+
+    # >>>
+    pax({"sampled_banned_chunk_id_map": sample_banned_chunk_id_map})
+    # <<<
 
     # Filter banned neighbor ids.
     print_rank_0("filter banned neighbor ids.")
@@ -506,10 +270,7 @@ def query_pretraining_neighbors():
     # <<<
 
     print_rank_0(" > get banned doc-chunk id map.")
-    # >>>
-    # banned_chunk_map = get_banned_chunk_map(chunk_db_dataset.chunks)
-    banned_chunk_map = get_banned_chunk_map(chunk_db_dataset)
-    # <<<
+    banned_chunk_map = get_train_doc_chunk_map()
 
     print_rank_0(" > get dataset map.")
     chunk_dataset_map = get_chunk_dataset_map()
