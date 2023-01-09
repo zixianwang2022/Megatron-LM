@@ -431,6 +431,9 @@ def merge_dbs(indexed_dataset_infos, db_type):
         f.close()
 
 
+def build_doc_map(db_type):
+    '''Build mapping from tuple(dataset_id, doc_id) -> chunk_ids.'''
+
 def build_db():
     '''Extract token chunks from each indexed dataset.
 
@@ -455,6 +458,7 @@ def build_db():
     merge_dbs(indexed_dataset_infos, "sampled")
     merge_dbs(indexed_dataset_infos, "train")
     merge_dbs(indexed_dataset_infos, "valid")
+    build_doc_map("train")
 
     # Save (fully annotated) indexed dataset infos.
     save_indexed_dataset_infos(indexed_dataset_infos)

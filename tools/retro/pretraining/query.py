@@ -174,16 +174,25 @@ import zlib
 
 #     return banned_chunk_map
 def get_partial_banned_chunk_map(proc_id,
+                                 n_chunks,
                                  start_chunk_id,
                                  end_chunk_id,
                                  db_path):
+
+    # >>>
+    n_digits = int(np.ceil(np.log(n_chunks) / np.log(10)) + 1)
+    output_path = "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/corpus/banned_tmp/%s-%s.json" % (str(start_chunk_id).zfill(n_digits), str(end_chunk_id).zfill(n_digits))
+
+    if os.path.exists(output_path):
+        return proc_id, output_path
+    # <<<
 
     # Chunk subset.
     with h5py.File(db_path) as f:
         # >>>
         sub_chunk_db = np.copy(f["chunks"][start_chunk_id:end_chunk_id, :2])
         # sub_chunk_db = np.copy( # .......... debuggggggging .....
-        #     f["chunks"][start_chunk_id:start_chunk_id+10000000, :2])
+        #     f["chunks"][start_chunk_id:start_chunk_id+1000000, :2])
         # <<<
 
     # Map docs to chunks.
@@ -198,10 +207,17 @@ def get_partial_banned_chunk_map(proc_id,
         banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
             .append(chunk_id)
 
-    # Compress map.
-    compressed_map = zlib.compress(json.dumps(banned_chunk_map).encode())
+    # >>>
+    # # Compress map.
+    # compressed_map = zlib.compress(json.dumps(banned_chunk_map).encode())
 
-    return proc_id, compressed_map
+    # return proc_id, compressed_map
+    # +++
+    with open(output_path, "w") as f:
+        json.dump(banned_chunk_map, f)
+
+    return proc_id, output_path
+    # <<<
 
 
 def get_banned_chunk_map(db_dataset):
@@ -229,17 +245,40 @@ def get_banned_chunk_map(db_dataset):
             futures.append(executor.submit(
                 get_partial_banned_chunk_map,
                 proc_id,
+                n_chunks,
                 start_chunk_id,
                 end_chunk_id,
                 db_dataset.db_path,
             ))
 
+        # >>>
+        # # Wait for processes to finish.
+        # compressed_banned_chunk_map = {}
+        # for finished_idx, future in enumerate(as_completed(futures)):
+        #     print("finished %d / %d." % (finished_idx, n_procs))
+        #     proc_id, proc_banned_chunk_map = future.result()
+        #     compressed_banned_chunk_map[proc_id] = proc_banned_chunk_map
+        # +++
         # Wait for processes to finish.
-        compressed_banned_chunk_map = {}
+        banned_chunk_paths = []
         for finished_idx, future in enumerate(as_completed(futures)):
             print("finished %d / %d." % (finished_idx, n_procs))
-            proc_id, proc_banned_chunk_map = future.result()
-            compressed_banned_chunk_map[proc_id] = proc_banned_chunk_map
+            _, banned_chunk_path = future.result()
+            banned_chunk_paths.append(banned_chunk_path)
+
+        banned_chunk_paths.sort() # non-essential
+        # <<<
+
+        # >>>
+        banned_chunk_map = {}
+        for banned_chunk_path in tqdm(banned_chunk_paths,
+                                      "load banned chunk paths"):
+            with open(banned_chunk_path) as f:
+                crnt_banned_chunk_map = json.load(f)
+                print("... do something. ...")
+        # <<<
+
+        pax(0, {"banned_chunk_paths": banned_chunk_paths})
 
         # Merge partial maps into one.
         banned_chunk_map = defaultdict(set)

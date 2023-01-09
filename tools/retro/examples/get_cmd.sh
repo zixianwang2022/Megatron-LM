@@ -36,11 +36,11 @@ DATA_PATH=${DATA_BLEND}
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="pretraining-query-nbrs"
+# RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-index-update-training-block-size"
 # RETRO_TASKS="misc-pretraining-test-retro-dataset"
