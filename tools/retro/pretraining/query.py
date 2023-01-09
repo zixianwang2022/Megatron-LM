@@ -53,9 +53,6 @@ def get_index(chunk_db_dataset, ondisk = False):
     index_wrapper = IndexFactory.get_index(args.retro_index_ty)
     index_dir = get_index_dir()
     added_index_path = index_wrapper.get_added_index_path()
-    # >>>
-    # pax(0, {"added_index_path": added_index_path})
-    # <<<
     if ondisk:
         index = faiss.read_index(added_index_path, faiss.IO_FLAG_MMAP)
     else:
@@ -104,7 +101,10 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
         sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
 
     # >>>
-    pax({"sampled_banned_chunk_id_map": sample_banned_chunk_id_map})
+    # pax({
+    #     "sampled_banned_chunk_id_map" :
+    #     {k:len(v) for k,v in sample_banned_chunk_id_map.items()},
+    # })
     # <<<
 
     # Filter banned neighbor ids.
@@ -157,10 +157,12 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
         query_nbr_ids.append(partial_query_nbr_ids)
         filtered_nbr_ids.append(partial_filtered_nbr_ids)
 
-    pax(0, {
-        "query_nbr_ids" : query_nbr_ids,
-        "filtered_nbr_ids" : filtered_nbr_ids,
-    })
+    # >>>
+    # pax(0, {
+    #     "query_nbr_ids" : query_nbr_ids,
+    #     "filtered_nbr_ids" : filtered_nbr_ids,
+    # })
+    # <<<
 
     return query_nbr_ids, filtered_nbr_ids
 
@@ -265,8 +267,8 @@ def query_pretraining_neighbors():
     # Load index, banned chunk ids, datasets.
     print_rank_0(" > get index.")
     # >>>
-    # index = get_index(chunk_db_dataset)
-    index = get_index(chunk_db_dataset, ondisk = True)
+    index = get_index(chunk_db_dataset)
+    # index = get_index(chunk_db_dataset, ondisk = True)
     # <<<
 
     print_rank_0(" > get banned doc-chunk id map.")
