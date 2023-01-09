@@ -77,20 +77,21 @@ def embed_block(gpt_dataset, block, embedder):
 
 
 def query_embeddings(index, banned_chunk_map, chunk_id_range,
-                     embeddings, sample_map, n_chunks_per_sample):
+                     embeddings, sample_map, n_chunks_per_sample,
+                     verbose = True):
     '''Query neighbors of a block of embeddings.'''
 
     args = get_retro_args()
 
     # Query neighbor ids.
-    print_rank_0("search.")
+    if verbose: print_rank_0("search.")
     t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_nbr_ids = index.search(embeddings, args.retro_nnbrs_query)
-    print_rank_0("  time : %.3f sec." % (time.time() - t))
+    if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
 
     # Banned neighbor ids.
-    print_rank_0("get banned neighbor ids.")
+    if verbose: print_rank_0("get banned neighbor ids.")
     sample_banned_chunk_id_map = {}
     for sample_id, sample in sample_map.items():
         dataset_idx = sample["dataset_idx"].item()
@@ -100,15 +101,8 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
             banned_chunk_ids.update(banned_chunk_map[(dataset_idx, doc_id)])
         sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
 
-    # >>>
-    # pax({
-    #     "sampled_banned_chunk_id_map" :
-    #     {k:len(v) for k,v in sample_banned_chunk_id_map.items()},
-    # })
-    # <<<
-
     # Filter banned neighbor ids.
-    print_rank_0("filter banned neighbor ids.")
+    if verbose: print_rank_0("filter banned neighbor ids.")
     filtered_nbr_ids = np.full(
         shape = (len(query_nbr_ids), args.retro_nnbrs_target),
         fill_value = -1,
@@ -153,7 +147,8 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
         )
         partial_query_nbr_ids, partial_filtered_nbr_ids = \
             query_embeddings(index, banned_chunk_map, partial_chunk_id_range,
-                             partial_embeddings, sample_map, n_chunks_per_sample)
+                             partial_embeddings, sample_map, n_chunks_per_sample,
+                             verbose = False)
         query_nbr_ids.append(partial_query_nbr_ids)
         filtered_nbr_ids.append(partial_filtered_nbr_ids)
 
@@ -266,10 +261,7 @@ def query_pretraining_neighbors():
 
     # Load index, banned chunk ids, datasets.
     print_rank_0(" > get index.")
-    # >>>
     index = get_index(chunk_db_dataset)
-    # index = get_index(chunk_db_dataset, ondisk = True)
-    # <<<
 
     print_rank_0(" > get banned doc-chunk id map.")
     banned_chunk_map = get_train_doc_chunk_map()
