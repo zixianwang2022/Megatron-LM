@@ -265,12 +265,11 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
     np_rng = np.random.RandomState(seed=seed)
 
     # Filename of the index mappings.
-    _filename = data_prefix
-    _index_prefix = '{}_indexmap'.format(name)
-    _index_prefix += '_{}ns'.format(num_samples)
-    _index_prefix += '_{}sl'.format(seq_length)
-    _index_prefix += '_{}s'.format(seed)
-    _filename += '_' + _index_prefix
+    index_prefix = '{}_indexmap'.format(name)
+    index_prefix += '_{}ns'.format(num_samples)
+    index_prefix += '_{}sl'.format(seq_length)
+    index_prefix += '_{}s'.format(seed)
+    _filename = data_prefix + '_' + index_prefix
     doc_idx_filename = _filename + '_doc_idx.npy'
     sample_idx_filename = _filename + '_sample_idx.npy'
     shuffle_idx_filename = _filename + '_shuffle_idx.npy'
@@ -384,7 +383,7 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
         sample_idx.shape[0]))
     print_rank_0('    total number of epochs: {}'.format(num_epochs))
 
-    return doc_idx, sample_idx, shuffle_idx, _index_prefix
+    return doc_idx, sample_idx, shuffle_idx, index_prefix
 
 
 def _num_tokens(documents, sizes):
