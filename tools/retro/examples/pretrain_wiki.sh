@@ -9,9 +9,6 @@ unset NCCL_DEBUG
 . ${BLEND_SCRIPT_DIR}/gpt3_blend_wiki.sh
 DATA_PATH=${DATA_BLEND}
 
-echo "hi."
-exit
-
 RETRO_ADD_RETRIEVER=1
 RETRO_WORKDIR=${RETRO_WORKDIRS}/wiki
 RETRO_CYCLIC_TRAIN_ITERS=750000
@@ -90,5 +87,3 @@ python -m torch.distributed.launch \
     --master_port 6000 \
     ${SCRIPT} \
     ${options} \
-
-# eof.

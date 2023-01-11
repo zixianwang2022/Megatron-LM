@@ -2,33 +2,40 @@
 
 set -u
 
-# DIR=$(dirname "$0")
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 . ${DIR}/get_vars.sh
 
 ######## Data corpus. ########
-# >>>
 CORPUS="wiki"
-RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
-GPT_EVAL_INTERVAL=2000 GPT_EVAL_ITERS=100
-RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
-BERT_EMBEDDER_TYPE=megatron
-# +++
 # CORPUS="corpus"
-# RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
-# RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
-# GPT_EVAL_INTERVAL=2000 GPT_EVAL_ITERS=50
-# RETRO_EF_SEARCH=32 RETRO_NPROBE=4096 # RETRO_EF_SEARCH=256 RETRO_NPROBE=65536
-# BERT_EMBEDDER_TYPE=huggingface
-# <<<
+
+if [ "$CORPUS" = "wiki" ]; then
+    RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
+    RETRO_GPT_TRAIN_SAMPLES=2037248
+    LR_DECAY_SAMPLES=2
+    LR_WARMUP_SAMPLES=1
+    RETRO_GPT_EVAL_INTERVAL=2000
+    RETRO_GPT_EVAL_ITERS=100
+    RETRO_EF_SEARCH=16
+    RETRO_NPROBE=4096
+    BERT_EMBEDDER_TYPE=megatron
+fi
+if [ "$CORPUS" = "corpus" ]; then
+    RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
+    RETRO_GPT_TRAIN_SAMPLES=192000000
+    LR_DECAY_SAMPLES=166400000
+    LR_WARMUP_SAMPLES=162761
+    RETRO_GPT_EVAL_INTERVAL=2000
+    RETRO_GPT_EVAL_ITERS=50
+    RETRO_EF_SEARCH=32
+    RETRO_NPROBE=4096
+    # RETRO_EF_SEARCH=256
+    # RETRO_NPROBE=65536
+    BERT_EMBEDDER_TYPE=huggingface
+fi
 
 ######## Repo. ########
 REPO="retro"
-# REPO="retro-batch"
-# REPO="retro-embed"
-# REPO="retro-wiki"
-# REPO="retro-corpus"
 
 ######## Data blend. ########
 . ${BLEND_SCRIPT_DIR}/gpt3_blend_${CORPUS}.sh
@@ -42,34 +49,14 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="pretraining-query-nbrs"
-# ... RETRO_TASKS="build" # ... the goal ...
-# RETRO_TASKS="misc-index-update-training-block-size"
-# RETRO_TASKS="misc-pretraining-test-retro-dataset"
-# RETRO_TASKS="misc-pretraining-plot-acc"
-# RETRO_TASKS="misc-pretraining-verify-nbrs"
-# RETRO_TASKS="misc-index-remove-train-files,train"
-# RETRO_TASKS="misc-index-remove-add-files,add"
-# RETRO_TASKS="misc-index-verify"
+
+# (tasks below are less tested; for debugging)
 # RETRO_TASKS="misc-index-verify-codes"
-# RETRO_TASKS="misc-index-verify-nbrs"
-# RETRO_TASKS="misc-index-time-hnsw"
-# RETRO_TASKS="misc-index-time-query"
-# RETRO_TASKS="misc-index-time-merge-partials"
-# RETRO_TASKS="misc-db-nan-stats"
-# RETRO_TASKS="misc-db-bert-nan-analysis"
-# RETRO_TASKS="misc-db-print-embeddings"
-# RETRO_TASKS="misc-db-print-neighbors"
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v0" # ?
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v1" # ?
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v2" # save to disk
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v3-full-db" # use merged valids
-RETRO_TASKS="misc-index-megatron-huggingface-comparison-v4-partial-db" # use train embeds
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v5-dist-comp" # dist comparison
-# RETRO_TASKS="misc-index-check-train-valid-split"
-# RETRO_TASKS="misc-index-debug-embeddings-codes"
-# RETRO_TASKS="misc-pretraining-compare-embeds"
+# RETRO_TASKS="misc-index-megatron-huggingface-comparison-full-db"
+RETRO_TASKS="misc-index-megatron-huggingface-comparison-partial-db"
+# RETRO_TASKS="misc-index-megatron-huggingface-comparison-nbr-dists"
+# RETRO_TASKS="misc-pretraining-verify-nbrs"
 # RETRO_TASKS="misc-pretraining-print-neighbors"
-# RETRO_TASKS="misc-pretraining-compare-old-nbrs"
 
 # RETRO_INDEX_TY=faiss-base
 RETRO_INDEX_TY=faiss-par-add
@@ -83,10 +70,8 @@ RETRO_GPT_GLOBAL_BATCH_SIZE=256
 RETRO_BERT_BATCH_SIZE=128 # optimal. [ mean seq length vs. batch size ]
 RETRO_BERT_MAX_CHUNK_LENGTH=256
 RETRO_NCHUNKS_SAMPLED=300000000
-# RETRO_NCHUNKS_SAMPLED=3000000
 RETRO_DOC_BLOCK_SIZE=100000
-RETRO_BLOCK_SIZE=100000 # 10000, *100000, 1000000
-# RETRO_INDEX_TRAIN_BLOCK_SIZE=3750000
+RETRO_BLOCK_SIZE=100000
 RETRO_NNBRS_QUERY=2000
 RETRO_NNBRS_TARGET=200
 # RETRO_NNBRS_PRETRAINING=2
@@ -126,8 +111,8 @@ MEGATRON_ARGS=" \
     --lr-warmup-samples ${LR_WARMUP_SAMPLES} \
     --weight-decay 1e-2 \
     --clip-grad 1.0 \
-    --eval-interval ${GPT_EVAL_INTERVAL} \
-    --eval-iters ${GPT_EVAL_ITERS} \
+    --eval-interval ${RETRO_GPT_EVAL_INTERVAL} \
+    --eval-iters ${RETRO_GPT_EVAL_ITERS} \
     --fp16 \
     --DDP-impl local \
     --dataloader-type cyclic \
