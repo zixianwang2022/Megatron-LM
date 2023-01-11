@@ -53,12 +53,17 @@ index_infos = {
     # },
 }
 
+def get_n_samples():
+    return {
+        "train" : index_infos["approx"]["n_samples"],
+        "valid" : 10000,
+    }
 
 def get_root_dir():
     dirname = os.path.join(
         get_index_dir(),
         "compare",
-        "t%d_%s" % (n_samples["train"], index_infos["approx"]["name"]),
+        "t%d_%s" % (get_n_samples()["train"], index_infos["approx"]["name"]),
     )
     os.makedirs(dirname, exist_ok = True)
     return dirname
@@ -75,6 +80,7 @@ def get_embeddings():
 
     assert len(set(len(pp) for pp in block_paths.values())) == 1
 
+    n_samples = get_n_samples()
     n_blocks = {
         k : int(np.ceil(n / args.retro_block_size))
         for k, n in n_samples.items()
