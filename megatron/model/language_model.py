@@ -438,7 +438,7 @@ class TransformerLanguageModel(MegatronModule):
 
     def forward(self, enc_input_ids, enc_position_ids, enc_attn_mask,
                 dec_input_ids=None, dec_position_ids=None, dec_attn_mask=None,
-                ret_int_ids=None, ret_position_ids=None, ret_attn_mask=None,
+                ret_input_ids=None, ret_position_ids=None, ret_attn_mask=None,
                 enc_dec_attn_mask=None, tokentype_ids=None,
                 inference_params=None,
                 pooling_sequence_index=0,
@@ -446,7 +446,7 @@ class TransformerLanguageModel(MegatronModule):
 
         # Retriever embedding.
         if self.retriever and self.pre_process:
-            retriever_input = self.embedding(ret_int_ids, ret_position_ids,
+            retriever_input = self.embedding(ret_input_ids, ret_position_ids,
                                              tokentype_ids=tokentype_ids)
         else:
             retriever_input = None

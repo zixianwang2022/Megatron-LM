@@ -461,7 +461,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         if test_ds:
             test_datasets.append(test_ds)
 
-        # Blend.
+    # Blend.
     blending_train_dataset = None
     if train_datasets:
         blending_train_dataset = BlendableDataset(train_datasets, weights)

@@ -155,7 +155,9 @@ def pad_and_convert_to_numpy(tokens, tokentypes, masked_positions,
     # Some checks.
     num_tokens = len(tokens)
     padding_length = max_seq_length - num_tokens
-    assert padding_length >= 0, f"tokens {len(tokens)}, max {max_seq_length}."
+    assert padding_length >= 0, \
+        f"num_tokens ({num_tokens}) is greater than " \
+        "max_seq_length ({max_seq_length})."
     assert len(tokentypes) == num_tokens
     assert len(masked_positions) == len(masked_labels)
 

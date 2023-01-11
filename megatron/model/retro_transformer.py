@@ -1602,6 +1602,9 @@ class ParallelRetroTransformer(MegatronModule):
         super(ParallelRetroTransformer, self).__init__()
         args = get_args()
 
+        assert pre_process and post_process, \
+            "pipeline parallelism un-supported."
+
         self.bf16 = args.bf16
         self.fp32_residual_connection = args.fp32_residual_connection
         self.pre_process = pre_process
@@ -1805,8 +1808,6 @@ class ParallelRetroTransformer(MegatronModule):
             assert self.recompute_granularity is None, \
                 'inference does not work with activation checkpointing'
 
-        assert self.pre_process, "pipeline parallelism un-supported."
-
         args = get_args()
 
         # Transpose retriever output, to match hidden_states shape.
@@ -1874,7 +1875,6 @@ class ParallelRetroTransformer(MegatronModule):
                     inference_params=inference_params)
 
         # Final layer norm.
-        assert self.post_process, "pipeline parallelism un-supported."
         output = self.final_layernorm(hidden_states)
 
         return output
