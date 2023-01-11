@@ -17,10 +17,6 @@ from tools.retro.index import Index
 from tools.retro.index.indexes.faiss_base import FaissBaseIndex
 from tools.retro.index.utils import get_added_codes_dir, get_added_code_paths
 
-# >>>
-from lutil import pax, print_seq
-# <<<
-
 
 class FaissParallelAddIndex(Index):
 

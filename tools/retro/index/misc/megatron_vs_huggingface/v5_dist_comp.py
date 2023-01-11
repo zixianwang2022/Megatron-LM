@@ -13,10 +13,6 @@ from tools.retro.db.utils import (
 )
 from tools.retro.utils import GPTToTextDataset
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def get_datasets():
     gpt_datasets = {
@@ -55,10 +51,6 @@ def get_indexes():
     }
 
     assert len(set([ index.ntotal for index in indexes.values() ])) == 1
-    # pax({
-    #     "indexes" : indexes,
-    #     "imbalance_factor" : {k:i.invlists.imbalance_factor() for k,i in indexes.items()},
-    # })
 
     # Search parameters.
     for index in indexes.values():
@@ -112,7 +104,9 @@ def run_bert_comparison():
     self_nbr_dists = defaultdict(list)
     cross_nbr_dists = defaultdict(list)
     for valid_idx in range(len(valid_text_subset)):
+
         print("valid_idx %d / %d." % (valid_idx, len(valid_text_subset)))
+
         megatron_nbr_ids = nbrs["megatron"][valid_idx]
         huggingface_nbr_ids = nbrs["huggingface"][valid_idx]
         nbr_texts = {
@@ -121,15 +115,7 @@ def run_bert_comparison():
             "huggingface" : TextListDataset([datasets["train"][i]["text"]
                                              for i in huggingface_nbr_ids]),
         }
-        # pax({
-        #     "query text" : shorten_str(valid_text_subset[valid_idx]["text"], 100),
-        #     # "megatron_nbr_ids" : megatron_nbr_ids,
-        #     # "huggingface_nbr_ids" : huggingface_nbr_ids,
-        #     "megatron_nbr_texts" :
-        #     [ shorten_str(t, 100) for t in megatron_nbr_texts ],
-        #     "huggingface_nbr_texts" :
-        #     [ shorten_str(t, 100) for t in huggingface_nbr_texts ],
-        # })
+
         self_nbr_embeddings = {
             "megatron" :
             embedders["megatron"].embed_text_dataset(nbr_texts["megatron"]),
@@ -142,6 +128,7 @@ def run_bert_comparison():
             "huggingface" :
             embedders["huggingface"].embed_text_dataset(nbr_texts["megatron"]),
         }
+
         for k in self_nbr_embeddings:
             # self_nbr_dists[k].append(np.mean([
             self_nbr_dists[k].append([
@@ -153,29 +140,12 @@ def run_bert_comparison():
                 np.linalg.norm(query_embeddings[k][valid_idx] - e)
                 for e in cross_nbr_embeddings[k]])
 
-        # >>>
-        # for k in self_nbr_embeddings:
-        #     print("~~ %s. ~~" % k)
-        #     dists = [np.linalg.norm(query_embeddings[k][valid_idx] - e)
-        #              for e in self_nbr_embeddings[k]]
-        #     dists.sort()
-        #     [ print(d) for d in dists ]
-
-        # exit()
-        # pax({
-        #     "self_nbr_dists" :
-        #     {k:[np.linalg.norm(query_embeddings[k][valid_idx] - e)
-        #         for e in self_nbr_embeddings[k]]
-        #     for k in self_nbr_embeddings},
-        # })
-        # <<<
-
-    # pax({
-    #     "self_nbr_dists" : {k:np.mean(d) for k,d in self_nbr_dists.items()},
-    #     "cross_nbr_dists" : {k:np.mean(d) for k,d in cross_nbr_dists.items()},
-    # })
+    print("~~ self nbr dists ~~")
+    print({k:np.mean(d) for k,d in self_nbr_dists.items()})
+    print("~~ cross nbr dists ~~")
+    print({k:np.mean(d) for k,d in cross_nbr_dists.items()})
     
-    # >>>
+    print("~~ top-n diffs ~~")
     for k, dist_lists in self_nbr_dists.items():
         [ dists.sort() for dists in dist_lists ]
     self_nbr_dists = {k:np.mean(dd, axis = 0) for k, dd in self_nbr_dists.items()}
@@ -186,12 +156,6 @@ def run_bert_comparison():
         "top20" : (dd[20] - dd[19]) / dd[19],
         "topn" : (dd[-1] - dd[-2]) / dd[-2],
     } for k, dd in self_nbr_dists.items()}
-    # pax(self_nbr_dists)
-    pax(top_diffs)
-    # <<<
-
-    pax({
-        "datasets" : datasets,
-        "embedders" : embedders,
-        "indexes" : indexes,
-    })
+    print(self_nbr_dists)
+    print(top_diffs)
+    exit()

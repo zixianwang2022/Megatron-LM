@@ -12,17 +12,11 @@ from tqdm import tqdm
 
 from megatron import get_retro_args
 from tools.bert_embedding import BertEmbedder
-# from tools.bert_embedding.utils import load_data
 from tools.retro.db.utils import get_merged_valid_dataset
 from tools.retro.index.utils import get_index_dir
 from tools.retro.utils import GPTToTextDataset
 
 from ..acc import rowwise_intersection
-
-# >>>
-from lutil import pax
-# <<<
-
 
 # n_valid = 10
 # n_valid = 100
@@ -48,11 +42,6 @@ def get_valid_dataset():
     text_dataset = GPTToTextDataset(gpt_dataset)
     idxs = range(0, len(text_dataset), len(text_dataset) // n_valid)
     sub_dataset = torch.utils.data.Subset(text_dataset, idxs)
-    # pax({
-    #     "sub_dataset": sub_dataset,
-    #     "sub_dataset / len": len(sub_dataset),
-    #     "sub_dataset / 0": sub_dataset[0],
-    # })
     return sub_dataset
 
 
@@ -79,7 +68,6 @@ def get_valid_embeddings():
         m : e.embed_text_dataset(valid_dataset)
         for m, e in embedders.items()
     }
-    # pax({"embeddings": embeddings})
     return embeddings
 
 
@@ -115,29 +103,6 @@ def get_valid_embeddings():
 #                 "index" : faiss.read_index(index_path, faiss.IO_FLAG_MMAP),
 #             }
 
-#     pax(indexes)
-
-#     return indexes
-# def get_indexes():
-#     indexes = defaultdict(dict)
-#     for model_key in "megatron", "huggingface":
-#         print("read index '%s'." % model_key)
-#         path = os.path.join(get_root_dir(), "index", f"{model_key}_approx.faissindex")
-#         #indexes[model_key]["approx"] = faiss.read_index(path, faiss.IO_FLAG_MMAP)
-#         indexes[model_key]["approx"] = faiss.read_index(path)
-#         print("read > done.")
-#     # pax({k:i["approx"] for k,i in indexes.items()})
-#     return indexes
-# def get_indexes():
-
-#     indexes = defaultdict(dict)
-#     for model_key in "megatron", "huggingface":
-#         print("read index '%s'." % model_key)
-#         path = os.path.join(get_root_dir(), "index", f"{model_key}_approx.faissindex")
-#         #indexes[model_key]["approx"] = faiss.read_index(path, faiss.IO_FLAG_MMAP)
-#         indexes[model_key]["approx"] = faiss.read_index(path)
-#         print("read > done.")
-#     # pax({k:i["approx"] for k,i in indexes.items()})
 #     return indexes
 def get_indexes():
 
@@ -178,7 +143,6 @@ def get_indexes():
             # "approx" : "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex",
         },
     }
-    # pax(index_paths)
     # indexes = {m:{i:faiss.read_index(p, faiss.IO_FLAG_MMAP) for i,p in ip.items()} for m,ip in index_paths.items()}
     indexes = defaultdict(dict)
     for model_key in index_paths:
@@ -186,13 +150,6 @@ def get_indexes():
             print("read index ... %s / %s ... %s." %
                   (model_key, index_key, index_path))
             indexes[model_key][index_key] = faiss.read_index(index_path) # , faiss.IO_FLAG_MMAP)
-
-    # pax({
-    #     "exact_index_paths" : exact_index_paths,
-    #     "embed_paths" : {k:pp[-5:] for k,pp in embed_paths.items()},
-    #     "index_paths" : index_paths,
-    #     "indexes" : indexes,
-    # })
 
     return indexes
 
@@ -204,20 +161,15 @@ def get_nbrs():
 
         embeddings = get_valid_embeddings()
         indexes = get_indexes()
-        # pax({"valid_embeddings": valid_embeddings, "indexes": indexes})
 
         nbrs = defaultdict(dict)
         for model_key in indexes:
             for index_key, index in indexes[model_key].items():
 
-                # pax({
-                #     "model_key" : model_key,
-                #     "index_key" : index_key,
-                # })
-
                 if index_key == "exact":
                     search_params = {}
                 elif index_key == "approx":
+                    raise Exception("update for corpus.")
                     search_params = {
                         "efSearch" : 16, # args.retro_ef_search,
                         "nprobe" : 4096, # args.retro_nprobe,
@@ -231,10 +183,6 @@ def get_nbrs():
                 _, _nbrs = index.search(embeddings[model_key], max_nbrs)
                 nbrs[model_key][index_key] = _nbrs.tolist()
 
-        # pax({
-        #     **{f"emb/{k}":e.tolist() for k,e in embeddings.items()},
-        #     **{f"nbr/{k}":d["approx"] for k,d in nbrs.items()},
-        # })
         with open(nbr_path, "w") as f:
             json.dump(nbrs, f)
 
@@ -243,8 +191,6 @@ def get_nbrs():
         for m in nbrs:
             for i in nbrs[m]:
                 nbrs[m][i] = np.array(nbrs[m][i]).astype("i8")
-
-    # pax(nbrs)
 
     return nbrs
 
@@ -255,7 +201,6 @@ def get_acc():
     if not os.path.exists(acc_path):
 
         nbrs = get_nbrs()
-        # pax({"nbrs": nbrs})
 
         accs = defaultdict(dict)
         for mkey0 in nbrs:
@@ -284,196 +229,14 @@ def get_acc():
     with open(acc_path) as f:
         accs = json.load(f)
 
-    # pax(accs)
-
     return accs
-
-
-# >>>
-def test_megatron_index(index):
-
-    print("test megatron index.")
-
-    args = get_retro_args()
-
-    faiss.ParameterSpace().set_index_parameter(index, "efSearch", 16)
-    faiss.ParameterSpace().set_index_parameter(index, "nprobe", 4096)
-
-    embedder = BertEmbedder(
-        args.retro_bert_batch_size,
-        args.retro_bert_max_chunk_length,
-        force_megatron = True,
-    )
-    dataset = get_merged_valid_dataset()
-    dataset = GPTToTextDataset(dataset)
-    dataset = torch.utils.data.Subset(dataset, range(10))
-    embeddings = embedder.embed_text_dataset(dataset)
-
-    _, nbrs = index.search(embeddings, max_nbrs)
-
-    pax({
-        "embedder" : embedder,
-        "embeddings" : embeddings.tolist(),
-        "nbrs" : nbrs.tolist(),
-    })
-
-
-def run_megatron_test_added_bak():
-    print("read added.bak.")
-    index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.BAK.faissindex", faiss.IO_FLAG_MMAP)
-    test_megatron_index(index)
-
-
-def run_megatron_test_added_new():
-    print("read added.new.")
-    index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex", faiss.IO_FLAG_MMAP)
-    test_megatron_index(index)
-
-
-def run_megatron_test_v1():
-
-    def load_block(path):
-        with h5py.File(path) as f:
-            return np.copy(f["data"])
-    def load_codes(index, path):
-        with h5py.File(path) as f:
-            return index.sa_encode(np.copy(f["data"]))
-
-    import concurrent
-    import glob
-    import h5py
-
-    index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/empty.faissindex")
-    index_ivf = faiss.extract_index_ivf(index)
-    train_paths = sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/*.hdf5"))
-    # >>>
-    # train_paths = train_paths[:20]
-    # train_paths = train_paths[:50]
-    train_paths = train_paths[:200]
-    # <<<
-
-    # pax({"train_path_start_idxs": train_path_start_idxs})
-    # for train_path in tqdm(train_paths):
-    #     with h5py.File(train_path) as f:
-    #         index.add(np.copy(f["data"]))
-
-    # >>>
-    # bs = 30
-    # with concurrent.futures.ThreadPoolExecutor(max_workers = bs) as executor:
-
-    #     train_path_start_idxs = list(range(0, len(train_paths), bs))
-    #     for train_path_start_idx in tqdm(train_path_start_idxs):
-    #         train_path_end_idx = min(len(train_paths), train_path_start_idx + bs)
-
-    #         # Launch threads to load block data.
-    #         futures = []
-    #         for tpi in range(train_path_start_idx, train_path_end_idx):
-    #             futures.append(executor.submit(load_block, train_paths[tpi]))
-
-    #         # Collect block data.
-    #         block_datas = []
-    #         for future in futures:
-    #             block_datas.append(future.result())
-
-    #         # Concatenate blocks.
-    #         group_data = np.concatenate(block_datas, axis = 0)
-
-    #         # pax({"group_data": group_data})
-
-    #         index.add(group_data)
-    # +++
-    bs = 10
-    with concurrent.futures.ThreadPoolExecutor(max_workers = bs) as executor:
-
-        train_path_start_idxs = list(range(0, len(train_paths), bs))
-        for train_path_start_idx in tqdm(train_path_start_idxs):
-            train_path_end_idx = min(len(train_paths), train_path_start_idx + bs)
-
-            # Launch threads to load block data.
-            futures = []
-            for tpi in range(train_path_start_idx, train_path_end_idx):
-                futures.append(executor.submit(
-                    load_codes,
-                    index,
-                    # index_ivf,
-                    train_paths[tpi],
-                ))
-
-            # Collect block data.
-            block_codes = []
-            for future in futures:
-                block_codes.append(future.result())
-
-            # Concatenate blocks.
-            group_codes = np.concatenate(block_codes, axis = 0)
-
-            # pax({"block_codes": block_codes, "group_codes": group_codes})
-
-            # index.add_sa_codes(group_codes)
-            index_ivf.add_sa_codes(group_codes)
-    # <<<
-
-    test_megatron_index(index)
-
-    pax({
-        "train_paths" : train_paths,
-        "index" : index,
-    })
-
-def run_megatron_test_v2():
-
-    import glob
-    import h5py
-
-    index = faiss.read_index("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/empty.faissindex")
-    index_ivf = faiss.extract_index_ivf(index)
-    train_paths = sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/*.hdf5"))
-    code_paths = sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/add_tmp/*.hdf5"))
-
-    codes = []
-    for code_path in tqdm(code_paths, "read codes"):
-        with h5py.File(code_path) as f:
-            codes.append(np.copy(f["data"]))
-
-    index_ivf = faiss.extract_index_ivf(index)
-    for code in tqdm(codes, "add codes"):
-        index_ivf.add_sa_codes(code)
-
-    test_megatron_index(index)
-
-    pax({
-        "train_paths" : train_paths,
-        "code_paths" : code_paths,
-        # "codes" : codes,
-        "index" : index,
-    })
-    
-# <<<
 
 
 def run_bert_comparison():
 
-    # >>>
-    # run_megatron_test_added_bak() # bad.
-    # run_megatron_test_added_new() # good.
-    # run_megatron_test_v0()
-    # run_megatron_test_v1()
-    # run_megatron_test_v2()
-    # exit()
-    # <<<
-
     faiss.omp_set_num_threads(64)
 
-    # indexes = get_indexes()
     acc_map = get_acc()
 
-    pax({
-        # "n_samples" : n_samples,
-        # "indexes" : sorted(list(set(
-        #     "%s ... %s" % (info["name"], info["search"])
-        #     for imap in indexes.values()
-        #     for info in imap.values()
-        # ))),
-        "acc_map" : acc_map,
-        # "time_map" : timer.time_map,
-    })
+    print(acc_map)
+    exit()

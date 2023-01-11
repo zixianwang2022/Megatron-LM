@@ -20,10 +20,6 @@ from .dataset import BertEmbeddingDataset
 from .huggingface import HuggingfaceEmbedder
 from .utils import get_missing_blocks_by_rank
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
@@ -166,80 +162,6 @@ def get_data_loader(dataset, batch_size):
     return data_loader
 
 
-# def embed_data_loader(models, data_loader, n_samples_world):
-#     '''Iterate data loader and compute embeddings.'''
-
-#     # Data iterator.
-#     data_iterator = iter(data_loader)
-
-#     # Eval mode.
-#     for m in models:
-#         m.eval()
-#     # World info (for printing progress).
-#     n_gpus_world = torch.distributed.get_world_size()
-
-#     # Compute embeddings.
-#     forward_backward_func = get_forward_backward_func()
-#     with torch.no_grad():
-
-#         # Iterate batches.
-#         n_batches = len(data_iterator)
-#         dataset_start_time = time.time()
-#         batch_times = []
-#         max_seq_lengths = []
-#         embeddings = []
-#         # for batch_index in range(n_batches):
-#         for batch_index in tqdm(range(n_batches)):
-
-#             # Forward pass.
-#             batch_start_time = time.time()
-#             # >>>
-#             # raise Exception("hi.") # good.
-#             # <<<
-#             results = forward_backward_func(
-#                 forward_step,
-#                 data_iterator,
-#                 models,
-#                 optimizer = None,
-#                 timers = None,
-#                 forward_only = True,
-#                 collect_non_loss_data = True,
-#             )
-#             # >>>
-#             raise Exception("hi.")
-#             # <<<
-#             batch_end_time = time.time()
-#             batch_times.append(batch_end_time - batch_start_time)
-#             mean_batch_time = sum(batch_times[-8:]) / min(len(batch_times), 8)
-
-#             # >>>
-#             pax({"results": results})
-#             # <<<
-
-#             # Collect embeddings.
-#             assert len(results) == 1, "assert len(models) == 1 before this"
-#             seq_lengths, output_tensor = results[0]
-#             max_seq_lengths.append(seq_lengths.max().item())
-#             embeddings.append(output_tensor.cpu().numpy())
-
-#             # # Progress.
-#             # if batch_index % 50 == 0:
-#             #     est_dataset_time = (batch_end_time - dataset_start_time) + \
-#             #         (n_batches - batch_index - 1) * mean_batch_time
-#             #     samples_per_sec = len(data_loader.dataset) / est_dataset_time
-#             #     print_rank_0("batch %d / %d [%d] ... sq %.1f, %.3f samples/sec [ full dataset w/ %d gpu(s): %.3f hours ] ... %s." % (
-#             #         batch_index,
-#             #         n_batches,
-#             #         max_seq_lengths[-1],
-#             #         sum(max_seq_lengths) / len(max_seq_lengths),
-#             #         samples_per_sec,
-#             #         n_gpus_world,
-#             #         (n_samples_world / samples_per_sec) / n_gpus_world / 3600,
-#             #         get_mem_stats_str(),
-#             #     ))
-
-#     return np.concatenate(embeddings, axis = 0)
-# def embed_data_loader(models, data_loader, n_samples_world):
 def embed_data_loader(models, data_loader):
     '''Iterate data loader and compute embeddings.'''
 
@@ -367,11 +289,7 @@ class DiskDataParallelBertEmbedder:
 
                 # Embed block.
                 sub_dataset = Subset(text_dataset, range(*block_info["range"]))
-                # >>>
-                # embeddings = self.embedder.embed_text_dataset(sub_dataset,
-                #                                               len(text_dataset))
                 embeddings = self.embedder.embed_text_dataset(sub_dataset)
-                # <<<
 
                 # Save embeddings.
                 f = h5py.File(block_info["path"], "w")

@@ -22,10 +22,6 @@ from tools.retro.utils import GPTToTextDataset
 
 from .chunk_dataset import get_chunk_dataset_map
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def get_index(chunk_db_dataset, ondisk = False):
     '''Read index from disk.'''

@@ -15,18 +15,6 @@ from tools.retro.index.utils import get_index_dir
 
 from ..acc import rowwise_intersection
 
-# >>>
-from lutil import pax
-# <<<
-
-
-# n_blocks = {"train": 1, "valid": 1}
-# n_blocks = {"train": 3, "valid": 2}
-# n_blocks = {"train": 10, "valid": 1}
-# n_samples = {"train": 100000, "valid": 10000}
-# n_samples = {"train": 1000000, "valid": 10000}
-# n_samples = {"train": 10000000, "valid": 10000}
-# n_samples = {"train": 66000000, "valid": 10000}
 max_nbrs = 200
 persist_data = True # False
 index_infos = {
@@ -70,51 +58,12 @@ def get_root_dir():
     dirname = os.path.join(
         get_index_dir(),
         "compare",
-        # "t%d_%s" % (n_blocks["train"], index_infos["approx"]["name"]),
         "t%d_%s" % (n_samples["train"], index_infos["approx"]["name"]),
     )
     os.makedirs(dirname, exist_ok = True)
-    # pax({"dirname": dirname})
     return dirname
 
 
-# def get_embeddings():
-
-#     block_paths = {
-#         "megatron" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/*.hdf5")),
-#         "huggingface" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/blocks/*.hdf5")),
-#     }
-
-#     assert len(set(len(pp) for pp in block_paths.values())) == 1
-
-#     block_path_ranges = {
-#         "train" : range(0, n_blocks["train"]),
-#         "valid" : range(n_blocks["train"], n_blocks["train"] + n_blocks["valid"]),
-#     }
-#     # assert block_path_ranges["valid"][-1] <= len(paths["megatron"])
-
-#     embeddings = defaultdict(dict)
-#     for model_key, paths in block_paths.items():
-#         for data_key, block_path_range in block_path_ranges.items():
-#             crnt_embeddings = []
-#             for path_idx in tqdm(
-#                     block_path_range,
-#                     "load embeds %s / %s" % (model_key, data_key),
-#             ):
-#                 with h5py.File(paths[path_idx]) as f:
-#                     crnt_embeddings.append(np.copy(f["data"]))
-#             # embeddings[model_key][data_key] = \
-#             #     np.concatenate(crnt_embeddings, axis = 0)
-#             embeddings[model_key][data_key] = crnt_embeddings
-#             # pax({
-#             #     "crnt_embeddings" : crnt_embeddings,
-#             #     "embeddings / m / d" : embeddings[model_key][data_key],
-#             # })
-#         # pax({dk:embeddings[model_key][dk] for dk in block_path_ranges})
-
-#     pax(embeddings)
-
-#     return embeddings
 def get_embeddings():
 
     args = get_retro_args()
@@ -158,8 +107,6 @@ def get_embeddings():
             assert sum(e.shape[0] for e in crnt_embeddings) == n_samples[data_key]
 
             embeddings[model_key][data_key] = crnt_embeddings
-
-    # pax({m:{d:", ".join(str(b.shape) for b in bb) for d, bb in dbb.items()} for m, dbb in embeddings.items()})
 
     return embeddings
 
@@ -205,12 +152,7 @@ def get_indexes():
                 print("%s, %s ... add to index." % (model_key, index_key))
                 # index.add(data)
                 for block in tqdm(data,"add [ %s / %s ]" % (model_key,index_key)):
-                    # >>>
                     index.add(block)
-                    # +++
-                    # codes = index.sa_encode(data)
-                    # index_ivf.add_sa_codes(codes)
-                    # <<<
 
                 # if save_to_disk:
                 os.makedirs(os.path.dirname(index_path), exist_ok = True)
@@ -222,9 +164,6 @@ def get_indexes():
                 # "index" : faiss.read_index(index_path) if save_to_disk else index,
             }
 
-    # pax(indexes)
-
-    # return indexes
     return embeddings, indexes
 
 
@@ -267,8 +206,6 @@ def get_nbrs():
             for i in nbrs[m]:
                 nbrs[m][i] = np.array(nbrs[m][i]).astype("i8")
 
-    # pax(nbrs)
-
     return nbrs
 
 
@@ -306,8 +243,6 @@ def get_acc():
     with open(acc_path) as f:
         accs = json.load(f)
 
-    # pax(accs)
-
     return accs
 
 
@@ -315,12 +250,7 @@ def run_bert_comparison():
 
     acc_map = get_acc()
 
-    pax({
-        "n_samples" : n_samples,
-        # "n_blocks" : n_blocks,
-        "indexes" : [
-            "%s ... %s" % (info["name"], info["search"])
-            for info in index_infos.values()
-        ],
-        "acc_map" : acc_map,
-    })
+    print(n_samples)
+    print(indexes)
+    print(acc_map)
+    exit()

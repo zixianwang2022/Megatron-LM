@@ -57,7 +57,6 @@ def embed_db():
 
 
 # >>>
-# from lutil import pax
 # from tools.retro.db.utils import get_indexed_dataset_infos
 # from .utils import get_training_data_paths
 
@@ -79,8 +78,6 @@ def embed_db():
 #     data_paths = get_training_data_paths()
 #     data_path_block_size = 100
 #     data_path_start_idxs = list(range(0, len(data_paths), data_path_block_size))
-
-#     # pax(0, {"data_path_start_idxs": data_path_start_idxs})
 
 #     n_samples = sum(info["n_chunks_sampled"] for info in indexed_dataset_infos)
 #     fp = np.memmap(merged_path, dtype = "f4", mode = "w+",
@@ -124,27 +121,6 @@ def embed_db():
 #         fp.flush()
 #         merge_start_idx += block_n
 
-#         # if True or data_path_start_idx > 0:
-#         #     pax(0, {
-#         #         "block_data_paths" : block_data_paths,
-#         #         "data_path_start_idx" : data_path_start_idx,
-#         #         "data_path_end_idx" : data_path_end_idx,
-#         #         "block_n" : block_n,
-#         #         "block_data / shape" : str(block_data.shape),
-#         #         "block_data / start" : str(block_data.flatten()[:10]),
-#         #         "block_data / end" : str(block_data.flatten()[-10:]),
-#         #     })
-#     # <<<
-
-#     pax(0, {
-#         "data_paths" : data_paths,
-#         "indexed_dataset_infos" : indexed_dataset_infos,
-#         "indexed_dataset_infos / 0" : indexed_dataset_infos[0],
-#         "merged_path" : merged_path,
-#         "n_samples" : n_samples,
-#     })
-# <<<
-
 
 def train_on_embeddings():
     '''Train index on embedded DB chunks.'''
@@ -169,7 +145,6 @@ def remove_embeddings():
 # def test_monolithic_alloc_performance():
 
 #     import gc
-#     from lutil import pax
 #     from tools.retro.utils import Timer
 
 #     assert torch.distributed.get_rank() == 0
@@ -227,16 +202,6 @@ def remove_embeddings():
 
 def train_index():
     '''Train index on DB chunks.'''
-    # >>>
-    # if torch.distributed.get_rank() == 0:
-    #     # test_monolithic_alloc_performance()
-    #     test_iterative_alloc_performance()
-    # torch.distributed.barrier()
-    # exit()
-    # <<<
     embed_db()
-    # >>>
-    # merge_embeddings()
-    # <<<
     train_on_embeddings()
     # remove_embeddings() # uncomment, or manually remove 'train_tmp/'

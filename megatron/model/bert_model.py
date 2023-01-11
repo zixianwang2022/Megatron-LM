@@ -189,42 +189,21 @@ class BertModel(MegatronModule):
             lm_output, pooled_output = lm_output
 
             # Return pooled output (e.g., when computing Bert embeddings).
-            # >>>
-            # if self.return_pooled_output:
-            #     return pooled_output
             if self.return_pooled_output:
 
                 # Sum attention mask.
                 embeddings = torch.transpose(lm_output, 0, 1)
                 masks = torch.sum(attention_mask, dim=1)
 
-                # from lutil import pax
-                # pax({"model_outputs" : {
-                #     # lm_output" : lm_output,
-                #     "embeddings" : embeddings,
-                #     "pooled_output" : pooled_output,
-                #     "attention_mask" : attention_mask,
-                #     "masks" : masks,
-                # }})
-
                 # Collect masked embeddings.
-                # outputs = []
                 output = torch.zeros(
                     size = (embeddings.shape[0], embeddings.shape[2]),
                     dtype = torch.float32,
                     device = torch.cuda.current_device())
                 for i, (embedding, mask) in enumerate(zip(embeddings, masks)):
-                    # output = torch.mean(embedding[1: mask - 1], dim=0)
-                    # outputs.append(output)
                     output[i, :] = torch.mean(embedding[1: mask - 1], dim=0)
 
-                # >>>
-                # from lutil import pax
-                # pax({"output": output})
-                # <<<
-
                 return output
-            # <<<
 
         else:
             pooled_output = None
