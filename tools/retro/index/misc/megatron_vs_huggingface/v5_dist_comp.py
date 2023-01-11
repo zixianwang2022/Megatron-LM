@@ -105,13 +105,9 @@ def run_bert_comparison():
     embedders = get_embedders()
     indexes = get_indexes()
     # max_nbrs = 5
-    max_nbrs = 40
-    # max_nbrs = 200
+    # max_nbrs = 40
+    max_nbrs = 200
 
-    # pax(embedders)
-    # pax({"datasets": datasets, "embedders": embedders, "indexes": indexes})
-
-    # valid_text_subset = torch.utils.data.Subset(datasets["valid"], range(10))
     valid_text_subset = torch.utils.data.Subset(
         datasets["valid"],
         range(0, len(datasets["valid"]), len(datasets["valid"]) // 10),
@@ -125,74 +121,6 @@ def run_bert_comparison():
         for k, i in indexes.items()
     }
 
-    # pax({"query_embeddings": query_embeddings, "nbrs": nbrs})
-
-    # >>>
-    # self_nbr_dists = defaultdict(list)
-    # cross_nbr_dists = defaultdict(list)
-    # for valid_idx in range(len(valid_text_subset)):
-    #     print("valid_idx %d / %d." % (valid_idx, len(valid_text_subset)))
-    #     megatron_nbr_ids = nbrs["megatron"][valid_idx]
-    #     huggingface_nbr_ids = nbrs["huggingface"][valid_idx]
-    #     self_nbr_texts = {
-    #         "megatron" : TextListDataset([
-    #             datasets["train"][nbr_id]["text"]
-    #             for nbr_id in megatron_nbr_ids
-    #         ]),
-    #         "huggingface" : TextListDataset([
-    #             datasets["train"][nbr_id]["text"]
-    #             for nbr_id in huggingface_nbr_ids
-    #         ]),
-    #     }
-    #     cross_nbr_texts = {
-    #         "megatron" : TextListDataset([
-    #             datasets["train"][nbr_id]["text"]
-    #             for nbr_id in huggingface_nbr_ids
-    #         ]),
-    #         "huggingface" : TextListDataset([
-    #             datasets["train"][nbr_id]["text"]
-    #             for nbr_id in megatron_nbr_ids
-    #         ]),
-    #     }
-    #     self_nbr_embeddings = {
-    #         k : e.embed_text_dataset(self_nbr_texts[k])
-    #         for k, e in embedders.items()
-    #     }
-    #     cross_nbr_embeddings = {
-    #         k : e.embed_text_dataset(cross_nbr_texts[k])
-    #         for k, e in embedders.items()
-    #     }
-    #     # _self_nbr_dists = {
-    #     #     k : np.mean([np.linalg.norm(query_embeddings[k][valid_idx] - e)
-    #     #                 for e in self_nbr_embeddings[k]])
-    #     #     for k in self_nbr_embeddings
-    #     # }
-    #     # _cross_nbr_dists = {
-    #     #     k : np.mean([np.linalg.norm(query_embeddings[k][valid_idx] - e)
-    #     #                 for e in cross_nbr_embeddings[k]])
-    #     #     for k in cross_nbr_embeddings
-    #     # }
-    #     for k in self_nbr_embeddings:
-    #         self_nbr_dists[k].append(np.mean([
-    #             np.linalg.norm(query_embeddings[k][valid_idx] - e)
-    #             for e in self_nbr_embeddings[k]]))
-    #     for k in cross_nbr_embeddings:
-    #         cross_nbr_dists[k].append(np.mean([
-    #             np.linalg.norm(query_embeddings[k][valid_idx] - e)
-    #             for e in cross_nbr_embeddings[k]]))
-
-    #     # pax({
-    #     #     # "crnt_query_embeddings" : crnt_query_embeddings,
-    #     #     "megatron_nbr_ids" : megatron_nbr_ids,
-    #     #     "huggingface_nbr_ids" : huggingface_nbr_ids,
-    #     #     "nbr id / overlap" :
-    #     #     len(set(megatron_nbr_ids) & set(huggingface_nbr_ids)) / max_nbrs,
-    #     #     "self_nbr_texts" : self_nbr_texts,
-    #     #     "cross_nbr_texts" : cross_nbr_texts,
-    #     #     "self_nbr_embeddings" : self_nbr_embeddings,
-    #     #     "cross_nbr_embeddings" : cross_nbr_embeddings,
-    #     # })
-    # +++
     from tools.retro.cli import shorten_str
     self_nbr_dists = defaultdict(list)
     cross_nbr_dists = defaultdict(list)
@@ -228,20 +156,52 @@ def run_bert_comparison():
             embedders["huggingface"].embed_text_dataset(nbr_texts["megatron"]),
         }
         for k in self_nbr_embeddings:
-            self_nbr_dists[k].append(np.mean([
+            # self_nbr_dists[k].append(np.mean([
+            self_nbr_dists[k].append([
                 np.linalg.norm(query_embeddings[k][valid_idx] - e)
-                for e in self_nbr_embeddings[k]]))
+                for e in self_nbr_embeddings[k]])
         for k in cross_nbr_embeddings:
-            cross_nbr_dists[k].append(np.mean([
+            # cross_nbr_dists[k].append(np.mean([
+            cross_nbr_dists[k].append([
                 np.linalg.norm(query_embeddings[k][valid_idx] - e)
-                for e in cross_nbr_embeddings[k]]))
-    # <<<
+                for e in cross_nbr_embeddings[k]])
 
-    pax({
-        "self_nbr_dists" : {k:np.mean(d) for k,d in self_nbr_dists.items()},
-        "cross_nbr_dists" : {k:np.mean(d) for k,d in cross_nbr_dists.items()},
-    })
-        
+        # >>>
+        # for k in self_nbr_embeddings:
+        #     print("~~ %s. ~~" % k)
+        #     dists = [np.linalg.norm(query_embeddings[k][valid_idx] - e)
+        #              for e in self_nbr_embeddings[k]]
+        #     dists.sort()
+        #     [ print(d) for d in dists ]
+
+        # exit()
+        # pax({
+        #     "self_nbr_dists" :
+        #     {k:[np.linalg.norm(query_embeddings[k][valid_idx] - e)
+        #         for e in self_nbr_embeddings[k]]
+        #     for k in self_nbr_embeddings},
+        # })
+        # <<<
+
+    # pax({
+    #     "self_nbr_dists" : {k:np.mean(d) for k,d in self_nbr_dists.items()},
+    #     "cross_nbr_dists" : {k:np.mean(d) for k,d in cross_nbr_dists.items()},
+    # })
+    
+    # >>>
+    for k, dist_lists in self_nbr_dists.items():
+        [ dists.sort() for dists in dist_lists ]
+    self_nbr_dists = {k:np.mean(dd, axis = 0) for k, dd in self_nbr_dists.items()}
+    top_diffs = {k:{
+        "top1" : (dd[1] - dd[0]) / dd[0],
+        "top2" : (dd[2] - dd[1]) / dd[1],
+        "top5" : (dd[5] - dd[4]) / dd[4],
+        "top20" : (dd[20] - dd[19]) / dd[19],
+        "topn" : (dd[-1] - dd[-2]) / dd[-2],
+    } for k, dd in self_nbr_dists.items()}
+    # pax(self_nbr_dists)
+    pax(top_diffs)
+    # <<<
 
     pax({
         "datasets" : datasets,

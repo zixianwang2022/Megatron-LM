@@ -133,6 +133,7 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
     query_nbr_ids = []
     filtered_nbr_ids = []
 
+    # Query in sub-blocks.
     partial_block_size = 1000
     for partial_start_idx in tqdm(
             range(0, len(embeddings), partial_block_size),
@@ -152,12 +153,9 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
         query_nbr_ids.append(partial_query_nbr_ids)
         filtered_nbr_ids.append(partial_filtered_nbr_ids)
 
-    # >>>
-    # pax(0, {
-    #     "query_nbr_ids" : query_nbr_ids,
-    #     "filtered_nbr_ids" : filtered_nbr_ids,
-    # })
-    # <<<
+    # Concatenate.
+    query_nbr_ids = np.concatenate(query_nbr_ids, axis = 0)
+    filtered_nbr_ids = np.concatenate(filtered_nbr_ids, axis = 0)
 
     return query_nbr_ids, filtered_nbr_ids
 
@@ -202,7 +200,11 @@ def query_dataset_neighbors(index, banned_chunk_map,
     args = get_retro_args()
 
     def validate(f):
-        assert f["neighbors"].shape[1] == args.retro_nnbrs_target
+        assert f["neighbors"].shape[1] == args.retro_nnbrs_target, \
+            "neighbors.shape == %s; nnbrs_target == %d." % (
+                str(f["neighbors"].shape),
+                args.retro_nnbrs_target,
+            )
     n_missing_blocks, missing_nbr_blocks = get_missing_blocks_by_rank(
         nbr_dir,
         len(chunk_dataset),

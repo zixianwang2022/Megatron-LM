@@ -131,13 +131,13 @@ class FaissParallelAddIndex(Index):
         # Add codes.
         print_rank_0("add codes.")
         code_paths = get_added_code_paths()
-        # >>>
-        # pax(0, {"code_paths": code_paths})
-        # <<<
         for code_path in tqdm(code_paths, "add codes"):
             with h5py.File(code_path) as f:
                 codes = np.copy(f["data"])
                 index_ivf.add_sa_codes(codes)
+
+        # Update index's ntotal.
+        index.ntotal = index_ivf.ntotal
 
         # Write index.
         print_rank_0("write added index.")

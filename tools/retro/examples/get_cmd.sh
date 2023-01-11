@@ -11,14 +11,15 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 CORPUS="wiki"
 RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
 RETRO_GPT_TRAIN_SAMPLES=2037248 LR_DECAY_SAMPLES=2 LR_WARMUP_SAMPLES=1
+GPT_EVAL_INTERVAL=2000 GPT_EVAL_ITERS=100
 RETRO_EF_SEARCH=16 RETRO_NPROBE=4096
 BERT_EMBEDDER_TYPE=megatron
 # +++
 # CORPUS="corpus"
 # RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
 # RETRO_GPT_TRAIN_SAMPLES=192000000 LR_DECAY_SAMPLES=166400000 LR_WARMUP_SAMPLES=162761
-# RETRO_EF_SEARCH=32 RETRO_NPROBE=4096
-# # [x] ... RETRO_EF_SEARCH=256 RETRO_NPROBE=65536
+# GPT_EVAL_INTERVAL=2000 GPT_EVAL_ITERS=50
+# RETRO_EF_SEARCH=32 RETRO_NPROBE=4096 # RETRO_EF_SEARCH=256 RETRO_NPROBE=65536
 # BERT_EMBEDDER_TYPE=huggingface
 # <<<
 
@@ -36,11 +37,11 @@ DATA_PATH=${DATA_BLEND}
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
-RETRO_TASKS="db-build"
+# RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="pretraining-query-nbrs"
+# RETRO_TASKS="pretraining-query-nbrs"
 # ... RETRO_TASKS="build" # ... the goal ...
 # RETRO_TASKS="misc-index-update-training-block-size"
 # RETRO_TASKS="misc-pretraining-test-retro-dataset"
@@ -62,7 +63,7 @@ RETRO_TASKS="pretraining-query-nbrs"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v1" # ?
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v2" # save to disk
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v3-full-db" # use merged valids
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-v4-partial-db" # use train embeds
+RETRO_TASKS="misc-index-megatron-huggingface-comparison-v4-partial-db" # use train embeds
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-v5-dist-comp" # dist comparison
 # RETRO_TASKS="misc-index-check-train-valid-split"
 # RETRO_TASKS="misc-index-debug-embeddings-codes"
@@ -125,8 +126,8 @@ MEGATRON_ARGS=" \
     --lr-warmup-samples ${LR_WARMUP_SAMPLES} \
     --weight-decay 1e-2 \
     --clip-grad 1.0 \
-    --eval-interval 2000 \
-    --eval-iters 100 \
+    --eval-interval ${GPT_EVAL_INTERVAL} \
+    --eval-iters ${GPT_EVAL_ITERS} \
     --fp16 \
     --DDP-impl local \
     --dataloader-type cyclic \

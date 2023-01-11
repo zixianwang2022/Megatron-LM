@@ -39,7 +39,7 @@ from lutil import pax
 # n_samples = {"train": 100000, "valid": 10000}
 # n_samples = {"train": 1000000, "valid": 10000}
 # n_samples = {"train": 10000000, "valid": 10000}
-n_samples = {"train": 66000000, "valid": 10000}
+# n_samples = {"train": 66000000, "valid": 10000}
 max_nbrs = 200
 persist_data = True # False
 index_infos = {
@@ -56,22 +56,26 @@ index_infos = {
     #     "search" : {"efSearch" : 8, "nprobe" : 256},
     # },
 
-    # "approx" : { # b 1 [ n 100K ]
-    #     "name" : "IVF8192_HNSW4,Flat",
-    #     "search" : {"efSearch" : 4, "nprobe" : 8},
-    # },
+    "approx" : { # b 1 [ n 100K ]
+        "n_samples" : 100000,
+        "name" : "IVF8192_HNSW4,Flat",
+        "search" : {"efSearch" : 4, "nprobe" : 8},
+    },
     # "approx" : { # b 10 [ n 1M ]
+    #     "n_samples" : 1000000,
     #     "name" : "IVF65536_HNSW4,Flat", # 8
     #     "search" : {"efSearch" : 2, "nprobe" : 64}, # 4
     # },
     # "approx" : { # n 10M
+    #     "n_samples" : 10000000,
     #     "name" : "IVF524288_HNSW8,Flat", # 8
     #     "search" : {"efSearch" : 4, "nprobe" : 512}, # 4
     # },
-    "approx" : { # 66M
-        "name" : "IVF262144_HNSW32,Flat",
-        "search" : {"efSearch" : 16, "nprobe" : 4096},
-    },
+    # "approx" : { # 66M
+    #     "n_samples" : 66000000,
+    #     "name" : "IVF262144_HNSW32,Flat",
+    #     "search" : {"efSearch" : 16, "nprobe" : 4096},
+    # },
 }
 
 
