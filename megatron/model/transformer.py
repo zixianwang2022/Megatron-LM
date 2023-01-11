@@ -6,7 +6,7 @@ from contextlib import nullcontext
 import torch
 import torch.nn.functional as F
 
-from megatron import get_timers, get_args, core
+from megatron import get_timers, get_args, core, get_num_microbatches
 from .module import MegatronModule
 from megatron.core import mpu, tensor_parallel
 from megatron.model.enums import AttnMaskType, ModelType, LayerType, AttnType
@@ -15,6 +15,15 @@ from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu
 
+try:
+    from einops import rearrange
+except ImportError:
+    rearrange = None
+
+try:
+    from flash_attn.flash_attn_interface import flash_attn_unpadded_func
+except ImportError:
+    flash_attn_unpadded_func = None
 
 """ We use the following notation throughout this file:
      h: hidden size
@@ -305,6 +314,48 @@ class CoreAttention(MegatronModule):
         return context_layer
 
 
+class FlashSelfAttention(torch.nn.Module):
+    """Implement the scaled dot product attention with softmax.
+    Arguments
+    ---------
+        softmax_scale: The temperature to use for the softmax attention.
+                      (default: 1/sqrt(d_keys) where d_keys is computed at
+                      runtime)
+        attention_dropout: The dropout rate to apply to the attention
+                           (default: 0.0)
+    """
+    def __init__(self, causal=False, softmax_scale=None, attention_dropout=0.0,
+                 device=None, dtype=None):
+        super().__init__()
+        assert flash_attn_unpadded_func is not None, ('Please install FlashAttention first, '
+                                                      'e.g., with pip install flash-attn')
+        assert rearrange is not None, 'Please install einops first, e.g., with pip install einops'
+        self.causal = causal
+        self.softmax_scale = softmax_scale
+        self.dropout_p = attention_dropout
+
+    def forward(self, q, k, v):
+        """Implements the multihead softmax attention.
+        Arguments
+        ---------
+            q, k, v: The tensor containing the query, key, and value. (B, S, H, D)
+        """
+        assert q.dtype in [torch.float16, torch.bfloat16]
+        assert q.is_cuda
+        batch_size, seqlen = q.shape[0], q.shape[1]
+        q, k, v = [rearrange(x, 'b s ... -> (b s) ...') for x in [q, k, v]]
+        max_s = seqlen
+        cu_seqlens = torch.arange(0, (batch_size + 1) * seqlen, step=seqlen, dtype=torch.int32,
+                                  device=q.device)
+        output = flash_attn_unpadded_func(
+            q, k, v, cu_seqlens, cu_seqlens, max_s, max_s,
+            self.dropout_p if self.training else 0.0,
+            softmax_scale=self.softmax_scale, causal=self.causal
+        )
+        output = rearrange(output, '(b s) ... -> b s ...', b=batch_size)
+        return output
+
+
 class ParallelAttention(MegatronModule):
     """Parallel self-attention layer abstract class.
 
@@ -322,6 +373,19 @@ class ParallelAttention(MegatronModule):
         self.attention_type = attention_type
         self.attn_mask_type = attn_mask_type
         self.params_dtype = args.params_dtype
+        self.sequence_parallel = args.sequence_parallel
+
+        self.use_flash_attn = args.use_flash_attn
+        if self.use_flash_attn:
+            if flash_attn_unpadded_func is None:
+                raise ImportError('FlashAttention is not installed, please install with '
+                                  'pip install flash-attn')
+            assert attention_type == AttnType.self_attn, ('FlashAttention code path only supports '
+                                                          'self-attention for now')
+            assert self.attn_mask_type == AttnMaskType.causal, ('FlashAttention code path only '
+                                                                'supports causal mask for now')
+            if rearrange is None:
+                raise ImportError('einops is not installed, please install with pip install einops')
 
         projection_size = args.kv_channels * args.num_attention_heads
 
@@ -363,6 +427,11 @@ class ParallelAttention(MegatronModule):
         self.core_attention = CoreAttention(self.layer_number,
                                             self.attn_mask_type)
         self.checkpoint_core_attention = args.recompute_granularity == 'selective'
+
+        if self.use_flash_attn:
+            self.core_attention_flash = FlashSelfAttention(
+                causal=True, attention_dropout=args.attention_dropout
+            )
 
         # Output.
         self.dense = tensor_parallel.RowParallelLinear(
@@ -487,12 +556,22 @@ class ParallelAttention(MegatronModule):
         # core attention computation
         # ==================================
 
-        if self.checkpoint_core_attention:
-            context_layer = self._checkpointed_attention_forward(
-                query_layer, key_layer, value_layer, attention_mask)
+        if not self.use_flash_attn:
+            if self.checkpoint_core_attention:
+                context_layer = self._checkpointed_attention_forward(
+                    query_layer, key_layer, value_layer, attention_mask)
+            else:
+                context_layer = self.core_attention(
+                    query_layer, key_layer, value_layer, attention_mask)
         else:
-            context_layer = self.core_attention(
-                query_layer, key_layer, value_layer, attention_mask)
+            q, k, v = [rearrange(x, 's b ... -> b s ...').contiguous()
+                       for x in (query_layer, key_layer, value_layer)]
+            if not self.sequence_parallel:
+                with tensor_parallel.get_cuda_rng_tracker().fork():
+                    context_layer = self.core_attention_flash(q, k, v)
+            else:
+                context_layer = self.core_attention_flash(q, k, v)
+            context_layer = rearrange(context_layer, 'b s h d -> s b (h d)').contiguous()
 
         # =================
         # Output. [sq, b, h]
@@ -810,6 +889,7 @@ class ParallelTransformer(MegatronModule):
         self.post_process = post_process
         self.input_tensor = None
         self.drop_path_rate = drop_path_rate
+        self.transformer_impl = args.transformer_impl
 
         # Store activation checkpoiting flag.
         self.recompute_granularity = args.recompute_granularity
@@ -819,6 +899,31 @@ class ParallelTransformer(MegatronModule):
             args.distribute_saved_activations and not args.sequence_parallel
 
         self.sequence_parallel = args.sequence_parallel
+
+        # Transformer Engine Init.
+        if self.transformer_impl == 'transformer_engine':
+            global transformer_engine
+            import transformer_engine
+        self.use_fp8 = args.fp8_e4m3 or args.fp8_hybrid
+        self.fp8_recipe = None
+        self.fp8_group = mpu.get_data_parallel_group()
+        if self.use_fp8:
+            if args.fp8_e4m3:
+                fp8_format = transformer_engine.common.recipe.Format.E4M3
+            elif args.fp8_hybrid:
+                fp8_format = transformer_engine.common.recipe.Format.HYBRID
+            self.fp8_recipe = transformer_engine.common.recipe.DelayedScaling(
+                margin=args.fp8_margin,
+                interval=args.fp8_interval,
+                fp8_format=fp8_format,
+                amax_history_len=args.fp8_amax_history_len,
+                amax_compute_algo=args.fp8_amax_compute_algo,
+                override_linear_precision=(False, False, not args.fp8_wgrad),
+            )
+
+        self.num_microbatches_in_previous_step = -1
+        self.microbatch_count = 0
+        self.checkpoint_core_attention = args.recompute_granularity == 'selective'
 
         # Number of layers.
         self.num_layers = _get_num_layers(
@@ -830,13 +935,43 @@ class ParallelTransformer(MegatronModule):
 
         # Transformer layers.
         def build_layer(layer_number):
-            return ParallelTransformerLayer(
-                init_method,
-                output_layer_init_method,
-                layer_number,
-                layer_type=layer_type,
-                self_attn_mask_type=self_attn_mask_type,
-                drop_path_rate=self.drop_path_rates[layer_number - 1])
+            if args.transformer_impl == 'local':
+                return ParallelTransformerLayer(
+                    init_method,
+                    output_layer_init_method,
+                    layer_number,
+                    layer_type=layer_type,
+                    self_attn_mask_type=self_attn_mask_type,
+                    drop_path_rate=self.drop_path_rates[layer_number - 1])
+            else:
+                return transformer_engine.pytorch.TransformerLayer(
+                    args.hidden_size,
+                    args.ffn_hidden_size,
+                    args.num_attention_heads,
+                    layernorm_epsilon=args.layernorm_epsilon,
+                    hidden_dropout=args.hidden_dropout,
+                    attention_dropout=args.attention_dropout,
+                    init_method=init_method,
+                    output_layer_init_method=output_layer_init_method,
+                    layer_number=layer_number,
+                    kv_channels=args.kv_channels,
+                    self_attn_mask_type=self_attn_mask_type.name,
+                    tp_group=mpu.get_tensor_model_parallel_group(),
+                    get_rng_state_tracker=tensor_parallel.get_cuda_rng_tracker,
+                    fuse_wgrad_accumulation=args.gradient_accumulation_fusion,
+                    apply_query_key_layer_scaling=args.apply_query_key_layer_scaling,
+                    attention_softmax_in_fp32=args.attention_softmax_in_fp32,
+                    seq_length=args.seq_length,
+                    micro_batch_size=args.micro_batch_size,
+                    sequence_parallel=args.sequence_parallel,
+                    params_dtype=args.params_dtype,
+                    apply_residual_connection_post_layernorm=args.apply_residual_connection_post_layernorm,
+                    output_layernorm=False,
+                    layer_type="encoder",
+                    drop_path_rate=self.drop_path_rates[layer_number - 1],
+                    set_parallel_mode=True,
+                    fuse_qkv_params=True)
+
         if args.virtual_pipeline_model_parallel_size is not None:
             assert args.num_layers % args.virtual_pipeline_model_parallel_size == 0, \
                 'num_layers_per_stage must be divisible by ' \
@@ -896,19 +1031,20 @@ class ParallelTransformer(MegatronModule):
         return self.layers[layer_number]
 
     def _checkpointed_forward(self, hidden_states, attention_mask,
-                              encoder_output, enc_dec_attn_mask):
+                              encoder_output, enc_dec_attn_mask, is_first_microbatch):
         """Forward method with activation checkpointing."""
-        def custom(start, end):
-            def custom_forward(*inputs):
-                x_ = inputs[0]
-                attention_mask = inputs[1]
-                encoder_output = inputs[2]
-                enc_dec_attn_mask = inputs[3]
+        def custom(start, end, is_transformer_engine=False):
+            def custom_forward(*args, **kwargs):
                 for index in range(start, end):
                     layer = self._get_layer(index)
-                    x_ = layer(x_, attention_mask, encoder_output, enc_dec_attn_mask)
+                    x_ = layer(*args, **kwargs)
                 return x_
-            return custom_forward
+            def custom_forward_transformer_engine(*args, **kwargs):
+                return custom_forward(*args, is_first_microbatch=is_first_microbatch, **kwargs)
+            if not is_transformer_engine:
+                return custom_forward
+            else:
+                return custom_forward_transformer_engine
 
         if self.recompute_method == 'uniform':
             # Uniformly divide the total number of Transformer layers and checkpoint
@@ -916,10 +1052,19 @@ class ParallelTransformer(MegatronModule):
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
             while l < self.num_layers:
-                hidden_states = tensor_parallel.checkpoint(
-                    custom(l, l + self.recompute_num_layers),
-                    self.distribute_saved_activations,
-                    hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                if self.transformer_impl == 'transformer_engine':
+                    hidden_states = transformer_engine.pytorch.distributed.checkpoint(
+                        custom(l, l + self.recompute_num_layers, is_transformer_engine=True),
+                        self.distribute_saved_activations,
+                        tensor_parallel.get_cuda_rng_tracker,
+                        mpu.get_tensor_model_parallel_group(),
+                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                else:
+                    hidden_states = tensor_parallel.checkpoint(
+                        custom(l, l + self.recompute_num_layers),
+                        self.distribute_saved_activations,
+                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+
                 l += self.recompute_num_layers
 
         elif self.recompute_method == 'block':
@@ -928,13 +1073,25 @@ class ParallelTransformer(MegatronModule):
             # A method fully use the device memory removing redundant re-computation.
             for l in range(self.num_layers):
                 if l < self.recompute_num_layers:
-                    hidden_states = tensor_parallel.checkpoint(
-                        custom(l, l + 1),
-                        self.distribute_saved_activations,
-                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                    if self.transformer_impl == 'transformer_engine':
+                        hidden_states = transformer_engine.pytorch.distributed.checkpoint(
+                            custom(l, l + 1, is_transformer_engine=True),
+                            self.distribute_saved_activations,
+                            tensor_parallel.get_cuda_rng_tracker,
+                            mpu.get_tensor_model_parallel_group(),
+                            hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                    else:
+                        hidden_states = tensor_parallel.checkpoint(
+                            custom(l, l + 1),
+                            self.distribute_saved_activations,
+                            hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
                 else:
-                    hidden_states = custom(l, l + 1)(
-                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                    if self.transformer_impl == 'transformer_engine':
+                        hidden_states = custom(l, l + 1, is_transformer_engine=True)(
+                            hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                    else:
+                        hidden_states = custom(l, l + 1)(
+                            hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
         else:
             raise ValueError("Invalid activation recompute method.")
 
@@ -991,21 +1148,48 @@ class ParallelTransformer(MegatronModule):
             rng_context = nullcontext()
 
         with rng_context:
-            # Forward pass.
-            if self.recompute_granularity == 'full':
-                hidden_states = self._checkpointed_forward(hidden_states,
-                                                           attention_mask,
-                                                           encoder_output,
-                                                           enc_dec_attn_mask)
-            else:
-                for index in range(self.num_layers):
-                    layer = self._get_layer(index)
-                    hidden_states = layer(
-                        hidden_states,
-                        attention_mask,
-                        encoder_output=encoder_output,
-                        enc_dec_attn_mask=enc_dec_attn_mask,
-                        inference_params=inference_params)
+            # The fp8_autocast context manager is a no-op when enabled=True
+            # The if...else serves to short circuit name resolution for fp8_autocast
+            with transformer_engine.pytorch.fp8_autocast(
+                enabled=self.use_fp8,
+                fp8_recipe=self.fp8_recipe,
+                fp8_group=self.fp8_group
+            ) if self.use_fp8 else nullcontext():
+                # Determine if the current iteration is first microbatch
+                if self.num_microbatches_in_previous_step != get_num_microbatches():
+                    self.microbatch_count = 0 # Reset count on new batch size rampup interval
+                self.num_microbatches_in_previous_step = get_num_microbatches()
+                is_first_microbatch = self.microbatch_count % get_num_microbatches() == 0
+
+                # Forward pass.
+                if self.recompute_granularity == 'full':
+                    hidden_states = self._checkpointed_forward(hidden_states,
+                                                               attention_mask,
+                                                               encoder_output,
+                                                               enc_dec_attn_mask,
+                                                               is_first_microbatch)
+                else:
+                    forward_kwargs = {
+                        'encoder_output': encoder_output,
+                        'enc_dec_attn_mask': enc_dec_attn_mask,
+                        'inference_params': inference_params,
+                    }
+
+                    if self.transformer_impl == 'transformer_engine':
+                        forward_kwargs['is_first_microbatch'] = is_first_microbatch
+                        forward_kwargs['checkpoint_core_attention'] = self.checkpoint_core_attention
+
+                    for index in range(self.num_layers):
+                        layer = self._get_layer(index)
+
+                        hidden_states = layer(
+                            hidden_states,
+                            attention_mask,
+                            **forward_kwargs)
+
+                # Skip counter update for eval and activation checkpointing
+                if torch.is_grad_enabled() and self.training:
+                    self.microbatch_count += 1
 
         # Final layer norm.
         if self.post_process and self.post_layer_norm:
