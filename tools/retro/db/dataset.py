@@ -33,10 +33,7 @@ class DBDataset(torch.utils.data.Dataset):
 
 
     def __len__(self):
-        # >>>
-        # return len(self.chunks)
         return self.chunks.shape[0]
-        # <<<
 
 
     def __getitem__(self, chunk_id):

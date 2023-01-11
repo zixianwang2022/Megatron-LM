@@ -179,7 +179,6 @@ def print_nbrs(
             np.mean(new_nbr_dists), # [1:]),
         ))
 
-    # >>>
     # print("load old index.")
     # old_index = faiss.read_index(os.environ["OLD_RETRO_WIKI_INDEX"], faiss.IO_FLAG_MMAP)
     # print("load new index.")
@@ -225,9 +224,7 @@ def print_nbrs(
     #     print("QUERY : %s" % tokens2str(sample_chunk))
     #     for i, ni in enumerate(I[0]):
     #         print("NBR [%.3f] : %s" % (D[0][i].item(), tokens2str(new_db_ds[ni]["text"])))
-    # <<<
 
-    # >>>
     # if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
     if False:
     # if acc != 1:

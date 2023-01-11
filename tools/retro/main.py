@@ -17,17 +17,11 @@ from megatron.global_vars import set_retro_args
 from tools.retro.db import build_db
 from tools.retro.db.misc import print_db_embeddings
 from tools.retro.index.build import add_to_index, build_index, train_index
-from tools.retro.index.misc.debug_embeddings_codes \
-    import  debug_embeddings_codes as debug_index_embeddings_codes
 from tools.retro.index.misc.megatron_vs_huggingface import (
-    run_bert_comparison_v0,
-    run_bert_comparison_v1,
-    run_bert_comparison_v2,
-    run_bert_comparison_v3_full_db,
-    run_bert_comparison_v4_partial_db,
-    run_bert_comparison_v5_dist_comp,
+    compare_bert_full_db,
+    compare_bert_partial_db,
+    compare_bert_neighbor_dists,
 )
-from tools.retro.index.misc.update_block_size import update_training_block_size
 from tools.retro.index.misc.verify_codes import verify_codes as verify_index_codes
 from tools.retro.pretraining.query import query_pretraining_neighbors
 from tools.retro.pretraining.misc import print_pretraining_neighbors
@@ -57,7 +51,6 @@ def add_retro_args(parser):
     group.add_argument("--retro-index-str", required = True)
     group.add_argument("--retro-ef-search", type = int, default = 256)
     group.add_argument("--retro-nprobe", type = int, default = 65536)
-    # group.add_argument("--retro-workdir", required = True)
     group.add_argument("--retro-nchunks-sampled", type = int, required = True)
     group.add_argument("--retro-doc-block-size", type = int, required = True)
     group.add_argument("--retro-block-size", type = int, required = True)
@@ -65,9 +58,6 @@ def add_retro_args(parser):
                        type = int, default=3750000)
     group.add_argument("--retro-nnbrs-query", type = int, required = True)
     group.add_argument("--retro-nnbrs-target", type = int, required=True)
-    # group.add_argument("--retro-nnbrs-pretraining", type = int, required=True)
-    # group.add_argument("--retro-embedder", choices = ["megatron","huggingface"],
-    #                    default = "megatron")
 
     return parser
 
@@ -136,31 +126,14 @@ if __name__ == "__main__":
             remove_add_files()
         elif task == "misc-index-verify-codes":
             verify_index_codes()
-        elif task == "misc-index-time-merge-partials":
-            from tools.retro.index import FaissParallelAddIndex
-            FaissParallelAddIndex.time_merge_partials()
-            torch.distributed.barrier()
-        elif task == "misc-index-time-hnsw":
-            from tools.retro.index import FaissParallelAddIndex
-            FaissParallelAddIndex.time_hnsw()
-        elif task == "misc-index-megatron-huggingface-comparison-v0":
-            run_bert_comparison_v0()
-        elif task == "misc-index-megatron-huggingface-comparison-v1":
-            run_bert_comparison_v1()
-        elif task == "misc-index-megatron-huggingface-comparison-v2":
-            run_bert_comparison_v2()
-        elif task == "misc-index-megatron-huggingface-comparison-v3-full-db":
-            run_bert_comparison_v3_full_db()
-        elif task == "misc-index-megatron-huggingface-comparison-v4-partial-db":
-            run_bert_comparison_v4_partial_db()
-        elif task == "misc-index-megatron-huggingface-comparison-v5-dist-comp":
-            run_bert_comparison_v5_dist_comp()
-        elif task == "misc-index-debug-embeddings-codes":
-            debug_index_embeddings_codes()
+        elif task == "misc-index-megatron-huggingface-comparison-full-db":
+            compare_bert_full_db()
+        elif task == "misc-index-megatron-huggingface-comparison-partial-db":
+            compare_bert_partial_db()
+        elif task == "misc-index-megatron-huggingface-comparison-nbr-dists":
+            compare_bert_neighbor_dists()
         elif task == "misc-index-check-train-valid-split":
             check_index_train_valid_split()
-        elif task == "misc-index-update-training-block-size":
-            update_training_block_size()
         elif task == "misc-pretraining-test-retro-dataset":
             test_retro_dataset()
         elif task == "misc-pretraining-nbr-plot-acc":

@@ -95,31 +95,6 @@ class RetroDataset(torch.utils.data.Dataset):
         return sample
 
 
-# >>>
-# def path_to_chunk_idxs(path):
-#     '''Parse start/end indexes from block path name (e.g., 00010-00011.hdf5 ->
-#     (10, 11).'''
-#     return tuple([
-#         int(i) for i in os.path.splitext(
-#             os.path.basename(path))[0].split("-")])
-
-
-# def get_chunk_path_map(_dir):
-#     '''Map chunk indexes to neighbor block path (on disk).'''
-
-#     paths = sorted(glob.glob(_dir + "/*.hdf5"))
-
-#     # Build id-path map.
-#     chunk_path_map = IdPathMap(paths)
-#     for path in paths:
-#         chunk_start_idx, chunk_end_idx = path_to_chunk_idxs(path)
-#         for chunk_idx in range(chunk_start_idx, chunk_end_idx):
-#             chunk_path_map.add(chunk_idx, path)
-
-#     return chunk_path_map
-# <<<
-
-
 def get_retro_datasets():
     '''Get train, valid, test retro datasets.'''
 
@@ -136,10 +111,7 @@ def get_retro_datasets():
 
         chunk_dataset = chunk_ds_info["data"]
         nbr_dir = chunk_ds_info["nbr_dir"]
-        # >>>
-        # nbr_path_map = get_chunk_path_map(nbr_dir)
         nbr_path_map = get_index_path_map(nbr_dir)
-        # <<<
 
         # Verify dataset prefixes.
         sample_prefix = chunk_dataset.sample_dataset.datasets[0].index_prefix

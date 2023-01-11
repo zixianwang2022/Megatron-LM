@@ -69,8 +69,8 @@ def get_embeddings():
     args = get_retro_args()
 
     block_paths = {
-        "megatron" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/*.hdf5")),
-        "huggingface" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/blocks/*.hdf5")),
+        "megatron" : sorted(glob.glob("/path/to/train/embeddings/*.hdf5")),
+        "huggingface" : sorted(glob.glob("/path/to/train/embeddings/*.hdf5")),
     }
 
     assert len(set(len(pp) for pp in block_paths.values())) == 1
@@ -246,7 +246,7 @@ def get_acc():
     return accs
 
 
-def run_bert_comparison():
+def compare_bert_partial_db():
 
     acc_map = get_acc()
 

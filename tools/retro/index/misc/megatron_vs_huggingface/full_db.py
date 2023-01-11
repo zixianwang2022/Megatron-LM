@@ -114,8 +114,8 @@ def get_indexes():
         "huggingface" : os.path.join(index_dir, "huggingface_exact.faissindex"),
     }
     embed_paths = {
-        "megatron" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/*.hdf5")),
-        "huggingface" : sorted(glob.glob("/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/train_tmp/blocks/*.hdf5")),
+        "megatron" : sorted(glob.glob("/path/to/train/embeddings/*.hdf5")),
+        "huggingface" : sorted(glob.glob("/path/to/train/embeddings/*.hdf5")),
     }
 
     # exact_indexes = {}
@@ -135,12 +135,11 @@ def get_indexes():
     index_paths = {
         "megatron" : {
             "exact" : exact_index_paths["megatron"],
-            # "approx" : "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex",
-            # "approx" : "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-mt-cased/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex",
+            # "approx" : "/path/to/index",
         },
         "huggingface" : {
             "exact" : exact_index_paths["huggingface"],
-            # "approx" : "/gpfs/fs1/projects/gpu_adlr/datasets/lmcafee/retro/workdirs/wiki-hf/index/faiss-par-add/IVF262144_HNSW32,Flat/added.faissindex",
+            # "approx" : "/path/to/index",
         },
     }
     # indexes = {m:{i:faiss.read_index(p, faiss.IO_FLAG_MMAP) for i,p in ip.items()} for m,ip in index_paths.items()}
@@ -232,7 +231,7 @@ def get_acc():
     return accs
 
 
-def run_bert_comparison():
+def compare_bert_full_db():
 
     faiss.omp_set_num_threads(64)
 

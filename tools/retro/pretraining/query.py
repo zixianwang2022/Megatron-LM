@@ -159,13 +159,10 @@ def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
     embeddings = embed_block(chunk_dataset, block, embedder)
 
     # Query embeddings.
-    # >>>
-    # _, filtered_nbr_ids = query_embeddings(
     _, filtered_nbr_ids = query_embedding_block(
         index, banned_chunk_map, block["range"],
         embeddings, sample_map,
         n_chunks_per_sample)
-    # <<<
 
     # Save neighbors.
     print_rank_0("save neighbors.")

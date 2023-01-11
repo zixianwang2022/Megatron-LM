@@ -79,30 +79,12 @@ def _print_db_neighbors(
             old_nbr_token_ids.append(old_db_chunks[old_nbr_id])
             new_nbr_token_ids.append(new_nbrs[chunk_idx][nbr_idx][:chunk_length])
 
-        # >>>
-        # old_token_hashes = [ get_pickle_hash(ts.tolist())
-        #                      for ts in old_nbr_token_ids ]
-        # new_token_hashes = [ get_pickle_hash(ts.tolist())
-        #                      for ts in new_nbr_token_ids ]
-        # old_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
-        #                    for ts in old_nbr_token_ids ]
-        # new_text_hashes = [ get_pickle_hash(gpt_tokenizer.detokenize(ts))
-        #                    for ts in new_nbr_token_ids ]
-        # common_token_hashes = set(old_token_hashes) & set(new_token_hashes)
-        # token_acc = len(common_token_hashes) / nnbrs
-        # text_acc = len(set(old_text_hashes) & set(new_text_hashes)) / nnbrs
-        # accs.append(text_acc)
-        # +++
         old_nbr_hashes = [ get_pickle_hash(ts.tolist())
                            for ts in old_nbr_token_ids ]
         new_nbr_hashes = [ get_pickle_hash(ts.tolist())
                            for ts in new_nbr_token_ids ]
         common_nbr_hashes = set(old_nbr_hashes) & set(new_nbr_hashes)
         accs.append(len(common_nbr_hashes) / nnbrs)
-        # +++
-        # old_nbr_hashes = [ old_db_hash_map[old_nbr_ids[chunk_idx][ni].item()]
-        #                    for ni in range(nnbrs)]
-        # <<<
 
         print()
         for i, ts in enumerate(old_nbr_token_ids):
@@ -122,7 +104,6 @@ def _print_db_neighbors(
         print()
         print("ACC : %.2f." % (100 * accs[-1]))
 
-        # >>>
         if accs[-1] == 0.9 and old_nbr_hashes[0] not in new_nbr_hashes:
             seq_embed = \
                 embedder.embed_text(gpt_tokenizer.detokenize(old_seq_chunk))
@@ -135,6 +116,7 @@ def _print_db_neighbors(
 
             old_nbr_id = old_db_hash_map[old_nbr_hashes[0]]
             new_nbr_id = new_db_hash_map[old_nbr_hashes[0]]
+
             # "old 0 hash" : old_nbr_hashes[0],
             # "old 0 in old db?" : old_nbr_hashes[0] in old_db_hash_map,
             # "old 0 in new db?" : old_nbr_hashes[0] in new_db_hash_map,
@@ -148,3 +130,5 @@ def _print_db_neighbors(
             # # "new_nbr_embeds" : new_nbr_embeds,
             # "old_nbr_dists" : str(old_nbr_dists),
             # "new_nbr_dists" : str(new_nbr_dists),
+
+            raise Exception("investigate one-off scenario.")
