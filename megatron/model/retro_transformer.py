@@ -1,6 +1,15 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-"""Transformer."""
+"""Retro Transformer.
+
+** Special note about this file **
+Many classes and methods in this file directly parallel those in transformer.py
+in name and utility. However, due to 1) subtle changes in the code over time
+(i.e., transposes and contexts), and 2) other code that is soon to be merged,
+this file will *temporarily* remain as is, until a larger integration is
+complete.
+"""
+
 import math
 
 import numpy as np
@@ -18,7 +27,7 @@ from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, init_method_normal
 
 from .module import MegatronModule
-from .transformer import _get_num_layers
+from .transformer import _get_num_layers, ParallelMLP, NoopTransformerLayer
 
 """ We use the following notation throughout this file:
      h: hidden size
@@ -39,6 +48,8 @@ from .transformer import _get_num_layers
 class DropPath(MegatronModule):
     """Drop paths (Stochastic Depth) per sample
     (when applied in main path of residual blocks).
+
+    *Note: differs from transformer.py/DropPath in hidden_state transpose.
     """
 
     def __init__(self, drop_prob=0.):
@@ -56,58 +67,6 @@ class DropPath(MegatronModule):
         random_tensor.floor_()  # binarize
         output = hidden_state.div(keep_prob) * random_tensor
         return output
-
-
-class ParallelMLP(MegatronModule):
-    """MLP.
-
-    MLP will take the input with h hidden state, project it to 4*h
-    hidden dimension, perform nonlinear transformation, and project the
-    state back into h hidden dimension.
-    """
-
-    def __init__(self, init_method, output_layer_init_method):
-        super(ParallelMLP, self).__init__()
-        args = get_args()
-
-        # Project to 4h.
-        self.dense_h_to_4h = tensor_parallel.ColumnParallelLinear(
-            args.hidden_size,
-            args.ffn_hidden_size,
-            gather_output=False,
-            init_method=init_method,
-            skip_bias_add=True)
-
-        self.bias_gelu_fusion = args.bias_gelu_fusion
-        self.activation_func = F.gelu
-        if args.openai_gelu:
-            self.activation_func = openai_gelu
-        elif args.onnx_safe:
-            self.activation_func = erf_gelu
-
-        # Project back to h.
-        self.dense_4h_to_h = tensor_parallel.RowParallelLinear(
-            args.ffn_hidden_size,
-            args.hidden_size,
-            input_is_parallel=True,
-            init_method=output_layer_init_method,
-            skip_bias_add=True)
-
-    def forward(self, hidden_states):
-
-        # [s, b, 4hp]
-        intermediate_parallel, bias_parallel = self.dense_h_to_4h(hidden_states)
-
-        if self.bias_gelu_fusion:
-             intermediate_parallel = \
-                     bias_gelu_impl(intermediate_parallel, bias_parallel)
-        else:
-            intermediate_parallel = \
-                self.activation_func(intermediate_parallel + bias_parallel)
-
-        # [s, b, h]
-        output, output_bias = self.dense_4h_to_h(intermediate_parallel)
-        return output, output_bias
 
 
 class SwitchMLP(MegatronModule):
@@ -1231,32 +1190,6 @@ class ParallelTransformerLayer(MegatronModule):
             output = residual + self.drop_path(out)
 
         return output
-
-
-class NoopTransformerLayer(MegatronModule):
-    """A single 'no-op' transformer layer.
-
-    The sole purpose of this layer is for when a standalone embedding layer
-    is used (i.e., args.standalone_embedding_stage == True). In this case,
-    zero transformer layers are assigned when pipeline rank == 0. Additionally,
-    when virtual pipeline rank >= 1, zero total model parameters are created
-    (virtual rank 0 contains the input embedding). This results in the model's
-    input and output tensors being the same, which causes an error when
-    performing certain memory optimiations on the output tensor (e.g.,
-    deallocating it). Thus, this layer disconnects the input from the output
-    via a clone. Since ranks containing a no-op layer are generally under-
-    utilized (both compute and memory), there's no worry of any performance
-    degredation.
-    """
-
-    def __init__(self, layer_number):
-        super().__init__()
-        self.layer_number = layer_number
-
-    def forward(self, hidden_states, attention_mask,
-                encoder_output=None, enc_dec_attn_mask=None,
-                inference_params=None):
-        return hidden_states.clone()
 
 
 class ParallelRetroEncoder(MegatronModule):
