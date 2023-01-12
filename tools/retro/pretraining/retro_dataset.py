@@ -7,7 +7,8 @@ import torch
 
 from megatron import get_args, get_retro_args
 from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
-from tools.retro.pretraining.chunk_dataset import get_chunk_dataset_map
+
+from .chunk_dataset import get_chunk_dataset_map
 
 
 class RetroDataset(torch.utils.data.Dataset):
@@ -20,6 +21,7 @@ class RetroDataset(torch.utils.data.Dataset):
 
     def __init__(self,
                  num_neighbors,
+                 num_retrieved_chunks,
                  block_size,
                  db_dataset,
                  chunk_dataset,
@@ -30,6 +32,7 @@ class RetroDataset(torch.utils.data.Dataset):
         super().__init__()
 
         self.num_neighbors = num_neighbors
+        self.num_retrieved_chunks = num_retrieved_chunks
         self.block_size = block_size
         self.db_dataset = db_dataset
         self.chunk_dataset = chunk_dataset
@@ -68,10 +71,11 @@ class RetroDataset(torch.utils.data.Dataset):
             retrieved_chunk_ids = []
             retrieved_token_ids = []
             for neighbor_chunk_id in neighbor_chunk_ids:
-                current_chunk_ids = (
-                    neighbor_chunk_id,
-                    (neighbor_chunk_id + 1) % len(self.db_dataset),
-                )
+                current_chunk_ids = [
+                    i % len(self.db_dataset)
+                    for i in range(
+                            neighbor_chunk_id,
+                            neighbor_chunk_id + self.num_retrieved_chunks)]
                 current_token_ids = [self.db_dataset[ci]["text"]
                                      for ci in current_chunk_ids]
                 retrieved_chunk_ids.append(current_chunk_ids)
@@ -137,6 +141,7 @@ def get_retro_datasets():
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
             num_neighbors = args.retro_num_neighbors,
+            num_retrieved_chunks = args.retro_num_retrieved_chunks,
             block_size = retro_args.retro_block_size,
             db_dataset = db_dataset,
             chunk_dataset = chunk_dataset,
