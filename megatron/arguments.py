@@ -357,7 +357,8 @@ def validate_args(args, defaults={}):
                 retro_args = types.SimpleNamespace(**json.load(f))
                 retro_args.retro_return_doc_ids = args.retro_return_doc_ids
                 retro_args.retro_gpt_retrieved_length = \
-                    2 * retro_args.retro_gpt_chunk_length
+                    args.retro_num_retrieved_chunks * \
+                    retro_args.retro_gpt_chunk_length
                 set_retro_args(retro_args)
 
     # Print arguments.
@@ -465,7 +466,12 @@ def _add_retro_args(parser):
     group.add_argument('--retro-encoder-attention-dropout',
                        type=float, default=0.1, help='Attention dropout for '
                        'retrieval encoder.')
-    group.add_argument("--retro-num-neighbors", type=int, default=2)
+    group.add_argument("--retro-num-neighbors", type=int, default=2,
+                       help='Number of neighbors to retrieve during '
+                       'pretraining.')
+    group.add_argument("--retro-num-retrieved-chunks", type=int, default=2,
+                       help='Number of chunks to retrieve from the retrieval '
+                       'database.')
     group.add_argument("--retro-return-doc-ids", action="store_true",
                        help="Turn this on when preprocessing retro data.")
 

@@ -64,7 +64,7 @@ class DropPath(MegatronModule):
         shape = (hidden_state.shape[0],) + (1,) * (hidden_state.ndim - 1)
         random_tensor = keep_prob + \
             torch.rand(shape, dtype=hidden_state.dtype, device=hidden_state.device)
-        random_tensor.floor_()  # binarize
+        random_tensor.floor_() # binarize
         output = hidden_state.div(keep_prob) * random_tensor
         return output
 
@@ -462,7 +462,8 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
             attn_mask_type=self_attn_mask_type)
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
-        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
+        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 \
+            else None
 
         # Layernorm on the attention output
         self.post_attention_layernorm = LayerNorm(
@@ -697,7 +698,8 @@ class ParallelRetroTransformerLayer(MegatronModule):
             attn_mask_type=self_attn_mask_type)
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
-        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
+        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 \
+            else None
 
         # Layernorm on the attention output
         self.post_attention_layernorm = LayerNorm(
@@ -884,10 +886,12 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
             layer_number,
             attention_type=AttnType.self_attn,
             attn_mask_type=self_attn_mask_type)
-        self.self_attention.attention_dropout = torch.nn.Dropout(args.retro_encoder_attention_dropout)
+        self.self_attention.attention_dropout = \
+            torch.nn.Dropout(args.retro_encoder_attention_dropout)
         self.hidden_dropout = args.retro_encoder_hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
-        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
+        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 \
+            else None
 
         # Layernorm on the attention output
         self.post_attention_layernorm = LayerNorm(
@@ -1079,7 +1083,8 @@ class ParallelTransformerLayer(MegatronModule):
             attn_mask_type=self_attn_mask_type)
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
-        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
+        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 \
+            else None
 
         # Layernorm on the attention output
         self.post_attention_layernorm = LayerNorm(
