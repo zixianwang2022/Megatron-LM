@@ -9,7 +9,7 @@ import torch
 from tqdm import tqdm
 
 from megatron import print_rank_0
-from megatron.core import mpu
+from megatron.core import parallel_state
 
 
 def save_data(data_map, *args):
@@ -137,11 +137,11 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     '''
 
     missing_blocks = get_missing_blocks(workdir, n_samples, block_size,
-                                             validate)
+                                        validate)
 
     # This rank's missing files.
-    data_parallel_rank = mpu.get_data_parallel_rank()
-    data_parallel_world_size = mpu.get_data_parallel_world_size()
+    data_parallel_rank = parallel_state.get_data_parallel_rank()
+    data_parallel_world_size = parallel_state.get_data_parallel_world_size()
     rank_missing_blocks = missing_blocks[data_parallel_rank:len(missing_blocks):data_parallel_world_size]
 
     # Extend rank's missing blocks (with None) such that all ranks have equal

@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 
 from megatron import get_args, get_retro_args, get_tensorboard_writer
-from megatron.core import mpu
+from megatron.core import parallel_state
 from megatron.core import tensor_parallel
 from megatron.core import utils as core_utils
 from megatron.model.enums import AttnMaskType, ModelType, LayerType, AttnType
@@ -186,7 +186,7 @@ class ParallelAttention(MegatronModule):
         projection_size = args.kv_channels * args.num_attention_heads
 
         # Per attention head and per partition values.
-        world_size = mpu.get_tensor_model_parallel_world_size()
+        world_size = parallel_state.get_tensor_model_parallel_world_size()
         self.hidden_size_per_partition = core_utils.divide(projection_size,
                                                            world_size)
         self.hidden_size_per_attention_head = core_utils.divide(
@@ -1352,21 +1352,21 @@ class ParallelRetroEncoder(MegatronModule):
             # layers to stages like (each list is a model chunk):
             # Stage 0: [0, 1]  [4, 5]
             # Stage 1: [2, 3]  [6, 7]
-            offset = mpu.get_virtual_pipeline_model_parallel_rank() * (
+            offset = parallel_state.get_virtual_pipeline_model_parallel_rank() * (
                 args.num_layers // args.virtual_pipeline_model_parallel_size) + \
-                (mpu.get_pipeline_model_parallel_rank() * self.num_layers)
+                (parallel_state.get_pipeline_model_parallel_rank() * self.num_layers)
         else:
             # Each stage gets a contiguous set of layers.
             if args.model_type == ModelType.encoder_and_decoder and \
-                    mpu.get_pipeline_model_parallel_world_size() > 1:
-                pipeline_rank = mpu.get_pipeline_model_parallel_rank()
+                    parallel_state.get_pipeline_model_parallel_world_size() > 1:
+                pipeline_rank = parallel_state.get_pipeline_model_parallel_rank()
                 if layer_type == LayerType.encoder:
                     offset = pipeline_rank * self.num_layers
                 else:
                     num_ranks_in_enc = args.pipeline_model_parallel_split_rank
                     offset = (pipeline_rank - num_ranks_in_enc) * self.num_layers
             else:
-                offset = mpu.get_pipeline_model_parallel_rank() * self.num_layers
+                offset = parallel_state.get_pipeline_model_parallel_rank() * self.num_layers
 
         if self.num_layers == 0:
             # When a standalone embedding stage is used (e.g.,
@@ -1414,7 +1414,7 @@ class ParallelRetroEncoder(MegatronModule):
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
             while l < self.num_layers:
-                hidden_states = mpu.checkpoint(
+                hidden_states = parallel_state.checkpoint(
                     custom(l, l + self.activations_checkpoint_num_layers),
                     self.distribute_checkpointed_activations,
                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
@@ -1425,7 +1425,7 @@ class ParallelRetroEncoder(MegatronModule):
             # A method fully use the device memory removing redundant re-computation.
             for l in range(self.num_layers):
                 if l < self.activations_checkpoint_num_layers:
-                    hidden_states = mpu.checkpoint(
+                    hidden_states = parallel_state.checkpoint(
                         custom(l, l + 1),
                         self.distribute_checkpointed_activations,
                         hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
@@ -1647,21 +1647,21 @@ class ParallelRetroTransformer(MegatronModule):
             # layers to stages like (each list is a model chunk):
             # Stage 0: [0, 1]  [4, 5]
             # Stage 1: [2, 3]  [6, 7]
-            offset = mpu.get_virtual_pipeline_model_parallel_rank() * (
+            offset = parallel_state.get_virtual_pipeline_model_parallel_rank() * (
                 args.num_layers // args.virtual_pipeline_model_parallel_size) + \
-                (mpu.get_pipeline_model_parallel_rank() * self.num_layers)
+                (parallel_state.get_pipeline_model_parallel_rank() * self.num_layers)
         else:
             # Each stage gets a contiguous set of layers.
             if args.model_type == ModelType.encoder_and_decoder and \
-                    mpu.get_pipeline_model_parallel_world_size() > 1:
-                pipeline_rank = mpu.get_pipeline_model_parallel_rank()
+                    parallel_state.get_pipeline_model_parallel_world_size() > 1:
+                pipeline_rank = parallel_state.get_pipeline_model_parallel_rank()
                 if layer_type == LayerType.encoder:
                     offset = pipeline_rank * self.num_layers
                 else:
                     num_ranks_in_enc = args.pipeline_model_parallel_split_rank
                     offset = (pipeline_rank - num_ranks_in_enc) * self.num_layers
             else:
-                offset = mpu.get_pipeline_model_parallel_rank() * self.num_layers
+                offset = parallel_state.get_pipeline_model_parallel_rank() * self.num_layers
 
         if self.num_layers == 0:
             # When a standalone embedding stage is used (e.g.,
@@ -1709,7 +1709,7 @@ class ParallelRetroTransformer(MegatronModule):
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
             while l < self.num_layers:
-                hidden_states = mpu.checkpoint(
+                hidden_states = parallel_state.checkpoint(
                     custom(l, l + self.activations_checkpoint_num_layers),
                     self.distribute_checkpointed_activations,
                     hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
@@ -1720,7 +1720,7 @@ class ParallelRetroTransformer(MegatronModule):
             # A method fully use the device memory removing redundant re-computation.
             for l in range(self.num_layers):
                 if l < self.activations_checkpoint_num_layers:
-                    hidden_states = mpu.checkpoint(
+                    hidden_states = parallel_state.checkpoint(
                         custom(l, l + 1),
                         self.distribute_checkpointed_activations,
                         hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
