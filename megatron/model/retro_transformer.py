@@ -558,65 +558,76 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
         ns, bs, d = layernorm_output.shape
         l = int(np.ceil(ns / chunk_length))
         first_ns = ns % chunk_length
-        # print(f"ns: {ns}, bs: {bs}, d: {d}:, first_ns: {first_ns}, l: {l}")
         if first_ns > 0:
-            first_chunk, rest_chunk = layernorm_output[:first_ns], layernorm_output[first_ns:]
-            first_chunk = torch.nn.functional.pad(first_chunk, (0, 0, 0, 0, 0, chunk_length - first_ns), 'constant', 0)
-            chunked_output = torch.cat((first_chunk, rest_chunk), dim=0)  # [l * m, bs, d]
+            first_chunk, rest_chunk = \
+                layernorm_output[:first_ns], layernorm_output[first_ns:]
+            first_chunk = torch.nn.functional.pad(
+                first_chunk,
+                (0, 0, 0, 0, 0, chunk_length - first_ns),
+                'constant',
+                0)
+            chunked_output = \
+                torch.cat((first_chunk, rest_chunk), dim=0) # [l * m, bs, d]
         else:
-            chunked_output = layernorm_output  # [l * m, bs, d]
-        chunked_output = chunked_output.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3).reshape(
-            chunk_length, bs * l, d).contiguous()
-        # print("H", chunked_output.shape)     # [m, bs * l, d],  l = ns / m
+            chunked_output = layernorm_output # [l * m, bs, d]
+        chunked_output = chunked_output \
+            .reshape(l, chunk_length, bs, d) \
+            .permute(1, 2, 0, 3) \
+            .reshape(chunk_length, bs * l, d) \
+            .contiguous()
 
         # Get Encoder Output
-        # print("retriever_input", retriever_output.shape)    # [bs * l * k, r, d]
-        # print("retriever_attn_mask", retriever_attn_mask.shape)
         retriever_output = self.retriever(
             retriever_output,
             retriever_attn_mask,
             retriever_output=chunked_output,
             retriever_attn_mask=retriever_attn_mask,
-            inference_params=inference_params)
-        # print("E", retriever_output.shape)    # [r, k * bs * l , d]
+            inference_params=inference_params) # [r, k * bs * l , d]
         retriever_output = retriever_output.reshape(
-            retrieved_length * num_neighbors, bs * l, d)   # [r * k, bs * l, d]
+            retrieved_length * num_neighbors, bs * l, d) # [r * k, bs * l, d]
 
-        # # Chunked Cross attention with Retriever Encoder
+        # Chunked Cross attention with Retriever Encoder
         pad = (ns - 1) % chunk_length
-        attending_chunks = layernorm_output[pad:]
-        # print("attentding_chunks", attending_chunks.shape)  # [ns - m + 1, bs, d]
-        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, chunk_length-1), 'constant', 0)
-        # print("padded_chunks", padded_chunks.shape, padded_chunks[-64:, 0])  # [ns, bs, d]
-        padded_chunked_output = padded_chunks.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3)
+        attending_chunks = layernorm_output[pad:] # [ns - m + 1, bs, d]
+        padded_chunks = torch.nn.functional.pad(
+            attending_chunks,
+            (0, 0, 0, 0, 0, chunk_length-1),
+            'constant', 0) # [ns, bs, d]
+        padded_chunked_output = padded_chunks \
+            .reshape(l, chunk_length, bs, d) \
+            .permute(1, 2, 0, 3)
         padded_chunked_output = padded_chunked_output.reshape(
-            chunk_length, bs * l, d).contiguous()
-        # print("padded_chunked_output", padded_chunked_output.shape, padded_chunked_output[:, 31])  # [m, bs * l, d]
+            chunk_length, bs * l, d).contiguous() # [m, bs * l, d]
 
+        # attention_output: [m, bs * l, d]
+        # attention_bias: [d]
         attention_output, attention_bias = \
-            self.inter_attention(padded_chunked_output,     # Q: main model embedding
-                                 None,
-                                 encoder_output=retriever_output)   # KV: retriever output embedding
-        # print("CCA attention_output", attention_output.shape)   # [m, bs * l, d]
-        # print("CCA attention_output", attention_bias.shape)     # [d]
+            self.inter_attention(
+                padded_chunked_output, # Q: main model embedding
+                None,
+                encoder_output=retriever_output) # KV: retriever output embedding
 
-        # residual connection
+        # Residual connection
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = layernorm_input
 
-        # re-enable torch grad to enable fused optimization.
+        # Re-enable torch grad to enable fused optimization.
         with torch.enable_grad():
             layernorm_input = bias_dropout_add_func(
                 attention_output,
                 attention_bias.expand_as(attention_output),
                 torch.zeros_like(attention_output),
                 self.hidden_dropout)
-            layernorm_input = layernorm_input.reshape(chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
+            layernorm_input = layernorm_input \
+                .reshape(chunk_length, bs, l, d) \
+                .permute(2, 0, 1, 3)  # [l, m, bs, d]
             layernorm_input = layernorm_input.reshape(chunk_length * l, bs, d)
-            layernorm_input = torch.nn.functional.pad(layernorm_input, (0, 0, 0, 0, pad, 0), 'constant', 0)[:ns]
-            # print("CCA attention_output", layernorm_input.shape, layernorm_input[:64])  # [ns, b, d]
+            layernorm_input = torch.nn.functional.pad(
+                layernorm_input,
+                (0, 0, 0, 0, pad, 0),
+                'constant', 0)[:ns] # [ns, b, d]
             layernorm_input = layernorm_input + residual
 
         # Layer norm post the decoder attention
@@ -632,7 +643,7 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
             residual = layernorm_input
 
         if self.drop_path is None:
-            # re-enable torch grad to enable fused optimization.
+            # Re-enable torch grad to enable fused optimization.
             with torch.enable_grad():
                 output = bias_dropout_add_func(
                     mlp_output,
@@ -769,42 +780,43 @@ class ParallelRetroTransformerLayer(MegatronModule):
         l = int(np.ceil(ns / chunk_length))
         pad = (ns - 1) % chunk_length
         attending_chunks = layernorm_output[pad:]
-        # print("attentding_chunks", attending_chunks.shape)
-        padded_chunks = torch.nn.functional.pad(attending_chunks, (0, 0, 0, 0, 0, chunk_length - 1), 'constant', 0)
-        # print("padded_chunks", padded_chunks.shape, padded_chunks[-64:, 0])
-        padded_chunked_output = padded_chunks.reshape(l, chunk_length, bs, d).permute(1, 2, 0, 3)
+        padded_chunks = torch.nn.functional.pad(
+            attending_chunks,
+            (0, 0, 0, 0, 0, chunk_length - 1),
+            'constant', 0)
+        padded_chunked_output = padded_chunks \
+            .reshape(l, chunk_length, bs, d) \
+            .permute(1, 2, 0, 3)
         padded_chunked_output = padded_chunked_output.reshape(
             chunk_length, bs * l, d).contiguous()
-        # print("padded_chunked_output", padded_chunked_output.shape, padded_chunked_output[:, 31])
 
-        # Get Encoder Output
-        # print("retriever_input", retriever_output.shape)
-
-
+        # Encoder output.
         attention_output, attention_bias = \
             self.inter_attention(padded_chunked_output,
                                  None,
                                  encoder_output=retriever_output)
-        # print("CCA attention_output", attention_output.shape)
-        # print("CCA attention_output", attention_bias.shape)
 
-        # residual connection
+        # Residual connection.
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = layernorm_input
 
-        # re-enable torch grad to enable fused optimization.
+        # Re-enable torch grad to enable fused optimization.
         with torch.enable_grad():
             layernorm_input = bias_dropout_add_func(
                 attention_output,
                 attention_bias.expand_as(attention_output),
                 torch.zeros_like(attention_output),
                 self.hidden_dropout)
-            layernorm_input = layernorm_input.reshape(chunk_length, bs, l, d).permute(2, 0, 1, 3)  # [l, m, bs, d]
+            layernorm_input = layernorm_input \
+                .reshape(chunk_length, bs, l, d) \
+                .permute(2, 0, 1, 3) # [l, m, bs, d]
             layernorm_input = layernorm_input.reshape(chunk_length * l, bs, d)
-            layernorm_input = torch.nn.functional.pad(layernorm_input, (0, 0, 0, 0, pad, 0), 'constant', 0)[:ns]
-            # print("CCA attention_output", layernorm_input.shape, layernorm_input[:64])
+            layernorm_input = torch.nn.functional.pad(
+                layernorm_input,
+                (0, 0, 0, 0, pad, 0),
+                'constant', 0)[:ns]
             layernorm_input = layernorm_input + residual
 
         # Layer norm post the decoder attention
@@ -820,7 +832,7 @@ class ParallelRetroTransformerLayer(MegatronModule):
             residual = layernorm_input
 
         if self.drop_path is None:
-            # re-enable torch grad to enable fused optimization.
+            # Re-enable torch grad to enable fused optimization.
             with torch.enable_grad():
                 output = bias_dropout_add_func(
                     mlp_output,
@@ -950,59 +962,57 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
-        # for each neighbor:
+        # Neighbors.
         args = get_args()
         retro_args = get_retro_args()
 
         retrieved_length = retro_args.retro_gpt_retrieved_length
         num_neighbors = args.retro_num_neighbors
 
-        ns, bs, d = layernorm_output.shape   # [r, bs * l * k, d]
-        # print(ns, bs, d, layernorm_output.shape)
+        ns, bs, d = layernorm_output.shape # [r, bs * l * k, d]
         chunked_outputs = layernorm_output.reshape(retrieved_length, -1,
                                                    num_neighbors, d)
         chunked_outputs_before_layer_norm = \
             layernorm_input.reshape(retrieved_length, -1,
-                                    num_neighbors, d)  # [r, bs * l, k, d]
+                                    num_neighbors, d) # [r, bs * l, k, d]
 
         layernorm_inputs = []
         layernorm_outputs = []
         for k in range(num_neighbors):
             chunked_output = chunked_outputs[:,:,k].contiguous()
             attention_output, attention_bias = \
-                self.inter_attention(chunked_output,   # neighbor embedding (Q)
-                                     None,
-                                     encoder_output=retriever_output)  # main model hidden activation (K,V)
-            # print("attention_output", attention_output.shape)
-            # print("attention_output", attention_bias.shape)
-            # residual connection
+                self.inter_attention(
+                    chunked_output, # Q (neighbor embedding)
+                    None,
+                    encoder_output=retriever_output) # K, V (hidden act)
+
+            # Residual connection.
             if self.apply_residual_connection_post_layernorm:
                 residual = chunked_output
             else:
                 residual = chunked_outputs_before_layer_norm[:,:,k]
 
-            # print("residual.shape", residual.shape)
-            # re-enable torch grad to enable fused optimization.
+            # Re-enable torch grad to enable fused optimization.
             with torch.enable_grad():
                 layernorm_input = bias_dropout_add_func(
                     attention_output,
                     attention_bias.expand_as(residual),
                     residual,
                     self.hidden_dropout)
-                # print("layernorm_input per k.shape", layernorm_input.shape)  # [r, bs * l, d]
 
                 layernorm_inputs.append(layernorm_input)
 
             # Layer norm post the decoder attention
-            layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
+            layernorm_output = \
+                self.post_inter_attention_layernorm(layernorm_input)
             layernorm_outputs.append(layernorm_output)
 
-        layernorm_input = torch.stack(layernorm_inputs, dim=1).reshape(ns, bs, d)
-        layernorm_output = torch.stack(layernorm_outputs, dim=1).reshape(ns, bs, d)
-        # print(ns, bs, d)
-        # print("layernorm_input.shape", layernorm_input.shape)   # [r, k * bs * l, d]
-        # print("layernorm_output.shape", layernorm_output.shape) # [r, k * bs * l, d]
-
+        # layernorm_input : [r, k * bs * l, d]
+        # layernorm_output : [r, k * bs * l, d]
+        layernorm_input = \
+            torch.stack(layernorm_inputs, dim=1).reshape(ns, bs, d)
+        layernorm_output = \
+            torch.stack(layernorm_outputs, dim=1).reshape(ns, bs, d)
 
         # MLP.
         mlp_output, mlp_bias = self.mlp(layernorm_output)
@@ -1014,7 +1024,7 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
             residual = layernorm_input
 
         if self.drop_path is None:
-            # re-enable torch grad to enable fused optimization.
+            # Re-enable torch grad to enable fused optimization.
             with torch.enable_grad():
                 output = bias_dropout_add_func(
                     mlp_output,
@@ -1228,63 +1238,47 @@ class ParallelRetroEncoder(MegatronModule):
             self.P = [1]
 
         # Transformer layers.
-        # if args.adaptor:
-        #     def build_layer(layer_number):
-        #         return ParallelAdaptorTransformerLayer(
-        #             init_method,
-        #             output_layer_init_method,
-        #             layer_number,
-        #             layer_type=layer_type,
-        #             self_attn_mask_type=self_attn_mask_type)
-        # elif args.add_retriever:
-        if args.retro_add_retriever:
-            #from megatron import print_rank_0 # imported here to avoid cyclic dep
-            def build_layer(layer_number):
-                # print_rank_0("Retro Transformer Layer number %d" % layer_number)
-                if layer_number in self.P:
-                    return ParallelRetroEncoderTransformerCALayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1])
-                else:
-                    layer = ParallelTransformerLayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1])
-                    layer.self_attention.attention_dropout = torch.nn.Dropout(args.retro_encoder_attention_dropout)
-                    layer.hidden_dropout = args.retro_encoder_hidden_dropout
-                    return layer
-        else:
-            def build_layer(layer_number):
-                return ParallelTransformerLayer(
+        assert args.retro_add_retriever
+        def build_layer(layer_number):
+            if layer_number in self.P:
+                return ParallelRetroEncoderTransformerCALayer(
                     init_method,
                     output_layer_init_method,
                     layer_number,
                     layer_type=layer_type,
                     self_attn_mask_type=self_attn_mask_type,
                     drop_path_rate=self.drop_path_rates[layer_number - 1])
+            else:
+                layer = ParallelTransformerLayer(
+                    init_method,
+                    output_layer_init_method,
+                    layer_number,
+                    layer_type=layer_type,
+                    self_attn_mask_type=self_attn_mask_type,
+                    drop_path_rate=self.drop_path_rates[layer_number - 1])
+                layer.self_attention.attention_dropout = \
+                    torch.nn.Dropout(args.retro_encoder_attention_dropout)
+                layer.hidden_dropout = args.retro_encoder_hidden_dropout
+                return layer
+
         if args.virtual_pipeline_model_parallel_size is not None:
             assert args.num_layers % args.virtual_pipeline_model_parallel_size == 0, \
                 'num_layers_per_stage must be divisible by ' \
                 'virtual_pipeline_model_parallel_size'
             assert args.model_type != ModelType.encoder_and_decoder
-            # Number of layers in each model chunk is the number of layers in the stage,
-            # divided by the number of model chunks in a stage.
+
+            # Number of layers in each model chunk is the number of layers in
+            # the stage, divided by the number of model chunks in a stage.
             self.num_layers = self.num_layers // args.virtual_pipeline_model_parallel_size
-            # With 8 layers, 2 stages, and 4 model chunks, we want an assignment of
-            # layers to stages like (each list is a model chunk):
-            # Stage 0: [0]  [2]  [4]  [6]
-            # Stage 1: [1]  [3]  [5]  [7]
-            # With 8 layers, 2 stages, and 2 virtual stages, we want an assignment of
-            # layers to stages like (each list is a model chunk):
-            # Stage 0: [0, 1]  [4, 5]
-            # Stage 1: [2, 3]  [6, 7]
+
+            # With 8 layers, 2 stages, and 4 model chunks, we want an
+            # assignment of layers to stages like (each list is a model chunk):
+            #   Stage 0: [0]  [2]  [4]  [6]
+            #   Stage 1: [1]  [3]  [5]  [7]
+            # With 8 layers, 2 stages, and 2 virtual stages, we want an
+            # assignment of layers to stages like (each list is a model chunk):
+            #   Stage 0: [0, 1]  [4, 5]
+            #   Stage 1: [2, 3]  [6, 7]
             offset = parallel_state.get_virtual_pipeline_model_parallel_rank() * (
                 args.num_layers // args.virtual_pipeline_model_parallel_size) + \
                 (parallel_state.get_pipeline_model_parallel_rank() * self.num_layers)
@@ -1342,8 +1336,8 @@ class ParallelRetroEncoder(MegatronModule):
             return custom_forward
 
         if self.activations_checkpoint_method == 'uniform':
-            # Uniformly divide the total number of Transformer layers and checkpoint
-            # the input activation of each divided chunk.
+            # Uniformly divide the total number of Transformer layers and
+            # checkpoint the input activation of each divided chunk.
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
             while l < self.num_layers:
@@ -1361,10 +1355,12 @@ class ParallelRetroEncoder(MegatronModule):
                     hidden_states = parallel_state.checkpoint(
                         custom(l, l + 1),
                         self.distribute_checkpointed_activations,
-                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                        hidden_states, attention_mask,
+                        encoder_output, enc_dec_attn_mask)
                 else:
                     hidden_states = custom(l, l + 1)(
-                        hidden_states, attention_mask, encoder_output, enc_dec_attn_mask)
+                        hidden_states, attention_mask,
+                        encoder_output, enc_dec_attn_mask)
         else:
             raise ValueError("Invalid activation checkpoint method.")
 
@@ -1515,48 +1511,27 @@ class ParallelRetroTransformer(MegatronModule):
             self.retriever = retriever
 
         # Transformer layers.
-        # if args.adaptor:
-        #     def build_layer(layer_number):
-        #         return ParallelAdaptorTransformerLayer(
-        #             init_method,
-        #             output_layer_init_method,
-        #             layer_number,
-        #             layer_type=layer_type,
-        #             self_attn_mask_type=self_attn_mask_type)
-        # elif args.add_retriever:
-        if args.retro_add_retriever:
-            def build_layer(layer_number):
-                if layer_number == min(self.P):
-                    # print("ParallelRetroTransformerEncoderLayer Layer number", layer_number)
-                    return ParallelRetroTransformerEncoderLayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1],
-                        retriever=retriever
-                    )
-                elif layer_number in self.P:
-                    # print("ParallelRetroTransformerLayer Layer number", layer_number)
-                    return ParallelRetroTransformerLayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1])
-                else:
-                    # print("ParallelTransformerLayer Layer number", layer_number)
-                    return ParallelTransformerLayer(
-                        init_method,
-                        output_layer_init_method,
-                        layer_number,
-                        layer_type=layer_type,
-                        self_attn_mask_type=self_attn_mask_type,
-                        drop_path_rate=self.drop_path_rates[layer_number - 1])
-        else:
-            def build_layer(layer_number):
+        assert args.retro_add_retriever
+        def build_layer(layer_number):
+            if layer_number == min(self.P):
+                return ParallelRetroTransformerEncoderLayer(
+                    init_method,
+                    output_layer_init_method,
+                    layer_number,
+                    layer_type=layer_type,
+                    self_attn_mask_type=self_attn_mask_type,
+                    drop_path_rate=self.drop_path_rates[layer_number - 1],
+                    retriever=retriever
+                )
+            elif layer_number in self.P:
+                return ParallelRetroTransformerLayer(
+                    init_method,
+                    output_layer_init_method,
+                    layer_number,
+                    layer_type=layer_type,
+                    self_attn_mask_type=self_attn_mask_type,
+                    drop_path_rate=self.drop_path_rates[layer_number - 1])
+            else:
                 return ParallelTransformerLayer(
                     init_method,
                     output_layer_init_method,
@@ -1564,6 +1539,7 @@ class ParallelRetroTransformer(MegatronModule):
                     layer_type=layer_type,
                     self_attn_mask_type=self_attn_mask_type,
                     drop_path_rate=self.drop_path_rates[layer_number - 1])
+
         if args.virtual_pipeline_model_parallel_size is not None:
             assert args.num_layers % args.virtual_pipeline_model_parallel_size == 0, \
                 'num_layers_per_stage must be divisible by ' \
