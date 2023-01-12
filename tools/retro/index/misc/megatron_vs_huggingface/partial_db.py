@@ -15,7 +15,7 @@ from tools.retro.index.utils import get_index_dir
 
 from ..acc import rowwise_intersection
 
-max_nbrs = 200
+max_neighbors = 200
 persist_data = True # False
 index_infos = {
     "exact" : {
@@ -173,16 +173,16 @@ def get_indexes():
     return embeddings, indexes
 
 
-def get_nbrs():
+def get_neighbors():
 
-    nbr_path = os.path.join(get_root_dir(), "nbrs.json")
-    if not persist_data or not os.path.exists(nbr_path):
+    neighbor_path = os.path.join(get_root_dir(), "neighbors.json")
+    if not persist_data or not os.path.exists(neighbor_path):
 
         # embeddings = get_embeddings()
         # indexes = get_indexes()
         embeddings, indexes = get_indexes()
 
-        nbrs = defaultdict(dict)
+        neighbors = defaultdict(dict)
         for model_key in indexes:
             for index_key, index_info in indexes[model_key].items():
 
@@ -192,27 +192,27 @@ def get_nbrs():
                 for k, p in search_params.items():
                     faiss.ParameterSpace().set_index_parameter(index, k, p)
 
-                # _, _nbrs = index.search(embeddings[model_key]["valid"],max_nbrs)
-                # nbrs[model_key][index_key] = _nbrs.tolist()
-                _nbrs = []
+                # _, _neighbors = index.search(embeddings[model_key]["valid"],max_neighbors)
+                # neighbors[model_key][index_key] = _neighbors.tolist()
+                _neighbors = []
                 for block in tqdm(
                         embeddings[model_key]["valid"],
                         "search [ %s / %s ]" % (model_key, index_key),
                 ):
-                    _nbrs.append(index.search(block, max_nbrs)[1])
-                nbrs[model_key][index_key] = \
-                    np.concatenate(_nbrs, axis = 0).tolist()
+                    _neighbors.append(index.search(block, max_neighbors)[1])
+                neighbors[model_key][index_key] = \
+                    np.concatenate(_neighbors, axis = 0).tolist()
 
-        with open(nbr_path, "w") as f:
-            json.dump(nbrs, f)
+        with open(neighbor_path, "w") as f:
+            json.dump(neighbors, f)
 
-    with open(nbr_path) as f:
-        nbrs = json.load(f)
-        for m in nbrs:
-            for i in nbrs[m]:
-                nbrs[m][i] = np.array(nbrs[m][i]).astype("i8")
+    with open(neighbor_path) as f:
+        neighbors = json.load(f)
+        for m in neighbors:
+            for i in neighbors[m]:
+                neighbors[m][i] = np.array(neighbors[m][i]).astype("i8")
 
-    return nbrs
+    return neighbors
 
 
 def get_acc():
@@ -220,28 +220,28 @@ def get_acc():
     acc_path = os.path.join(get_root_dir(), "accs.json")
     if not persist_data or not os.path.exists(acc_path):
 
-        nbrs = get_nbrs()
+        neighbors = get_neighbors()
 
         accs = defaultdict(dict)
-        for mkey0 in nbrs:
-            for ikey0 in nbrs[mkey0]:
-                for mkey1 in nbrs:
-                    for ikey1 in nbrs[mkey1]:
+        for mkey0 in neighbors:
+            for ikey0 in neighbors[mkey0]:
+                for mkey1 in neighbors:
+                    for ikey1 in neighbors[mkey1]:
                         if mkey0 == mkey1 and ikey0 == ikey1 or \
                            mkey0 < mkey1 or ikey0 < ikey1 or \
                            mkey0 != mkey1 and ikey0 != ikey1:
                             continue
                         pbar = tqdm((1, 2, 5, 10, 20, 50, 100, 200))
-                        for n_nbrs in pbar:
-                            pbar.set_description("acc %d" % n_nbrs)
-                            if n_nbrs > max_nbrs:
+                        for n_neighbors in pbar:
+                            pbar.set_description("acc %d" % n_neighbors)
+                            if n_neighbors > max_neighbors:
                                 continue
                             intsec = rowwise_intersection(
-                                nbrs[mkey0][ikey0][:, :n_nbrs],
-                                nbrs[mkey1][ikey1][:, :n_nbrs],
+                                neighbors[mkey0][ikey0][:, :n_neighbors],
+                                neighbors[mkey1][ikey1][:, :n_neighbors],
                             )
-                            accs["%s/%s-%s/%s"%(mkey0,ikey0,mkey1,ikey1)][n_nbrs]\
-                                = np.mean(intsec) / n_nbrs
+                            accs["%s/%s-%s/%s"%(mkey0,ikey0,mkey1,ikey1)][n_neighbors]\
+                                = np.mean(intsec) / n_neighbors
 
         with open(acc_path, "w") as f:
             json.dump(accs, f)

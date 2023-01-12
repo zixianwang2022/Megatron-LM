@@ -444,19 +444,28 @@ def _add_retro_args(parser):
     group = parser.add_argument_group(title='retro')
 
     group.add_argument('--retro-workdir', default=None,
-                       help='retro root directory, containining sub-directories '
-                       'for db, index, and pretraining.')
+                       help='Retro working directory, which contains the '
+                       'preprocessed data for for pretraining. This directory '
+                       'is built during preprocessing (see '
+                       'tools/retro/README.md), and contains subdirectories '
+                       'for the chunk database and pretraining neighbors.')
     group.add_argument('--retro-add-retriever',
-                       action='store_true', default=False)
-    group.add_argument('--retro-cyclic-train-iters', type=int, default=None)
-    group.add_argument('--retro-eval-ppl', action='store_true', default=False)
-    group.add_argument('--retro-debug', action='store_true', default=False)
-    group.add_argument('--retro-encoder-layers', type=int, default=2)
+                       action='store_true', default=False,
+                       help='Add a retriever to the transformer, for use in '
+                       'pretraining a Retro model.')
+    group.add_argument('--retro-cyclic-train-iters', type=int, default=None,
+                       help='Set number of training iterations for cyclic '
+                       'Retro training.')
+    group.add_argument('--retro-encoder-layers', type=int, default=2,
+                       help='Number of layers to use for the retrieval '
+                       'encoder.')
     group.add_argument('--retro-encoder-hidden-dropout',
-                       type=float, default=0.1)
+                       type=float, default=0.1, help='Hidden dropout for '
+                       'retrieval encoder.')
     group.add_argument('--retro-encoder-attention-dropout',
-                       type=float, default=0.1)
-    group.add_argument("--retro-nnbrs", type=int, default=2)
+                       type=float, default=0.1, help='Attention dropout for '
+                       'retrieval encoder.')
+    group.add_argument("--retro-num-neighbors", type=int, default=2)
     group.add_argument("--retro-return-doc-ids", action="store_true",
                        help="Turn this on when preprocessing retro data.")
 

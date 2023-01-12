@@ -12,38 +12,39 @@ import torch
 def count_nvecs(base_path, index_path):
 
     # Neighbor paths.
-    nbr_paths = [
+    neighbor_paths = [
         p
         for p in os.listdir(os.path.join(base_path, index_path))
         if p.endswith(".hdf5")
     ]
-    nbr_paths.sort() # ... necessary?
+    neighbor_paths.sort() # ... necessary?
 
     # Vector count.
     nvecs = 0
-    for nbr_path_index, nbr_path in enumerate(nbr_paths):
-        f = h5py.File(os.path.join(base_path, index_path, nbr_path), "r")
+    for neighbor_path_index, neighbor_path in enumerate(neighbor_paths):
+        f = h5py.File(os.path.join(base_path, index_path, neighbor_path), "r")
         nvecs += len(f["neighbors"])
         f.close()
 
     return nvecs
 
 
-def find_missing_nbr_paths(base_path, index_path_0, index_path_1):
+def find_missing_neighbor_paths(base_path, index_path_0, index_path_1):
 
     # Neighbor paths.
-    nbr_paths = [
+    neighbor_paths = [
         p
         for p in os.listdir(os.path.join(base_path, index_path_0))
         if p.endswith(".hdf5")
     ]
-    nbr_paths.sort() # ... necessary?
+    neighbor_paths.sort() # ... necessary?
 
     # Missing paths.
-    missing_nbr_paths = []
-    for nbr_path_index, nbr_path in enumerate(nbr_paths):
-        if not os.path.exists(os.path.join(base_path, index_path_1, nbr_path)):
-            missing_nbr_paths.append(nbr_path)
+    missing_neighbor_paths = []
+    for neighbor_path_index, neighbor_path in enumerate(neighbor_paths):
+        if not os.path.exists(
+                os.path.join(base_path, index_path_1, neighbor_path)):
+            missing_neighbor_paths.append(neighbor_path)
 
 
 # def intersect1d_padded(x):
@@ -64,54 +65,59 @@ def rowwise_intersection(a, b):
     )
 
 
-def get_acc_map(base_path, nnbrs, index_path):
+def get_acc_map(base_path, num_neighbors_list, index_path):
 
-    flat_nbr_path = "Flat__t65191936__neighbors.hdf5"
+    flat_neighbor_path = "Flat__t65191936__neighbors.hdf5"
 
-    # ~~~~~~~~ nbr paths ~~~~~~~~
-    index_nbr_paths = [
+    # ~~~~~~~~ neighbor paths ~~~~~~~~
+    index_neighbor_paths = [
         p
         for p in os.listdir(os.path.join(base_path, index_path))
         if p.endswith(".hdf5")
     ]
-    index_nbr_paths.sort() # ... unnecessary
+    index_neighbor_paths.sort() # ... unnecessary
 
-    # ~~~~~~~~ load flat nbrs ~~~~~~~~
-    f = h5py.File(os.path.join(base_path, flat_nbr_path), "r")
-    flat_nbr_grid = np.copy(f["neighbors"])
+    # ~~~~~~~~ load flat neighbors ~~~~~~~~
+    f = h5py.File(os.path.join(base_path, flat_neighbor_path), "r")
+    flat_neighbor_grid = np.copy(f["neighbors"])
     f.close()
 
-    # ~~~~~~~~ load index nbrs ~~~~~~~~
-    index_nbr_grids = []
+    # ~~~~~~~~ load index neighbors ~~~~~~~~
+    index_neighbor_grids = []
     nloaded = 0
-    for index_nbr_path in index_nbr_paths:
+    for index_neighbor_path in index_neighbor_paths:
 
-        f = h5py.File(os.path.join(base_path, index_path, index_nbr_path), "r")
-        index_nbr_grid = np.copy(f["neighbors"])
-        index_nbr_grids.append(index_nbr_grid)
-        nloaded += len(index_nbr_grid)
+        f = h5py.File(os.path.join(
+            base_path, index_path, index_neighbor_path), "r")
+        index_neighbor_grid = np.copy(f["neighbors"])
+        index_neighbor_grids.append(index_neighbor_grid)
+        nloaded += len(index_neighbor_grid)
         f.close()
 
-        if nloaded >= len(flat_nbr_grid):
+        if nloaded >= len(flat_neighbor_grid):
             break
 
-    index_nbr_grid = np.concatenate(index_nbr_grids, axis = 0)
-    index_nbr_grid = index_nbr_grid[:len(flat_nbr_grid)]
+    index_neighbor_grid = np.concatenate(index_neighbor_grids, axis = 0)
+    index_neighbor_grid = index_neighbor_grid[:len(flat_neighbor_grid)]
 
     # ~~~~~~~~ acc map ~~~~~~~~
     acc_map = {}
-    for nnbr_index, nnbr in enumerate(nnbrs):
-        print("  nnbr %d [ %d / %d ]." % (nnbr, nnbr_index, len(nnbrs)))
+    for num_neighbor_index, num_neighbors in enumerate(num_neighbors_list):
+        print("  num neighbors %d [ %d / %d ]." % (
+            num_neighbors,
+            num_neighbor_index,
+            len(num_neighbors_list),
+        ))
         overlaps = rowwise_intersection(
-            flat_nbr_grid[:, :nnbr],
-            index_nbr_grid[:, :nnbr],
+            flat_neighbor_grid[:, :num_neighbors],
+            index_neighbor_grid[:, :num_neighbors],
         )
-        acc_map[nnbr] = np.mean(overlaps) / nnbr
+        acc_map[num_neighbors] = np.mean(overlaps) / num_neighbors
 
     return acc_map
 
 
-def vis_acc(index_paths, nnbrs):
+def vis_acc(index_paths, num_neighbors_list):
 
     assert torch.distributed.get_rank() == 0
 
@@ -119,8 +125,8 @@ def vis_acc(index_paths, nnbrs):
     acc_map = {}
     for k, index_path in enumerate(index_paths):
         print("index %d / %d ... '%s'." % (k, len(index_paths), index_path))
-        # acc_map[index_path] = get_acc_map(base_path, nnbrs, index_path)
-        acc_map[index_path] = get_acc_map(index_path, nnbrs)
+        # acc_map[index_path] = get_acc_map(base_path, num_neighbors_list, index_path)
+        acc_map[index_path] = get_acc_map(index_path, num_neighbors_list)
 
     # ~~~~~~~~ vert map ~~~~~~~~
     vert_map = {}
@@ -165,6 +171,6 @@ def plot_query_acc():
     timer.pop()
 
     timer.push("vis-acc")
-    nnbrs = [ 1, 2, 5, 10 ]
-    vis_acc(index_paths, nnbrs)
+    num_neighbors_list = [ 1, 2, 5, 10 ]
+    vis_acc(index_paths, num_neighbors_list)
     timer.pop()

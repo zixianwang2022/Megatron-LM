@@ -148,13 +148,6 @@ def pretrain(train_valid_test_dataset_provider,
         args.train_iters = args.retro_cyclic_train_iters
         print_rank_0("retro cyclic train iters : %d" % args.train_iters)
 
-    if args.retro_eval_ppl:
-        prefix = 'the beginning of training for val data'
-        evaluate_and_print_results(prefix, forward_step_func,
-                                   valid_data_iterator, model,
-                                   iteration, process_non_loss_data_func,
-                                   False)
-
     if args.do_train and args.train_iters > 0:
         iteration = train(forward_step_func,
                           model, optimizer, opt_param_scheduler,

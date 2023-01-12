@@ -42,11 +42,11 @@ def print_pretraining_neighbors():
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             print_tokens("CHUNK", chunk_token_ids)
 
-            for nbr_index, retrieved_token_ids in \
+            for neighbor_index, retrieved_token_ids in \
                 enumerate(sample["neighbor_tokens"][chunk_index]):
 
-                nbr_token_ids = retrieved_token_ids[:chunk_length]
+                neighbor_token_ids = retrieved_token_ids[:chunk_length]
                 cnt_token_ids = retrieved_token_ids[chunk_length:]
                 print()
-                print_tokens("NBR", nbr_token_ids)
+                print_tokens("NEIGHBOR", neighbor_token_ids)
                 print_tokens("CNT", cnt_token_ids)

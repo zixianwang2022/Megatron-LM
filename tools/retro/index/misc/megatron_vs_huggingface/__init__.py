@@ -2,4 +2,4 @@
 
 from .full_db import compare_bert_full_db
 from .partial_db import compare_bert_partial_db
-from .nbr_dists import compare_bert_neighbor_dists
+from .neighbor_dists import compare_bert_neighbor_dists

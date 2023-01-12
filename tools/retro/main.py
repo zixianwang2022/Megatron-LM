@@ -56,8 +56,8 @@ def add_retro_args(parser):
     group.add_argument("--retro-block-size", type = int, required = True)
     group.add_argument("--retro-index-train-block-size",
                        type = int, default=3750000)
-    group.add_argument("--retro-nnbrs-query", type = int, required = True)
-    group.add_argument("--retro-nnbrs-target", type = int, required=True)
+    group.add_argument("--retro-num-neighbors-query", type = int, required = True)
+    group.add_argument("--retro-num-neighbors-target", type = int, required=True)
 
     return parser
 
@@ -105,7 +105,7 @@ if __name__ == "__main__":
             build_index() # train, add.
 
         # Pretraining.
-        elif task == "pretraining-query-nbrs":
+        elif task == "pretraining-query-neighbors":
             query_pretraining_neighbors()
 
         # Misc tasks.
@@ -130,16 +130,16 @@ if __name__ == "__main__":
             compare_bert_full_db()
         elif task == "misc-index-megatron-huggingface-comparison-partial-db":
             compare_bert_partial_db()
-        elif task == "misc-index-megatron-huggingface-comparison-nbr-dists":
+        elif task == "misc-index-megatron-huggingface-comparison-neighbor-dists":
             compare_bert_neighbor_dists()
         elif task == "misc-index-check-train-valid-split":
             check_index_train_valid_split()
         elif task == "misc-pretraining-test-retro-dataset":
             test_retro_dataset()
-        elif task == "misc-pretraining-nbr-plot-acc":
-            plot_nbr_acc()
-        elif task == "misc-pretraining-nbr-verify-nbrs":
-            verify_nbrs()
+        elif task == "misc-pretraining-neighbor-plot-acc":
+            plot_neighbor_acc()
+        elif task == "misc-pretraining-neighbor-verify-neighbors":
+            verify_neighbors()
         elif task == "misc-pretraining-time-query":
             from tools.retro.index import FaissParallelAddIndex
             FaissParallelAddIndex.time_query()

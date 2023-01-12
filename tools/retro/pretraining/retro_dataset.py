@@ -19,21 +19,21 @@ class RetroDataset(torch.utils.data.Dataset):
     '''
 
     def __init__(self,
-                 n_nbrs,
+                 num_neighbors,
                  block_size,
                  db_dataset,
                  chunk_dataset,
-                 nbr_path_map):
+                 neighbor_path_map):
         '''Note: chunk dataset wraps original GPT dataset (see
         chunk_dataset.py).'''
 
         super().__init__()
 
-        self.n_nbrs = n_nbrs
+        self.num_neighbors = num_neighbors
         self.block_size = block_size
         self.db_dataset = db_dataset
         self.chunk_dataset = chunk_dataset
-        self.nbr_path_map = nbr_path_map
+        self.neighbor_path_map = neighbor_path_map
 
 
     def __len__(self):
@@ -59,17 +59,19 @@ class RetroDataset(torch.utils.data.Dataset):
         for chunk_idx in chunk_idxs:
 
             # Neighbor chunk ids.
-            nbr_path = self.nbr_path_map[chunk_idx]
-            with h5py.File(nbr_path, "r") as f:
-                nbr_chunk_ids = f["neighbors"] \
-                    [chunk_idx % self.block_size, :self.n_nbrs].tolist()
+            neighbor_path = self.neighbor_path_map[chunk_idx]
+            with h5py.File(neighbor_path, "r") as f:
+                neighbor_chunk_ids = f["neighbors"] \
+                    [chunk_idx % self.block_size, :self.num_neighbors].tolist()
 
             # Retrieved (neighbor + continuation) token ids.
             retrieved_chunk_ids = []
             retrieved_token_ids = []
-            for nbr_chunk_id in nbr_chunk_ids:
-                current_chunk_ids = \
-                    nbr_chunk_id, (nbr_chunk_id + 1) % len(self.db_dataset)
+            for neighbor_chunk_id in neighbor_chunk_ids:
+                current_chunk_ids = (
+                    neighbor_chunk_id,
+                    (neighbor_chunk_id + 1) % len(self.db_dataset),
+                )
                 current_token_ids = [self.db_dataset[ci]["text"]
                                      for ci in current_chunk_ids]
                 retrieved_chunk_ids.append(current_chunk_ids)
@@ -81,9 +83,9 @@ class RetroDataset(torch.utils.data.Dataset):
 
         # Reshape retrieved tokens.
         all_retrieved_chunk_ids = np.array(all_retrieved_chunk_ids) \
-            .reshape((n_chunks_per_sample, self.n_nbrs, -1))
+            .reshape((n_chunks_per_sample, self.num_neighbors, -1))
         all_retrieved_token_ids = np.array(all_retrieved_token_ids) \
-            .reshape((n_chunks_per_sample, self.n_nbrs, -1))
+            .reshape((n_chunks_per_sample, self.num_neighbors, -1))
 
         # Sample.
         sample = {
@@ -110,35 +112,35 @@ def get_retro_datasets():
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 
         chunk_dataset = chunk_ds_info["data"]
-        nbr_dir = chunk_ds_info["nbr_dir"]
-        nbr_path_map = get_index_path_map(nbr_dir)
+        neighbor_dir = chunk_ds_info["neighbor_dir"]
+        neighbor_path_map = get_index_path_map(neighbor_dir)
 
         # Verify dataset prefixes.
         sample_prefix = chunk_dataset.sample_dataset.datasets[0].index_prefix
-        nbr_prefix = os.path.basename(nbr_dir)
-        assert sample_prefix == nbr_prefix, \
+        neighbor_prefix = os.path.basename(neighbor_dir)
+        assert sample_prefix == neighbor_prefix, \
             "inconsistent dataset source; '%s' vs. '%s'." % \
-            (sample_prefix, nbr_prefix)
+            (sample_prefix, neighbor_prefix)
 
         # Verify num chunks.
         n_sample_chunks = len(chunk_dataset)
-        n_nbr_chunks = len(nbr_path_map.id_index_map)
+        n_neighbor_chunks = len(neighbor_path_map.id_index_map)
         try:
-            assert n_sample_chunks == n_nbr_chunks, \
+            assert n_sample_chunks == n_neighbor_chunks, \
                 "inconsistent n_chunks; %d vs. %d." % \
-                (n_sample_chunks, n_nbr_chunks)
+                (n_sample_chunks, n_neighbor_chunks)
         except Exception as e:
-            print("nbr_dir : %s" % nbr_dir)
-            print("nbr_path_map : %s" % nbr_path_map)
+            print("neighbor_dir : %s" % neighbor_dir)
+            print("neighbor_path_map : %s" % neighbor_path_map)
             raise e
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
-            n_nbrs = args.retro_nnbrs,
+            num_neighbors = args.retro_num_neighbors,
             block_size = retro_args.retro_block_size,
             db_dataset = db_dataset,
             chunk_dataset = chunk_dataset,
-            nbr_path_map = nbr_path_map,
+            neighbor_path_map = neighbor_path_map,
         )
 
     # Extract datasets.

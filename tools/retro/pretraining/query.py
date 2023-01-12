@@ -70,7 +70,8 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
     if verbose: print_rank_0("search.")
     t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
-    _, query_nbr_ids = index.search(embeddings, args.retro_nnbrs_query)
+    _, query_neighbor_ids = \
+        index.search(embeddings, args.retro_num_neighbors_query)
     if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
 
     # Banned neighbor ids.
@@ -86,8 +87,8 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
 
     # Filter banned neighbor ids.
     if verbose: print_rank_0("filter banned neighbor ids.")
-    filtered_nbr_ids = np.full(
-        shape = (len(query_nbr_ids), args.retro_nnbrs_target),
+    filtered_neighbor_ids = np.full(
+        shape = (len(query_neighbor_ids), args.retro_num_neighbors_target),
         fill_value = -1,
         dtype = "int64",
     )
@@ -97,24 +98,25 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
         sample_id = chunk_id // n_chunks_per_sample
 
         # Get valid neighbors (!= -1).
-        query_row = [ i for i in query_nbr_ids[chunk_id-min_chunk_id] if i >= 0 ]
+        query_row = [ i for i in query_neighbor_ids[chunk_id-min_chunk_id]
+                      if i >= 0 ]
 
         # Filter row.
         filtered_row = [i for i in query_row
                         if i not in sample_banned_chunk_id_map[sample_id]]
-        filtered_row = filtered_row[:args.retro_nnbrs_target]
+        filtered_row = filtered_row[:args.retro_num_neighbors_target]
         filtered_row += \
-            [-1] * (args.retro_nnbrs_target - len(filtered_row))
-        filtered_nbr_ids[chunk_id-min_chunk_id] = filtered_row
+            [-1] * (args.retro_num_neighbors_target - len(filtered_row))
+        filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
 
-    return query_nbr_ids, filtered_nbr_ids
+    return query_neighbor_ids, filtered_neighbor_ids
 
 
 def query_embedding_block(index, banned_chunk_map, chunk_id_range,
                           embeddings, sample_map, n_chunks_per_sample):
 
-    query_nbr_ids = []
-    filtered_nbr_ids = []
+    query_neighbor_ids = []
+    filtered_neighbor_ids = []
 
     # Query in sub-blocks.
     partial_block_size = 1000
@@ -129,18 +131,18 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
             chunk_id_range[0] + partial_start_idx,
             chunk_id_range[0] + partial_end_idx,
         )
-        partial_query_nbr_ids, partial_filtered_nbr_ids = \
+        partial_query_neighbor_ids, partial_filtered_neighbor_ids = \
             query_embeddings(index, banned_chunk_map, partial_chunk_id_range,
                              partial_embeddings, sample_map, n_chunks_per_sample,
                              verbose = False)
-        query_nbr_ids.append(partial_query_nbr_ids)
-        filtered_nbr_ids.append(partial_filtered_nbr_ids)
+        query_neighbor_ids.append(partial_query_neighbor_ids)
+        filtered_neighbor_ids.append(partial_filtered_neighbor_ids)
 
     # Concatenate.
-    query_nbr_ids = np.concatenate(query_nbr_ids, axis = 0)
-    filtered_nbr_ids = np.concatenate(filtered_nbr_ids, axis = 0)
+    query_neighbor_ids = np.concatenate(query_neighbor_ids, axis = 0)
+    filtered_neighbor_ids = np.concatenate(filtered_neighbor_ids, axis = 0)
 
-    return query_nbr_ids, filtered_nbr_ids
+    return query_neighbor_ids, filtered_neighbor_ids
 
 
 def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
@@ -159,7 +161,7 @@ def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
     embeddings = embed_block(chunk_dataset, block, embedder)
 
     # Query embeddings.
-    _, filtered_nbr_ids = query_embedding_block(
+    _, filtered_neighbor_ids = query_embedding_block(
         index, banned_chunk_map, block["range"],
         embeddings, sample_map,
         n_chunks_per_sample)
@@ -168,32 +170,32 @@ def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
     print_rank_0("save neighbors.")
     os.makedirs(os.path.dirname(block["path"]), exist_ok = True)
     f = h5py.File(block["path"], "w")
-    f.create_dataset("neighbors", data = filtered_nbr_ids)
+    f.create_dataset("neighbors", data = filtered_neighbor_ids)
     f.close()
 
 
 def query_dataset_neighbors(index, banned_chunk_map,
-                            prefix, chunk_dataset, nbr_dir,
+                            prefix, chunk_dataset, neighbor_dir,
                             embedder):
     '''Query neighbors of each chunk within a dataset.'''
 
     args = get_retro_args()
 
     def validate(f):
-        assert f["neighbors"].shape[1] == args.retro_nnbrs_target, \
-            "neighbors.shape == %s; nnbrs_target == %d." % (
+        assert f["neighbors"].shape[1] == args.retro_num_neighbors_target, \
+            "neighbors.shape == %s; num_neighbors_target == %d." % (
                 str(f["neighbors"].shape),
-                args.retro_nnbrs_target,
+                args.retro_num_neighbors_target,
             )
-    n_missing_blocks, missing_nbr_blocks = get_missing_blocks_by_rank(
-        nbr_dir,
+    n_missing_blocks, missing_neighbor_blocks = get_missing_blocks_by_rank(
+        neighbor_dir,
         len(chunk_dataset),
         args.retro_block_size,
         validate = validate,
     )
 
     # Query each block.
-    for block_index, block in enumerate(missing_nbr_blocks):
+    for block_index, block in enumerate(missing_neighbor_blocks):
 
         if block is not None:
 
@@ -201,7 +203,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
             print_rank_0("query '%s' block %d / %d ... %s." % (
                 prefix,
                 block_index,
-                len(missing_nbr_blocks),
+                len(missing_neighbor_blocks),
                 block["path"],
             ))
 
@@ -262,5 +264,5 @@ def query_pretraining_neighbors():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
         query_dataset_neighbors(index, banned_chunk_map,
-                                prefix, info["data"], info["nbr_dir"],
+                                prefix, info["data"], info["neighbor_dir"],
                                 embedder)

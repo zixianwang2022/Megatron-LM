@@ -82,9 +82,9 @@ def compare_bert_neighbor_dists():
     datasets = get_datasets()
     embedders = get_embedders()
     indexes = get_indexes()
-    # max_nbrs = 5
-    # max_nbrs = 40
-    max_nbrs = 200
+    # max_neighbors = 5
+    # max_neighbors = 40
+    max_neighbors = 200
 
     valid_text_subset = torch.utils.data.Subset(
         datasets["valid"],
@@ -94,67 +94,67 @@ def compare_bert_neighbor_dists():
         k : e.embed_text_dataset(valid_text_subset)
         for k, e in embedders.items()
     }
-    nbrs = {
-        k : i.search(query_embeddings[k], max_nbrs)[1]
+    neighbors = {
+        k : i.search(query_embeddings[k], max_neighbors)[1]
         for k, i in indexes.items()
     }
 
     from tools.retro.cli import shorten_str
-    self_nbr_dists = defaultdict(list)
-    cross_nbr_dists = defaultdict(list)
+    self_neighbor_dists = defaultdict(list)
+    cross_neighbor_dists = defaultdict(list)
     for valid_idx in range(len(valid_text_subset)):
 
         print("valid_idx %d / %d." % (valid_idx, len(valid_text_subset)))
 
-        megatron_nbr_ids = nbrs["megatron"][valid_idx]
-        huggingface_nbr_ids = nbrs["huggingface"][valid_idx]
-        nbr_texts = {
+        megatron_neighbor_ids = neighbors["megatron"][valid_idx]
+        huggingface_neighbor_ids = neighbors["huggingface"][valid_idx]
+        neighbor_texts = {
             "megatron" : TextListDataset([datasets["train"][i]["text"]
-                                          for i in megatron_nbr_ids]),
+                                          for i in megatron_neighbor_ids]),
             "huggingface" : TextListDataset([datasets["train"][i]["text"]
-                                             for i in huggingface_nbr_ids]),
+                                             for i in huggingface_neighbor_ids]),
         }
 
-        self_nbr_embeddings = {
+        self_neighbor_embeddings = {
             "megatron" :
-            embedders["megatron"].embed_text_dataset(nbr_texts["megatron"]),
+            embedders["megatron"].embed_text_dataset(neighbor_texts["megatron"]),
             "huggingface" :
-            embedders["huggingface"].embed_text_dataset(nbr_texts["huggingface"]),
+            embedders["huggingface"].embed_text_dataset(neighbor_texts["huggingface"]),
         }
-        cross_nbr_embeddings = {
+        cross_neighbor_embeddings = {
             "megatron" :
-            embedders["megatron"].embed_text_dataset(nbr_texts["huggingface"]),
+            embedders["megatron"].embed_text_dataset(neighbor_texts["huggingface"]),
             "huggingface" :
-            embedders["huggingface"].embed_text_dataset(nbr_texts["megatron"]),
+            embedders["huggingface"].embed_text_dataset(neighbor_texts["megatron"]),
         }
 
-        for k in self_nbr_embeddings:
-            # self_nbr_dists[k].append(np.mean([
-            self_nbr_dists[k].append([
+        for k in self_neighbor_embeddings:
+            # self_neighbor_dists[k].append(np.mean([
+            self_neighbor_dists[k].append([
                 np.linalg.norm(query_embeddings[k][valid_idx] - e)
-                for e in self_nbr_embeddings[k]])
-        for k in cross_nbr_embeddings:
-            # cross_nbr_dists[k].append(np.mean([
-            cross_nbr_dists[k].append([
+                for e in self_neighbor_embeddings[k]])
+        for k in cross_neighbor_embeddings:
+            # cross_neighbor_dists[k].append(np.mean([
+            cross_neighbor_dists[k].append([
                 np.linalg.norm(query_embeddings[k][valid_idx] - e)
-                for e in cross_nbr_embeddings[k]])
+                for e in cross_neighbor_embeddings[k]])
 
-    print("~~ self nbr dists ~~")
-    print({k:np.mean(d) for k,d in self_nbr_dists.items()})
-    print("~~ cross nbr dists ~~")
-    print({k:np.mean(d) for k,d in cross_nbr_dists.items()})
+    print("~~ self neighbor dists ~~")
+    print({k:np.mean(d) for k,d in self_neighbor_dists.items()})
+    print("~~ cross neighbor dists ~~")
+    print({k:np.mean(d) for k,d in cross_neighbor_dists.items()})
     
     print("~~ top-n diffs ~~")
-    for k, dist_lists in self_nbr_dists.items():
+    for k, dist_lists in self_neighbor_dists.items():
         [ dists.sort() for dists in dist_lists ]
-    self_nbr_dists = {k:np.mean(dd, axis = 0) for k, dd in self_nbr_dists.items()}
+    self_neighbor_dists = {k:np.mean(dd, axis = 0) for k, dd in self_neighbor_dists.items()}
     top_diffs = {k:{
         "top1" : (dd[1] - dd[0]) / dd[0],
         "top2" : (dd[2] - dd[1]) / dd[1],
         "top5" : (dd[5] - dd[4]) / dd[4],
         "top20" : (dd[20] - dd[19]) / dd[19],
         "topn" : (dd[-1] - dd[-2]) / dd[-2],
-    } for k, dd in self_nbr_dists.items()}
-    print(self_nbr_dists)
+    } for k, dd in self_neighbor_dists.items()}
+    print(self_neighbor_dists)
     print(top_diffs)
     exit()

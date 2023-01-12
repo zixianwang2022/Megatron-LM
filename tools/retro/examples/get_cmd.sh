@@ -48,14 +48,14 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-# RETRO_TASKS="pretraining-query-nbrs"
+# RETRO_TASKS="pretraining-query-neighbors"
 
 # (tasks below are less tested; for debugging)
 # RETRO_TASKS="misc-index-verify-codes"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-full-db"
 RETRO_TASKS="misc-index-megatron-huggingface-comparison-partial-db"
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-nbr-dists"
-# RETRO_TASKS="misc-pretraining-verify-nbrs"
+# RETRO_TASKS="misc-index-megatron-huggingface-comparison-neighbor-dists"
+# RETRO_TASKS="misc-pretraining-verify-neighbors"
 # RETRO_TASKS="misc-pretraining-print-neighbors"
 
 # RETRO_INDEX_TY=faiss-base
@@ -70,9 +70,9 @@ RETRO_BERT_MAX_CHUNK_LENGTH=256
 RETRO_NCHUNKS_SAMPLED=300000000
 RETRO_DOC_BLOCK_SIZE=100000
 RETRO_BLOCK_SIZE=100000
-RETRO_NNBRS_QUERY=2000
-RETRO_NNBRS_TARGET=200
-# RETRO_NNBRS_PRETRAINING=2
+RETRO_NUM_NEIGHBORS_QUERY=2000
+RETRO_NUM_NEIGHBORS_TARGET=200
+# RETRO_NUM_NEIGHBORS_PRETRAINING=2
 
 ######## Megatron args. ########
 SEED=1234 # default
@@ -142,8 +142,8 @@ RETRO_ARGS=" \
     --retro-nchunks-sampled ${RETRO_NCHUNKS_SAMPLED} \
     --retro-doc-block-size ${RETRO_DOC_BLOCK_SIZE} \
     --retro-block-size ${RETRO_BLOCK_SIZE} \
-    --retro-nnbrs-query ${RETRO_NNBRS_QUERY} \
-    --retro-nnbrs-target ${RETRO_NNBRS_TARGET} \
+    --retro-num-neighbors-query ${RETRO_NUM_NEIGHBORS_QUERY} \
+    --retro-num-neighbors-target ${RETRO_NUM_NEIGHBORS_TARGET} \
     \
     --retro-return-doc-ids \
 "

@@ -132,7 +132,7 @@ def get_chunk_dataset_map():
     workdir = get_pretraining_workdir()
     dataset_map = {
         key : {
-            "nbr_dir" : os.path.join(
+            "neighbor_dir" : os.path.join(
                 workdir,
                 os.path.basename(loader.dataset.datasets[0].index_prefix),
             ),

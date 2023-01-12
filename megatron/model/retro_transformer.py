@@ -242,9 +242,6 @@ class ParallelAttention(MegatronModule):
             init_method=output_layer_init_method,
             skip_bias_add=True)
 
-        self.debug = False
-        self.debug_counter = 0
-
 
     def _allocate_memory(self, inference_max_sequence_len, batch_size):
         return torch.empty(
@@ -387,59 +384,6 @@ class ParallelAttention(MegatronModule):
         attention_probs = self.scale_mask_softmax(attention_scores,
                                                   attention_mask)
 
-        writer = get_tensorboard_writer()
-
-        from megatron import is_last_rank # imported here due to circular dep
-        if is_last_rank():
-            if self.debug and not self.training:
-                if self.debug_counter % 100 == 0:
-                    if writer:
-                        def save_figure_to_numpy(fig):
-                            # save it to a numpy array.
-                            import numpy as np
-                            data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-                            data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-                            return data
-
-                        def plot_alignment_to_numpy(alignment, info=None):
-                            import matplotlib.pylab as plt
-                            fig, ax = plt.subplots(figsize=(6, 4))
-                            im = ax.imshow(alignment, aspect='auto', origin='lower',
-                                           interpolation='none')
-                            fig.colorbar(im, ax=ax)
-                            xlabel = 'Neighbors'
-                            if info is not None:
-                                xlabel += '\n\n' + info
-                            plt.xlabel(xlabel)
-                            plt.ylabel('Input')
-                            plt.tight_layout()
-
-                            fig.canvas.draw()
-                            data = save_figure_to_numpy(fig)
-                            plt.close()
-                            return data
-
-                        sample_ids = [0]
-                        # sample_ids = [0, args.l]
-                        head_ids = [0, 1]
-                        chunk_ids = [0, 1]
-
-                        for sample_id in sample_ids:
-                            for head_id in head_ids:
-                                for chunk_id in chunk_ids:
-                                    prob = attention_probs[sample_id + chunk_id, head_id].data.cpu().numpy()
-                                    plot_data = plot_alignment_to_numpy(prob)
-                                    attention_type = 'self att' if self.attention_type == AttnType.self_attn else 'cross att'
-                                    writer.add_image(
-                                        f"{attention_type} alignment sample {sample_id} head {head_id} chunk {chunk_id}",
-                                        plot_data,
-                                        self.debug_counter, dataformats='HWC')
-                                    print(
-                                        f"{attention_type} alignment sample {sample_id} head {head_id} chunk {chunk_id}.shape {prob.shape}")
-                                    print(
-                                        f"{attention_type} alignment sample {sample_id} head {head_id} chunk {chunk_id}: {prob}")
-                self.debug_counter += 1
-
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
         with tensor_parallel.get_cuda_rng_tracker().fork():
@@ -560,7 +504,6 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
         self.hidden_dropout = args.hidden_dropout
         self.bias_dropout_fusion = args.bias_dropout_fusion
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
-        # self.self_attention.debug = args.retro_debug
 
         # Layernorm on the attention output
         self.post_attention_layernorm = LayerNorm(
@@ -573,7 +516,6 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
             output_layer_init_method,
             layer_number,
             attention_type=AttnType.cross_attn)
-        self.inter_attention.debug = args.retro_debug
 
         # Layernorm on the attention output.
         self.post_inter_attention_layernorm = LayerNorm(
@@ -652,7 +594,7 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
 
         chunk_length = retro_args.retro_gpt_chunk_length
         retrieved_length = retro_args.retro_gpt_retrieved_length
-        nnbrs = args.retro_nnbrs
+        num_neighbors = args.retro_num_neighbors
 
         ns, bs, d = layernorm_output.shape
         l = int(np.ceil(ns / chunk_length))
@@ -678,7 +620,8 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
             retriever_attn_mask=retriever_attn_mask,
             inference_params=inference_params)
         # print("E", retriever_output.shape)    # [r, k * bs * l , d]
-        retriever_output = retriever_output.reshape(retrieved_length * nnbrs, bs * l, d)   # [r * k, bs * l, d]
+        retriever_output = retriever_output.reshape(
+            retrieved_length * num_neighbors, bs * l, d)   # [r * k, bs * l, d]
 
         # # Chunked Cross attention with Retriever Encoder
         pad = (ns - 1) % chunk_length
@@ -1053,19 +996,20 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
         retro_args = get_retro_args()
 
         retrieved_length = retro_args.retro_gpt_retrieved_length
-        nnbrs = args.retro_nnbrs
+        num_neighbors = args.retro_num_neighbors
 
         ns, bs, d = layernorm_output.shape   # [r, bs * l * k, d]
         # print(ns, bs, d, layernorm_output.shape)
-        chunked_outputs = layernorm_output.reshape(retrieved_length, -1, nnbrs, d)
-        chunked_outputs_before_layer_norm = layernorm_input.reshape(retrieved_length, -1, nnbrs, d)  # [r, bs * l, k, d]
+        chunked_outputs = layernorm_output.reshape(retrieved_length, -1,
+                                                   num_neighbors, d)
+        chunked_outputs_before_layer_norm = \
+            layernorm_input.reshape(retrieved_length, -1,
+                                    num_neighbors, d)  # [r, bs * l, k, d]
 
         layernorm_inputs = []
         layernorm_outputs = []
-        for k in range(nnbrs):
+        for k in range(num_neighbors):
             chunked_output = chunked_outputs[:,:,k].contiguous()
-            # print("E", chunked_output.shape)
-            # self.inter_attention.debug = True
             attention_output, attention_bias = \
                 self.inter_attention(chunked_output,   # neighbor embedding (Q)
                                      None,

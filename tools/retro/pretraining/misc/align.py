@@ -27,7 +27,7 @@ def align_idxs(prefix, old_dict, new_dict):
 
     path = os.path.join(
         get_pretraining_workdir(),
-        "compare_nbrs",
+        "compare_neighbors",
         prefix + ".hdf5",
     )
 

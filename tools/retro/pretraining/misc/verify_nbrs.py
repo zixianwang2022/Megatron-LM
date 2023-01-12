@@ -8,7 +8,7 @@ import torch
 from tools.retro.index import FaissBaseIndex, IndexFactory
 
 
-def verify_nbrs(args, timer):
+def verify_neighbors(args, timer):
 
     timer.push("add-base")
     base_index = FaissBaseIndex(args)
@@ -46,10 +46,10 @@ def verify_nbrs(args, timer):
     ]
     timer.pop()
 
-    nbr_paths = [
+    neighbor_paths = [
         glob.glob(os.path.join(
             os.path.dirname(index_paths[0]),
-            "nbrs",
+            "neighbors",
             n,
             "*.hdf5",
         ))
@@ -57,29 +57,29 @@ def verify_nbrs(args, timer):
     ]
 
     num_rows_checked = 0
-    for base_nbr_path in nbr_paths[0]:
+    for base_neighbor_path in neighbor_paths[0]:
 
-        def load_nbrs(path):
+        def load_neighbors(path):
             f = h5py.File(path)
-            nbrs = np.copy(f["neighbors"])
+            neighbors = np.copy(f["neighbors"])
             f.close()
-            return nbrs
+            return neighbors
 
-        base_nbr_name = os.path.basename(base_nbr_path)
-        test_nbr_path = os.path.join(
-            os.path.dirname(nbr_paths[1][0]),
-            base_nbr_name,
+        base_neighbor_name = os.path.basename(base_neighbor_path)
+        test_neighbor_path = os.path.join(
+            os.path.dirname(neighbor_paths[1][0]),
+            base_neighbor_name,
         )
 
-        if not os.path.isfile(test_nbr_path):
+        if not os.path.isfile(test_neighbor_path):
             continue
 
-        base_nbrs = load_nbrs(base_nbr_path)
-        test_nbrs = load_nbrs(test_nbr_path)
-        nbrs_equal = np.array_equal(base_nbrs, test_nbrs)
+        base_neighbors = load_neighbors(base_neighbor_path)
+        test_neighbors = load_neighbors(test_neighbor_path)
+        neighbors_equal = np.array_equal(base_neighbors, test_neighbors)
 
-        assert nbrs_equal
-        num_rows_checked += len(base_nbrs)
+        assert neighbors_equal
+        num_rows_checked += len(base_neighbors)
 
     assert num_rows_checked > 0, \
         "run 'query_index.sh/.py first; then run this script."
