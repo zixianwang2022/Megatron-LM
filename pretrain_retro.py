@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-"""Pretrain GPT w/ Retro"""
+"""Pretrain Retro."""
 
 from functools import partial
 import torch

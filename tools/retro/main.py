@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-"""Preprocess data for Retro GPT model.
+"""Preprocess data for Retro.
 
 Tasks:
 - Build chunk database (DB).
