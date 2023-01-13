@@ -6,9 +6,21 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 . ${DIR}/get_vars.sh
 
 ######## Data corpus. ########
-CORPUS="wiki"
+# CORPUS="wiki"
+CORPUS="wiki-tiny"
 # CORPUS="corpus"
 
+if [ "$CORPUS" = "wiki-tiny" ]; then
+    RETRO_INDEX_STR="IVF4096_HNSW4,Flat"
+    RETRO_GPT_TRAIN_SAMPLES=31250
+    LR_DECAY_SAMPLES=2
+    LR_WARMUP_SAMPLES=1
+    RETRO_GPT_EVAL_INTERVAL=2000
+    RETRO_GPT_EVAL_ITERS=100
+    RETRO_EF_SEARCH=4
+    RETRO_NPROBE=64
+    BERT_EMBEDDER_TYPE=megatron
+fi
 if [ "$CORPUS" = "wiki" ]; then
     RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
     RETRO_GPT_TRAIN_SAMPLES=2037248
@@ -44,7 +56,7 @@ DATA_PATH=${DATA_BLEND}
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
@@ -53,7 +65,7 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 # (tasks below are less tested; for debugging)
 # RETRO_TASKS="misc-index-verify-codes"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-full-db"
-RETRO_TASKS="misc-index-megatron-huggingface-comparison-partial-db"
+# RETRO_TASKS="misc-index-megatron-huggingface-comparison-partial-db"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-neighbor-dists"
 # RETRO_TASKS="misc-pretraining-verify-neighbors"
 # RETRO_TASKS="misc-pretraining-print-neighbors"

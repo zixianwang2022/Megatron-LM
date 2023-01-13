@@ -330,6 +330,11 @@ def update_chunk_counts(indexed_dataset_infos):
             "n_sampled (%d) > n_train (%d)." % (
                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
 
+    # >>>
+    from lutil import pax
+    pax(0, {"indexed_dataset_infos": indexed_dataset_infos})
+    # <<<
+
 
 def merge_dbs(indexed_dataset_infos, db_type):
     '''Merge individual DBs into single DB.'''
@@ -517,6 +522,14 @@ def build_db():
 
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()
+
+    # >>>
+    from lutil import pax
+    pax(0, {
+        "indexed_dataset_infos" : indexed_dataset_infos,
+        "indexed_dataset_infos / 0" : indexed_dataset_infos[0],
+    })
+    # <<<
 
     # Build dbs.
     build_individual_dbs(indexed_dataset_infos)
