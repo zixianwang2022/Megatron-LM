@@ -2,7 +2,7 @@ This directory contains a collection of tools for building the retrieval databas
 
 1. **Build retrieval chunk database** : Used for retrieving neighbors and continuation chunks, which are then passed through the retrieval encoder.
 2. **Build index for similarity search** : Train and build a similarity search index for querying chunk neighbors.
-3. **Query pretraining neighbors** : For matching pretraining samples to database chunks. Neighbors are generated separately for training and validation datasets.
+3. **Query pretraining neighbors** : For matching pretraining samples to database chunks. Neighbors are generated separately for training, validation, and test datasets.
 
 The following overview goes into more detail on the pipeline, code structure, usage, and pretraining.
 
@@ -17,6 +17,28 @@ The following overview goes into more detail on the pipeline, code structure, us
 
 <!-- ################ quick start ################ -->
 # Quick start
+
+See 'tools/retro/examples/get_cmd.sh' for example usage.
+
+Key files:
+
+- main.py (entry point)
+- examples/get_cmd.sh (example arguments for main.py)
+- examples/run_main.sh (calls get_cmd.sh, main.py)
+
+Use `--retro-tasks` to move through the preprocessing pipeline.
+
+- Build chunk database: `--retro-tasks db-build`
+- Build index: `--retro-tasks index-build`
+- Query neighbors: `--retro-tasks pretraining-query-neighbors`
+
+Sample code flow:
+
+- main.py (entry point; e.g., using `--retro-tasks X`)
+- db/build.py (build retrieval database)
+- index/train.py (train index on subset of database)
+- index/add.py (add database chunks to index)
+- pretraining/query.py (query pretraining samples for database neighbors; saved to disk and used during pretraining)
 
 <!-- ################ stages ################ -->
 # Stages
@@ -35,44 +57,12 @@ Indexes only accept 1-D floating point vectors for training and adding, so each 
 
 ## Query pretraining neighbors
 
-To ensure fast Retro pretraining
+To ensure fast Retro pretraining, the database neighbors for pretraining samples are pre-computed and saved to disk, for efficient access within the Retro dataset. In this stage, the pretraining datasets (training, validation, and test) are iterated, each sample is broken into chunks, and the chunks are used for querying the index. Similar to when building the index, each chunk is embedded (via Bert) before querying the index.
 
-After preprocessing has finished, the user-specified output directory will contain:
-
-- **Retrieval chunk database** : 
-- **Pretraining neighbor indexes** : 
-
+The saved neighbors are labeled with unique dataset properties (i.e., seed, sequence length, number of samples, etc.) to ensure the neighbors generated during preprocessing match the neighbors requested during pretraining.
 
 <!-- ################ code structure ################ -->
 # Code structure
-
-Please see 'tools/retrieval/examples/get_cmd.sh' for example usage. At the moment, environment variable NPROCS can either be manually set, or copied from SLURM_TASKS_PER_NODE, depending on if using an interactive or a batch run (see top of get_cmd.sh).
-
-Key files:
-
-- main.py (entry point)
-- examples/get_cmd.sh (example arguments for main.py)
-- examples/run_main.sh (calls get_cmd.sh, main.py)
-
-Currently working indexes:
-
-- FaissBaseIndex (--index-ty faiss-base)
-- FaissParallelAddIndex (--index-ty faiss-par-add)
-- [not recently tested] FaissDecompIndex (--index-ty faiss-decomp)
-
-Example tasks (use with --tasks):
-
-- [no] Bert embeddings ('embed')
-- [yes] Train ('train')
-- [yes] Add ('add', 'remove-add-outputs')
-- [needs cleanup] Query ('query', 'plot-acc', 'query-flat-nns')
-- [yes] Verify ('verify-codes', 'verify-nbrs')
-  - note: 'verify-nbrs' currently requires 'query_index.py' to be manually run first
-
-Sample code flow:
-- main.py (entry point; e.g., using '--tasks add')
-- add/add.py ('add' pipeline; init index; call index.add())
-- index/faiss_par_add/__init__.py (run add in parallel; store intermediate/final index to args.index_dir_path)
 
 <!-- ################ arguments ################ -->
 <!-- ################ pretraining ################ -->
