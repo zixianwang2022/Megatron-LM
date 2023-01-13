@@ -18,13 +18,13 @@ The following overview goes into more detail on the pipeline, code structure, us
 <!-- ################ quick start ################ -->
 # Quick start
 
-See 'tools/retro/examples/get_cmd.sh' for example usage.
+See `examples/get_cmd.sh` for example usage.
 
 Key files:
 
-- main.py (entry point)
-- examples/get_cmd.sh (example arguments for main.py)
-- examples/run_main.sh (calls get_cmd.sh, main.py)
+- `main.py` : Entry point.
+- `examples/get_cmd.sh` : Example arguments for `main.py`.
+- `examples/run_main.sh` : Calls `get_cmd.sh`, `main.py`.
 
 Use `--retro-tasks` to move through the preprocessing pipeline.
 
@@ -34,28 +34,28 @@ Use `--retro-tasks` to move through the preprocessing pipeline.
 
 Sample code flow:
 
-- main.py (entry point; e.g., using `--retro-tasks X`)
-- db/build.py (build retrieval database)
-- index/train.py (train index on subset of database)
-- index/add.py (add database chunks to index)
-- pretraining/query.py (query pretraining samples for database neighbors; saved to disk and used during pretraining)
+- `main.py` : Entry point (e.g., using `--retro-tasks X`).
+- `db/build.py` : Build retrieval database.
+- `index/train.py` : Train index on subset of database.
+- `index/add.py` : Add database chunks to index.
+- `pretraining/query.py` : Query pretraining samples for database neighbors (saved to disk and used during pretraining).
 
 <!-- ################ stages ################ -->
 # Stages
 
-## Build retrieval chunk database
+### Build retrieval chunk database
 
 This *database* (stored as a 2-D array, NOT a relational database) consists of a list of chunks (traditionally length 64) extracted from the original GPT token dataset. This is simply a consecutive, non-overlapping chunking of the token dataset. Chunking only takes place within a document, and therefore the final chunk of each document has length: 1 <= chunk_length <= max_chunk_length.
 
 We discard chunks that would convert to an empty Bert sequence (rare case, happens ~1/100,000 chunks in our case), since we use Bert embeddings for building our index. Thus, the total number of chunks in the database will be slightly less than a naive calculation.
 
-## Build index for similarity search
+### Build index for similarity search
 
 To match pretraining chunks to database chunks, a similarity search index must be built to perform this querying. We use Faiss (https://github.com/facebookresearch/faiss) for training and building this index. Generally, the index is trained on a subset of all chunks in the database (specified via `--retro-nchunks-sampled`). After training, all chunks are added into the index, to be available during querying.
 
 Indexes only accept 1-D floating point vectors for training and adding, so each chunk must first be embedded before passing to the index for either training or adding. We use Bert embeddings for this purpose, and the embeddings are generated automatically within the pipeline.
 
-## Query pretraining neighbors
+### Query pretraining neighbors
 
 To ensure fast Retro pretraining, the database neighbors for pretraining samples are pre-computed and saved to disk, for efficient access within the Retro dataset. In this stage, the pretraining datasets (training, validation, and test) are iterated, each sample is broken into chunks, and the chunks are used for querying the index. Similar to when building the index, each chunk is embedded (via Bert) before querying the index.
 
@@ -65,4 +65,10 @@ The saved neighbors are labeled with unique dataset properties (i.e., seed, sequ
 # Code structure
 
 <!-- ################ arguments ################ -->
+# Arguments
+
 <!-- ################ pretraining ################ -->
+# Pretraining
+
+- New retro args in arguments.py (add_retro_args).
+- Most important arg is `--retro-add-retriever`.
