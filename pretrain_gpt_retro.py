@@ -94,7 +94,7 @@ def forward_step(data_iterator, model):
     timers('batch-generator').stop()
 
     output_tensor = model(tokens, position_ids, attention_mask,
-                          ret_int_ids=neighbor_tokens,
+                          ret_input_ids=neighbor_tokens,
                           ret_position_ids=neighbor_position_ids,
                           ret_attn_mask=neighbor_attention_mask,
                           labels=labels)

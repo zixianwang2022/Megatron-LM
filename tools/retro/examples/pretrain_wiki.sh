@@ -2,17 +2,24 @@
 
 set -u
 unset NCCL_DEBUG
-# export CUDA_DEVICE_MAX_CONNECTIONS=1
+export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-# . ./get_vars.sh
+# DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+# . ${DIR}/get_vars.sh
 
-. ${BLEND_SCRIPT_DIR}/gpt3_blend_wiki.sh
+. /mnt/fsx-outputs-chipdesign/lmcafee/retro/workdirs/wiki-hf-upper/gpt3_blend_wiki.sh
 DATA_PATH=${DATA_BLEND}
 
+VOCAB_FILE=/mnt/fsx-outputs-chipdesign/plegresley/data/bpe/gpt2-vocab.json
+MERGE_FILE=/mnt/fsx-outputs-chipdesign/plegresley/data/bpe/gpt2-merges.txt
+
+# echo $DATA_PATH
+# exit 0
+
 RETRO_ADD_RETRIEVER=1
-RETRO_WORKDIR=${RETRO_WORKDIRS}/wiki
+RETRO_WORKDIR=/mnt/fsx-outputs-chipdesign/lmcafee/retro/workdirs/wiki-mt-lower
 RETRO_CYCLIC_TRAIN_ITERS=750000
-RETRO_NNBRS=2 # *2, 10
+RETRO_NUM_NEIGHBORS=2 # *2, 10
 
 NUM_LAYERS=12
 HIDDEN_SIZE=768
@@ -27,9 +34,10 @@ mkdir -p ${TENSORBOARD_DIR}
 #     --save-interval 10000 \
 #     --tensorboard-dir ${TENSORBOARD_DIR} \
 #     --log-validation-ppl-to-tensorboard \
+#     --no-async-tensor-model-parallel-allreduce \
 options=" \
+    --no-gradient-accumulation-fusion \
     --load ${CHECKPOINT_DIR} \
-    --no-async-tensor-model-parallel-allreduce \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers ${NUM_LAYERS} \
@@ -45,12 +53,12 @@ options=" \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
-    --log-interval 10 \
+    --log-interval 1 \
     --eval-iters 100 \
     --eval-interval 2000 \
     --data-path ${DATA_PATH} \
-    --vocab-file ${GPT_VOCAB_FILE} \
-    --merge-file ${GPT_MERGE_FILE} \
+    --vocab-file ${VOCAB_FILE} \
+    --merge-file ${MERGE_FILE} \
     --split 98,2,0 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
@@ -65,20 +73,20 @@ options=" \
     --no-data-sharding \
 "
 
-if [ "$ADD_RETRIEVER" = "0" ]; then
+if [ "$RETRO_ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py
 else
     options="${options} \
     --retro-add-retriever \
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-cyclic-train-iters ${RETRO_CYCLIC_TRAIN_ITERS} \
-    --retro-nnbrs ${RETRO_NNBRS} \
+    --retro-num-neighbors ${RETRO_NUM_NEIGHBORS} \
     "
     SCRIPT=pretrain_gpt_retro.py
 fi
 
-# NPROCS=1
-NPROCS=16
+NPROCS=1
+# NPROCS=8
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \
