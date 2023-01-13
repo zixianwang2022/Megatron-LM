@@ -2,8 +2,23 @@
 
 set -u
 
-DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-. ${DIR}/get_vars.sh
+######## Environment vars. ########
+# Set environment vars by calling script pointed to by '$RETRO_ENV_VARS'.
+# Required env vars:
+# - RETRO_WORKDIRS : Root directory that contains independent Retro projects
+#     (e.g., for training on different datasets or blends). Each project sub-
+#     directory will contain a complete set of preprocessed data, including
+#     the retrieval database, search index, and pretraining neighbors.
+# - BLEND_SCRIPT_DIR : Directory containing blended dataset definition files.
+#     Loaded script will be '${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh'.
+# - GPT_VOCAB_FILE : GPT vocab file.
+# - GPT_MERGE_FILE : GPT merge file.
+# - BERT_LOAD_PATH : Bert checkpoint directory.
+# - BERT_VOCAB_FILE : Bert vocab file.
+# - BERT_TOKENIZER : Bert tokenizer type (e.g., BertWordPieceLowerCase,
+#     BertWordPieceCase).
+
+. $RETRO_ENV_VARS
 
 ######## Data corpus. ########
 # CORPUS="wiki"
@@ -50,7 +65,7 @@ fi
 REPO="retro"
 
 ######## Data blend. ########
-. ${BLEND_SCRIPT_DIR}/gpt3_blend_${CORPUS}.sh
+. ${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh
 DATA_PATH=${DATA_BLEND}
 
 ######## Retro setup. ########
@@ -58,8 +73,8 @@ RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
-# RETRO_TASKS="index-train"
-# RETRO_TASKS="index-add"
+# .. RETRO_TASKS="index-train" # train sub-unit of index-build
+# .. RETRO_TASKS="index-add" # add sub-unit of index-build
 # RETRO_TASKS="pretraining-query-neighbors"
 
 # (tasks below are less tested; for debugging)

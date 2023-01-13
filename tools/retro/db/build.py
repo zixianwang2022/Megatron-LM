@@ -330,11 +330,6 @@ def update_chunk_counts(indexed_dataset_infos):
             "n_sampled (%d) > n_train (%d)." % (
                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
 
-    # >>>
-    from lutil import pax
-    pax(0, {"indexed_dataset_infos": indexed_dataset_infos})
-    # <<<
-
 
 def merge_dbs(indexed_dataset_infos, db_type):
     '''Merge individual DBs into single DB.'''
@@ -455,7 +450,7 @@ def get_partial_banned_chunk_map(proc_id, db_path, chunk_range_info):
         json.dump(banned_chunk_map, f)
 
 
-def build_doc_chunk_map(db_type):
+def build_doc_chunk_map(indexed_dataset_infos, db_type):
     '''Build mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
 
     if torch.distributed.get_rank() != 0:
@@ -466,7 +461,7 @@ def build_doc_chunk_map(db_type):
     n_procs = 128
 
     # Get dataset.
-    db_dataset = get_merged_dataset(db_type)
+    db_dataset = get_merged_dataset(db_type, indexed_dataset_infos)
 
     # Sub-ranges for parallel processing.
     n_chunks = db_dataset.chunks.shape[0]
@@ -523,14 +518,6 @@ def build_db():
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()
 
-    # >>>
-    from lutil import pax
-    pax(0, {
-        "indexed_dataset_infos" : indexed_dataset_infos,
-        "indexed_dataset_infos / 0" : indexed_dataset_infos[0],
-    })
-    # <<<
-
     # Build dbs.
     build_individual_dbs(indexed_dataset_infos)
 
@@ -545,7 +532,7 @@ def build_db():
     merge_dbs(indexed_dataset_infos, "sampled")
     merge_dbs(indexed_dataset_infos, "train")
     merge_dbs(indexed_dataset_infos, "valid")
-    build_doc_chunk_map("train")
+    build_doc_chunk_map(indexed_dataset_infos, "train")
 
     # Save (fully annotated) indexed dataset infos.
     save_indexed_dataset_infos(indexed_dataset_infos)
