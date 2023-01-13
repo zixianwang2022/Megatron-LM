@@ -1,3 +1,9 @@
+This directory contains a collection of tools for building the retrieval database and pretraining neighbors for Retro. This preprocessing pipeline is broken into 3 main stages:
+
+1. **Build chunk database** : ...
+2. **Build index for similarity search** : ...
+3. **Query pretraining neighbors** : ...
+
 This directory contains a collection of tools for building an similarity search index for retrieval-augmented language models.
 
 Please see 'tools/retrieval/examples/get_cmd.sh' for example usage. At the moment, environment variable NPROCS can either be manually set, or copied from SLURM_TASKS_PER_NODE, depending on if using an interactive or a batch run (see top of get_cmd.sh).
@@ -5,9 +11,8 @@ Please see 'tools/retrieval/examples/get_cmd.sh' for example usage. At the momen
 Key files:
 
 - main.py (entry point)
-- examples/get_cmd.sh (sample arguments for main.py)
+- examples/get_cmd.sh (example arguments for main.py)
 - examples/run_main.sh (calls get_cmd.sh, main.py)
-- examples/run_cluster.sh (calls run_main.sh)
 
 Currently working indexes:
 
