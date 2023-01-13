@@ -53,7 +53,7 @@ options=" \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
-    --log-interval 1 \
+    --log-interval 10 \
     --eval-iters 100 \
     --eval-interval 2000 \
     --data-path ${DATA_PATH} \
@@ -85,8 +85,10 @@ else
     SCRIPT=pretrain_gpt_retro.py
 fi
 
-NPROCS=1
-# NPROCS=8
+# NPROCS=1
+# NPROCS=2
+# NPROCS=4
+NPROCS=8
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \
