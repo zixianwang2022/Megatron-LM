@@ -71,13 +71,17 @@ DATA_PATH=${DATA_BLEND}
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
+# ** run preprocessing pipeline **
+# RETRO_TASKS="build"
+
+# ** call independent stages **
 RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # .. RETRO_TASKS="index-train" # train sub-unit of index-build
 # .. RETRO_TASKS="index-add" # add sub-unit of index-build
 # RETRO_TASKS="pretraining-query-neighbors"
 
-# (tasks below are less tested; for debugging)
+# ** call miscellaneous tasks; (less tested; for debugging) **
 # RETRO_TASKS="misc-index-verify-codes"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-full-db"
 # RETRO_TASKS="misc-index-megatron-huggingface-comparison-partial-db"

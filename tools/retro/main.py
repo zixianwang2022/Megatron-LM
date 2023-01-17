@@ -92,6 +92,14 @@ if __name__ == "__main__":
 
         print_rank_0("start '%s'." % task)
 
+        # Run all stages.
+        if task == "build":
+            build_db()
+            torch.distributed.barrier()
+            build_index()
+            torch.distributed.barrier()
+            query_pretraining_neighbors()
+
         # DB (i.e., chunk db).
         if task == "db-build":
             build_db()
