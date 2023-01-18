@@ -19,7 +19,7 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
                                     seq_length, seed, skip_warmup,
-                                    return_doc_ids = False):
+                                    return_doc_ids=False):
     """Build train, valid, and test datasets."""
 
     # Single dataset.

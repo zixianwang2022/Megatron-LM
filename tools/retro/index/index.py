@@ -1,5 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+import abc
 import faiss
 import numpy as np
 import os
@@ -8,7 +9,18 @@ import torch
 from .utils import get_index_dir
 
 
-class Index:
+class Index(abc.ABC):
+
+    '''Abstract base class for indexes.
+
+    *Note* : While currently only Faiss-based classes are implemented, in the
+    future, this class will be extended with other types of indexes that have
+    different performance-accuracy trade-offs.
+
+    The primary methods to override are:
+    - train() : Train index on the sampled training chunks.
+    - add() : Add all training chunks to index.
+    '''
 
     @classmethod
     def c_verbose(cls, index, v):
@@ -28,13 +40,13 @@ class Index:
     def get_added_index(self):
         return faiss.read_index(self.get_added_index_path())
 
+    @abc.abstractmethod
     def train(self, *args):
-        raise NotImplementedError("implement 'train()' for <%s>." %
-                                  type(self).__name__)
+        pass
 
+    @abc.abstractmethod
     def add(self, *args):
-        raise NotImplementedError("implement 'add()' for <%s>." %
-                                  type(self).__name__)
+        pass
 
     def embed_text_dataset_block(self, embedder, text_dataset, _range):
         '''Embed a range of a text dataset.'''
