@@ -93,18 +93,18 @@ def get_training_data_group_infos():
     return groups
     
 
-def load_training_block(path, load_ratio):
+def load_training_block(path, load_fraction):
     with h5py.File(path) as f:
-        n_load = int(load_ratio * f["data"].shape[0])
+        n_load = int(load_fraction * f["data"].shape[0])
         return np.copy(f["data"][:n_load])
 
 
-def load_training_group(executor, group_info, load_ratio):
+def load_training_group(executor, group_info, load_fraction):
 
     # Launch threads to load block data.
     futures = []
     for path in group_info["paths"]:
-        futures.append(executor.submit(load_training_block, path, load_ratio))
+        futures.append(executor.submit(load_training_block, path, load_fraction))
 
     # Collect block data.
     block_datas = []
@@ -114,10 +114,7 @@ def load_training_group(executor, group_info, load_ratio):
     # Concatenate blocks.
     group_data = np.concatenate(block_datas, axis = 0)
 
-    # Verify.
-    # assert group_data.shape[0] == group_info["size"]
-
-    # Garbage collect (likely useless).
+    # Garbage collect.
     for d in block_datas:
         del d
     gc.collect()
@@ -133,23 +130,12 @@ def get_training_data_merged():
     # Setup.
     ds_infos = get_indexed_dataset_infos()
     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
-
-    # >>> [ for testing; remove ] >>>
-    # Load ratio .... ?
-    load_ratio = 1. # [ bad ]
-    # load_ratio = 2.8 / 3 # [ timeout ]
-    # load_ratio = 2.5 / 3 # [ timeout ]
-    # load_ratio = 2.0 / 3 # [ success ]
-    # load_ratio = 0.1 / 3
-    # <<<
+    load_fraction = args.retro_index_train_load_fractionn
 
     # Initialize merged data.
     print("allocate training data array.")
     t = time.time()
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
-    # >>>
-    # data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
-    # <<<
     print("  time : %.3f sec." % (time.time() - t))
 
     # Data groups (minimizing fragmentation).
@@ -170,21 +156,17 @@ def get_training_data_merged():
                 psutil.virtual_memory()[2],
             ))
 
-            group_data = load_training_group(executor, group_info, load_ratio)
+            # Load group data.
+            group_data = load_training_group(executor, group_info, load_fraction)
             data[start_idx:(start_idx+len(group_data))] = group_data
             start_idx += len(group_data)
 
-            # Garbage collect (likely useless).
+            # Garbage collect.
             del group_data
             gc.collect()
 
         # Handle load ratio <1.
         data = data[:start_idx]
         print("> training block data.shape = %s." % str(data.shape))
-
-        # >>>
-        # Verify.
-        # assert start_idx == n_chunks_sampled
-        # <<<
 
     return data

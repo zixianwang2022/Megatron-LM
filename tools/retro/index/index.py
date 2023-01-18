@@ -15,15 +15,6 @@ class Index:
         '''Make index object verbose.'''
         assert isinstance(v, bool)
         faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
-        # >>>
-        # index.verbose = True # ... maybe?
-        # <<<
-
-
-    @classmethod
-    def swig_ptr(cls, x):
-        '''Get raw C++ pointer.'''
-        return faiss.swig_ptr(np.ascontiguousarray(x))
 
 
     def get_empty_index_path(self):
@@ -39,11 +30,13 @@ class Index:
 
 
     def train(self, *args):
-        raise Exception("implement 'train()' for <%s>." % type(self).__name__)
+        raise NotImplementedError("implement 'train()' for <%s>." %
+                                  type(self).__name__)
 
 
     def add(self, *args):
-        raise Exception("implement 'add()' for <%s>." % type(self).__name__)
+        raise NotImplementedError("implement 'add()' for <%s>." %
+                                  type(self).__name__)
 
 
     def embed_text_dataset_block(self, embedder, text_dataset, _range):

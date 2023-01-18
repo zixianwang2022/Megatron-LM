@@ -52,6 +52,13 @@ def add_retro_args(parser):
     group.add_argument("--retro-block-size", type = int, required = True)
     group.add_argument("--retro-index-train-block-size",
                        type = int, default=3750000)
+    group.add_argument("--retro-index-train-load-fraction",
+                       type = float, default = 1.,
+                       help = "Fraction of sampled chunks to use for training "
+                       "the index. Useful when our total sampled embeddings "
+                       "use too much memory; lowering the load fraction is "
+                       "less costly than re-embedding a new sampled dataset "
+                       "from scratch.")
     group.add_argument("--retro-num-neighbors-query", type = int, required = True)
     group.add_argument("--retro-num-neighbors-target", type = int, required=True)
 
