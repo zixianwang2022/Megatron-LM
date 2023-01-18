@@ -68,14 +68,14 @@ The saved neighbors are labeled with unique dataset properties (i.e., seed, sequ
 
 This is the main entry point for Retro preprocessing. Call `main.py --help` to see arguments. Additionally, some Retro arguments are in Megatron's core arguments, so also see `add_retro_args()` section of `megatron/arguments.py` for additional arguments. Two of the most important arguments to customize are `--retro-workdir` and `--retro-tasks`.
 
-`--retro-workdir` sets where the preprocessing pipeline saves its datasets and configuration files. This argument should remain consistent for a full pass through the pipeline.
+- **`--retro-workdir`** : Set the directory in which the preprocessing pipeline saves its datasets and configuration files. This argument should remain consistent for a full pass through the pipeline, and for pretraining.
 
-`--retro-tasks` sets which stages of preprocessing to perform. As mentioned previously, the three high-level stages are: 1) build retrieval database, 2) build search index, and 3) query pretraining neighbors. `--retro-tasks` can be used to either run the full pipeline, or run each of these stages in isolation. The latter case is useful for tuning compute resources for each stage. For example, index training utilizes GPUs and requires relatively less time, while querying neighbors uses the CPU and is a relatively slow process. Example tasks include:
+- **`--retro-tasks`** : Set the stages of preprocessing to perform. As mentioned previously, the three high-level stages are: 1) build retrieval database, 2) build search index, and 3) query pretraining neighbors. `--retro-tasks` can be used to either run the full pipeline, or run each of these stages in isolation. The latter case is useful for tuning compute resources for each stage. For example, index training utilizes GPUs and requires relatively less time, while querying neighbors uses the CPU and is a relatively slow process. Example tasks include:
 
-- `--retro-tasks build` : Run entire preprocessing pipeline.
-- `--retro-tasks db-build` : Build retrieval database.
-- `--retro-tasks index-build` : Train and build search index.
-- `--retro-tasks pretraining-query-neighbors` : Query pretraining neighbors.
+  - **`--retro-tasks build`** : Run entire preprocessing pipeline.
+  - **`--retro-tasks db-build`** : Build retrieval database.
+  - **`--retro-tasks index-build`** : Train and build search index.
+  - **`--retro-tasks pretraining-query-neighbors`** : Query pretraining neighbors.
 
 Multiple tasks can be specified by separating with commas (e.g., `--retro-tasks db-build,index-build`). Additionally, various 'miscellaneous' tasks are currently including, primarily for validating data for each stage; these task names can be seen in `main.py`.
 
@@ -83,16 +83,29 @@ Multiple tasks can be specified by separating with commas (e.g., `--retro-tasks 
 
 Example scripts for setting arguments and launch Retro preprocessing. The key files here are:
 
-- `get_cmd.sh` : Sets up arguments and command for preprocessing. **Important note**: this script assumes a few environment variables are already set before it is called. Please see the `Environment vars.` section at the top of this file. Generally, environment variables must be set to determine the location of Retro workdirs, input datasets, and GPT and Bert model information.
-- `run_main.sh` : Calls `get_cmd.sh` to get arguments, and then calls `main.py` to launch preprocessing.
-- `pretrain_wiki.sh` : ?
+- **`get_cmd.sh`** : Sets up arguments and command for preprocessing. **Important note**: this script assumes a few environment variables are already set before it is called. Please see the `Environment vars.` section at the top of this file. Generally, environment variables must be set to determine the location of Retro workdirs, input datasets, and GPT and Bert model information.
+- **`run_main.sh`** : Calls `get_cmd.sh` to get arguments, and then calls `main.py` to launch preprocessing.
+- **`pretrain_wiki.sh`** : Example script for pretraining on Wikipedia data, after preprocessing is comlete.
 
 ### `tools/retro/db`
 
 Build the retrieval chunk database. The key files here are:
 
-- `build.py` : Entry point for building the database. This code is responsible for iterating the input datasets (i.e., `--data-path`), parsing each dataset into consecutive chunks, checking for empty Bert (Wordpiece) conversions, and storing this information to disk. Two databases are created: 1) the retrieval database, and 2) a sampled database used for training the search index.
-- `dataset.py` : Defines database class, for iterating or accessing chunks in the database. Each chunk contains its tokens, Bert conversion length, and dataset index.
+- **`build.py`** : Entry point for building the database. This code is responsible for iterating the input datasets (i.e., `--data-path`), parsing each dataset into consecutive chunks, checking for empty Bert (Wordpiece) conversions, and storing this information to disk. Two databases are created: 1) the retrieval database, and 2) a sampled database used for training the search index.
+- **`dataset.py`** : Defines database class, for iterating or accessing chunks in the database. Each chunk contains its tokens, Bert conversion length, and dataset index.
+
+Input data:
+
+- Preprocessed indexed datasets, as generated by `tools/preprocess_data.py`. Each dataset should include a `.bin` and `.idx` file. Multiple datasets can be specified by using a blended configuration (see `--data-path` in `megatron/arguments.py`).
+
+Output data:
+
+- **`<RETRO_WORKDIR>/db/merged/train.hdf5`** : The main retrieval database. (*Database* here is used to denote a list of indexed chunks, rather than a *relational database*.) This file contains a single dataset `'chunks'`, which contains 5 columns:
+  - `dataset_idx` : Dataset index, from list of blended indexed datasets.
+  - `document_idx` : Document index within dataset.
+  - `chunk_start_idx` : Chunk's starting token index within document.
+  - `chunk_end_idx` : Chunk's ending token index (exclusive) within document.
+  - `bert_chunk_length` : Length of Bert token sequence, after converting from GPT.
 
 ### `tools/retro/index`
 
