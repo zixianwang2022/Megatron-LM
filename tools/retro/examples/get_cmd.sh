@@ -21,9 +21,9 @@ set -u
 # - BERT_TOKENIZER : Bert tokenizer type (e.g., BertWordPieceLowerCase,
 #     BertWordPieceCase).
 
-# The variables above can be set however a user would like. In our setup, we
-# use another bash script (location defined in $RETRO_ENV_VARS) that sets all
-# these variables at once.
+# *Note*: The variables above can be set however a user would like. In our
+# setup, we use another bash script (location defined in $RETRO_ENV_VARS) that
+# sets all the environment variables at once.
 . $RETRO_ENV_VARS
 
 ######## Data corpus. ########
@@ -62,8 +62,6 @@ if [ "$CORPUS" = "corpus" ]; then
     RETRO_GPT_EVAL_ITERS=50
     RETRO_EF_SEARCH=32
     RETRO_NPROBE=4096
-    # RETRO_EF_SEARCH=256
-    # RETRO_NPROBE=65536
     BERT_EMBEDDER_TYPE=huggingface
 fi
 
@@ -76,28 +74,7 @@ DATA_PATH=${DATA_BLEND}
 
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
-
-# ** run preprocessing pipeline **
-# RETRO_TASKS="build"
-
-# ** call independent stages **
-RETRO_TASKS="db-build"
-# RETRO_TASKS="index-build"
-# .. RETRO_TASKS="index-train" # train sub-unit of index-build
-# .. RETRO_TASKS="index-add" # add sub-unit of index-build
-# RETRO_TASKS="pretraining-query-neighbors"
-
-# ** call miscellaneous tasks; (less tested; for debugging) **
-# RETRO_TASKS="misc-index-verify-codes"
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-full-db"
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-partial-db"
-# RETRO_TASKS="misc-index-megatron-huggingface-comparison-neighbor-dists"
-# RETRO_TASKS="misc-pretraining-verify-neighbors"
-# RETRO_TASKS="misc-pretraining-print-neighbors"
-
-# RETRO_INDEX_TY=faiss-base
-RETRO_INDEX_TY=faiss-par-add
-
+RETRO_TASKS="db-build" # "build"
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
 RETRO_GPT_MICRO_BATCH_SIZE=1 # *8
@@ -109,19 +86,14 @@ RETRO_DOC_BLOCK_SIZE=100000
 RETRO_BLOCK_SIZE=100000
 RETRO_NUM_NEIGHBORS_QUERY=2000
 RETRO_NUM_NEIGHBORS_TARGET=200
-# RETRO_NUM_NEIGHBORS_PRETRAINING=2
 
 ######## Megatron args. ########
-SEED=1234 # default
-DISTRIBUTED_TIMEOUT_MINUTES=600
-# --no-load-rng \
-# --no-initialization \
 MEGATRON_ARGS=" \
     --no-load-optim \
     --exit-on-missing-checkpoint \
-    --seed ${SEED} \
+    --seed 1234 \
     --no-async-tensor-model-parallel-allreduce \
-    --distributed-timeout-minutes ${DISTRIBUTED_TIMEOUT_MINUTES} \
+    --distributed-timeout-minutes 600 \
     --tokenizer-type ${BERT_TOKENIZER} \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
@@ -170,7 +142,6 @@ RETRO_ARGS=" \
     --retro-bert-max-chunk-length ${RETRO_BERT_MAX_CHUNK_LENGTH} \
     \
     --retro-tasks ${RETRO_TASKS} \
-    --retro-index-ty ${RETRO_INDEX_TY} \
     --retro-index-str ${RETRO_INDEX_STR} \
     --retro-ef-search ${RETRO_EF_SEARCH} \
     --retro-nprobe ${RETRO_NPROBE} \

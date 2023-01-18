@@ -15,16 +15,8 @@ import torch
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.global_vars import set_retro_args
 from tools.retro.db import build_db
-from tools.retro.db.misc import print_db_embeddings
 from tools.retro.index.build import add_to_index, build_index, train_index
-from tools.retro.index.misc.megatron_vs_huggingface import (
-    compare_bert_full_db,
-    compare_bert_partial_db,
-    compare_bert_neighbor_dists,
-)
-from tools.retro.index.misc.verify_codes import verify_codes as verify_index_codes
 from tools.retro.pretraining.query import query_pretraining_neighbors
-from tools.retro.pretraining.misc import print_pretraining_neighbors
 from tools.retro.utils import get_args_path
 
 
@@ -40,12 +32,11 @@ def add_retro_args(parser):
     group.add_argument("--retro-gpt-chunk-length", type = int, required = True)
     group.add_argument("--retro-bert-vocab-file", required = True)
     group.add_argument("--retro-bert-tokenizer-type", required = True)
-    # group.add_argument("--retro-precompute-bert-lengths", action="store_true")
     group.add_argument("--retro-bert-batch-size", type = int, required = True)
     group.add_argument("--retro-bert-max-chunk-length", type=int, required=True)
 
     group.add_argument("--retro-tasks", required = True)
-    group.add_argument("--retro-index-ty", required = True,
+    group.add_argument("--retro-index-type", default = "faiss-par-add",
                        choices = ["faiss-base", "faiss-par-add"])
     group.add_argument("--retro-nfeats", "-f", type = int, default = 1024)
     group.add_argument("--retro-index-str", required = True)
@@ -112,54 +103,17 @@ if __name__ == "__main__":
             build_db()
 
         # Index.
-        elif task == "index-train":
-            train_index()
-        elif task == "index-add":
-            add_to_index()
         elif task == "index-build":
-            build_index() # train, add.
+            build_index() # calls both train + add.
+        elif task == "index-train":
+            train_index() # train only
+        elif task == "index-add":
+            add_to_index() # add only
 
         # Pretraining.
         elif task == "pretraining-query-neighbors":
             query_pretraining_neighbors()
 
-        # Misc tasks.
-        elif task == "misc-db-print-embeddings":
-            print_db_embeddings()
-        elif task == "misc-db-print-neighbors":
-            print_db_neighbors()
-        elif task == "misc-db-nan-stats":
-            get_nan_stats()
-        elif task == "misc-db-bert-nan-analysis":
-            run_bert_nan_analysis()
-        elif task == "misc-db-longest-bert-chunks":
-            print_db_longest_bert_chunks()
-
-        elif task == "misc-index-remove-train-files":
-            remove_train_files()
-        elif task == "misc-index-remove-add-files":
-            remove_add_files()
-        elif task == "misc-index-verify-codes":
-            verify_index_codes()
-        elif task == "misc-index-megatron-huggingface-comparison-full-db":
-            compare_bert_full_db()
-        elif task == "misc-index-megatron-huggingface-comparison-partial-db":
-            compare_bert_partial_db()
-        elif task == "misc-index-megatron-huggingface-comparison-neighbor-dists":
-            compare_bert_neighbor_dists()
-        elif task == "misc-index-check-train-valid-split":
-            check_index_train_valid_split()
-        elif task == "misc-pretraining-test-retro-dataset":
-            test_retro_dataset()
-        elif task == "misc-pretraining-neighbor-plot-acc":
-            plot_neighbor_acc()
-        elif task == "misc-pretraining-neighbor-verify-neighbors":
-            verify_neighbors()
-        elif task == "misc-pretraining-time-query":
-            from tools.retro.index import FaissParallelAddIndex
-            FaissParallelAddIndex.time_query()
-        elif task == "misc-pretraining-print-neighbors":
-            print_pretraining_neighbors()
         else:
             raise Exception("specialize for task '%s'." % task)
 

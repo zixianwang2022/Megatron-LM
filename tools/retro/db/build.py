@@ -12,7 +12,7 @@ from pathlib import Path
 import threading
 import torch
 from tqdm import tqdm
-# import zlib
+import types
 
 from megatron import get_retro_args, print_rank_0
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
@@ -130,8 +130,8 @@ def build_partial_db(
 
         # Remove EOD token.
         doc = indexed_dataset.get(doc_id)
-        eod_id = doc[-1]
-        doc = doc[:-1] # remove 'eod' token
+        if doc[-1].item() == tokenizers.gpt.eod_id:
+            doc = doc[:-1]
         doc_len = len(doc)
 
         # Chunk start/end indexes.
@@ -149,9 +149,8 @@ def build_partial_db(
                 offset = chunk_start_idx,
                 length = chunk_end_idx - chunk_start_idx,
             )
-            gpt_token_ids = [ t for t in gpt_token_ids.tolist() if t != eod_id ]
-            text = tokenizers["gpt"].detokenize(gpt_token_ids)
-            bert_token_ids = tokenizers["bert"].tokenize(text)
+            text = tokenizers.gpt.detokenize(gpt_token_ids)
+            bert_token_ids = tokenizers.bert.tokenize(text)
 
             # 'Valid' for non-empty Bert chunks; 'invalid' otherwise.
             _chunk_db = chunk_db_invalid \
@@ -264,10 +263,10 @@ def build_individual_dbs(indexed_dataset_infos):
     args = get_retro_args()
 
     # Tokenizers.
-    tokenizers = {
-        "gpt" : get_gpt_tokenizer(),
-        "bert" : get_bert_tokenizer(),
-    }
+    tokenizers = types.SimpleNamespace(
+        gpt = get_gpt_tokenizer(),
+        bert = get_bert_tokenizer(),
+    )
 
     # Build individual DBs.
     print_rank_0(" > build individual chunk dbs.")
@@ -437,15 +436,12 @@ def get_partial_banned_chunk_map(proc_id, db_path, chunk_range_info):
             sub_chunk_db,
             "map banned docs, proc %d" % proc_id,
             total = sub_chunk_db.shape[0],
-            # disable = proc_id % 8 == 0,
     )):
         chunk_id = start_chunk_id + rel_chunk_id
         banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
             .append(chunk_id)
 
     # Save output.
-    # with open(output_path, "wb") as f:
-    #     f.write(zlib.compress(json.dumps(banned_chunk_map).encode()))
     with open(output_path, "w") as f:
         json.dump(banned_chunk_map, f)
 
@@ -505,7 +501,7 @@ def build_doc_chunk_map(indexed_dataset_infos, db_type):
         banned_chunk_paths = []
         for finished_idx, future in enumerate(as_completed(futures)):
             print("finished %d / %d." % (finished_idx, n_procs))
-            future.result() # necessary?
+            future.result()
 
 
 def build_db():
