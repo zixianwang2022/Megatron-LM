@@ -88,7 +88,7 @@ Example scripts for setting arguments and launch Retro preprocessing. The key fi
 
 - **`get_cmd.sh`** : Sets up arguments and command for preprocessing. **Important note**: this script assumes a few environment variables are already set before it is called. Please see the `Environment vars.` section at the top of this file. Generally, environment variables must be set to determine the location of Retro workdirs, input datasets, and GPT and Bert model information.
 - **`run_main.sh`** : Calls `get_cmd.sh` to get arguments, and then calls `main.py` to launch preprocessing.
-- **`pretrain_wiki.sh`** : Example script for pretraining on Wikipedia data, after preprocessing is comlete.
+- **`pretrain_wiki.sh`** : Example script for pretraining on Wikipedia data, after preprocessing is complete.
 
 ### `tools/retro/db`
 

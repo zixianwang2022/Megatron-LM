@@ -3,14 +3,9 @@
 set -u
 unset NCCL_DEBUG
 
-NPROCS=1 # debug.
-# NPROCS=2 # query corpus.
-# NPROCS=4 # query wiki.
-# NPROCS=8 # index.
-# NPROCS=16 # index.
+NPROCS=1 # NPROCS must be <= number of GPUs.
 
 ######## Environment vars. ########
-# DIR=$(dirname "$0")
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source ${DIR}/get_cmd.sh
 
