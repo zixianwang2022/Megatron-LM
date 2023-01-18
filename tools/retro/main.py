@@ -59,6 +59,13 @@ def add_retro_args(parser):
     group.add_argument("--retro-num-neighbors-query", type = int, required = True)
     group.add_argument("--retro-num-neighbors-target", type = int, required=True)
 
+    # Enforce argument naming convention.
+    for action in group._group_actions:
+        prefix = action.dest.split("_")[0]
+        assert prefix == "retro", \
+            "Retro args must be prefixed with '--retro-*', for consistent " \
+            "styling. Please fix '%s'." % ", ".join(action.option_strings)
+
     return parser
 
 

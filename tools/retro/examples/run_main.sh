@@ -3,11 +3,11 @@
 set -u
 unset NCCL_DEBUG
 
-# NPROCS=1 # debug.
+NPROCS=1 # debug.
 # NPROCS=2 # query corpus.
 # NPROCS=4 # query wiki.
 # NPROCS=8 # index.
-NPROCS=16 # index.
+# NPROCS=16 # index.
 
 ######## Environment vars. ########
 # DIR=$(dirname "$0")

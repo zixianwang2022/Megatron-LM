@@ -475,6 +475,13 @@ def _add_retro_args(parser):
     group.add_argument("--retro-return-doc-ids", action="store_true",
                        help="Turn this on when preprocessing retro data.")
 
+    # Enforce argument naming convention.
+    for action in group._group_actions:
+        prefix = action.dest.split("_")[0]
+        assert prefix == "retro", \
+            "Retro args must be prefixed with '--retro-*', for consistent " \
+            "styling. Please fix '%s'." % ", ".join(action.option_strings)
+
     return parser
 
 

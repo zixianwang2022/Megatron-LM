@@ -1,9 +1,13 @@
 #!/bin/bash
 
+"""
+Build preprocessing command for Retro.
+"""
+
 set -u
 
-######## Environment vars. ########
-# Required env vars:
+######## Environment variables. ########
+# Required environment variables:
 # - RETRO_WORKDIRS : Root directory that contains independent Retro projects
 #     (e.g., for training on different datasets or blends). Each project sub-
 #     directory will contain a complete set of preprocessed data, including
@@ -17,10 +21,10 @@ set -u
 # - BERT_TOKENIZER : Bert tokenizer type (e.g., BertWordPieceLowerCase,
 #     BertWordPieceCase).
 
-# >>> [ clean up. ]
-# Set environment vars by calling script pointed to by '$RETRO_ENV_VARS'.
+# The variables above can be set however a user would like. In our setup, we
+# use another bash script (location defined in $RETRO_ENV_VARS) that sets all
+# these variables at once.
 . $RETRO_ENV_VARS
-# <<<
 
 ######## Data corpus. ########
 # CORPUS="wiki"
@@ -74,10 +78,10 @@ DATA_PATH=${DATA_BLEND}
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 # ** run preprocessing pipeline **
-RETRO_TASKS="build"
+# RETRO_TASKS="build"
 
 # ** call independent stages **
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # .. RETRO_TASKS="index-train" # train sub-unit of index-build
 # .. RETRO_TASKS="index-add" # add sub-unit of index-build

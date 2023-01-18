@@ -23,8 +23,8 @@ See `examples/get_cmd.sh` for example usage.
 Key files:
 
 - `main.py` : Entry point.
-- `examples/get_cmd.sh` : Example arguments for `main.py`.
-- `examples/run_main.sh` : Calls `get_cmd.sh`, `main.py`.
+- `examples/get_cmd.sh` : Build preprocessing command (for `main.py`).
+- `examples/run_main.sh` : Run preprocessing (calls `get_cmd.sh`, `main.py`).
 
 Use `--retro-tasks` to move through the preprocessing pipeline.
 
