@@ -36,9 +36,14 @@ def add_retro_args(parser):
     group.add_argument("--retro-bert-max-chunk-length", type=int, required=True)
 
     group.add_argument("--retro-tasks", required = True)
-    group.add_argument("--retro-index-type", default = "faiss-par-add",
-                       choices = ["faiss-base", "faiss-par-add"])
     group.add_argument("--retro-nfeats", "-f", type = int, default = 1024)
+    group.add_argument("--retro-index-type", default = "faiss-par-add",
+                       choices = ["faiss-base", "faiss-par-add"],
+                       help="A 'faiss-base' index is a simple, un-optimized "
+                       "wrapper around a Faiss index. A 'faiss-par-add' index "
+                       "optimizes the 'add()' method by making it multi-node "
+                       "and multi-process, but with bit-wise equivalent "
+                       "results.")
     group.add_argument("--retro-index-str", required = True)
     group.add_argument("--retro-ef-search", type = int, default = 256)
     group.add_argument("--retro-nprobe", type = int, default = 65536)

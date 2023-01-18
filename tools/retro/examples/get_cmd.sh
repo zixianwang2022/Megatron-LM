@@ -26,7 +26,7 @@ set -u
 # sets all the environment variables at once.
 . $RETRO_ENV_VARS
 
-######## Data corpus. ########
+################ Data corpus. ################
 # CORPUS="wiki"
 CORPUS="wiki-tiny"
 # CORPUS="corpus"
@@ -65,14 +65,14 @@ if [ "$CORPUS" = "corpus" ]; then
     BERT_EMBEDDER_TYPE=huggingface
 fi
 
-######## Repo. ########
+################ Repo. ################
 REPO="retro"
 
-######## Data blend. ########
+################ Data blend. ################
 . ${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh
 DATA_PATH=${DATA_BLEND}
 
-######## Retro setup. ########
+################ Retro setup. ################
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
@@ -86,24 +86,33 @@ RETRO_BLOCK_SIZE=100000
 RETRO_NUM_NEIGHBORS_QUERY=2000
 RETRO_NUM_NEIGHBORS_TARGET=200
 
-######## Retro tasks. ########
+################ Retro tasks. ################
 # The '--retro-tasks' argument is a comma-separated list of tasks to run, in
-# sequential order. For a quick start, simple set to 'build' to run entire
-# preprocessing pipeline. For finer control, the list of specific tasks to run
-# may be specified. This is desirable for tuning computational resources. For
+# sequential order. For a quick start, simply set this to 'build' to run the
+# entire preprocessing pipeline. For finer control, you may specify the list of
+# tasks to run. This is desirable for tuning computational resources. For
 # example, training the search index is relatively fast and utilizes GPUs,
-# while querying the search index is relatively slow and CPU-only.
+# while querying the search index is relatively slow, CPU-only, and memory
+# intensive (i.e., multiple populated search indexes are loaded simultaneously).
 
-# Option #1 : Run entire pipeline
+# *Note* : Once the task(s) below have been completed -- by running either
+#    1) 'build', or 2) the sequential combination of 'db-build', 'index-build',
+#    and 'pretraining-query-neighbors' -- we are ready to pretrain Retro by
+#    calling pretrain_retro.py.
+
+# ---- Option #1 : Run entire pipeline ----
+
 # RETRO_TASKS="build"
 
-# Option #2 : Run the following stages in this order, and potentially on
-#   different cluster setups.
+# ---- Option #2 ----
+# *Note*: Run the following stages in this order, and potentially on tuned
+#   cluster setups, as described above.
+
 # RETRO_TASKS="db-build"
 RETRO_TASKS="index-build"
 # RETRO_TASKS="pretraining-query-neighbors"
 
-######## Megatron args. ########
+################ Megatron args. ################
 MEGATRON_ARGS=" \
     --no-load-optim \
     --exit-on-missing-checkpoint \
@@ -142,7 +151,7 @@ MEGATRON_ARGS=" \
     --no-data-sharding \
 "
 
-######## Retro args. ########
+################ Retro args. ################
 RETRO_ARGS=" \
     --bert-embedder-type ${BERT_EMBEDDER_TYPE} \
     --output-bert-embeddings \
@@ -172,11 +181,9 @@ RETRO_ARGS=" \
     --retro-return-doc-ids \
 "
 
-######## Command. ########
+################ Command. ################
 RETRO_PREPROCESS_CMD=" \
     ./tools/retro/main.py \
     ${MEGATRON_ARGS} \
     ${RETRO_ARGS} \
 "
-
-# eof.

@@ -1,6 +1,12 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-"""Multi-process (& multi-node) version of Faiss's index.add()."""
+"""Multi-process & multi-node version of Faiss's index.add().
+
+This class inherits from FaissBaseIndex, and optimizes the 'add()' method by
+making it multi-node and multi-process, with bit-wise equivalence to
+FaissBaseIndex. This allows 'add()' to scale out to very large datasets, since
+the vast majority of the computational effort is embarrassingly parallel.
+"""
 
 import faiss
 import h5py
@@ -13,17 +19,12 @@ from tqdm import tqdm
 from megatron import get_retro_args, print_rank_0
 from tools.bert_embedding import BertEmbedder
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
-from tools.retro.index import Index
-from tools.retro.index.indexes.faiss_base import FaissBaseIndex
 from tools.retro.index.utils import get_added_codes_dir, get_added_code_paths
 
+from .faiss_base import FaissBaseIndex
 
-class FaissParallelAddIndex(Index):
 
-    def train(self, *args):
-        '''Use Faiss-base for training.'''
-        return FaissBaseIndex().train(*args)
-
+class FaissParallelAddIndex(FaissBaseIndex):
 
     def encode_block(self, index, embedder, text_dataset, block):
         '''Encode sub-dataset block, to be later added to index.
@@ -100,7 +101,8 @@ class FaissParallelAddIndex(Index):
     # def add_codes(self, text_dataset):
     def add_codes(self):
 
-        assert torch.distributed.get_rank() == 0
+        if torch.distributed.get_rank() != 0:
+            return
 
         added_index_path = self.get_added_index_path()
         if os.path.exists(added_index_path):
@@ -129,15 +131,25 @@ class FaissParallelAddIndex(Index):
 
     def remove_codes(self):
         '''Remove added codes after adding to index.'''
-        assert torch.distributed.get_rank() == 0
-        added_index_path = self.get_added_index_path()
-        assert os.path.isfile(added_index_path)
-        shutil.rmtree(get_added_codes_dir())
+        if torch.distributed.get_rank() != 0:
+            return
+        assert os.path.isfile(self.get_added_index_path())
+        shutil.rmtree(get_added_codes_dir(), ignore_errors = True)
 
 
     def add(self, text_dataset):
-        self.encode(text_dataset)
-        if torch.distributed.get_rank() == 0:
+
+        # Check if index already exists.
+        if not os.path.isfile(self.get_added_index_path()):
+
+            # Encode chunks.
+            self.encode(text_dataset)
+
+            # Add codes to index.
             self.add_codes()
-            self.remove_codes()
+
+        # Wait for (single-process) adding to complete.
         torch.distributed.barrier()
+
+        # Remove codes.
+        self.remove_codes()

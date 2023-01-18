@@ -37,11 +37,6 @@ def embed_db():
     a single dataset for training the index.
     '''
 
-    # Embed only if index not already trained.
-    empty_index_path = get_empty_index_path()
-    if os.path.isfile(empty_index_path):
-        return
-
     args = get_retro_args()
 
     # Get db dataset.
@@ -70,11 +65,23 @@ def remove_embeddings():
         return
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
-    shutil.rmtree(get_training_data_dir())
+    shutil.rmtree(get_training_data_dir(), ignore_errors = True)
 
 
 def train_index():
     '''Train index on DB chunks.'''
-    embed_db()
-    train_on_embeddings()
+
+    # Check if trained index already exists.
+    if not os.path.isfile(get_empty_index_path()):
+
+        # Embed training chunks.
+        embed_db()
+
+        # Train index on embeddings.
+        train_on_embeddings()
+
+    # Wait for (single-process) training to complete.
+    torch.distributed.barrier()
+
+    # Remove embeddings.
     remove_embeddings()

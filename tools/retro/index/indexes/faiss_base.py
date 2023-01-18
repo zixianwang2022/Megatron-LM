@@ -1,5 +1,12 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+"""
+This class implements a simple, un-optimized wrapper around a Faiss index, that
+implements the Index interface (see ..index.py). While this class is
+instantiable, it is meant to be extended with optimizations in classes that
+inherit from this class (see FaissParAddIndex, for an example).
+"""
+
 from datetime import timedelta
 import faiss
 import os
