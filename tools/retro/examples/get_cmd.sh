@@ -74,7 +74,6 @@ DATA_PATH=${DATA_BLEND}
 
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
-RETRO_TASKS="index-build" # "build"
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
 RETRO_GPT_MICRO_BATCH_SIZE=1 # *8
@@ -86,6 +85,23 @@ RETRO_DOC_BLOCK_SIZE=100000
 RETRO_BLOCK_SIZE=100000
 RETRO_NUM_NEIGHBORS_QUERY=2000
 RETRO_NUM_NEIGHBORS_TARGET=200
+
+######## Retro tasks. ########
+# The '--retro-tasks' argument is a comma-separated list of tasks to run, in
+# sequential order. For a quick start, simple set to 'build' to run entire
+# preprocessing pipeline. For finer control, the list of specific tasks to run
+# may be specified. This is desirable for tuning computational resources. For
+# example, training the search index is relatively fast and utilizes GPUs,
+# while querying the search index is relatively slow and CPU-only.
+
+# Option #1 : Run entire pipeline
+# RETRO_TASKS="build"
+
+# Option #2 : Run the following stages in this order, and potentially on
+#   different cluster setups.
+# RETRO_TASKS="db-build"
+RETRO_TASKS="index-build"
+# RETRO_TASKS="pretraining-query-neighbors"
 
 ######## Megatron args. ########
 MEGATRON_ARGS=" \
