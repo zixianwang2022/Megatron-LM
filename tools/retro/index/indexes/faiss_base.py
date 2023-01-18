@@ -61,7 +61,6 @@ class FaissBaseIndex(Index):
         # Save index.
         faiss.write_index(index, empty_index_path)
 
-
     def train(self, input_data_loader):
         '''Train index.'''
 
@@ -70,7 +69,6 @@ class FaissBaseIndex(Index):
             self._train(input_data_loader)
 
         torch.distributed.barrier()
-
 
     def _add(self, text_dataset):
         '''Add to index (rank 0's method).'''
@@ -112,7 +110,6 @@ class FaissBaseIndex(Index):
 
         # Write index.
         faiss.write_index(index, added_index_path)
-
 
     def add(self, text_dataset):
         '''Add to index.'''

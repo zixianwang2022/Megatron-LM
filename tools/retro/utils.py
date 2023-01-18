@@ -55,10 +55,8 @@ class GPTToTextDataset(torch.utils.data.Dataset):
         self.gpt_dataset = gpt_dataset
         self.gpt_tokenizer = get_gpt_tokenizer()
 
-
     def __len__(self):
         return len(self.gpt_dataset)
-
 
     def __getitem__(self, idx):
         gpt_token_ids = self.gpt_dataset[idx]["text"].tolist()

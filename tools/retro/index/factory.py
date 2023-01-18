@@ -16,7 +16,6 @@ class IndexFactory:
             "faiss-par-add" : FaissParallelAddIndex,
         }[index_type]
 
-
     @classmethod
     def get_index(cls, index_type):
         index_class = cls.get_index_class(index_type)

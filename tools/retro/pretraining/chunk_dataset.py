@@ -34,10 +34,8 @@ class ChunkDataset(torch.utils.data.Dataset):
         self.n_samples = len(sample_dataset)
         self.n_chunks = self.n_samples * self.n_chunks_per_sample
 
-
     def __len__(self):
         return self.n_chunks
-
 
     def __getitem__(self, idx):
 

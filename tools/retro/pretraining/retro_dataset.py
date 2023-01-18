@@ -39,10 +39,8 @@ class RetroDataset(torch.utils.data.Dataset):
         self.chunk_dataset = chunk_dataset
         self.neighbor_path_map = neighbor_path_map
 
-
     def __len__(self):
         return len(self.chunk_dataset.sample_dataset)
-
 
     def __getitem__(self, sample_idx):
 
@@ -56,7 +54,7 @@ class RetroDataset(torch.utils.data.Dataset):
             sample_idx * n_chunks_per_sample,
             (sample_idx + 1) * n_chunks_per_sample,
         ))
-        
+
         # Collect retrieved tokens.
         all_retrieved_chunk_ids = []
         all_retrieved_token_ids = []

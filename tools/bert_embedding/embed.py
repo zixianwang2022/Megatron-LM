@@ -215,7 +215,6 @@ class BertEmbedder:
         else:
             raise Exception("specialize for embedder type '%s'." % embedder_type)
 
-
     def embed_text_dataset(self, text_dataset):
         '''Embed a text dataset.'''
 
@@ -232,7 +231,6 @@ class BertEmbedder:
         embeddings = embed_data_loader(self.models, data_loader)
 
         return embeddings
-
 
     def embed_text(self, text):
         '''Embed a single text string.
@@ -267,7 +265,6 @@ class DiskDataParallelBertEmbedder:
                                      embedder_type)
         self.block_size = block_size
 
-
     def embed_text_blocks(self, name, workdir, text_dataset,
                           missing_embedding_blocks):
         '''Process a text dataset in blocks.'''
@@ -299,7 +296,6 @@ class DiskDataParallelBertEmbedder:
             # Synchronize progress across all ranks. (for easier observation)
             print_rank_0(" > waiting for other ranks to finish block.")
             torch.distributed.barrier()
-
 
     def embed_text_dataset(self, name, workdir, text_dataset):
         '''Embed a text dataset.'''

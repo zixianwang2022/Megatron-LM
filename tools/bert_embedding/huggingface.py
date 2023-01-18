@@ -16,7 +16,6 @@ class IterableTextDataset(torch.utils.data.IterableDataset):
     def __init__(self, text_dataset):
         self.text_dataset = text_dataset
 
-
     def __iter__(self):
         '''Remove 'endoftext' string.'''
         for sample_idx in range(len(self.text_dataset)):
@@ -82,7 +81,6 @@ class HuggingfaceEmbedder:
 
         self.batch_size = batch_size
 
-
     def embed_text_dataset(self, text_dataset, verbose = True):
 
         # Wrap dataset in iterable.
@@ -106,7 +104,6 @@ class HuggingfaceEmbedder:
             start_idx += 1
 
         return embeddings
-
 
     def embed_text(self, text):
         '''Embed a single text string.

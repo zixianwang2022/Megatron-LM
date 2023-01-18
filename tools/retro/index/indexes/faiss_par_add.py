@@ -53,7 +53,6 @@ class FaissParallelAddIndex(FaissBaseIndex):
         with h5py.File(block["path"], "w") as f:
             f.create_dataset("data", data = codes)
 
-
     def encode(self, text_dataset):
         '''Encode text dataset, to be later added to index.'''
 
@@ -97,8 +96,6 @@ class FaissParallelAddIndex(FaissBaseIndex):
             print_rank_0(" > waiting for other ranks to finish block.")
             torch.distributed.barrier()
 
-
-    # def add_codes(self, text_dataset):
     def add_codes(self):
 
         if torch.distributed.get_rank() != 0:
@@ -128,14 +125,12 @@ class FaissParallelAddIndex(FaissBaseIndex):
         print_rank_0("write added index.")
         faiss.write_index(index, added_index_path)
 
-
     def remove_codes(self):
         '''Remove added codes after adding to index.'''
         if torch.distributed.get_rank() != 0:
             return
         assert os.path.isfile(self.get_added_index_path())
         shutil.rmtree(get_added_codes_dir(), ignore_errors = True)
-
 
     def add(self, text_dataset):
 

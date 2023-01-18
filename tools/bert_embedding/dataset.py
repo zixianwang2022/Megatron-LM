@@ -33,10 +33,8 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         self.mask_id = self.bert_tokenizer.mask
         self.pad_id = self.bert_tokenizer.pad
 
-
     def __len__(self):
         return len(self.text_dataset)
-
 
     def __getitem__(self, idx):
 

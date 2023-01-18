@@ -201,7 +201,6 @@ class ParallelAttention(MegatronModule):
             init_method=output_layer_init_method,
             skip_bias_add=True)
 
-
     def _allocate_memory(self, inference_max_sequence_len, batch_size):
         return torch.empty(
             inference_max_sequence_len,
@@ -210,7 +209,6 @@ class ParallelAttention(MegatronModule):
             self.hidden_size_per_attention_head,
             dtype=self.params_dtype,
             device=torch.cuda.current_device())
-
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, inference_params=None):
@@ -232,7 +230,6 @@ class ParallelAttention(MegatronModule):
             else:
                 inference_key_memory, inference_value_memory = \
                     inference_params.key_value_memory_dict[self.layer_number]
-
 
         # =====================
         # Query, Key, and Value
@@ -276,7 +273,6 @@ class ParallelAttention(MegatronModule):
                  self.hidden_size_per_attention_head)
             query_layer = query_layer.view(*new_tensor_shape)
 
-
         # ==================================
         # Adjust key and value for inference
         # ==================================
@@ -297,7 +293,6 @@ class ParallelAttention(MegatronModule):
                 :sequence_end, batch_start:batch_end, ...]
             value_layer = inference_value_memory[
                 :sequence_end, batch_start:batch_end, ...]
-
 
         # ===================================
         # Raw attention scores. [b, np, s, s]
@@ -333,7 +328,6 @@ class ParallelAttention(MegatronModule):
 
         # change view to [b, np, sq, sk]
         attention_scores = matmul_result.view(*output_size)
-
 
         # ===========================
         # Attention probs and dropout
@@ -542,7 +536,7 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
         """
         notations:
             l: number of chunks
-            m: number of token per chunk 
+            m: number of token per chunk
             bs: batch size
             d: hidden size
             k: number of neighbors
@@ -1044,7 +1038,6 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
         return output
 
 
-
 class ParallelTransformerLayer(MegatronModule):
     """A single transformer layer.
 
@@ -1468,7 +1461,6 @@ class ParallelRetroEncoder(MegatronModule):
         return output
 
 
-# class ParallelTransformer(MegatronModule):
 class ParallelRetroTransformer(MegatronModule):
     """Standard GPT Transformer class."""
 

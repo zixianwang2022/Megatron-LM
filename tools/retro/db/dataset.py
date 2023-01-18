@@ -11,7 +11,7 @@ from tools.retro.utils import get_gpt_tokenizer
 
 class DBDataset(torch.utils.data.Dataset):
     '''Dataset for iterating chunks.
-    
+
     Requires:
     - List of indexed datasets
     - Chunk index array, with format:
@@ -31,10 +31,8 @@ class DBDataset(torch.utils.data.Dataset):
         self.max_chunk_length = max_chunk_length
         self.eod_token_id = get_gpt_tokenizer().eod_id
 
-
     def __len__(self):
         return self.chunks.shape[0]
-
 
     def __getitem__(self, chunk_id):
 

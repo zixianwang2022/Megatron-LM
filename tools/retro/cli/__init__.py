@@ -53,7 +53,6 @@ class retro:
         _initialize_distributed()
         _set_random_seed(cls.args.seed, cls.args.data_parallel_random_init)
 
-
     @classmethod
     def init(cls, workdir):
         '''Initialize Megatron, tokenizers, and datasets.'''
@@ -77,7 +76,6 @@ class retro:
         # Print usage.
         cls.print_usage()
 
-
     ##############################################
     # utils.
     ##############################################
@@ -87,12 +85,10 @@ class retro:
         '''GPT tokens to text.'''
         return cls.tokenizers.gpt.detokenize(token_ids)
 
-
     @classmethod
     def text_to_bert(cls, text):
         '''Text to Bert tokens.'''
         return cls.tokenizers.bert.tokenize(text)
-
 
     ##############################################
     # chunk db.
@@ -103,42 +99,35 @@ class retro:
         '''Number of indexed datasets within blendable dataset.'''
         return len(cls.db_indexed_dataset_infos)
 
-
     @classmethod
     def get_db_indexed_dataset_infos(cls):
         '''Dataset infos, including number of training & sampled sets.'''
         return [(info["ratio"], info["name"])
                 for info in cls.db_indexed_dataset_infos]
 
-
     @classmethod
     def get_db_dataset(cls):
         return cls.pt_datasets.train.db_dataset
-
 
     @classmethod
     def get_db_num_chunks(cls):
         '''Number of DB chunks.'''
         return len(cls.get_db_dataset())
 
-
     @classmethod
     def get_db_chunk_gpt(cls, idx):
         '''Get DB chunk as GPT token ids.'''
         return cls.get_db_dataset()[idx]["text"].tolist()
-
 
     @classmethod
     def get_db_chunk_bert(cls, idx):
         '''Get DB chunk as Bert token ids.'''
         return cls.text_to_bert(cls.get_db_chunk_text(idx))
 
-
     @classmethod
     def get_db_chunk_text(cls, idx):
         '''Get DB chunk as text.'''
         return cls.gpt_to_text(cls.get_db_chunk_gpt(idx))
-
 
     @classmethod
     def get_db_chunk_and_continuation_text(cls, idx):
@@ -151,7 +140,6 @@ class retro:
             cls.get_db_chunk_text((idx + 1) % len(cls.get_db_dataset())),
         ]
 
-    
     ##############################################
     # pretraining corpus.
     ##############################################
@@ -168,23 +156,19 @@ class retro:
             len(chunk_dataset),
         )
 
-
     @classmethod
     def get_pt_num_samples(cls, data_key):
         '''Number of pretraining samples.'''
         return cls.get_pt_num_samples_and_chunks(data_key)[0]
-
 
     @classmethod
     def get_pt_num_chunks(cls, data_key):
         '''Number of pretraining chunks (e.g., 32*n_samples).'''
         return cls.get_pt_num_samples_and_chunks(data_key)[1]
 
-
     @classmethod
     def get_pt_sample(cls, data_key, idx):
         return getattr(cls.pt_datasets, data_key)[idx]
-
 
     ##############################################
     # usage.

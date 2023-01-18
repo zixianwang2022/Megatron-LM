@@ -168,20 +168,16 @@ class IdPathMap:
         self.path_index_map = {p:i for i,p in enumerate(paths)}
         self.id_index_map = {}
 
-
     def __str__(self):
         return "%d paths; %d ids" % (len(self.paths), len(self.id_index_map))
-
 
     def add(self, id, path):
         '''Map index to a path.'''
         self.id_index_map[id] = self.path_index_map[path]
 
-
     def __contains__(self, idx):
         '''Index added to this object?'''
         return idx in self.id_index_map
-
 
     def __getitem__(self, idx):
         '''Get path from index.'''

@@ -17,7 +17,7 @@ from tools.retro.db.utils import get_indexed_dataset_infos
 
 def get_index_dir():
     """Create sub-directory for this index."""
-    
+
     args = get_retro_args()
 
     # Directory path.
@@ -91,7 +91,7 @@ def get_training_data_group_infos():
         })
 
     return groups
-    
+
 
 def load_training_block(path, load_fraction):
     with h5py.File(path) as f:
