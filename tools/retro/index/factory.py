@@ -10,15 +10,15 @@ class IndexFactory:
     '''
 
     @classmethod
-    def get_index_ty(cls, index_ty):
+    def get_index_class(cls, index_type):
         return {
             "faiss-base" : FaissBaseIndex,
             "faiss-par-add" : FaissParallelAddIndex,
-        }[index_ty]
+        }[index_type]
 
 
     @classmethod
-    def get_index(cls, index_ty):
-        index_ty = cls.get_index_ty(index_ty)
-        index = index_ty()
+    def get_index(cls, index_type):
+        index_class = cls.get_index_class(index_type)
+        index = index_class()
         return index

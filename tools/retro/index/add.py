@@ -12,7 +12,7 @@ def add_to_index():
     args = get_retro_args()
 
     # Get index.
-    index = IndexFactory.get_index(args.retro_index_ty)
+    index = IndexFactory.get_index(args.retro_index_type)
 
     # Get text dataset.
     gpt_dataset = get_merged_train_dataset()

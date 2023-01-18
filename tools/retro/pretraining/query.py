@@ -33,7 +33,7 @@ def get_index(chunk_db_dataset, ondisk = False):
     dataset_block_ranges = num_samples_to_block_ranges(n_db_chunks)
 
     # Load index.
-    index_wrapper = IndexFactory.get_index(args.retro_index_ty)
+    index_wrapper = IndexFactory.get_index(args.retro_index_type)
     index_dir = get_index_dir()
     added_index_path = index_wrapper.get_added_index_path()
     if ondisk:

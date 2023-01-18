@@ -24,7 +24,7 @@ def get_index_dir():
     index_dir_path = os.path.join(
         args.retro_workdir,
         "index",
-        args.retro_index_ty,
+        args.retro_index_type,
         args.retro_index_str,
     )
 

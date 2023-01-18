@@ -25,7 +25,7 @@ from .utils import (
 def get_empty_index_path():
     '''Path of empty index.'''
     args = get_retro_args()
-    index = IndexFactory.get_index(args.retro_index_ty)
+    index = IndexFactory.get_index(args.retro_index_type)
     empty_index_path = index.get_empty_index_path()
     return empty_index_path
 
@@ -59,7 +59,7 @@ def embed_db():
 def train_on_embeddings():
     '''Train index on embedded DB chunks.'''
     args = get_retro_args()
-    index = IndexFactory.get_index(args.retro_index_ty)
+    index = IndexFactory.get_index(args.retro_index_type)
     index.train(get_training_data_merged)
 
 
@@ -70,9 +70,6 @@ def remove_embeddings():
         return
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
-    # >>>
-    raise Exception("ready to delete?")
-    # <<<
     shutil.rmtree(get_training_data_dir())
 
 
@@ -80,6 +77,4 @@ def train_index():
     '''Train index on DB chunks.'''
     embed_db()
     train_on_embeddings()
-    # >>>
-    # remove_embeddings() # uncomment, or manually remove 'train_tmp/'
-    # <<<
+    remove_embeddings()
