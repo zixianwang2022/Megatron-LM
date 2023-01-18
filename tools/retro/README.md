@@ -1,7 +1,7 @@
 This directory contains a collection of tools for building the retrieval database and pretraining neighbors for Retro. This preprocessing pipeline is broken into 3 main stages:
 
 1. **Build retrieval chunk database** : Used for retrieving neighbors and continuation chunks, which are then passed through the retrieval encoder.
-2. **Build index for similarity search** : Train and build a similarity search index for querying chunk neighbors.
+2. **Build index for similarity search** : Train and build a search index for querying chunk neighbors.
 3. **Query pretraining neighbors** : For matching pretraining samples to database chunks. Neighbors are generated separately for training, validation, and test datasets.
 
 The following overview goes into more detail on the pipeline, code structure, usage, and pretraining.
@@ -13,7 +13,7 @@ The following overview goes into more detail on the pipeline, code structure, us
   * [Stages](#stages)
   * [Code structure](#code-structure)
   * [Arguments](#arguments)
-  * [Pretraining](#pretraining)
+  <!-- * [Pretraining](#pretraining) -->
 
 <!-- ################ quick start ################ -->
 # Quick start
@@ -30,16 +30,17 @@ Use `--retro-tasks` to move through the preprocessing pipeline.
 
 - Simplest setup (builds everything): `--retro-tasks build`
 - Alternatively, for tuning compute resources, run stages independently:
-  - Build chunk database: `--retro-tasks db-build`
-  - Build index: `--retro-tasks index-build`
+  - Build retrieval database: `--retro-tasks db-build`
+  - Build search index: `--retro-tasks index-build`
   - Query neighbors: `--retro-tasks pretraining-query-neighbors`
 
 Sample code flow:
 
 - `main.py` : Entry point (e.g., using `--retro-tasks X`).
 - `db/build.py` : Build retrieval database.
-- `index/train.py` : Train index on subset of database.
-- `index/add.py` : Add database chunks to index.
+- `index/build.py` : Build search index. Calls the following two files:
+  - `index/train.py` : Train index on subset of database.
+  - `index/add.py` : Add database chunks to index.
 - `pretraining/query.py` : Query pretraining samples for database neighbors (saved to disk and used during pretraining).
 
 <!-- ################ stages ################ -->
@@ -53,7 +54,7 @@ We discard chunks that would convert to an empty Bert sequence (rare case, happe
 
 ### Build index for similarity search
 
-To match pretraining chunks to database chunks, a similarity search index must be built to perform this querying. We use Faiss (https://github.com/facebookresearch/faiss) for training and building this index. Generally, the index is trained on a subset of all chunks in the database (specified via `--retro-nchunks-sampled`). After training, all chunks are added into the index, to be available during querying.
+To match pretraining chunks to database chunks, a search index must be built to perform this querying. We use Faiss (https://github.com/facebookresearch/faiss) for training and building this index. Generally, the index is trained on a subset of all chunks in the database (specified via `--retro-nchunks-sampled`). After training, all chunks are added into the index, to be available during querying.
 
 Indexes only accept 1-D floating point vectors for training and adding, so each chunk must first be embedded before passing to the index for either training or adding. We use Bert embeddings for this purpose, and the embeddings are generated automatically within the pipeline.
 
@@ -146,7 +147,7 @@ Input data:
 
 Output data:
 
-- **`<RETRO_WORKDIR>/{train,valid,test}_?ns_?sl_?s/?.hdf5`** : These directories/files contain the indexes of neighbors for each chunk within each sample of the pretraining datasets. Each directory (e.g., `train_indexmap_2047435ns_2048sl_1234s`) contains a list of HDF5 files (e.g., one file might be called `0075700000-0075800000.hdf5`). Each HDF5 file contains a consecutive subset of neighbor IDs for a given chunk, for indexing into the main retrieval database. All HDF5 files taken together within a given directory, represent the entire set of neighbors for a dataset. The size of these HDF5 files is determined by the argument `--retro-block-size`. These files are ultimated used by `retro_dataset.py` during pretraining, for building Retro samples.
+- **`<RETRO_WORKDIR>/{train,valid,test}_XXns_YYsl_ZZs/WW.hdf5`** : These directories/files contain the indexes of neighbors for each chunk within each sample of the pretraining datasets. Each directory (e.g., `train_indexmap_2047435ns_2048sl_1234s`) contains a list of HDF5 files (e.g., one file might be called `0075700000-0075800000.hdf5`). Each HDF5 file contains a consecutive subset of neighbor IDs for a given chunk, for indexing into the main retrieval database. All HDF5 files taken together within a given directory, represent the entire set of neighbors for a dataset. The size of these HDF5 files is determined by the argument `--retro-block-size`. The `XX`, `YY`, `ZZ`, `WW` notation above denotes the dataset properties that are used for uniquely tagging the neighbor files, to ensure compatibility during model pretraining. These neighbor files are ultimated used by `retro_dataset.py` during pretraining, for building Retro samples.
 
 ### `tools/retro/cli`
 
@@ -167,7 +168,7 @@ retro.get_pt_sample('train', 62005) # '[16084, 26158, 25387 ..., 6898, 9568]'
 
 Most methods within the CLI are prefixed to denote the data being inspected:
 
-- **'db'** : Retrieval database data (i.e., chunk tokens, document IDs, and dataset IDs)
+- **'db'** : Retrieval database (i.e., chunk tokens, document IDs, and dataset IDs)
 - **'pt'** : Pretraining datasets (i.e., sample tokens and neighbor tokens)
 
 ### `tools/retro/utils.py`
