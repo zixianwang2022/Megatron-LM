@@ -130,14 +130,12 @@ def get_retro_datasets():
         # Verify num chunks.
         n_sample_chunks = len(chunk_dataset)
         n_neighbor_chunks = len(neighbor_path_map.id_index_map)
-        try:
-            assert n_sample_chunks == n_neighbor_chunks, \
-                "inconsistent n_chunks; %d vs. %d." % \
-                (n_sample_chunks, n_neighbor_chunks)
-        except Exception as e:
+
+        if n_sample_chunks != n_neighbor_chunks:
             print("neighbor_dir : %s" % neighbor_dir)
             print("neighbor_path_map : %s" % neighbor_path_map)
-            raise e
+            raise Exception("num sampled chunks (%d) != num neighbor chunks (%d)"
+                            % (n_sample_chunks, n_neighbor_chunks))
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(

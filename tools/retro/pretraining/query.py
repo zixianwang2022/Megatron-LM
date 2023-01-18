@@ -222,22 +222,7 @@ def query_pretraining_neighbors():
     args = get_retro_args()
 
     # Num threads.
-    world_size = torch.distributed.get_world_size()
-    if world_size == 1:
-        n_threads = 128
-    elif world_size <= 2:
-        n_threads = 64
-    elif world_size <= 4:
-        n_threads = 32
-    elif world_size <= 8:
-        n_threads = 16
-    else:
-        n_threads = 8
-
-    # faiss.omp_set_num_threads(n_threads)
-    faiss.omp_set_num_threads(16) # 32) # 4 procs/node
-    # faiss.omp_set_num_threads(128) # 1 proc/node
-    # print("n_threads = %d." % faiss.omp_get_max_threads())
+    faiss.omp_set_num_threads(16) # <= 4 procs/node, <= 64 threads/node
 
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")
