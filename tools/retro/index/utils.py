@@ -134,17 +134,22 @@ def get_training_data_merged():
     ds_infos = get_indexed_dataset_infos()
     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
 
+    # >>> [ for testing; remove ] >>>
+    # Load ratio .... ?
     load_ratio = 1. # [ bad ]
     # load_ratio = 2.8 / 3 # [ timeout ]
     # load_ratio = 2.5 / 3 # [ timeout ]
     # load_ratio = 2.0 / 3 # [ success ]
     # load_ratio = 0.1 / 3
+    # <<<
 
     # Initialize merged data.
     print("allocate training data array.")
     t = time.time()
     data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
+    # >>>
     # data.fill(0) # ... allocates 1.2TB for real; *essential* for performance
+    # <<<
     print("  time : %.3f sec." % (time.time() - t))
 
     # Data groups (minimizing fragmentation).
@@ -177,8 +182,9 @@ def get_training_data_merged():
         data = data[:start_idx]
         print("> training block data.shape = %s." % str(data.shape))
 
+        # >>>
         # Verify.
         # assert start_idx == n_chunks_sampled
+        # <<<
 
     return data
-# <<<

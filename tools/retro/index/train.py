@@ -70,7 +70,9 @@ def remove_embeddings():
         return
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
+    # >>>
     raise Exception("ready to delete?")
+    # <<<
     shutil.rmtree(get_training_data_dir())
 
 

@@ -3,7 +3,6 @@
 set -u
 
 ######## Environment vars. ########
-# Set environment vars by calling script pointed to by '$RETRO_ENV_VARS'.
 # Required env vars:
 # - RETRO_WORKDIRS : Root directory that contains independent Retro projects
 #     (e.g., for training on different datasets or blends). Each project sub-
@@ -18,7 +17,10 @@ set -u
 # - BERT_TOKENIZER : Bert tokenizer type (e.g., BertWordPieceLowerCase,
 #     BertWordPieceCase).
 
+# >>> [ clean up. ]
+# Set environment vars by calling script pointed to by '$RETRO_ENV_VARS'.
 . $RETRO_ENV_VARS
+# <<<
 
 ######## Data corpus. ########
 # CORPUS="wiki"
@@ -72,10 +74,10 @@ DATA_PATH=${DATA_BLEND}
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 
 # ** run preprocessing pipeline **
-# RETRO_TASKS="build"
+RETRO_TASKS="build"
 
 # ** call independent stages **
-RETRO_TASKS="db-build"
+# RETRO_TASKS="db-build"
 # RETRO_TASKS="index-build"
 # .. RETRO_TASKS="index-train" # train sub-unit of index-build
 # .. RETRO_TASKS="index-add" # add sub-unit of index-build

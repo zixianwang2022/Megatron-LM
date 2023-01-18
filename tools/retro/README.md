@@ -85,6 +85,7 @@ Example scripts for setting arguments and launch Retro preprocessing. The key fi
 
 - `get_cmd.sh` : Sets up arguments and command for preprocessing. **Important note**: this script assumes a few environment variables are already set before it is called. Please see the `Environment vars.` section at the top of this file. Generally, environment variables must be set to determine the location of Retro workdirs, input datasets, and GPT and Bert model information.
 - `run_main.sh` : Calls `get_cmd.sh` to get arguments, and then calls `main.py` to launch preprocessing.
+- `pretrain_wiki.sh` : ?
 
 ### `tools/retro/db`
 
@@ -110,21 +111,71 @@ Query the pretraining datasets (training, validation, test) for their neighbors 
 - `retro_dataset.py` : The Retro dataset used for pretraining (not used in preprocessing). Each sample returns the sample tokens, along with neighbor tokens for each chunk within the sample.
 
 ### `tools/retro/cli`
+
+Inspect preprocessed data. To use the CLI, open a Python terminal via the `python` command, and then load a Retro workdir with the following:
+
+```
+from tools.retro.cli import retro
+retro.init("/path/to/retro/workdir")
+```
+
+This initializes Megatron, and prepares the Retro data for inspection. See the printed usage for available functions. Several routines are included for viewing data in the retrieval database and viewing pretraining samples and neighbors. For example:
+
+```python
+retro.get_db_num_indexed_datasets() # 15
+retro.get_db_chunk_text(92874113) # 'research project at ...  and philosophy'
+retro.get_pt_sample('train', 62005) # '[16084, 26158, 25387 ..., 6898, 9568]'
+```
+
+Most methods within the CLI are prefixed to denote the data being inspected:
+
+- **'db'** : Retrieval database data (i.e., chunk tokens, document IDs, and dataset IDs)
+- **'pt'** : Pretraining datasets (i.e., sample tokens and neighbor tokens)
+
 ### `tools/retro/utils`
+
+
 ### `tools/bert_embedding`
+
+Generate Bert embeddings. The main files here are:
+
+- **`embed.py`** : Entry point for generating embeddings, and contains the two main embedding classes, `BertEmbedder` and `DiskDataParallelBertEmbedder` (more below). This file contains code for generating Megatron embeddings, while the file below contains code for Huggingface embeddings.
+- **`huggingface.py`** : Used by `embed.py` when the embedder is configured (see below) to output Huggingface embeddings.
+- **`dataset.py`** : Wrapper class for converting a raw-text dataset to Bert (Wordpiece) tokens.
+
+The Bert embeddings can be configured along two axes. The first axis is the output type:
+
+- **`class BertEmbedder`** : This class takes a raw-text dataset as input, generates its embeddings, and returns a Numpy array. The main functions are `embed_text_dataset` (accepts a raw-text dataset) and `embed_text` (accepts a string).
+- **`class DiskDataParallelBertEmbedder`** : This class wraps `BertEmbedder`, and rather than returning a Numpy array, it saves the embeddings to disk. Additionally, this class automatically splits data across data parallel ranks (using interleaving), and also processes data in a specified `block_size` (e.g., 1,000,000).
+
+The second axis is the type of embedding model to use, controlled by the argument `--bert-embedder-type`:
+
+- **`--bert-embedder-type megatron`** : Use Megatron's Bert model. The specific model used is dependent on the loaded checkpoint, vocab file, and tokenizer.
+- **`--bert-embedder-type huggingface`** : Use Huggingface's `bert-large-cased`. (*Note*: Huggingface's inclusion is likely to be deprecated; and there is no ability to configure cased/uncased.)
 
 ### Pretraining
 
-- `pretrain_retro.py` : Launch script for pretraining Retro. Similar to `pretrain_gpt.py`, except this script handles loading neighbor tokens and setting up the neighbor attention mask.
+- **`pretrain_retro.py`** : Launch script for pretraining Retro. Similar to `pretrain_gpt.py`, except this script handles loading neighbor tokens and setting up the neighbor attention mask.
 <!-- - `megatron/data/gpt_dataset.py` : ? -->
-- `megatron/model/retro_transformer.py` : Implementation of Retro model, including the main transformer, the retrieval encoder, and chunked cross-attention layers. Note that currently, `retro_transformer.py` contains several classes that are nearly identical to `transformer.py`, except for 1 or 2 lines, due to code changes that are yet to be integrated.
+- **`megatron/model/retro_transformer.py`** : Implementation of Retro model, including the main transformer, the retrieval encoder, and chunked cross-attention layers. Note that currently, `retro_transformer.py` contains several classes that are nearly identical to `transformer.py`, except for 1 or 2 lines, due to code changes that are yet to be integrated.
 
 
 <!-- ################ arguments ################ -->
 # Arguments
 
-<!-- ################ pretraining ################ -->
-# Pretraining
+See `tools/retro/main.py`'s `add_retro_args()` and `megatron/arguments.py`'s `_add_retro_args()` for details and descriptions. Here we list some particularly important arguments:
 
-- New retro args in arguments.py (add_retro_args).
-- Most important arg is `--retro-add-retriever`.
+- `--retro-workdir` : Mentioned previously, this argument determines the directory in which a set of Retro data is stored (during preprocessing) and loaded (during pretraining). Any change in this directory during preprocessing may result in preprocessing starting over from scratch, and any change before pretraining will result in pretraining throwing an error.
+- Preprocessing
+  - `--retro-gpt-chunk-length` : Retro chunk length (e.g., 64 in original paper).
+  - `--retro-tasks` : Comma-separated list of preprocessing tasks. Generally, the `build` task is the simplest way to run the preprocessing pipeline. For finer control, individual stages can be run by using tasks (in order): `db-build`, `index-build`, and `pretraining-query-neighbors`.
+  - `--retro-index-str` : Faiss index string that defines the index configuration. This will vary based on data size, compute/disk setup, and user needs. For example, this string looks something like `IVF262144_HNSW32,Flat` or `OPQ32_256,IVF4194304_HNSW32,PQ32`.
+- Pretraining
+  - `--retro-add-retriever` : Must be used to select Retro model.
+  - `--retro-num-neighbors` : Number of neighbors to retrieve from the retrieval database (defaults to 2).
+  - `--retro-num-retrieved-chunks` : For each neighbor, the number consecutive chunks to retrieve, including the initial neighbor (defaults to 2).
+
+<!-- ################ pretraining ################ -->
+<!-- # Pretraining -->
+<!-- - New retro args in arguments.py (add_retro_args). -->
+<!-- - Most important arg is `--retro-add-retriever`. -->

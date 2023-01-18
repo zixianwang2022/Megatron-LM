@@ -29,7 +29,7 @@ from tools.retro.utils import get_args_path
 
 
 def add_retro_args(parser):
-    """Retrieval-LM ('Retro') preprocesing arguments."""
+    """Retro preprocesing arguments."""
 
     group = parser.add_argument_group(title = "Retro preprocessing.")
 

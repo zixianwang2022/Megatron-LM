@@ -139,7 +139,5 @@ class FaissParallelAddIndex(Index):
         self.encode(text_dataset)
         if torch.distributed.get_rank() == 0:
             self.add_codes()
-            # >>>
-            # self.remove_codes() # debugging ... manually remove, for now
-            # <<<
+            self.remove_codes()
         torch.distributed.barrier()

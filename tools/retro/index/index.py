@@ -15,7 +15,9 @@ class Index:
         '''Make index object verbose.'''
         assert isinstance(v, bool)
         faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
+        # >>>
         # index.verbose = True # ... maybe?
+        # <<<
 
 
     @classmethod
