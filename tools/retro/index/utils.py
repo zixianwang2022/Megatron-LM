@@ -130,12 +130,12 @@ def get_training_data_merged():
     # Setup.
     ds_infos = get_indexed_dataset_infos()
     n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
-    load_fraction = args.retro_index_train_load_fractionn
+    load_fraction = args.retro_index_train_load_fraction
 
     # Initialize merged data.
     print("allocate training data array.")
     t = time.time()
-    data = np.empty((n_chunks_sampled, args.retro_nfeats), dtype = "f4")
+    data = np.empty((n_chunks_sampled, args.retro_index_nfeats), dtype = "f4")
     print("  time : %.3f sec." % (time.time() - t))
 
     # Data groups (minimizing fragmentation).

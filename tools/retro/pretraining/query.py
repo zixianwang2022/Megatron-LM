@@ -23,7 +23,7 @@ from tools.retro.utils import GPTToTextDataset
 from .chunk_dataset import get_chunk_dataset_map
 
 
-def get_index(chunk_db_dataset, ondisk = False):
+def get_index(chunk_db_dataset, ondisk=False):
     '''Read index from disk.'''
 
     args = get_retro_args()
@@ -61,7 +61,7 @@ def embed_block(gpt_dataset, block, embedder):
 
 def query_embeddings(index, banned_chunk_map, chunk_id_range,
                      embeddings, sample_map, n_chunks_per_sample,
-                     verbose = True):
+                     verbose=True):
     '''Query neighbors of a block of embeddings.'''
 
     args = get_retro_args()
@@ -88,9 +88,9 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
     # Filter banned neighbor ids.
     if verbose: print_rank_0("filter banned neighbor ids.")
     filtered_neighbor_ids = np.full(
-        shape = (len(query_neighbor_ids), args.retro_num_neighbors_target),
-        fill_value = -1,
-        dtype = "int64",
+        shape=(len(query_neighbor_ids), args.retro_num_neighbors_target),
+        fill_value=-1,
+        dtype="int64",
     )
     min_chunk_id, max_chunk_id = chunk_id_range
     for chunk_id in range(min_chunk_id, max_chunk_id):
@@ -134,13 +134,13 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
         partial_query_neighbor_ids, partial_filtered_neighbor_ids = \
             query_embeddings(index, banned_chunk_map, partial_chunk_id_range,
                              partial_embeddings, sample_map, n_chunks_per_sample,
-                             verbose = False)
+                             verbose=False)
         query_neighbor_ids.append(partial_query_neighbor_ids)
         filtered_neighbor_ids.append(partial_filtered_neighbor_ids)
 
     # Concatenate.
-    query_neighbor_ids = np.concatenate(query_neighbor_ids, axis = 0)
-    filtered_neighbor_ids = np.concatenate(filtered_neighbor_ids, axis = 0)
+    query_neighbor_ids = np.concatenate(query_neighbor_ids, axis=0)
+    filtered_neighbor_ids = np.concatenate(filtered_neighbor_ids, axis=0)
 
     return query_neighbor_ids, filtered_neighbor_ids
 
@@ -168,9 +168,9 @@ def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
 
     # Save neighbors.
     print_rank_0("save neighbors.")
-    os.makedirs(os.path.dirname(block["path"]), exist_ok = True)
+    os.makedirs(os.path.dirname(block["path"]), exist_ok=True)
     f = h5py.File(block["path"], "w")
-    f.create_dataset("neighbors", data = filtered_neighbor_ids)
+    f.create_dataset("neighbors", data=filtered_neighbor_ids)
     f.close()
 
 
@@ -191,7 +191,7 @@ def query_dataset_neighbors(index, banned_chunk_map,
         neighbor_dir,
         len(chunk_dataset),
         args.retro_block_size,
-        validate = validate,
+        validate=validate,
     )
 
     # Query each block.

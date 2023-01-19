@@ -43,7 +43,8 @@ class FaissBaseIndex(Index):
         inp = input_data_loader()
 
         # Init index.
-        index = faiss.index_factory(args.retro_nfeats, args.retro_index_str)
+        index = faiss.index_factory(args.retro_index_nfeats,
+                                    args.retro_index_str)
 
         # Move to GPU.
         index_ivf = faiss.extract_index_ivf(index)

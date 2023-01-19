@@ -21,46 +21,68 @@ from tools.retro.utils import get_args_path
 
 
 def add_retro_args(parser):
-    """Retro preprocesing arguments."""
+    """Retro preprocesing arguments.
 
-    group = parser.add_argument_group(title = "Retro preprocessing.")
+    *Note* : Arguments prefixed with '--retro-gpt-*' or '--retro-bert-*' are
+    included and named as such to more easily handle managing both models
+    running at the same time. Megatron is not optimized to run two models at
+    once, so this naming convention makes it clearer.
+    """
 
-    group.add_argument("--retro-gpt-vocab-file", required = True)
-    group.add_argument("--retro-gpt-merge-file", required = True)
-    group.add_argument("--retro-gpt-tokenizer-type", required = True)
-    group.add_argument("--retro-gpt-seq-length", type = int, required = True)
-    group.add_argument("--retro-gpt-chunk-length", type = int, required = True)
-    group.add_argument("--retro-bert-vocab-file", required = True)
-    group.add_argument("--retro-bert-tokenizer-type", required = True)
-    group.add_argument("--retro-bert-batch-size", type = int, required = True)
-    group.add_argument("--retro-bert-max-chunk-length", type=int, required=True)
+    group = parser.add_argument_group(title="Retro preprocessing.")
 
-    group.add_argument("--retro-tasks", required = True)
-    group.add_argument("--retro-nfeats", "-f", type = int, default = 1024)
-    group.add_argument("--retro-index-type", default = "faiss-par-add",
-                       choices = ["faiss-base", "faiss-par-add"],
+    group.add_argument("--retro-gpt-vocab-file", required=True,
+                       help="GPT vocab file.")
+    group.add_argument("--retro-gpt-merge-file", required=True,
+                       help="GPT merge file.")
+    group.add_argument("--retro-gpt-tokenizer-type", required=True,
+                       help="GPT tokenizer type.")
+    group.add_argument("--retro-gpt-seq-length",
+                       type=int, required=True, default=2048,
+                       help="GPT sequence length.")
+    group.add_argument("--retro-gpt-chunk-length",
+                       type=int, required=True, default=64,
+                       help="GPT chunk length.")
+    group.add_argument("--retro-bert-vocab-file", required=True,
+                       help="Bert vocab file.")
+    group.add_argument("--retro-bert-tokenizer-type", required=True,
+                       help="Bert tokenizer type (for when using "
+                       "'--bert-embedder-type megatron').")
+    group.add_argument("--retro-bert-batch-size",
+                       type=int, required=True, default=128,
+                       help="Micro-batch size for processing Bert embeddings.")
+    group.add_argument("--retro-bert-max-chunk-length",
+                       type=int, required=True, default=256,
+                       help="Maximum sequence length for Bert embeddings. "
+                       "(Named 'chunk' here in reference to these Bert "
+                       "sequences being converted from GPT chunks.)")
+    group.add_argument("--retro-tasks", required=True, default="build",
+                       help=")
+    group.add_argument("--retro-index-nfeats", "-f", type=int, default=1024)
+    group.add_argument("--retro-index-type", default="faiss-par-add",
+                       choices=["faiss-base", "faiss-par-add"],
                        help="A 'faiss-base' index is a simple, un-optimized "
                        "wrapper around a Faiss index. A 'faiss-par-add' index "
                        "optimizes the 'add()' method by making it multi-node "
                        "and multi-process, but with bit-wise equivalent "
                        "results.")
-    group.add_argument("--retro-index-str", required = True)
-    group.add_argument("--retro-ef-search", type = int, default = 256)
-    group.add_argument("--retro-nprobe", type = int, default = 65536)
-    group.add_argument("--retro-nchunks-sampled", type = int, required = True)
-    group.add_argument("--retro-doc-block-size", type = int, required = True)
-    group.add_argument("--retro-block-size", type = int, required = True)
+    group.add_argument("--retro-index-str", required=True)
+    group.add_argument("--retro-ef-search", type=int, default=256)
+    group.add_argument("--retro-nprobe", type=int, default=65536)
+    group.add_argument("--retro-nchunks-sampled", type=int, required=True)
+    group.add_argument("--retro-doc-block-size", type=int, required=True)
+    group.add_argument("--retro-block-size", type=int, required=True)
     group.add_argument("--retro-index-train-block-size",
-                       type = int, default=3750000)
+                       type=int, default=3750000)
     group.add_argument("--retro-index-train-load-fraction",
-                       type = float, default = 1.,
-                       help = "Fraction of sampled chunks to use for training "
+                       type=float, default=1.,
+                       help="Fraction of sampled chunks to use for training "
                        "the index. Useful when our total sampled embeddings "
                        "use too much memory; lowering the load fraction is "
                        "less costly than re-embedding a new sampled dataset "
                        "from scratch.")
-    group.add_argument("--retro-num-neighbors-query", type = int, required = True)
-    group.add_argument("--retro-num-neighbors-target", type = int, required=True)
+    group.add_argument("--retro-num-neighbors-query", type=int, required=True)
+    group.add_argument("--retro-num-neighbors-target", type=int, required=True)
 
     # Enforce argument naming convention.
     for action in group._group_actions:
