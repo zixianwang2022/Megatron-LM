@@ -16,6 +16,7 @@ set -u
 #     Loaded script will be '${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh'.
 # - GPT_VOCAB_FILE : GPT vocab file.
 # - GPT_MERGE_FILE : GPT merge file.
+# - GPT_TOKENIZER : GPT tokenizer type (e.g., GPT2BPETokenizer)
 # - BERT_LOAD_PATH : Bert checkpoint directory.
 # - BERT_VOCAB_FILE : Bert vocab file.
 # - BERT_TOKENIZER : Bert tokenizer type (e.g., BertWordPieceLowerCase,
@@ -99,12 +100,12 @@ RETRO_NCHUNKS_SAMPLED=300000000
 # RETRO_TASKS="build"
 
 # ---- Option #2 ----
-# *Note*: Run the following stages in this order, and potentially on tuned
-#   cluster setups, as described above.
+# *Note*: Run the following stages in the given order. Optionally, tune your
+#   cluster setup for each stage, as described above.
 
-# RETRO_TASKS="db-build"
-RETRO_TASKS="index-build"
-# RETRO_TASKS="pretraining-query-neighbors"
+# RETRO_TASKS="db-build" # ....................... run 1st
+RETRO_TASKS="index-build" # .................... run 2nd
+# RETRO_TASKS="pretraining-query-neighbors" # .... run 3rd
 
 ################ Megatron args. ################
 MEGATRON_ARGS=" \
@@ -152,11 +153,11 @@ RETRO_ARGS=" \
     \
     --retro-gpt-vocab-file ${GPT_VOCAB_FILE} \
     --retro-gpt-merge-file ${GPT_MERGE_FILE} \
-    --retro-gpt-tokenizer-type GPT2BPETokenizer \
+    --retro-gpt-tokenizer-type ${GPT_TOKENIZER} \
     --retro-gpt-seq-length ${RETRO_GPT_SEQ_LENGTH} \
     --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-bert-vocab-file ${BERT_VOCAB_FILE} \
-    --retro-bert-tokenizer-type BertWordPieceLowerCase \
+    --retro-bert-tokenizer-type ${BERT_TOKENIZER} \
     \
     --retro-tasks ${RETRO_TASKS} \
     --retro-index-str ${RETRO_INDEX_STR} \
