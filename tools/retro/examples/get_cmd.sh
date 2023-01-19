@@ -78,13 +78,7 @@ RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
 RETRO_GPT_MICRO_BATCH_SIZE=1 # *8
 RETRO_GPT_GLOBAL_BATCH_SIZE=256
-RETRO_BERT_BATCH_SIZE=128 # trade-off: mean seq length vs. batch size
-RETRO_BERT_MAX_CHUNK_LENGTH=256
 RETRO_NCHUNKS_SAMPLED=300000000
-RETRO_DOC_BLOCK_SIZE=100000
-RETRO_BLOCK_SIZE=100000
-RETRO_NUM_NEIGHBORS_QUERY=2000
-RETRO_NUM_NEIGHBORS_TARGET=200
 
 ################ Retro tasks. ################
 # The '--retro-tasks' argument is a comma-separated list of tasks to run, in
@@ -163,8 +157,6 @@ RETRO_ARGS=" \
     --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-bert-vocab-file ${BERT_VOCAB_FILE} \
     --retro-bert-tokenizer-type BertWordPieceLowerCase \
-    --retro-bert-batch-size ${RETRO_BERT_BATCH_SIZE} \
-    --retro-bert-max-chunk-length ${RETRO_BERT_MAX_CHUNK_LENGTH} \
     \
     --retro-tasks ${RETRO_TASKS} \
     --retro-index-str ${RETRO_INDEX_STR} \
@@ -173,10 +165,6 @@ RETRO_ARGS=" \
     \
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-nchunks-sampled ${RETRO_NCHUNKS_SAMPLED} \
-    --retro-doc-block-size ${RETRO_DOC_BLOCK_SIZE} \
-    --retro-block-size ${RETRO_BLOCK_SIZE} \
-    --retro-num-neighbors-query ${RETRO_NUM_NEIGHBORS_QUERY} \
-    --retro-num-neighbors-target ${RETRO_NUM_NEIGHBORS_TARGET} \
     \
     --retro-return-doc-ids \
 "
