@@ -1,7 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 from functools import partial
-import h5py
 import numpy as np
 import os
 import time
@@ -17,6 +16,7 @@ from megatron.schedules import get_forward_backward_func
 from megatron.training import setup_model_and_optimizer
 
 from .dataset import BertEmbeddingDataset
+from .external_libs import h5py
 from .huggingface import HuggingfaceEmbedder
 from .utils import get_missing_blocks_by_rank
 

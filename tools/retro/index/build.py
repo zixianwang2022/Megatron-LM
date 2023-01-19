@@ -1,6 +1,5 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import h5py
 import numpy as np
 import os
 import shutil
@@ -14,6 +13,7 @@ from tools.retro.db.utils import (
     get_merged_sampled_dataset,
     get_merged_train_dataset,
 )
+from tools.retro.external_libs import h5py
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
 

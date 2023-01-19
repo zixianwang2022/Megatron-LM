@@ -3,11 +3,8 @@
 import numpy as np
 import torch
 from tqdm import tqdm
-from transformers import (
-    AutoTokenizer,
-    BertModel,
-    FeatureExtractionPipeline,
-)
+
+from .external_libs import transformers
 
 
 class IterableTextDataset(torch.utils.data.IterableDataset):
@@ -24,7 +21,7 @@ class IterableTextDataset(torch.utils.data.IterableDataset):
             yield text
 
 
-class MyFeatureExtractionPipeline(FeatureExtractionPipeline):
+class MyFeatureExtractionPipeline(transformers.FeatureExtractionPipeline):
     def _forward(self, model_inputs):
 
         # Embed inputs.
@@ -66,8 +63,8 @@ class HuggingfaceEmbedder:
     def __init__(self, batch_size, max_seq_length):
 
         # Model, tokenizer.
-        self.model = BertModel.from_pretrained("bert-large-cased")
-        self.tokenizer = AutoTokenizer.from_pretrained(
+        self.model = transformers.BertModel.from_pretrained("bert-large-cased")
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             "bert-large-cased", model_max_length=max_seq_length)
 
         # Feature extraction pipeline.

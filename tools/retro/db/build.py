@@ -4,7 +4,6 @@ from collections import defaultdict
 from concurrent.futures import as_completed, ProcessPoolExecutor
 from functools import reduce
 import glob
-import h5py
 import json
 import numpy as np
 import os
@@ -21,6 +20,7 @@ from megatron.tokenizer.tokenizer import (
     _GPT2BPETokenizer,
 )
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
+from tools.retro.external_libs import h5py
 from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
 from .utils import (

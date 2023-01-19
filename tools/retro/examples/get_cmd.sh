@@ -95,17 +95,17 @@ RETRO_NCHUNKS_SAMPLED=300000000
 #    and 'pretraining-query-neighbors' -- we are ready to pretrain Retro by
 #    calling pretrain_retro.py.
 
-# ---- Option #1 : Run entire pipeline ----
+# ---- Option #1 : Run entire pipeline. ----
 
-# RETRO_TASKS="build"
+RETRO_TASKS="build"
 
-# ---- Option #2 ----
+# ---- Option #2 : Run specific stages.  ----
 # *Note*: Run the following stages in the given order. Optionally, tune your
 #   cluster setup for each stage, as described above.
 
 # RETRO_TASKS="db-build" # ....................... run 1st
 # RETRO_TASKS="index-build" # .................... run 2nd
-RETRO_TASKS="pretraining-query-neighbors" # .... run 3rd
+# RETRO_TASKS="pretraining-query-neighbors" # .... run 3rd
 
 ################ Megatron args. ################
 MEGATRON_ARGS=" \

@@ -1,10 +1,11 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 import abc
-import faiss
 import numpy as np
 import os
 import torch
+
+from tools.retro.external_libs import faiss
 
 from .utils import get_index_dir
 

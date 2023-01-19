@@ -8,13 +8,13 @@ inherit from this class (see FaissParAddIndex, for an example).
 """
 
 from datetime import timedelta
-import faiss
 import os
 import torch
 from tqdm import tqdm
 
 from megatron import get_retro_args, print_rank_0
 from tools.bert_embedding import BertEmbedder
+from tools.retro.external_libs import faiss
 from tools.retro.index import Index
 from tools.retro.index.utils import num_samples_to_block_ranges
 

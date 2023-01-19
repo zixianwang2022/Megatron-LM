@@ -1,8 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 from collections import defaultdict
-import faiss
-import h5py
 import numpy as np
 import os
 import time
@@ -16,6 +14,7 @@ from tools.retro.db.utils import (
     get_merged_train_dataset as get_db_merged_train_dataset,
     get_train_doc_chunk_map,
 )
+from tools.retro.external_libs import faiss, h5py
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_dir, num_samples_to_block_ranges
 from tools.retro.utils import GPTToTextDataset

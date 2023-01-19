@@ -1,11 +1,11 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import h5py
 import json
 import numpy as np
 import torch
 
 from megatron import get_args, print_rank_0
+from tools.retro.external_libs import h5py
 from tools.retro.utils import get_gpt_tokenizer
 
 

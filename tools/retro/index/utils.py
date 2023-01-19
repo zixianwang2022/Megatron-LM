@@ -3,7 +3,6 @@
 import concurrent
 import gc
 import glob
-import h5py
 import numpy as np
 import os
 import psutil
@@ -13,6 +12,7 @@ from tqdm import tqdm
 
 from megatron import get_retro_args, print_rank_0
 from tools.retro.db.utils import get_indexed_dataset_infos
+from tools.retro.external_libs import h5py
 
 
 def get_index_dir():
