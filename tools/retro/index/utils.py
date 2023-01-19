@@ -29,7 +29,7 @@ def get_index_dir():
     )
 
     # Make directory.
-    os.makedirs(index_dir_path, exist_ok = True)
+    os.makedirs(index_dir_path, exist_ok=True)
 
     return index_dir_path
 
@@ -112,7 +112,7 @@ def load_training_group(executor, group_info, load_fraction):
         block_datas.append(future.result())
 
     # Concatenate blocks.
-    group_data = np.concatenate(block_datas, axis = 0)
+    group_data = np.concatenate(block_datas, axis=0)
 
     # Garbage collect.
     for d in block_datas:
@@ -135,7 +135,7 @@ def get_training_data_merged():
     # Initialize merged data.
     print("allocate training data array.")
     t = time.time()
-    data = np.empty((n_chunks_sampled, args.retro_index_nfeats), dtype = "f4")
+    data = np.empty((n_chunks_sampled, args.retro_index_nfeats), dtype="f4")
     print("  time : %.3f sec." % (time.time() - t))
 
     # Data groups (minimizing fragmentation).

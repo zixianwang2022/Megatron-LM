@@ -29,17 +29,21 @@ def get_gpt_tokenizer():
     '''GPT (BPE) tokenizer.'''
     args = get_retro_args()
     return _GPT2BPETokenizer(
-        vocab_file = args.retro_gpt_vocab_file,
-        merge_file = args.retro_gpt_merge_file,
+        vocab_file=args.retro_gpt_vocab_file,
+        merge_file=args.retro_gpt_merge_file,
     )
 
 
 def get_bert_tokenizer():
     '''Bert (Wordpiece) tokenizer.'''
     args = get_retro_args()
+    lower_case = {
+        "BertWordPieceLowerCase" : True,
+        "BertWordPieceCase" : False,
+    }[args.retro_bert_tokenizer_type]
     return _BertWordPieceTokenizer(
-        vocab_file = args.retro_bert_vocab_file,
-        lower_case = True,
+        vocab_file=args.retro_bert_vocab_file,
+        lower_case=lower_case,
     )
 
 

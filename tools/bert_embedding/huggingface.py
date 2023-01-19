@@ -72,29 +72,29 @@ class HuggingfaceEmbedder:
 
         # Feature extraction pipeline.
         self.pipe = MyFeatureExtractionPipeline(
-            model      = self.model,
-            tokenizer  = self.tokenizer,
-            device     = torch.cuda.current_device(),
-            truncation = True,
-            max_length = max_seq_length,
+            model=self.model,
+            tokenizer=self.tokenizer,
+            device=torch.cuda.current_device(),
+            truncation=True,
+            max_length=max_seq_length,
         )
 
         self.batch_size = batch_size
 
-    def embed_text_dataset(self, text_dataset, verbose = True):
+    def embed_text_dataset(self, text_dataset, verbose=True):
 
         # Wrap dataset in iterable.
         dataset = IterableTextDataset(text_dataset)
 
         # Allocate output array.
         n_samples = len(text_dataset)
-        embeddings = np.zeros((n_samples, 1024), dtype = "f4")
+        embeddings = np.zeros((n_samples, 1024), dtype="f4")
         start_idx = 0
 
         # Wrap iterator in tqdm for verbose output.
-        _iter = self.pipe(dataset, batch_size = self.batch_size)
+        _iter = self.pipe(dataset, batch_size=self.batch_size)
         if verbose:
-            _iter = tqdm(_iter, "hf embed", total = n_samples)
+            _iter = tqdm(_iter, "hf embed", total=n_samples)
 
         # Embed dataset.
         for idx, out_dict in enumerate(_iter):
@@ -124,6 +124,6 @@ class HuggingfaceEmbedder:
 
         # Embed text.
         text_ds = SingleTextDataset(text)
-        embed = self.embed_text_dataset(text_ds, verbose = False)[0]
+        embed = self.embed_text_dataset(text_ds, verbose=False)[0]
 
         return embed

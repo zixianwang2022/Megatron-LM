@@ -28,7 +28,7 @@ def save_data(data_map, *args):
     if not os.path.isfile(path):
         f = h5py.File(path, "w")
         for k, v in data_map.items():
-            f.create_dataset(k, data = v)
+            f.create_dataset(k, data=v)
         f.close()
 
     return path
@@ -47,7 +47,7 @@ def load_data(paths):
         f.close()
 
     # Allocate output array.
-    data_map = { k : np.empty(s, dtype = "f4") for k, s in shape_map.items() }
+    data_map = { k : np.empty(s, dtype="f4") for k, s in shape_map.items() }
     start_map = { k : 0 for k in shape_map }
 
     # Load files.
@@ -64,7 +64,7 @@ def load_data(paths):
 
 
 def get_missing_blocks(workdir, n_samples, block_size,
-                       validate = lambda f : None):
+                       validate=lambda f : None):
     '''Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
@@ -127,7 +127,7 @@ def get_missing_blocks(workdir, n_samples, block_size,
 
 
 def get_missing_blocks_by_rank(workdir, n_samples, block_size,
-                               validate = lambda f : None):
+                               validate=lambda f : None):
     '''Divide missing blocks evenly across all ranks.
 
     See 'get_missing_blocks()' above for description. The returned list of
@@ -148,7 +148,7 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     # length lists. This allows for easier tracking of global progress.
     n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_blocks)])
     torch.distributed.all_reduce(n_missing_tensor,
-                                 op = torch.distributed.ReduceOp.MAX)
+                                 op=torch.distributed.ReduceOp.MAX)
     max_n_missing = n_missing_tensor.item()
     rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
 

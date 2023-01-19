@@ -123,8 +123,8 @@ def collate_batch(samples):
                 np.pad(
                     sample[key],
                     (0, max_length_map[key] - len(sample[key])),
-                    mode = "constant",
-                    constant_values = tokenizer.pad_id if key == "text" else 0,
+                    mode="constant",
+                    constant_values=tokenizer.pad_id if key == "text" else 0,
                 ) \
                 if isinstance(sample[key], np.ndarray) else \
                    sample[key]
@@ -147,17 +147,17 @@ def get_data_loader(dataset, batch_size):
 
     # Sequential & batch samplers.
     batch_sampler = BatchSampler(
-        sampler = SequentialSampler(dataset),
-        batch_size = batch_size,
-        drop_last = False,
+        sampler=SequentialSampler(dataset),
+        batch_size=batch_size,
+        drop_last=False,
     )
 
     # Data loader.
     data_loader = DataLoader(dataset,
-                             batch_sampler = batch_sampler,
-                             num_workers = args.num_workers,
-                             pin_memory = True,
-                             collate_fn = collate_batch)
+                             batch_sampler=batch_sampler,
+                             num_workers=args.num_workers,
+                             pin_memory=True,
+                             collate_fn=collate_batch)
 
     return data_loader
 
@@ -186,7 +186,7 @@ def embed_data_loader(models, data_loader):
             embeddings.append(result[0].detach().cpu().numpy())
 
     # Concatenate embeddings.
-    embeddings = np.concatenate(embeddings, axis = 0)
+    embeddings = np.concatenate(embeddings, axis=0)
 
     return embeddings
 
@@ -290,7 +290,7 @@ class DiskDataParallelBertEmbedder:
 
                 # Save embeddings.
                 f = h5py.File(block_info["path"], "w")
-                f.create_dataset("data", data = embeddings)
+                f.create_dataset("data", data=embeddings)
                 f.close()
 
             # Synchronize progress across all ranks. (for easier observation)
@@ -301,7 +301,7 @@ class DiskDataParallelBertEmbedder:
         '''Embed a text dataset.'''
 
         # Dataset workdir.
-        os.makedirs(workdir, exist_ok = True)
+        os.makedirs(workdir, exist_ok=True)
 
         # Missing embedding blocks (stored on disk).
         def validate(f):
@@ -310,7 +310,7 @@ class DiskDataParallelBertEmbedder:
             workdir,
             len(text_dataset),
             self.block_size,
-            validate = validate)
+            validate=validate)
 
         # Prevent missing file race condition.
         torch.distributed.barrier()

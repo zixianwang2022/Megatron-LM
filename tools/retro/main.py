@@ -136,7 +136,7 @@ def save_args(args):
     if torch.distributed.get_rank() == 0:
         args_path = get_args_path(args.retro_workdir)
         with open(args_path, "w") as f:
-            json.dump(vars(args), f, indent = 4, default = lambda o : "<skipped>")
+            json.dump(vars(args), f, indent=4, default=lambda o : "<skipped>")
 
     torch.distributed.barrier()
 
@@ -144,14 +144,14 @@ def save_args(args):
 if __name__ == "__main__":
 
     # Initalize Megatron.
-    initialize_megatron(extra_args_provider = add_retro_args)
+    initialize_megatron(extra_args_provider=add_retro_args)
 
     # Split retro tasks.
     args = get_args()
     args.retro_tasks = args.retro_tasks.split(",")
 
     # Save/set retro args.
-    os.makedirs(args.retro_workdir, exist_ok = True)
+    os.makedirs(args.retro_workdir, exist_ok=True)
     save_args(args)
     set_retro_args(args)
 

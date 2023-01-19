@@ -85,12 +85,13 @@ def forward_step(data_iterator, model):
     timers('batch-generator').start()
     if args.retro_add_retriever:
         tokens, labels, loss_mask, attention_mask, position_ids, \
-            neighbor_tokens, neighbor_attention_mask, neighbor_position_ids \
-            = get_batch(data_iterator)
+            neighbor_tokens, neighbor_attention_mask, neighbor_position_ids = \
+                get_batch(data_iterator)
     else:
         tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
             data_iterator)
-        neighbor_tokens, neighbor_attention_mask, neighbor_position_ids = None, None, None
+        neighbor_tokens, neighbor_attention_mask, neighbor_position_ids = \
+            None, None, None
     timers('batch-generator').stop()
 
     output_tensor = model(tokens, position_ids, attention_mask,

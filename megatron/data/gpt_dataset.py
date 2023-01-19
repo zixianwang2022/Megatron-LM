@@ -70,7 +70,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      train_valid_test_num_samples,
                                      seq_length, seed, skip_warmup,
-                                     return_doc_ids = False):
+                                     return_doc_ids=False):
     """Build train, valid, and test datasets."""
 
     # Indexed dataset.
@@ -189,7 +189,7 @@ class GPTDataset(torch.utils.data.Dataset):
 
     def __init__(self, name, data_prefix, documents, indexed_dataset,
                  num_samples, seq_length, seed,
-                 return_doc_ids = False):
+                 return_doc_ids=False):
 
         self.name = name
         self.indexed_dataset = indexed_dataset

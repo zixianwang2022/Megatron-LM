@@ -71,7 +71,7 @@ def remove_embeddings():
         return
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
-    shutil.rmtree(get_training_data_dir(), ignore_errors = True)
+    shutil.rmtree(get_training_data_dir(), ignore_errors=True)
 
 
 def train_index():

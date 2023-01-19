@@ -49,9 +49,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
 
         # Save neighbors.
         print_rank_0("save codes.")
-        os.makedirs(os.path.dirname(block["path"]), exist_ok = True)
+        os.makedirs(os.path.dirname(block["path"]), exist_ok=True)
         with h5py.File(block["path"], "w") as f:
-            f.create_dataset("data", data = codes)
+            f.create_dataset("data", data=codes)
 
     def encode(self, text_dataset):
         '''Encode text dataset, to be later added to index.'''
@@ -74,7 +74,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             codes_dir,
             len(text_dataset),
             args.retro_block_size,
-            validate = validate,
+            validate=validate,
         )
 
         # Encode each block.
@@ -130,7 +130,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         if torch.distributed.get_rank() != 0:
             return
         assert os.path.isfile(self.get_added_index_path())
-        shutil.rmtree(get_added_codes_dir(), ignore_errors = True)
+        shutil.rmtree(get_added_codes_dir(), ignore_errors=True)
 
     def add(self, text_dataset):
 

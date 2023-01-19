@@ -44,8 +44,8 @@ class DBDataset(torch.utils.data.Dataset):
 
         # Chunk token ids.
         token_ids = indexed_dataset.get(doc_id,
-                                        offset = token_start_idx,
-                                        length = chunk_length)
+                                        offset=token_start_idx,
+                                        length=chunk_length)
 
         # Extend chunks to max_chunk_length by padding with EOD tokens.
         if chunk_length != self.max_chunk_length:

@@ -138,8 +138,8 @@ class BertModel(MegatronModule):
         self.pre_process = pre_process
         self.post_process = post_process
 
-        self.return_pooled_output = args.output_bert_embeddings
-        if self.return_pooled_output:
+        self.return_embeddings = args.output_bert_embeddings
+        if self.return_embeddings:
             assert self.post_process and self.add_binary_head
 
         init_method = init_method_normal(args.init_method_std)
@@ -189,7 +189,7 @@ class BertModel(MegatronModule):
             lm_output, pooled_output = lm_output
 
             # Return pooled output (e.g., when computing Bert embeddings).
-            if self.return_pooled_output:
+            if self.return_embeddings:
 
                 # Sum attention mask.
                 embeddings = torch.transpose(lm_output, 0, 1)
@@ -197,9 +197,9 @@ class BertModel(MegatronModule):
 
                 # Collect masked embeddings.
                 output = torch.zeros(
-                    size = (embeddings.shape[0], embeddings.shape[2]),
-                    dtype = torch.float32,
-                    device = torch.cuda.current_device())
+                    size=(embeddings.shape[0], embeddings.shape[2]),
+                    dtype=torch.float32,
+                    device=torch.cuda.current_device())
                 for i, (embedding, mask) in enumerate(zip(embeddings, masks)):
                     output[i, :] = torch.mean(embedding[1: mask - 1], dim=0)
 

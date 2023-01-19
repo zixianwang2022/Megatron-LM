@@ -145,9 +145,9 @@ def build_partial_db(
             # Re-tokenize.
             chunk_end_idx = chunk_end_idxs[i]
             gpt_token_ids = indexed_dataset.get(
-                idx = doc_id,
-                offset = chunk_start_idx,
-                length = chunk_end_idx - chunk_start_idx,
+                idx=doc_id,
+                offset=chunk_start_idx,
+                length=chunk_end_idx - chunk_start_idx,
             )
             text = tokenizers.gpt.detokenize(gpt_token_ids)
             bert_token_ids = tokenizers.bert.tokenize(text)
@@ -173,7 +173,7 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
 
     # Make directory.
     db_dir = dataset_info["db_dir"]
-    os.makedirs(db_dir, exist_ok = True)
+    os.makedirs(db_dir, exist_ok=True)
 
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
@@ -183,7 +183,7 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
         db_dir,
         len(indexed_dataset.doc_idx) - 1,
         args.retro_doc_block_size,
-        validate = lambda f : f["chunks_valid"].shape[1] == 4)
+        validate=lambda f : f["chunks_valid"].shape[1] == 4)
 
     # Prevent missing-path-write race condition.
     torch.distributed.barrier()
@@ -204,7 +204,7 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
         n_procs = 8
 
     # Process documents in parallel.
-    with ProcessPoolExecutor(max_workers = n_procs) as executor:
+    with ProcessPoolExecutor(max_workers=n_procs) as executor:
         for block_idx, block in enumerate(missing_db_blocks):
 
             if block is not None:
@@ -246,8 +246,8 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
                 # Save DB.
                 print_rank_0(" > saving individual db.")
                 f = h5py.File(block["path"], "w")
-                dset = f.create_dataset("chunks_valid", data = chunk_db_valid)
-                dset = f.create_dataset("chunks_invalid", data = chunk_db_invalid)
+                dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
+                dset = f.create_dataset("chunks_invalid", data=chunk_db_invalid)
                 f.close()
 
             # Wait for all ranks to finish block.
@@ -264,8 +264,8 @@ def build_individual_dbs(indexed_dataset_infos):
 
     # Tokenizers.
     tokenizers = types.SimpleNamespace(
-        gpt = get_gpt_tokenizer(),
-        bert = get_bert_tokenizer(),
+        gpt=get_gpt_tokenizer(),
+        bert=get_bert_tokenizer(),
     )
 
     # Build individual DBs.
@@ -385,12 +385,12 @@ def merge_dbs(indexed_dataset_infos, db_type):
     # Build merged chunk db.
     if not os.path.exists(db_path):
 
-        os.makedirs(os.path.dirname(db_path), exist_ok = True)
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         f = h5py.File(db_path, "w")
 
         # Initialize output arrays.
-        merged_db = f.create_dataset("chunks", (n_chunks, 5), dtype = "i8")
-        n_written = f.create_dataset("n_written", (1,), dtype = "uint64")
+        merged_db = f.create_dataset("chunks", (n_chunks, 5), dtype="i8")
+        n_written = f.create_dataset("n_written", (1,), dtype="uint64")
         n_written[0] = 0
 
         # Iterate indexed datasets & collect chunks.
@@ -435,7 +435,7 @@ def get_partial_banned_chunk_map(proc_id, db_path, chunk_range_info):
     for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
             sub_chunk_db,
             "map banned docs, proc %d" % proc_id,
-            total = sub_chunk_db.shape[0],
+            total=sub_chunk_db.shape[0],
     )):
         chunk_id = start_chunk_id + rel_chunk_id
         banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
@@ -480,7 +480,7 @@ def build_doc_chunk_map(indexed_dataset_infos, db_type):
 
     # Build doc-chunk map.
     print_rank_0("build doc-chunk-map.")
-    with ProcessPoolExecutor(max_workers = n_procs) as executor:
+    with ProcessPoolExecutor(max_workers=n_procs) as executor:
 
         # Build partial chunk maps.
         futures = []

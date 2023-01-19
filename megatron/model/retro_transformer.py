@@ -1680,8 +1680,8 @@ class ParallelRetroTransformer(MegatronModule):
         #   is called here to be future-proof and corner-case-proof.
         hidden_states = core_utils.make_viewless_tensor(
             hidden_states,
-            requires_grad = True,
-            keep_graph = True,
+            requires_grad=True,
+            keep_graph=True,
         )
 
         # Transpose encoder output.

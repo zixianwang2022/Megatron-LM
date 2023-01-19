@@ -63,6 +63,6 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
                                        self.cls_id, self.sep_id,
                                        self.mask_id, self.pad_id,
                                        self.masked_lm_prob, np_rng,
-                                       binary_head = False)
+                                       binary_head=False)
         sample["seq_length"] = len(sample["text"])
         return sample

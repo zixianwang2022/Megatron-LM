@@ -93,7 +93,7 @@ class RetroDataset(torch.utils.data.Dataset):
         # Sample.
         sample = {
             **sample,
-            "neighbor_chunks" : all_retrieved_chunk_ids, # for debugging.
+            "neighbor_chunks" : all_retrieved_chunk_ids,
             "neighbor_tokens" : all_retrieved_token_ids,
         }
 
@@ -137,12 +137,12 @@ def get_retro_datasets():
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
-            num_neighbors = args.retro_num_neighbors,
-            num_retrieved_chunks = args.retro_num_retrieved_chunks,
-            block_size = retro_args.retro_block_size,
-            db_dataset = db_dataset,
-            chunk_dataset = chunk_dataset,
-            neighbor_path_map = neighbor_path_map,
+            num_neighbors=args.retro_num_neighbors,
+            num_retrieved_chunks=args.retro_num_retrieved_chunks,
+            block_size=retro_args.retro_block_size,
+            db_dataset=db_dataset,
+            chunk_dataset=chunk_dataset,
+            neighbor_path_map=neighbor_path_map,
         )
 
     # Extract datasets.

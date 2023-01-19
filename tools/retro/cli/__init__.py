@@ -61,16 +61,16 @@ class retro:
         cls.init_megatron(workdir)
 
         cls.tokenizers = types.SimpleNamespace(
-            gpt = get_gpt_tokenizer(),
-            bert = get_bert_tokenizer(),
+            gpt=get_gpt_tokenizer(),
+            bert=get_bert_tokenizer(),
         )
 
         # Load data.
         cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos()
         pt_train_ds, pt_valid_ds, _ = get_retro_datasets()
         cls.pt_datasets = types.SimpleNamespace(
-            train = pt_train_ds,
-            valid = pt_valid_ds,
+            train=pt_train_ds,
+            valid=pt_valid_ds,
         )
 
         # Print usage.
