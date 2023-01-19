@@ -104,8 +104,8 @@ RETRO_NCHUNKS_SAMPLED=300000000
 #   cluster setup for each stage, as described above.
 
 # RETRO_TASKS="db-build" # ....................... run 1st
-RETRO_TASKS="index-build" # .................... run 2nd
-# RETRO_TASKS="pretraining-query-neighbors" # .... run 3rd
+# RETRO_TASKS="index-build" # .................... run 2nd
+RETRO_TASKS="pretraining-query-neighbors" # .... run 3rd
 
 ################ Megatron args. ################
 MEGATRON_ARGS=" \
