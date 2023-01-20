@@ -1,19 +1,14 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+import importlib
+
 required_libs = [
     "h5py",
-    "transformers",
+    "transformers", # for huggingface bert
 ]
 
-def print_error(lib_name):
-    raise Exception(f"Missing library '{lib_name}'. Please build new container or manually install. Bert embedding requires: {required_libs}.")
-
-try:
-    import h5py
-except:
-    print_error("h5py")
-
-try:
-    import transformers
-except:
-    print_error("transformers")
+for lib in required_libs:
+    try:
+        globals()[lib] = importlib.import_module(lib)
+    except ImportError as e:
+        raise Exception(f"Missing one or more packages required for Bert embedding: {required_libs}. Tried importing '{lib}'.")
