@@ -18,13 +18,13 @@ The following overview goes into more detail on the pipeline, code structure, us
 <!-- ################ quick start ################ -->
 # Quick start
 
-See `examples/get_cmd.sh` for example usage.
+See `examples/get_preprocess_cmd.sh` for example arguments.
 
 Key files:
 
 - `main.py` : Entry point.
-- `examples/get_cmd.sh` : Build preprocessing command (for `main.py`).
-- `examples/run_main.sh` : Run preprocessing (calls `get_cmd.sh`, `main.py`).
+- `examples/get_preprocess_cmd.sh` : Build preprocessing command (for `main.py`).
+- `examples/preprocess_data.sh` : Run preprocessing (calls `get_preprocess_cmd.sh`, `main.py`).
 
 Use `--retro-tasks` to move through the preprocessing pipeline.
 
@@ -86,9 +86,9 @@ Multiple tasks can be specified by separating with commas (e.g., `--retro-tasks 
 
 Example scripts for setting arguments and launch Retro preprocessing. The key files here are:
 
-- **`get_cmd.sh`** : Sets up arguments and command for preprocessing. **Important note**: this script assumes a few environment variables are already set before it is called. Please see the `Environment vars.` section at the top of this file. Generally, environment variables must be set to determine the location of Retro workdirs, input datasets, and GPT and Bert model information.
-- **`run_main.sh`** : Calls `get_cmd.sh` to get arguments, and then calls `main.py` to launch preprocessing.
-- **`pretrain_wiki.sh`** : Example script for pretraining on Wikipedia data, after preprocessing is complete.
+- **`get_preprocess_cmd.sh`** : Sets up arguments and command for preprocessing. **Important note**: this script assumes a few environment variables are already set before it is called. Please see the `Environment vars.` section at the top of this file. Generally, environment variables must be set to determine the location of Retro workdirs, input datasets, and GPT and Bert model information.
+- **`preprocess_data.sh`** : Calls `get_preprocess_cmd.sh` to get arguments, and then calls `main.py` to launch preprocessing.
+- **`pretrain_model.sh`** : Example script for pretraining on Wikipedia data, after preprocessing is complete.
 
 ### `tools/retro/db`
 

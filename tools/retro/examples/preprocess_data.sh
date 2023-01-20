@@ -7,7 +7,7 @@ NPROCS=8 # NPROCS must be <= number of GPUs.
 
 ######## Environment vars. ########
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source ${DIR}/get_cmd.sh
+source ${DIR}/get_preprocess_cmd.sh
 
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "DIR = '$DIR'."

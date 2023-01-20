@@ -1,5 +1,9 @@
 #!/bin/bash
 
+"""
+Example script for pretraining Retro.
+"""
+
 set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -8,7 +12,8 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 NPROCS=8 # NPROCS must be <= number of GPUs.
 
 ######## Environment variables. ########
-# (See get_cmd.sh for description of environment variables and $RETRO_ENV_VARS.)
+# (See get_preprocess_cmd.sh for description of environment variables and
+#  $RETRO_ENV_VARS.)
 . $RETRO_ENV_VARS
 
 ######## Data corpus. ########
