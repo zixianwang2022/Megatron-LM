@@ -169,7 +169,7 @@ if __name__ == "__main__":
             query_pretraining_neighbors()
 
         # DB (i.e., chunk db).
-        if task == "db-build":
+        elif task == "db-build":
             build_db()
 
         # Index.

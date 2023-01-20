@@ -124,7 +124,7 @@ Build the search index. The key files here are:
 
 Input data:
 
-- **`<RETRO_WORKDIR>/db/merged/sample.hdf5`** : Chunks used for training the search index.
+- **`<RETRO_WORKDIR>/db/merged/sampled.hdf5`** : Chunks used for training the search index.
 - **`<RETRO_WORKDIR>/db/merged/train.hdf5`** : Chunks used for adding to the *trained* search index.
 
 Output data:

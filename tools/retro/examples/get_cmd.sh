@@ -5,6 +5,7 @@ Build preprocessing command for Retro.
 """
 
 set -u
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 ######## Environment variables. ########
 # Required environment variables:
@@ -32,39 +33,7 @@ set -u
 CORPUS="wiki-tiny"
 # CORPUS="corpus"
 
-if [ "$CORPUS" = "wiki-tiny" ]; then
-    RETRO_INDEX_STR="IVF4096_HNSW4,Flat"
-    RETRO_GPT_TRAIN_SAMPLES=31250
-    LR_DECAY_SAMPLES=2
-    LR_WARMUP_SAMPLES=1
-    RETRO_GPT_EVAL_INTERVAL=2000
-    RETRO_GPT_EVAL_ITERS=100
-    RETRO_EF_SEARCH=4
-    RETRO_NPROBE=64
-    BERT_EMBEDDER_TYPE=megatron
-fi
-if [ "$CORPUS" = "wiki" ]; then
-    RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
-    RETRO_GPT_TRAIN_SAMPLES=2037248
-    LR_DECAY_SAMPLES=2
-    LR_WARMUP_SAMPLES=1
-    RETRO_GPT_EVAL_INTERVAL=2000
-    RETRO_GPT_EVAL_ITERS=100
-    RETRO_EF_SEARCH=16
-    RETRO_NPROBE=4096
-    BERT_EMBEDDER_TYPE=megatron
-fi
-if [ "$CORPUS" = "corpus" ]; then
-    RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
-    RETRO_GPT_TRAIN_SAMPLES=192000000
-    LR_DECAY_SAMPLES=166400000
-    LR_WARMUP_SAMPLES=162761
-    RETRO_GPT_EVAL_INTERVAL=2000
-    RETRO_GPT_EVAL_ITERS=50
-    RETRO_EF_SEARCH=32
-    RETRO_NPROBE=4096
-    BERT_EMBEDDER_TYPE=huggingface
-fi
+. ${DIR}/get_corpus_config.sh
 
 ################ Repo. ################
 REPO="retro"
@@ -97,22 +66,19 @@ RETRO_NCHUNKS_SAMPLED=300000000
 
 # ---- Option #1 : Run entire pipeline. ----
 
-# RETRO_TASKS="build"
+RETRO_TASKS="build"
 
 # ---- Option #2 : Run specific stages. ----
 # *Note*: Run the following stages in the given order. Optionally, tune your
 #   cluster setup for each stage, as described above.
 
 # RETRO_TASKS="db-build" # ....................... run 1st
-RETRO_TASKS="index-build" # .................... run 2nd
+# RETRO_TASKS="index-build" # .................... run 2nd
 # RETRO_TASKS="pretraining-query-neighbors" # .... run 3rd
 
 ################ Megatron args. ################
 MEGATRON_ARGS=" \
-    --no-load-optim \
-    --exit-on-missing-checkpoint \
     --seed 1234 \
-    --no-async-tensor-model-parallel-allreduce \
     --distributed-timeout-minutes 600 \
     --tokenizer-type ${BERT_TOKENIZER} \
     --tensor-model-parallel-size 1 \
@@ -126,6 +92,8 @@ MEGATRON_ARGS=" \
     --max-position-embeddings 512 \
     --train-samples ${RETRO_GPT_TRAIN_SAMPLES} \
     --load ${BERT_LOAD_PATH} \
+    --exit-on-missing-checkpoint \
+    --no-load-optim \
     --data-path ${DATA_PATH} \
     --vocab-file ${BERT_VOCAB_FILE} \
     --data-impl mmap \
@@ -144,6 +112,8 @@ MEGATRON_ARGS=" \
     --DDP-impl local \
     --dataloader-type cyclic \
     --no-data-sharding \
+    --no-gradient-accumulation-fusion \
+    --no-async-tensor-model-parallel-allreduce \
 "
 
 ################ Retro args. ################

@@ -3,12 +3,20 @@
 set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 NPROCS=8 # NPROCS must be <= number of GPUs.
 
 ######## Environment variables. ########
 # (See get_cmd.sh for description of environment variables and $RETRO_ENV_VARS.)
 . $RETRO_ENV_VARS
+
+######## Data corpus. ########
+# CORPUS="wiki"
+CORPUS="wiki-tiny"
+# CORPUS="corpus"
+
+. ${DIR}/get_corpus_config.sh
 
 ######## Data blend. ########
 . ${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh
@@ -21,11 +29,14 @@ RETRO_CYCLIC_TRAIN_ITERS=750000
 RETRO_NUM_NEIGHBORS=2
 
 ######## Arguments. ########
-CHECKPOINT_DIR=${RETRO_WORKDIR}/checkpoints/interactive
+CHECKPOINT_DIR=${RETRO_WORKDIR}/checkpoints/${RETRO_ADD_RETRIEVER}
 TENSORBOARD_DIR="${CHECKPOINT_DIR}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 options=" \
+    --save-interval 100 \
+    --save ${CHECKPOINT_DIR} \
     --load ${CHECKPOINT_DIR} \
+    --tensorboard-dir ${TENSORBOARD_DIR} \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 12 \
@@ -35,15 +46,15 @@ options=" \
     --max-position-embeddings 2048 \
     --micro-batch-size 4 \
     --global-batch-size 256 \
-    --train-samples  2037248  \
-    --lr-decay-samples 166400000 \
-    --lr-warmup-samples 162761 \
+    --train-samples ${RETRO_GPT_TRAIN_SAMPLES}  \
+    --lr-decay-samples ${LR_DECAY_SAMPLES} \
+    --lr-warmup-samples ${LR_WARMUP_SAMPLES} \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
     --log-interval 10 \
-    --eval-iters 100 \
-    --eval-interval 2000 \
+    --eval-interval ${RETRO_GPT_EVAL_INTERVAL} \
+    --eval-iters ${RETRO_GPT_EVAL_ITERS} \
     --data-path ${DATA_PATH} \
     --vocab-file ${GPT_VOCAB_FILE} \
     --merge-file ${GPT_MERGE_FILE} \
@@ -59,6 +70,7 @@ options=" \
     --DDP-impl local \
     --dataloader-type cyclic \
     --no-data-sharding \
+    --no-gradient-accumulation-fusion \
 "
 
 if [ "$RETRO_ADD_RETRIEVER" = "0" ]; then
