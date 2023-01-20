@@ -29,8 +29,8 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 . $RETRO_ENV_VARS
 
 ################ Data corpus. ################
-# CORPUS="wiki"
-CORPUS="wiki-tiny"
+CORPUS="wiki"
+# CORPUS="wiki-tiny"
 # CORPUS="corpus"
 
 . ${DIR}/get_corpus_config.sh

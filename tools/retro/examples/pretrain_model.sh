@@ -9,7 +9,7 @@ unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-NPROCS=1 # NPROCS must be <= number of GPUs.
+NPROCS=8 # NPROCS must be <= number of GPUs.
 
 ######## Environment variables. ########
 # (See get_preprocess_cmd.sh for description of environment variables and
@@ -17,8 +17,8 @@ NPROCS=1 # NPROCS must be <= number of GPUs.
 . $RETRO_ENV_VARS
 
 ######## Data corpus. ########
-# CORPUS="wiki"
-CORPUS="wiki-tiny"
+CORPUS="wiki"
+# CORPUS="wiki-tiny"
 # CORPUS="corpus"
 
 . ${DIR}/get_corpus_config.sh
@@ -29,7 +29,7 @@ DATA_PATH=${DATA_BLEND}
 
 ######## Retro setup. ########
 RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
-RETRO_ADD_RETRIEVER=0
+RETRO_ADD_RETRIEVER=1
 RETRO_CYCLIC_TRAIN_ITERS=750000
 RETRO_NUM_NEIGHBORS=2
 
@@ -38,10 +38,11 @@ CHECKPOINT_DIR=${RETRO_WORKDIR}/checkpoints/${RETRO_ADD_RETRIEVER}
 TENSORBOARD_DIR="${CHECKPOINT_DIR}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 options=" \
-    --save-interval 100 \
+    --save-interval 1000 \
     --save ${CHECKPOINT_DIR} \
     --load ${CHECKPOINT_DIR} \
     --tensorboard-dir ${TENSORBOARD_DIR} \
+    --log-interval 100 \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 12 \
@@ -57,7 +58,6 @@ options=" \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
-    --log-interval 10 \
     --eval-interval ${RETRO_GPT_EVAL_INTERVAL} \
     --eval-iters ${RETRO_GPT_EVAL_ITERS} \
     --data-path ${DATA_PATH} \
