@@ -10,6 +10,7 @@ if [ "$CORPUS" = "wiki-tiny" ]; then
     export RETRO_EF_SEARCH=4
     export RETRO_NPROBE=64
     export BERT_EMBEDDER_TYPE=megatron
+    export DATALOADER_TYPE=cyclic
 fi
 if [ "$CORPUS" = "wiki" ]; then
     export RETRO_INDEX_STR="IVF262144_HNSW32,Flat"
@@ -21,6 +22,7 @@ if [ "$CORPUS" = "wiki" ]; then
     export RETRO_EF_SEARCH=16
     export RETRO_NPROBE=4096
     export BERT_EMBEDDER_TYPE=megatron
+    export DATALOADER_TYPE=cyclic
 fi
 if [ "$CORPUS" = "corpus" ]; then
     export RETRO_INDEX_STR="OPQ32_256,IVF4194304_HNSW32,PQ32"
@@ -32,4 +34,5 @@ if [ "$CORPUS" = "corpus" ]; then
     export RETRO_EF_SEARCH=32
     export RETRO_NPROBE=4096
     export BERT_EMBEDDER_TYPE=huggingface
+    export DATALOADER_TYPE=single
 fi

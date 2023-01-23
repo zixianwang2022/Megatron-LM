@@ -110,7 +110,7 @@ MEGATRON_ARGS=" \
     --eval-iters ${RETRO_GPT_EVAL_ITERS} \
     --fp16 \
     --DDP-impl local \
-    --dataloader-type cyclic \
+    --dataloader-type ${DATALOADER_TYPE} \
     --no-data-sharding \
     --no-gradient-accumulation-fusion \
     --no-async-tensor-model-parallel-allreduce \
