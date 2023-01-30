@@ -8,12 +8,11 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ################ Dataset configs. ################
 # This script contains methods to customize arguments to specific dataset
 # types. Customize this script as needed for your datasets.
-# 
 . $DIR/get_dataset_configs.sh
 
 ######## Environment variables. ########
 # Required environment variables:
-# - REPO_DIR : Root directory of Megatron code directory.
+# - REPO_DIR : Root directory of Megatron codebase.
 # - RETRO_WORKDIR : Root directory of this Retro project's processed data. (For
 #     example, this project directory might be for a blended dataset, while
 #     another project directory might be for just a Wikipedia dataset, and
@@ -44,7 +43,6 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 DATA_PATH=${DATA_BLEND}
 
 ################ Retro setup. ################
-# RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
 RETRO_GPT_MICRO_BATCH_SIZE=1 # *8
