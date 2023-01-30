@@ -1,20 +1,29 @@
 #!/bin/bash
 
-"""
-Build preprocessing command for Retro.
-"""
+# Build preprocessing command for Retro.
 
 set -u
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+################ Dataset configs. ################
+# This script contains methods to customize arguments to specific dataset
+# types. Customize this script as needed for your datasets.
+# 
+. $DIR/get_dataset_configs.sh
+
 ######## Environment variables. ########
 # Required environment variables:
-# - RETRO_WORKDIRS : Root directory that contains independent Retro projects
-#     (e.g., for training on different datasets or blends). Each project sub-
-#     directory will contain a complete set of preprocessed data, including
-#     the retrieval database, search index, and pretraining neighbors.
-# - BLEND_SCRIPT_DIR : Directory containing blended dataset definition files.
-#     Loaded script will be '${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh'.
+# - REPO_DIR : Root directory of Megatron code directory.
+# - RETRO_WORKDIR : Root directory of this Retro project's processed data. (For
+#     example, this project directory might be for a blended dataset, while
+#     another project directory might be for just a Wikipedia dataset, and
+#     another for just Book Corpus data, etc.) This project directory will
+#     contain a complete set of processed data, including the retrieval
+#     database, search index, and pretraining neighbors.
+# - RETRO_TASKS : One of 'build', 'db-build', 'index-build', or
+#     'pretraining-query-neighbors'. See 'Retro tasks' below for task
+#     descriptions.
+# - DATA_BLEND_SCRIPT : Path to blended dataset definition file.
 # - GPT_VOCAB_FILE : GPT vocab file.
 # - GPT_MERGE_FILE : GPT merge file.
 # - GPT_TOKENIZER : GPT tokenizer type (e.g., GPT2BPETokenizer)
@@ -22,28 +31,20 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # - BERT_VOCAB_FILE : Bert vocab file.
 # - BERT_TOKENIZER : Bert tokenizer type (e.g., BertWordPieceLowerCase,
 #     BertWordPieceCase).
+# - BERT_EMBEDDER_TYPE : One of 'megatron' or 'huggingface'.
+# - EXTRA_ARGS : Extra arguments (else, leave empty).
 
 # *Note*: The variables above can be set however a user would like. In our
 # setup, we use another bash script (location defined in $RETRO_ENV_VARS) that
 # sets all the environment variables at once.
 . $RETRO_ENV_VARS
 
-################ Data corpus. ################
-CORPUS="wiki"
-# CORPUS="wiki-tiny"
-# CORPUS="corpus"
-
-. ${DIR}/get_corpus_config.sh
-
-################ Repo. ################
-REPO="retro"
-
 ################ Data blend. ################
-. ${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh
+. ${DATA_BLEND_SCRIPT}
 DATA_PATH=${DATA_BLEND}
 
 ################ Retro setup. ################
-RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
+# RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 RETRO_GPT_SEQ_LENGTH=2048
 RETRO_GPT_CHUNK_LENGTH=64
 RETRO_GPT_MICRO_BATCH_SIZE=1 # *8
@@ -66,7 +67,7 @@ RETRO_NCHUNKS_SAMPLED=300000000
 
 # ---- Option #1 : Run entire pipeline. ----
 
-RETRO_TASKS="build"
+# RETRO_TASKS="build" # (*note*: default tasks)
 
 # ---- Option #2 : Run specific stages. ----
 # *Note*: Run the following stages in the given order. Optionally, tune your
@@ -145,4 +146,5 @@ RETRO_PREPROCESS_CMD=" \
     ./tools/retro/main.py \
     ${MEGATRON_ARGS} \
     ${RETRO_ARGS} \
+    ${EXTRA_ARGS} \
 "

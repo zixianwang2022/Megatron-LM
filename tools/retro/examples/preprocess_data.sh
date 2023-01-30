@@ -3,11 +3,11 @@
 set -u
 unset NCCL_DEBUG
 
-NPROCS=8 # NPROCS must be <= number of GPUs.
+NPROCS=16 # NPROCS must be <= number of GPUs.
 
 ######## Environment vars. ########
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source ${DIR}/get_preprocess_cmd.sh
+. ${DIR}/get_preprocess_cmd.sh
 
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "DIR = '$DIR'."
@@ -16,8 +16,8 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
 ######## Command. ########
 FULL_CMD="\
-    pwd && cd $SHARE_SOURCE/megatrons/megatron-lm-${REPO} && pwd && \
-    export PYTHONPATH=$PYTHONPATH:${SHARE_SOURCE}/megatrons/megatron-lm-${REPO}&&\
+    pwd && cd ${REPO_DIR} && pwd && \
+    export PYTHONPATH=$PYTHONPATH:${REPO_DIR} && \
     python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \

@@ -2,7 +2,7 @@
 
 """Preprocess data for Retro.
 
-Tasks:
+Stages (see argument '--retro-tasks'):
 - Build chunk database (DB).
 - Build index (train, add).
 - Query pretraining neighbors.
@@ -58,7 +58,9 @@ def add_retro_args(parser):
                        "Alternatively, run individual stages with tasks (in "
                        "this order) 'db-build', 'index-build', or "
                        "'pretraining-query-neighbors'. For example, "
-                       "'--retro-tasks db-build,index-build,pretraining-query-neighbors' is equivalent to '--retro-tasks build'; or the argument can contain "
+                       "'--retro-tasks db-build,index-build,"
+                       "pretraining-query-neighbors' is equivalent to "
+                       "'--retro-tasks build'; or the argument can contain "
                        "a subset of these tasks. Stages must always be run "
                        "in the correct order (listed above).")
     group.add_argument("--retro-index-nfeats", "-f", type=int, default=1024,
@@ -119,6 +121,11 @@ def add_retro_args(parser):
                        "the index's returned neighbors. If longer than target "
                        "value, neighbors truncated; and if shorter than target "
                        "value, neighbors are padded with -1's.")
+    group.add_argument("--retro-no-delete-index-training-embeddings",
+                       action='store_false',
+                       dest="retro_delete_index_training_embeddings",
+                       help="Skip deleting training embeddings for the search "
+                       "index. Useful for debugging.")
 
     # Enforce argument naming convention.
     for action in group._group_actions:
