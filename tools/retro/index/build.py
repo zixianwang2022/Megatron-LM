@@ -90,7 +90,7 @@ def train_index():
     torch.distributed.barrier()
 
     # Remove embeddings.
-    if args.retro_delete_index_training_embeddingss:
+    if args.retro_delete_index_training_embeddings:
         remove_embeddings()
 
 
