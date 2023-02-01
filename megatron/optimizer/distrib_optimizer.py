@@ -426,6 +426,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         """
         The state dict must contain the fp32-from-float16 shards.
         """
+        raise Exception("hi.")
         state_dict = {}
         state_dict['optimizer'] = self.optimizer.state_dict()
         if self.grad_scaler:
@@ -439,6 +440,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         """
         Load the state dict.
         """
+        raise Exception("hi.")
 
         # Optimizer.
         optimizer_key = 'optimizer'
