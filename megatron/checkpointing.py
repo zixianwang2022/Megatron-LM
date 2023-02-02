@@ -255,6 +255,25 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
         if opt_param_scheduler is not None:
             optim_state_dict['opt_param_scheduler'] = \
                 opt_param_scheduler.state_dict()
+        # >>>
+        from lutil import pax, print_seq
+        # print_seq(str(optim_state_dict["opt_param_scheduler"]))
+        pax(0, {
+            "optim_state_dict" : optim_state_dict,
+            "optim_state_dict / optimizer" :
+            optim_state_dict["optimizer"],
+            "optim_state_dict / optimizer / optimizer" :
+            optim_state_dict["optimizer"]["optimizer"],
+            "optim_state_dict / optimizer / optimizer / state" :
+            optim_state_dict["optimizer"]["optimizer"]["state"],
+            "optim_state_dict / optimizer / optimizer / param_groups" :
+            optim_state_dict["optimizer"]["optimizer"]["param_groups"],
+            "optim_state_dict / optimizer / shard" :
+            optim_state_dict["optimizer"]["shard_fp32_from_float16_groups"],
+            "optim_state_dict / scheduler" :
+            optim_state_dict["opt_param_scheduler"],
+        })
+        # <<<
 
     # Save.
     if args.use_distributed_optimizer:

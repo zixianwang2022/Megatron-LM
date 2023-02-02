@@ -14,6 +14,86 @@ from megatron.model.module import param_is_not_shared
 
 from .optimizer import MixedPrecisionOptimizer, _zero_grad_group_helper
 
+# >>>
+from lutil import pax, print_seq, tp
+# <<<
+
+
+# >>>
+class StateDictUtils:
+
+    @classmethod
+    # def gather_optimizer_state(cls, optimizer_state):
+    def gather_optimizer_state(cls, optimizer, state):
+
+        shard_state = defaultdict(lambda : defaultdict(dict))
+        for model_idx, gbuf_range_maps in enumerate(optimizer.model_gbuf_ranges):
+            for dtype, gbuf_range_map in gbuf_range_maps.items():
+                for local_order, (param, param_range_map) in \
+                    enumerate(gbuf_range_map["param_map"].items()):
+
+                    world_order = param_range_map["gbuf_world_order"]
+                    shard_state[model_idx][dtype][world_order] = {
+                        "param_range_map" : param_range_map,
+                        "param" : param,
+                        "optimizer" :
+                        state_dict["optimizer"]["state"][local_order],
+                    }
+
+                    pax(0, {
+                        "model_idx" : model_idx,
+                        "gbuf_range_maps" : gbuf_range_maps,
+                        "dtype" : dtype,
+                        "gbuf_range_map" :gbuf_range_map,
+                        "local_order" : local_order,
+                        "world_order" : world_order,
+                        "param" : tp(param),
+                        "param_range_map" : param_range_map,
+                        "optimizer_shard" : optimizer_shard,
+                    })
+
+        pax(0, {
+            "models" : optimizer.models,
+            "model_gbuf_ranges" : optimizer.model_gbuf_ranges,
+            "model_gbuf_ranges / 0" : optimizer.model_gbuf_ranges[0],
+            "model_gbuf_ranges / 0 / dtype" :
+            list(optimizer.model_gbuf_ranges[0].values())[0],
+            "model_gbuf_ranges / 0 / dtype / param_map" :
+            len(list(optimizer.model_gbuf_ranges[0].values())[0]["param_map"]),
+            # "model_param_gbuf_map" : optimizer.model_param_gbuf_map,
+            "--" : "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+            "optimizer_state" : state,
+            "state" : state["state"],
+            "state / 0" : state["state"][0],
+            "param_groups" : state["param_groups"],
+            "param_groups / 0" : state["param_groups"][0],
+            "param_groups / 1" : state["param_groups"][1] if len(state["param_groups"]) > 1 else None,
+        })
+
+    @classmethod
+    def gather_grad_scaler_state(cls, grad_scaler_state):
+        pax(0, {"grad_scaler_state": grad_scaler_state})
+
+    @classmethod
+    def gather_main_params_state(cls, main_params_state):
+        pax(0, {"main_params_state": main_params_state})
+
+    @classmethod
+    def gather_state_dict(cls,
+                          # models,
+                          # model_gbuf_ranges,
+                          # model_param_gbuf_map,
+                          optimizer, 
+                          state_dict):
+        return {
+            "optimizer" :
+            cls.gather_optimizer_state(optimizer, state_dict["optimizer"]),
+            "grad_scaler" :
+            cls.gather_grad_scaler_state(optimizer, state_dict["grad_scaler"]),
+            "main_params" :
+            cls.gather_main_params_state(optimizer, state_dict["main_params"]),
+        }
+# <<<
 
 class Range:
     """
@@ -89,11 +169,22 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
 
         # Param range map.
         param_world_index_map = model._grad_buffer_param_index_map[dtype]
+        # >>>
+        # raise Exception("update _gbpim usage.")
+        # <<<
         param_range_map = {}
         for param, param_world_indexes in param_world_index_map.items():
 
             # Param range.
-            param_world_start, param_world_end = param_world_indexes
+            # >>>
+            param_world_order, param_world_start, param_world_end = \
+                param_world_indexes
+            # pax(0, {
+            #     "param_world_order" : param_world_order,
+            #     "param_world_start" : param_world_start,
+            #     "param_world_end" : param_world_end,
+            # })
+            # <<<
             param_local_start = max(
                 0,
                 param_world_start - gbuf_world_range.start)
@@ -108,11 +199,14 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                     param_local_start + gbuf_world_range.start)
                 sub_param_start = max(0, gbuf_world_range.start-param_world_start)
                 sub_param_range = param_local_range.normalize(sub_param_start)
+                # >>>
                 param_range_map[param] = {
+                    "gbuf_world_order" : param_world_order,
                     "gbuf_world" : param_world_range,
                     "gbuf_local" : param_local_range,
                     "param" : sub_param_range,
                 }
+                # <<<
 
         return param_range_map
 
@@ -353,6 +447,14 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             params_have_main_grad, use_contiguous_buffers_in_local_ddp,
             fp16, bf16, params_dtype, grad_scaler, models)
 
+        # >>>
+        # pax(0, {
+        #     "optimizer" : optimizer,
+        #     "param_groups" : optimizer.param_groups,
+        #     "param_groups / 0" : optimizer.param_groups[0],
+        # })
+        # <<<
+
         # Verify that contiguous buffers are being used.
         # - Note: this should already be checked in arguments.py.
         assert use_contiguous_buffers_in_local_ddp
@@ -388,9 +490,12 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         for model_index, model in enumerate(self.models):
             current_param_buffers = {}
             for dtype, grad_buffer in model._grad_buffers.items():
-                param_buffer = torch.tensor(grad_buffer.data.storage()._untyped(),
+                # >>>
+                # param_buffer=torch.tensor(grad_buffer.data.storage()._untyped(),
+                param_buffer = torch.tensor(grad_buffer.data.storage().untyped(),
                                             dtype = params_dtype,
                                             device = grad_buffer.data.device)
+                # <<<
                 param_buffer = param_buffer[:grad_buffer.numel_padded]
                 current_param_buffers[dtype] = param_buffer
             self.param_buffers.append(current_param_buffers)
@@ -426,13 +531,40 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         """
         The state dict must contain the fp32-from-float16 shards.
         """
-        raise Exception("hi.")
         state_dict = {}
         state_dict['optimizer'] = self.optimizer.state_dict()
         if self.grad_scaler:
             state_dict['grad_scaler'] = self.grad_scaler.state_dict()
         state_dict['shard_fp32_from_float16_groups'] = \
             self.shard_fp32_from_float16_groups
+
+        # >>>
+        # pax(0, {
+        #     "optimizer" : self.optimizer,
+        #     "param_groups" : self.optimizer.param_groups,
+        #     "param_groups / 0" : self.optimizer.param_groups[0],
+        #     "param_groups / 0 / params" :self.optimizer.param_groups[0]["params"],
+        #     "state_dict" : state_dict,
+        #     "state_dict / optimizer" : state_dict["optimizer"],
+        #     "state_dict / shard" : state_dict["shard_fp32_from_float16_groups"],
+        #     "state_dict / shard / 0" :
+        #     state_dict["shard_fp32_from_float16_groups"][0],
+        # })
+        # <<<
+
+        # >>>
+        state_dict = StateDictUtils.gather_state_dict(
+            # self.models,
+            # self.model_gbuf_ranges,
+            # self.model_param_gbuf_map,
+            self,
+            state_dict,
+        )
+        # <<<
+
+        # >>>
+        pax(0, {"state_dict": state_dict})
+        # <<<
         return state_dict
 
 
@@ -619,10 +751,17 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         # Copy from param buffer to each param.
         for model_id, model in enumerate(self.models):
             for dtype, param_map in model._grad_buffer_param_index_map.items():
-                for param, buf_range in param_map.items():
+                # >>>
+                # raise Exception("update _gbpim usage.")
+                # for param, buf_range in param_map.items():
+                #     param_buf = self.param_buffers[model_id][dtype]
+                #     param_buf_shard = param_buf[buf_range[0]:buf_range[1]]
+                #     param.view(-1).detach().copy_(param_buf_shard)
+                for param, (buf_order, buf_start, buf_end) in param_map.items():
                     param_buf = self.param_buffers[model_id][dtype]
-                    param_buf_shard = param_buf[buf_range[0]:buf_range[1]]
+                    param_buf_shard = param_buf[buf_start:buf_end]
                     param.view(-1).detach().copy_(param_buf_shard)
+                # <<<
 
         timers('params-all-gather').stop()
 

@@ -11,6 +11,10 @@ from megatron import get_args
 from megatron.core import mpu
 from .module import MegatronModule
 
+# >>>
+from lutil import pax
+# <<<
+
 
 class MemoryBuffer:
 
@@ -119,10 +123,14 @@ class DistributedDataParallel(DistributedDataParallelBase):
                     self.accumulate_allreduce_grads_in_fp32 else param.dtype
 
             # First calculate total number of elements per type.
+            # >>>
+            type_count = {}
+            # <<<
             type_num_elements = {}
             for param in self.module.parameters():
                 if param.requires_grad:
                     dtype = _get_buffer_type(param)
+                    type_count[dtype] = type_count.get(dtype, 0) + 1
                     type_num_elements[dtype] = type_num_elements.get(dtype, 0) \
                                                + param.data.nelement()
 
@@ -146,12 +154,14 @@ class DistributedDataParallel(DistributedDataParallelBase):
             for param in self.module.parameters():
                 if param.requires_grad:
                     dtype = _get_buffer_type(param)
+                    type_count[dtype] -= 1
                     type_num_elements[dtype] -= param.data.nelement()
                     param.main_grad = self._grad_buffers[dtype].get(
                         param.data.shape, type_num_elements[dtype])
                     if dtype not in self._grad_buffer_param_index_map:
                         self._grad_buffer_param_index_map[dtype] = {}
                     self._grad_buffer_param_index_map[dtype][param] = (
+                        type_count[dtype],
                         type_num_elements[dtype],
                         type_num_elements[dtype] + param.data.nelement(),
                     )
@@ -169,6 +179,18 @@ class DistributedDataParallel(DistributedDataParallelBase):
                     grad_acc = param_tmp.grad_fn.next_functions[0][0]
                     grad_acc.register_hook(self._make_param_hook(param))
                     self.grad_accs.append(grad_acc)
+
+        # >>>
+        # pax(0, {
+        #     "_grad_buffers" : self._grad_buffers,
+        #     "_grad_buffer_param_index_map" : self._grad_buffer_param_index_map,
+        #     **{"_grad_buffers / %s" % d : b
+        #        for d, b in self._grad_buffers.items()},
+        #     **{"_grad_buffers_param_index_map / %s" % d : {
+        #         f"{id(p)} / {p.shape}" : i for p, i in m.items()
+        #     } for d, m in self._grad_buffer_param_index_map.items()},
+        # })
+        # <<<
 
 
     def _make_param_hook(self, param):
