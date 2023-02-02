@@ -3,6 +3,9 @@
 """Megatron distributed optimizer."""
 
 
+# >>>
+from collections import defaultdict
+# <<<
 import math
 import torch
 
@@ -23,76 +26,120 @@ from lutil import pax, print_seq, tp
 class StateDictUtils:
 
     @classmethod
-    # def gather_optimizer_state(cls, optimizer_state):
-    def gather_optimizer_state(cls, optimizer, state):
+    # def get(cls, optimizer, state_dict):
+    # def get_dp_state_dict(cls, optimizer, state_dict):
+    def split_state_dict(cls, optimizer, state_dict):
 
-        shard_state = defaultdict(lambda : defaultdict(dict))
+        pax(0, {"state_dict": state_dict})
+
+        # pax(0, {
+        #     "state_dict" : state_dict,
+        #     "state_dict / optimizer" : state_dict["optimizer"],
+        #     "state_dict / optimizer / state" : state_dict["optimizer"]["state"],
+        #     # "optimizer / state" : optimizer.state,
+        #     # "optimizer / param_groups" : optimizer.param_groups,
+        #     **{"shard_fp32_from_float16_groups / %d" % i : g
+        #        for i, g in enumerate(optimizer.shard_fp32_from_float16_groups)},
+        #     "optimizer / optimizer" : optimizer.optimizer,
+        #     "optimizer / optimizer / state / keys" :
+        #     optimizer.optimizer.state.keys(),
+        #     "optimizer / optimizer / state / values" :
+        #     optimizer.optimizer.state.values(),
+        #     "optimizer / optimizer / param_groups" :
+        #     optimizer.optimizer.param_groups,
+        #     **{"optimizer / optimizer / param_groups / %d" % i : g
+        #        for i, g in enumerate(optimizer.optimizer.param_groups)},
+        # })
+
+        dp_state = {}
         for model_idx, gbuf_range_maps in enumerate(optimizer.model_gbuf_ranges):
+            dtype_state = {}
             for dtype, gbuf_range_map in gbuf_range_maps.items():
-                for local_order, (param, param_range_map) in \
-                    enumerate(gbuf_range_map["param_map"].items()):
+                # >>>
+                param_state = {}
+                # for local_order, (param, param_range_map) in \
+                #     enumerate(gbuf_range_map["param_map"].items()):
+                for param, param_range_map in gbuf_range_map["param_map"].items():
+
+                    group_index, group_order = \
+                        optimizer.model_param_group_index_map[param]
+
+                    # pax(0, {
+                    #     "shard_fp32_from_float16_groups" :
+                    #     state_dict["shard_fp32_from_float16_groups"],
+                    #     "shard_fp32_from_float16_groups / 0" :
+                    #     state_dict["shard_fp32_from_float16_groups"][0],
+                    #     "param_range_map" : param_range_map,
+                    #     "group_index" : group_index,
+                    #     "group_order" : group_order,
+                    # })
 
                     world_order = param_range_map["gbuf_world_order"]
-                    shard_state[model_idx][dtype][world_order] = {
+                    param_state[world_order] = {
+                        # "local_order" : local_order,
+                        "group_index" : group_index,
+                        "group_order" : group_order,
                         "param_range_map" : param_range_map,
-                        "param" : param,
+                        # "param" : param,
+                        # "param" : state_dict[ddd
+                        "param" : optimizer \
+                        .shard_fp32_from_float16_groups[group_index][group_order],
                         "optimizer" :
-                        state_dict["optimizer"]["state"][local_order],
+                        # state_dict["optimizer"]["state"][local_order],
+                        optimizer.optimizer.param_groups[group_index]["params"][group_order],
                     }
 
-                    pax(0, {
-                        "model_idx" : model_idx,
-                        "gbuf_range_maps" : gbuf_range_maps,
-                        "dtype" : dtype,
-                        "gbuf_range_map" :gbuf_range_map,
-                        "local_order" : local_order,
-                        "world_order" : world_order,
-                        "param" : tp(param),
-                        "param_range_map" : param_range_map,
-                        "optimizer_shard" : optimizer_shard,
-                    })
+                # pax(0, {"param_state": param_state})
+                # +++
+                # # for group_idx, param_group in \
+                # #     enumerate(optimizer.shard_fp32_from_float16_groups):
+                # for group_idx, param_group in \
+                #     enumerate(state_dict["optimizer"]["param_groups"]):
+                #     for param_idx in param_group["params"]:
+                #         pax({"param_idx": param_idx})
+                # <<<
 
-        pax(0, {
-            "models" : optimizer.models,
-            "model_gbuf_ranges" : optimizer.model_gbuf_ranges,
-            "model_gbuf_ranges / 0" : optimizer.model_gbuf_ranges[0],
-            "model_gbuf_ranges / 0 / dtype" :
-            list(optimizer.model_gbuf_ranges[0].values())[0],
-            "model_gbuf_ranges / 0 / dtype / param_map" :
-            len(list(optimizer.model_gbuf_ranges[0].values())[0]["param_map"]),
-            # "model_param_gbuf_map" : optimizer.model_param_gbuf_map,
-            "--" : "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-            "optimizer_state" : state,
-            "state" : state["state"],
-            "state / 0" : state["state"][0],
-            "param_groups" : state["param_groups"],
-            "param_groups / 0" : state["param_groups"][0],
-            "param_groups / 1" : state["param_groups"][1] if len(state["param_groups"]) > 1 else None,
-        })
+                dtype_state[dtype] = param_state
+            dp_state[model_idx] = dtype_state
 
-    @classmethod
-    def gather_grad_scaler_state(cls, grad_scaler_state):
-        pax(0, {"grad_scaler_state": grad_scaler_state})
+        # >>>
+        # from megatron import core
 
-    @classmethod
-    def gather_main_params_state(cls, main_params_state):
-        pax(0, {"main_params_state": main_params_state})
+        # # torch.save(
+        # #     dp_state,
+        # #     # list(dp_state.values())[0],
+        # #     # list(list(dp_state.values())[0].values())[0],
+        # #     "/mnt/fsx-outputs-chipdesign/lmcafee/distrib-opt-flex/test-%d-%d-%d.pt" % (
+        # #         core.parallel_state.get_tensor_model_parallel_rank(),
+        # #         core.parallel_state.get_pipeline_model_parallel_rank(),
+        # #         core.parallel_state.get_data_parallel_rank(),
+        # #     ),
+        # # )
 
-    @classmethod
-    def gather_state_dict(cls,
-                          # models,
-                          # model_gbuf_ranges,
-                          # model_param_gbuf_map,
-                          optimizer, 
-                          state_dict):
-        return {
-            "optimizer" :
-            cls.gather_optimizer_state(optimizer, state_dict["optimizer"]),
-            "grad_scaler" :
-            cls.gather_grad_scaler_state(optimizer, state_dict["grad_scaler"]),
-            "main_params" :
-            cls.gather_main_params_state(optimizer, state_dict["main_params"]),
-        }
+        # pax(0, {
+        #     "rank" : "t %d, p %d, d %d" % (
+        #         core.parallel_state.get_tensor_model_parallel_rank(),
+        #         core.parallel_state.get_pipeline_model_parallel_rank(),
+        #         core.parallel_state.get_data_parallel_rank(),
+        #     ),
+        #     "dp_state" : dp_state,
+        #     "dp_state / m" : list(dp_state.values())[0],
+        #     "dp_state / m / d" : list(list(dp_state.values())[0].values())[0],
+        #     # "dp_state / m / d / 0" :
+        #     # list(list(list(dp_state.values())[0].values())[0].values())[0],
+        #     # "dp_state / m / d / -1" :
+        #     # list(list(list(dp_state.values())[0].values())[0].values())[-1],
+        # })
+        # <<<
+
+    #     return {
+    #         "optimizer" :
+    #         cls.gather_optimizer_state(optimizer, state_dict["optimizer"]),
+    #         "grad_scaler" :
+    #         cls.gather_grad_scaler_state(optimizer, state_dict["grad_scaler"]),
+    #         "main_params" :
+    #         cls.gather_main_params_state(optimizer, state_dict["main_params"]),
+    #     }
 # <<<
 
 class Range:
@@ -314,13 +361,27 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                     group_index = param_group_map[param]
                     group_range = group_ranges[group_index]
                     group_range["params"].append(param)
+                    # >>>
+                    param_group_map[param] = \
+                        (group_index, len(group_range["params"]) - 1)
+                    # <<<
 
         # Squeeze zero-size group ranges.
         for group_index, group_range in enumerate(group_ranges):
             group_range["orig_group"] = param_groups[group_index]
         group_ranges = [ g for g in group_ranges if len(g["params"]) > 0 ]
 
-        return group_ranges
+        # >>>
+        # pax(0, {
+        #     "param_groups" : param_groups,
+        #     **{"group_ranges / %d" % i : r for i, r in enumerate(group_ranges)},
+        # })
+        # <<<
+
+        # >>>
+        # return group_ranges
+        return param_group_map, group_ranges
+        # <<<
 
 
     @classmethod
@@ -420,6 +481,12 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                 *shard_fp32_from_float16_params_this_group,
             ]
 
+        # >>>
+        # pax(2, {
+        #     "shard_fp32_from_float16_groups" : shard_fp32_from_float16_groups,
+        # })
+        # <<<
+
         return (
             model_float16_groups,
             model_fp32_groups,
@@ -453,6 +520,11 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         #     "param_groups" : optimizer.param_groups,
         #     "param_groups / 0" : optimizer.param_groups[0],
         # })
+        # pax(0, {
+        #     "_grad_buffers" : [ b.data
+        #                         for m in self.models
+        #                         for b in m._grad_buffers.values()]
+        # })
         # <<<
 
         # Verify that contiguous buffers are being used.
@@ -467,10 +539,11 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             self.build_model_param_gbuf_map(self.model_gbuf_ranges)
 
         # Optimizer ranges.
-        self.opt_group_ranges = self.build_optimizer_group_ranges(
-            self.optimizer.param_groups,
-            self.model_gbuf_ranges)
-
+        # self.opt_group_ranges = self.build_optimizer_group_ranges(
+        self.model_param_group_index_map, self.opt_group_ranges = \
+            self.build_optimizer_group_ranges(self.optimizer.param_groups,
+                                              self.model_gbuf_ranges)
+        
         # Allocate main param shards.
         (
             self.model_float16_groups,
@@ -553,13 +626,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         # <<<
 
         # >>>
-        state_dict = StateDictUtils.gather_state_dict(
-            # self.models,
-            # self.model_gbuf_ranges,
-            # self.model_param_gbuf_map,
-            self,
-            state_dict,
-        )
+        state_dict = StateDictUtils.get(self, state_dict)
         # <<<
 
         # >>>

@@ -15,6 +15,10 @@ from .global_vars import get_args
 from .utils import (unwrap_model,
                     print_rank_0)
 
+# >>>
+from lutil import pax, print_seq, tp
+# <<<
+
 
 _CHECKPOINT_VERSION = None
 
@@ -97,9 +101,15 @@ def get_checkpoint_names(checkpoints_path, iteration, use_distributed_optimizer,
 
     if use_distributed_optimizer:
         model_name = os.path.join(common_path, "model_rng.pt")
+        # >>>
+        # optim_name = os.path.join(
+        #     common_path + "_%03d" % mpu.get_data_parallel_rank(),
+        #     "optim.pt")
         optim_name = os.path.join(
-            common_path + "_%03d" % mpu.get_data_parallel_rank(),
-            "optim.pt")
+            common_path,
+            f'optim_{mpu.get_data_parallel_world_size():03d}', # dp-{}
+            f'{mpu.get_data_parallel_rank():03d}.pt')
+        # <<<
     else:
         model_name = optim_name = os.path.join(common_path, "model_optim_rng.pt")
     return model_name, optim_name
@@ -220,6 +230,13 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
     model_checkpoint_name, optim_checkpoint_name = \
         get_checkpoint_names(args.save, iteration, args.use_distributed_optimizer)
 
+    # >>>
+    # pax(0, {
+    #     "model_checkpoint_name" : model_checkpoint_name,
+    #     "optim_checkpoint_name" : optim_checkpoint_name,
+    # })
+    # <<<
+
     # Collect args, model, RNG.
     model_state_dict = {}
     if not torch.distributed.is_initialized() \
@@ -251,12 +268,16 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
 
         # Optimizer stuff.
         if optimizer is not None:
-            optim_state_dict['optimizer'] = optimizer.state_dict()
+            # >>>
+            # optim_state_dict['optimizer'] = optimizer.state_dict()
+            # +++
+            full_state_dict = optimizer.state_dict()
+            pax(0, {"full_state_dict": full_state_dict})
+            # <<<
         if opt_param_scheduler is not None:
             optim_state_dict['opt_param_scheduler'] = \
                 opt_param_scheduler.state_dict()
         # >>>
-        from lutil import pax, print_seq
         # print_seq(str(optim_state_dict["opt_param_scheduler"]))
         pax(0, {
             "optim_state_dict" : optim_state_dict,

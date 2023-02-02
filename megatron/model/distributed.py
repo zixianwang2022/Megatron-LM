@@ -160,11 +160,13 @@ class DistributedDataParallel(DistributedDataParallelBase):
                         param.data.shape, type_num_elements[dtype])
                     if dtype not in self._grad_buffer_param_index_map:
                         self._grad_buffer_param_index_map[dtype] = {}
+                    # >>>
                     self._grad_buffer_param_index_map[dtype][param] = (
-                        type_count[dtype],
+                        type_count[dtype], # new
                         type_num_elements[dtype],
                         type_num_elements[dtype] + param.data.nelement(),
                     )
+                    # <<<
 
             # Backward hook.
             # Accumalation function for the gradients. We need
