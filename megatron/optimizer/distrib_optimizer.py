@@ -569,6 +569,19 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         The state dict must contain the fp32-from-float16 shards.
         """
 
+        # pax(0, {
+        #     "optimizer" : self.optimizer,
+        #     "optimizer / state" :
+        #     [tp(d["exp_avg"]) for d in self.optimizer.state.values()],
+        #     **{"optimizer / params / %d" % i : [tp(p) for p in g["params"]]
+        #        for i, g in enumerate(self.optimizer.param_groups)},
+        #     **{"shard_fp32_from_float16_groups / %d" % i : [tp(p) for p in g]
+        #        for i, g in enumerate(self.shard_fp32_from_float16_groups)},
+        # })
+
+        # state_order_map = {p:i for 
+        default_state_dict = self.optimizer.state_dict()
+
         # Shard state dicts.
         shard_state_dicts = []
         for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
@@ -581,10 +594,12 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                     world_order = param_range_map["gbuf_world_order"]
 
                     optim_param = self.optimizer.param_groups[group_index]["params"][group_order]
+                    state_order = default_state_dict["param_groups"][group_index]["params"][group_order]
                     optim_state = self.optimizer.state[optim_param]
 
                     shard_state_dicts.append({
                         "world_order" : world_order,
+                        "state_order" : state_order,
                         "group_index" : group_index,
                         "group_order" : group_order,
                         "param_range_map" : param_range_map,
@@ -593,7 +608,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                     })
 
         state_dict = {}
-        state_dict['optimizer'] = self.optimizer.state_dict()
+        state_dict['optimizer'] = default_state_dict
         state_dict['optimizer']['state'] = shard_state_dicts
         if self.grad_scaler:
             state_dict['grad_scaler'] = self.grad_scaler.state_dict()
@@ -640,83 +655,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
     #             state_dict["shard_fp32_from_float16_groups"]):
     #         for current_param, saved_param in zip(current_group, saved_group):
     #             current_param.data.copy_(saved_param.data)
-    # def load_state_dict(self, state_dict):
-    #     """
-    #     Load the state dict.
-    #     """
-
-    #     common_state_dict = state_dict["common"]
-    #     dp_state_dict = state_dict["dp"]
-
-    #     print_seq("opt/groups %d, state/groups %d." % (
-    #         len(self.optimizer.param_groups),
-    #         len(state_dict["optimizer"]["param_groups"]),
-    #     ))
-
-    #     # Optimizer.
-    #     # >>>
-    #     # optimizer_key = 'optimizer'
-    #     # if optimizer_key not in state_dict:
-    #     #     optimizer_key = 'optimizer_state_dict'
-    #     #     print_rank_0('***WARNING*** loading optimizer from '
-    #     #                  'an old checkpoint ...')
-    #     # self.optimizer.load_state_dict(state_dict[optimizer_key])
-    #     # +++
-
-    #     optimizer_state_dicts = []
-    #     for model_index, dtype_dict in dp_state_dict.items():
-    #         for dtype, param_dicts in dtype_dict.items():
-    #             for world_order, param_dict in param_dicts.items():
-    #                 optimizer_state_dicts.append(param_dict["optim"])
-    #     optimizer_state_dicts = {i:d for i,d in enumerate(optimizer_state_dicts)}
-
-    #     optimizer_state_dict = {
-    #         "param_groups" : common_state_dict["optimizer"]["param_groups"],
-    #         "state" : optimizer_state_dicts,
-    #     }
-
-    #     # self.optimizer.load_state_dict(optimizer_state_dict)
-
-    #     print_seq("opt/groups %d, state/groups %d." % (
-    #         len(self.optimizer.param_groups),
-    #         len(common_state_dict["optimizer"]["param_groups"]),
-    #     ))
-    #     pax(0, {
-    #         "optimizer_state_dicts" : optimizer_state_dicts,
-    #         "optimizer_state_dict" : optimizer_state_dict,
-    #         "optimizer" : self.optimizer,
-    #         "param_groups" : self.optimizer.param_groups,
-    #     })
-    #     # <<<
-
-    #     pax(0, {
-    #         "optimizer / state_dict" : self.optimizer.state_dict(),
-    #         "common_state_dict" : common_state_dict,
-    #         "dp_state_dict" : dp_state_dict,
-    #         "dp_state_dict / 0" : list(dp_state_dict.values())[0],
-    #         "dp_state_dict / 0 / dty" :
-    #         list(list(dp_state_dict.values())[0].values())[0],
-    #     })
-
-    #     # Grad scaler.
-    #     # if 'grad_scaler' not in state_dict:
-    #     #     if self.fp16:
-    #     #         print_rank_0('***WARNING*** found an old checkpoint, will not '
-    #     #                      'load grad scaler ...')
-    #     # else:
-    #     if self.grad_scaler:
-    #         self.grad_scaler.load_state_dict(common_state_dict['grad_scaler'])
-    #     else:
-    #         print_rank_0('***WARNING*** found the grad scaler in the '
-    #                      'checkpoint but it is None in the class. '
-    #                      'Skipping loading grad scaler ...')
-
-    #     # Copy data for the main params.
-    #     for current_group, saved_group in zip(
-    #             self.shard_fp32_from_float16_groups,
-    #             state_dict["shard_fp32_from_float16_groups"]):
-    #         for current_param, saved_param in zip(current_group, saved_group):
-    #             current_param.data.copy_(saved_param.data)
     def load_state_dict(self, state_dict):
         """
         Load the state dict.
@@ -727,13 +665,20 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         for shard_state_dict in state_dict["optimizer"]["state"]:
 
             # Collect optimizer state.
-            optim_state_dicts.append(shard_state_dict["optim"])
+            optim_state_dicts.append((
+                shard_state_dict["state_order"],
+                shard_state_dict["optim"],
+            ))
 
             # Set main params.
             group_index = shard_state_dict["group_index"]
             group_order = shard_state_dict["group_order"]
             self.shard_fp32_from_float16_groups[group_index][group_order] \
                 .data.copy_(shard_state_dict["param"])
+
+        # Sort by pre-save state order.
+        optim_state_dicts.sort(key = lambda d : d[0])
+        optim_state_dicts = [ d[1] for d in optim_state_dicts ]
 
         # Optimizer.
         self.optimizer.load_state_dict({
@@ -743,9 +688,11 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
 
         # pax(0, {
         #     "optimizer" : self.optimizer,
-        #     **{"optimizer / params / %d" % i : g["params"]
+        #     "optimizer / state" :
+        #     [tp(d["exp_avg"]) for d in self.optimizer.state.values()],
+        #     **{"optimizer / params / %d" % i : [tp(p) for p in g["params"]]
         #        for i, g in enumerate(self.optimizer.param_groups)},
-        #     **{"shard_fp32_from_float16_groups / %d" % i : g
+        #     **{"shard_fp32_from_float16_groups / %d" % i : [tp(p) for p in g]
         #        for i, g in enumerate(self.shard_fp32_from_float16_groups)},
         # })
 
