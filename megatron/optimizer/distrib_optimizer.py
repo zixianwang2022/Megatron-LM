@@ -96,9 +96,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
 
         # Param range map.
         param_world_index_map = model._grad_buffer_param_index_map[dtype]
-        # >>>
-        # raise Exception("update _gbpim usage.")
-        # <<<
         param_range_map = {}
         for param, param_world_indexes in param_world_index_map.items():
 
@@ -106,11 +103,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             # >>>
             param_world_order, param_world_start, param_world_end = \
                 param_world_indexes
-            # pax(0, {
-            #     "param_world_order" : param_world_order,
-            #     "param_world_start" : param_world_start,
-            #     "param_world_end" : param_world_end,
-            # })
             # <<<
             param_local_start = max(
                 0,
@@ -227,22 +219,25 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         num_groups = len(param_groups)
 
         # Param group map.
-        param_group_map = {}
+        world_param_group_map = {}
         for group_index, group in enumerate(param_groups):
             for param in group["params"]:
                 assert param.requires_grad
-                param_group_map[param] = group_index
+                world_param_group_map[param] = group_index
 
         # Optimizer group ranges.
+        # >>>
+        local_param_group_map = {}
+        # <<<
         group_ranges = [ {"params": []} for _ in param_groups ]
         for model_gbuf_range_map in model_gbuf_ranges:
             for dtype, gbuf_range_map in model_gbuf_range_map.items():
                 for param in gbuf_range_map["param_map"]:
-                    group_index = param_group_map[param]
+                    group_index = world_param_group_map[param]
                     group_range = group_ranges[group_index]
                     group_range["params"].append(param)
                     # >>>
-                    param_group_map[param] = \
+                    local_param_group_map[param] = \
                         (group_index, len(group_range["params"]) - 1)
                     # <<<
 
@@ -256,11 +251,16 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         #     "param_groups" : param_groups,
         #     **{"group_ranges / %d" % i : r for i, r in enumerate(group_ranges)},
         # })
+        # pax(0, {
+        #     "local_param_group_map / values" :
+        #     list(local_param_group_map.values()),
+        # )})
         # <<<
 
         # >>>
         # return group_ranges
-        return param_group_map, group_ranges
+        # return param_group_map, group_ranges
+        return local_param_group_map, group_ranges
         # <<<
 
 
@@ -361,12 +361,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                 *shard_fp32_from_float16_params_this_group,
             ]
 
-        # >>>
-        # pax(2, {
-        #     "shard_fp32_from_float16_groups" : shard_fp32_from_float16_groups,
-        # })
-        # <<<
-
         return (
             model_float16_groups,
             model_fp32_groups,
@@ -393,19 +387,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             optimizer, clip_grad, log_num_zeros_in_grad,
             params_have_main_grad, use_contiguous_buffers_in_local_ddp,
             fp16, bf16, params_dtype, grad_scaler, models)
-
-        # >>>
-        # pax(0, {
-        #     "optimizer" : optimizer,
-        #     "param_groups" : optimizer.param_groups,
-        #     "param_groups / 0" : optimizer.param_groups[0],
-        # })
-        # pax(0, {
-        #     "_grad_buffers" : [ b.data
-        #                         for m in self.models
-        #                         for b in m._grad_buffers.values()]
-        # })
-        # <<<
 
         # Verify that contiguous buffers are being used.
         # - Note: this should already be checked in arguments.py.
@@ -564,6 +545,159 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
     #     # <<<
 
     #     return state_dict
+    def save_state(self):
+        # _grad_buffer_param_index_map
+        # for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
+        #     for dtype, gbuf_range_map in gbuf_range_maps.items():
+        #         for param_idx, (model_param, param_range_map) in \
+        #             enumerate(gbuf_range_map["param_map"].items()):
+        #     pax(0, {
+        #         "model_idx" : model_idx,
+        #         "gbuf_range_map" : gbuf_range_map,
+        #     })
+
+        data_parallel_world_size = mpu.get_data_parallel_world_size()
+        data_parallel_rank = mpu.get_data_parallel_rank()
+        data_parallel_group = mpu.get_data_parallel_group()
+        data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS)
+
+        # print_seq("dp ranks = %s." % str(list(data_parallel_global_ranks)))
+        # print(data_parallel_group)
+        # pax(0, {
+        #     "data_parallel_group" : data_parallel_group,
+        #     "data_parallel_group / options" : data_parallel_group.options,
+        #     "data_parallel_global_ranks" : data_parallel_global_ranks,
+        # })
+
+        for model_idx, model in enumerate(self.models):
+            for dtype, param_index_map in \
+                model._grad_buffer_param_index_map.items():
+
+                gbuf_world_numel = model._grad_buffers[dtype].numel_padded
+                gbuf_local_numel = int(gbuf_world_numel/data_parallel_world_size)
+
+                for model_param, (
+                        param_world_order,
+                        param_world_start,
+                        param_world_end,
+                ) in param_index_map.items():
+
+                    dp_rank_start = int(param_world_start // gbuf_local_numel)
+                    dp_rank_end = int((param_world_end-1) // gbuf_local_numel) + 1
+
+                    dp_rank_ranges = []
+                    for dp_rank in range(dp_rank_start, dp_rank_end):
+
+                        if dp_rank == dp_rank_start:
+                            local_idx_start = \
+                                param_world_start % gbuf_local_numel
+                        else:
+                            local_idx_start = 0
+
+                        if dp_rank == dp_rank_end - 1:
+                            local_idx_end = \
+                                (param_world_end - 1) % gbuf_local_numel + 1
+                        else:
+                            local_idx_end = gbuf_local_numel
+
+                        dp_rank_ranges.append((
+                            dp_rank,
+                            local_idx_start,
+                            local_idx_end,
+                        ))
+
+                    # pax(0, {"dp_rank_ranges": dp_rank_ranges})
+
+                    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                    # try:
+                    #     group_index, group_order = \
+                    #         self.model_param_group_index_map[model_param]
+                    #     main_param = self.optimizer.param_groups \
+                    #         [group_index]["params"][group_order].detach().cpu()
+                    # except:
+                    #     # main_param = None
+                    #     main_param = torch.zeros(
+                    #         (1,), dtype=torch.float32, device="cpu")
+
+                    # # if data_parallel_rank == 0:
+                    # if data_parallel_rank == dp_rank_ranges[0][0]:
+                    #     gather_list = [torch.zeros((i1 - i0,),
+                    #                                dtype=torch.float32,
+                    #                                device="cpu")
+                    #                    for _, i0, i1 in dp_rank_ranges]
+                    # else:
+                    #     gather_list = None
+
+                    # torch.distributed.gather(
+                    #     main_param,
+                    #     gather_list,
+                    #     data_parallel_global_ranks[0],
+                    #     torch.distributed.new_group(
+                    #         data_parallel_global_ranks[dp_rank_start:dp_rank_end]),
+                    # )
+                    # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+                    try:
+                        group_index, group_order = \
+                            self.model_param_group_index_map[model_param]
+                        main_param = self.optimizer.param_groups \
+                            [group_index]["params"][group_order].detach() # .cpu()
+                    except:
+                        main_param = torch.zeros(
+                            (1,), dtype=torch.float32, device="cuda") # "cpu")
+
+                    if data_parallel_rank == 0:
+                        gather_list = []
+                        for dp_rank in range(data_parallel_world_size):
+                            if dp_rank >= dp_rank_start and dp_rank < dp_rank_end:
+                                _, local_start, local_end = \
+                                    dp_rank_ranges[dp_rank - dp_rank_start]
+                                size = (local_end - local_start,)
+                            else:
+                                size = (1,)
+                            gather_list.append(torch.zeros(size,
+                                                           dtype=torch.float32,
+                                                           device="cuda")) # "cpu"
+                    else:
+                        gather_list = None
+
+                    # pax(0, {"gather_list": gather_list})
+                    print_seq("main_param = %s." % str(main_param.shape))
+
+                    torch.distributed.gather(
+                        main_param,
+                        gather_list,
+                        data_parallel_global_ranks[0],
+                        data_parallel_group,
+                    )
+
+                    pax(0, {"gather_list": gather_list})
+                    # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+                    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                    torch.distributed.barrier()
+                    exit()
+
+                    print_rank_0("world %d ... dp [%d, %d)." % (
+                        param_world_order,
+                        dp_rank_start,
+                        dp_rank_end,
+                    ))
+                    # pax(0, {
+                    #     "data_parallel_world_size" : data_parallel_world_size,
+                    #     "gbuf_world_numel" : gbuf_world_numel,
+                    #     "gbuf_local_numel" : gbuf_local_numel,
+                    #     # "model_param" : tp(model_param),
+                    #     "dp_rank_start" : dp_rank_start,
+                    #     "dp_rank_end" : dp_rank_end,
+                    # })
+                pax(0, {
+                    "param_index_map" : {
+                        f"{id(k)} / {k.shape}" : v
+                        for k, v in param_index_map.items()
+                    },
+                })
+
+        raise Exception("hi.")
+
     def state_dict(self):
         """
         The state dict must contain the fp32-from-float16 shards.
@@ -593,9 +727,9 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                         self.model_param_group_index_map[model_param]
                     world_order = param_range_map["gbuf_world_order"]
 
-                    optim_param = self.optimizer.param_groups[group_index]["params"][group_order]
+                    main_param = self.optimizer.param_groups[group_index]["params"][group_order]
                     state_order = default_state_dict["param_groups"][group_index]["params"][group_order]
-                    optim_state = self.optimizer.state[optim_param]
+                    optim_state = self.optimizer.state[main_param]
 
                     shard_state_dicts.append({
                         "world_order" : world_order,
@@ -603,7 +737,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                         "group_index" : group_index,
                         "group_order" : group_order,
                         "param_range_map" : param_range_map,
-                        "param" : optim_param,
+                        "param" : main_param,
                         "optim" : optim_state,
                     })
 

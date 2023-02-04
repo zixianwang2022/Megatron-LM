@@ -233,13 +233,6 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
     model_checkpoint_name, optim_checkpoint_name = \
         get_checkpoint_names(args.save, iteration, args.use_distributed_optimizer)
 
-    # >>>
-    # pax(0, {
-    #     "model_checkpoint_name" : model_checkpoint_name,
-    #     "optim_checkpoint_name" : optim_checkpoint_name,
-    # })
-    # <<<
-
     # Collect args, model, RNG.
     model_state_dict = {}
     if not torch.distributed.is_initialized() \
@@ -269,37 +262,18 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
             or mpu.get_data_parallel_rank() == 0
             or args.use_distributed_optimizer):
 
-        # >>>
         # Optimizer stuff.
         if optimizer is not None:
             optim_state_dict['optimizer'] = optimizer.state_dict()
         if opt_param_scheduler is not None:
             optim_state_dict['opt_param_scheduler'] = \
                 opt_param_scheduler.state_dict()
-        # +++
-        # # Optimizer stuff.
-        # if optimizer is not None:
-        #     # >>>
-        #     # optim_state_dict['optimizer'] = optimizer.state_dict()
-        #     # +++
-        #     _optimizer_full_state_dict = optimizer.state_dict()
-
-        #     if mpu.get_data_parallel_rank() == 0:
-        #         model_state_dict["optimizer_common"] = \
-        #             _optimizer_full_state_dict["common"]
-        #     optim_state_dict["optimizer"] = \
-        #         _optimizer_full_state_dict["dp"]
-        #     # <<<
-        # if opt_param_scheduler is not None:
-        #     if mpu.get_data_parallel_rank() == 0:
-        #         # >>>
-        #         # optim_state_dict['opt_param_scheduler'] = \
-        #         model_state_dict['opt_param_scheduler'] = \
-        #             opt_param_scheduler.state_dict()
-        #         # <<<
-        # <<<
 
     # Save.
+    # >>>
+    optimizer.save_state()
+    raise Exception("saved?")
+    # <<<
     if args.use_distributed_optimizer:
         # Save model separate from optimizer.
         if model_state_dict:
@@ -554,13 +528,6 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
     if model_state_dict is None:
         return 0
 
-    # >>>
-    # pax(0, {
-    #     "model_state_dict" : model_state_dict,
-    #     "optim_state_dict" : optim_state_dict,
-    # })
-    # <<<
-
     # set checkpoint version
     set_checkpoint_version(model_state_dict.get('checkpoint_version', 0))
 
@@ -608,7 +575,6 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
 
     # Optimizer.
     if not release and not args.finetune and not args.no_load_optim:
-        # >>>
         try:
             if optimizer is not None:
                 optimizer.load_state_dict(optim_state_dict['optimizer'])
@@ -617,22 +583,6 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                     opt_param_scheduler.load_state_dict(optim_state_dict['lr_scheduler'])
                 else:
                     opt_param_scheduler.load_state_dict(optim_state_dict['opt_param_scheduler'])
-        # +++
-        # try:
-        #     # optimizer_full_state_dict = {}
-        #     if optimizer is not None:
-        #         optimizer.load_state_dict({
-        #             "common" : model_state_dict["optimizer_common"],
-        #             "dp" : optim_state_dict['optimizer'],
-        #         })
-        #     if opt_param_scheduler is not None:
-        #         if 'lr_scheduler' in optim_state_dict: # backward compatbility
-        #             opt_param_scheduler.load_state_dict(
-        #                 model_state_dict['lr_scheduler'])
-        #         else:
-        #             opt_param_scheduler.load_state_dict(
-        #                 model_state_dict['opt_param_scheduler'])
-        # <<<
         except KeyError:
             print_rank_0('Unable to load optimizer from checkpoint {}. '
                          'Specify --no-load-optim or --finetune to prevent '
