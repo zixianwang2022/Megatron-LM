@@ -1,4 +1,7 @@
+# >>>
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
+# <<<
 
 """Megatron distributed optimizer."""
 
@@ -545,28 +548,268 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
     #     # <<<
 
     #     return state_dict
+    # def save_state(self):
+    #     # _grad_buffer_param_index_map
+    #     # for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
+    #     #     for dtype, gbuf_range_map in gbuf_range_maps.items():
+    #     #         for param_idx, (model_param, param_range_map) in \
+    #     #             enumerate(gbuf_range_map["param_map"].items()):
+    #     #     pax(0, {
+    #     #         "model_idx" : model_idx,
+    #     #         "gbuf_range_map" : gbuf_range_map,
+    #     #     })
+
+    #     data_parallel_world_size = mpu.get_data_parallel_world_size()
+    #     data_parallel_rank = mpu.get_data_parallel_rank()
+    #     data_parallel_group = mpu.get_data_parallel_group()
+    #     data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS)
+
+    #     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    #     # sent_tensor = torch.zeros((data_parallel_rank + 1,),
+    #     sent_tensor = torch.zeros((torch.distributed.get_rank() + 1,),
+    #                               dtype=torch.float32,
+    #                               device="cuda")
+    #     if data_parallel_rank == 0:
+    #         recv_tensors = [torch.zeros((r+1,),
+    #                                     dtype=torch.float32,
+    #                                     device="cuda") for r in range(8)]
+    #     else:
+    #         recv_tensors = None
+
+    #     torch.distributed.gather(
+    #         sent_tensor,
+    #         recv_tensors,
+    #         0,
+    #         data_parallel_group)
+
+    #     raise Exception("test done.")
+    #     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    #     for model_idx, model in enumerate(self.models):
+    #         for dtype, param_index_map in \
+    #             model._grad_buffer_param_index_map.items():
+
+    #             gbuf_world_numel = model._grad_buffers[dtype].numel_padded
+    #             gbuf_local_numel = int(gbuf_world_numel/data_parallel_world_size)
+
+    #             for model_param, (
+    #                     param_world_order,
+    #                     param_world_start,
+    #                     param_world_end,
+    #             ) in param_index_map.items():
+
+    #                 dp_rank_start = int(param_world_start // gbuf_local_numel)
+    #                 dp_rank_end = int((param_world_end-1) // gbuf_local_numel) + 1
+
+    #                 dp_rank_ranges = []
+    #                 for dp_rank in range(dp_rank_start, dp_rank_end):
+
+    #                     if dp_rank == dp_rank_start:
+    #                         local_idx_start = \
+    #                             param_world_start % gbuf_local_numel
+    #                     else:
+    #                         local_idx_start = 0
+
+    #                     if dp_rank == dp_rank_end - 1:
+    #                         local_idx_end = \
+    #                             (param_world_end - 1) % gbuf_local_numel + 1
+    #                     else:
+    #                         local_idx_end = gbuf_local_numel
+
+    #                     dp_rank_ranges.append((
+    #                         dp_rank,
+    #                         local_idx_start,
+    #                         local_idx_end,
+    #                     ))
+
+    #                 # pax(0, {"dp_rank_ranges": dp_rank_ranges})
+
+    #                 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    #                 # try:
+    #                 #     group_index, group_order = \
+    #                 #         self.model_param_group_index_map[model_param]
+    #                 #     main_param = self.optimizer.param_groups \
+    #                 #         [group_index]["params"][group_order].detach().cpu()
+    #                 # except:
+    #                 #     # main_param = None
+    #                 #     main_param = torch.zeros(
+    #                 #         (1,), dtype=torch.float32, device="cpu")
+
+    #                 # # if data_parallel_rank == 0:
+    #                 # if data_parallel_rank == dp_rank_ranges[0][0]:
+    #                 #     gather_list = [torch.zeros((i1 - i0,),
+    #                 #                                dtype=torch.float32,
+    #                 #                                device="cpu")
+    #                 #                    for _, i0, i1 in dp_rank_ranges]
+    #                 # else:
+    #                 #     gather_list = None
+
+    #                 # torch.distributed.gather(
+    #                 #     main_param,
+    #                 #     gather_list,
+    #                 #     data_parallel_global_ranks[0],
+    #                 #     torch.distributed.new_group(
+    #                 #         data_parallel_global_ranks[dp_rank_start:dp_rank_end]),
+    #                 # )
+    #                 # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #                 try:
+    #                     group_index, group_order = \
+    #                         self.model_param_group_index_map[model_param]
+    #                     main_param = self.optimizer.param_groups \
+    #                         [group_index]["params"][group_order].detach() # .cpu()
+    #                 except KeyError:
+    #                     main_param = torch.zeros(
+    #                         (1,), dtype=torch.float32, device="cuda") # "cpu")
+
+    #                 if data_parallel_rank == 0:
+    #                     gather_list = []
+    #                     for dp_rank in range(data_parallel_world_size):
+    #                         if dp_rank >= dp_rank_start and dp_rank < dp_rank_end:
+    #                             _, local_start, local_end = \
+    #                                 dp_rank_ranges[dp_rank - dp_rank_start]
+    #                             size = (local_end - local_start,)
+    #                         else:
+    #                             size = (1,)
+    #                         gather_list.append(torch.zeros(size,
+    #                                                        dtype=torch.float32,
+    #                                                        device="cuda")) # "cpu"
+    #                 else:
+    #                     gather_list = None
+
+    #                 # print_seq("main_param = %s." % str(main_param.shape))
+                    
+    #                 # try:
+    #                 torch.distributed.gather(
+    #                     main_param,
+    #                     gather_list,
+    #                     data_parallel_global_ranks[0],
+    #                     # 0,
+    #                     data_parallel_group,
+    #                 )
+
+    #                 # torch.distributed.all_gather(
+    #                 #     gather_list,
+    #                 #     main_param,
+    #                 #     data_parallel_group,
+    #                 # )
+    #                 # except:
+    #                 #     print_seq("main_param = %s." % str(main_param.shape))
+    #                 #     print_seq("gather_list = %s." % (
+    #                 #         ", ".join([str(tuple(t.shape)) for t in gather_list])
+    #                 #         if gather_list else "--"))
+
+    #                 pax(0, {"gather_list": gather_list})
+    #                 # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #                 # if torch.distributed.get_rank() in data_parallel_global_ranks:
+    #                 # if data_parallel_rank >= dp_rank_start and \
+    #                 #    data_parallel_rank < dp_rank_end:
+
+    #                 #     group_index, group_order = \
+    #                 #         self.model_param_group_index_map[model_param]
+    #                 #     main_param = self.optimizer.param_groups \
+    #                 #         [group_index]["params"][group_order] # .detach() # .cpu()
+
+    #                 #     if data_parallel_rank == dp_rank_start:
+    #                 #         gather_list = []
+    #                 #         for dp_rank in range(dp_rank_start, dp_rank_end):
+    #                 #             _, local_start, local_end = \
+    #                 #                 dp_rank_ranges[dp_rank - dp_rank_start]
+    #                 #             size = (local_end - local_start,)
+    #                 #             gather_list.append(torch.zeros(
+    #                 #                 size,
+    #                 #                 dtype=torch.float32,
+    #                 #                 device="cuda")) # "cpu"
+    #                 #     else:
+    #                 #         gather_list = None
+
+    #                 #     # pax(7, {
+    #                 #     #     "global dp start" :
+    #                 #     #     data_parallel_global_ranks[dp_rank_start],
+    #                 #     #     "main_param" : tp(main_param),
+    #                 #     #     "gather_list" : gather_list,
+    #                 #     # })
+                        
+    #                 #     print("start >>>>>>>>>")
+    #                 #     torch.distributed.gather(
+    #                 #         main_param,
+    #                 #         gather_list,
+    #                 #         # data_parallel_global_ranks[dp_rank_start],
+    #                 #         0,
+    #                 #         torch.distributed.new_group([
+    #                 #             data_parallel_global_ranks[r]
+    #                 #             for r in range(dp_rank_start, dp_rank_end)
+    #                 #         ]),
+    #                 #     )
+    #                 #     print("end >>>>>>>>>>>>>")
+
+    #                 #     pax(4, {
+    #                 #         "gather_list": gather_list,
+    #                 #     })
+    #                 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    #                 torch.distributed.barrier()
+    #                 exit()
+
+    #                 print_rank_0("world %d ... dp [%d, %d)." % (
+    #                     param_world_order,
+    #                     dp_rank_start,
+    #                     dp_rank_end,
+    #                 ))
+    #                 # pax(0, {
+    #                 #     "data_parallel_world_size" : data_parallel_world_size,
+    #                 #     "gbuf_world_numel" : gbuf_world_numel,
+    #                 #     "gbuf_local_numel" : gbuf_local_numel,
+    #                 #     # "model_param" : tp(model_param),
+    #                 #     "dp_rank_start" : dp_rank_start,
+    #                 #     "dp_rank_end" : dp_rank_end,
+    #                 # })
+    #             pax(0, {
+    #                 "param_index_map" : {
+    #                     f"{id(k)} / {k.shape}" : v
+    #                     for k, v in param_index_map.items()
+    #                 },
+    #             })
+
+    #     raise Exception("hi.")
     def save_state(self):
-        # _grad_buffer_param_index_map
-        # for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
-        #     for dtype, gbuf_range_map in gbuf_range_maps.items():
-        #         for param_idx, (model_param, param_range_map) in \
-        #             enumerate(gbuf_range_map["param_map"].items()):
-        #     pax(0, {
-        #         "model_idx" : model_idx,
-        #         "gbuf_range_map" : gbuf_range_map,
-        #     })
+
+        pax(0, {"self": self})
 
         data_parallel_world_size = mpu.get_data_parallel_world_size()
-        data_parallel_rank = mpu.get_data_parallel_rank()
-        data_parallel_group = mpu.get_data_parallel_group()
-        data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS)
+        # data_parallel_rank = mpu.get_data_parallel_rank()
+        # data_parallel_group = mpu.get_data_parallel_group()
+        # data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS)
 
-        # print_seq("dp ranks = %s." % str(list(data_parallel_global_ranks)))
-        # print(data_parallel_group)
+        for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
+            for dtype, gbuf_range_map in gbuf_range_maps.items():
+
+                model = self.models[model_idx]
+                gbuf_world_numel = model._grad_buffers[dtype].numel_padded
+                gbuf_local_numel = int(gbuf_world_numel/data_parallel_world_size)
+                gbuf_local = torch.zeros((gbuf_local_numel,),
+                                         dtype=dtype,
+                                         device="cpu")
+
+                for param_idx, (model_param, param_range_map) in \
+                    enumerate(gbuf_range_map["param_map"].items()):
+
+                    gbuf_local_start = param_range_map["gbuf_local"].start
+                    gbuf_local_end = param_range_map["gbuf_local"].end
+
+                    gbuf_local[gbuf_local_start:gbuf_local_end].data.copy_()
+
+                    pax(0, {
+                        "gbuf_local" : tp(gbuf_local),
+                        "model_idx" : model_idx,
+                        "gbuf_range_map" : gbuf_range_map,
+                        "param_range_map" : param_range_map,
+                    })
+
+
+        raise Exception("hi.")
+
+
         # pax(0, {
-        #     "data_parallel_group" : data_parallel_group,
-        #     "data_parallel_group / options" : data_parallel_group.options,
-        #     "data_parallel_global_ranks" : data_parallel_global_ranks,
+        #     "model_gbuf_range_map" : self.model_gbuf_range_map,
         # })
 
         for model_idx, model in enumerate(self.models):
@@ -575,6 +818,10 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
 
                 gbuf_world_numel = model._grad_buffers[dtype].numel_padded
                 gbuf_local_numel = int(gbuf_world_numel/data_parallel_world_size)
+
+                gbuf_local = torch.zeros((gbuf_local_numel,),
+                                         dtype=dtype,
+                                         device="cpu")
 
                 for model_param, (
                         param_world_order,
@@ -641,7 +888,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                             self.model_param_group_index_map[model_param]
                         main_param = self.optimizer.param_groups \
                             [group_index]["params"][group_order].detach() # .cpu()
-                    except:
+                    except KeyError:
                         main_param = torch.zeros(
                             (1,), dtype=torch.float32, device="cuda") # "cpu")
 
@@ -660,18 +907,75 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                     else:
                         gather_list = None
 
-                    # pax(0, {"gather_list": gather_list})
-                    print_seq("main_param = %s." % str(main_param.shape))
-
+                    # print_seq("main_param = %s." % str(main_param.shape))
+                    
+                    # try:
                     torch.distributed.gather(
                         main_param,
                         gather_list,
                         data_parallel_global_ranks[0],
+                        # 0,
                         data_parallel_group,
                     )
 
+                    # torch.distributed.all_gather(
+                    #     gather_list,
+                    #     main_param,
+                    #     data_parallel_group,
+                    # )
+                    # except:
+                    #     print_seq("main_param = %s." % str(main_param.shape))
+                    #     print_seq("gather_list = %s." % (
+                    #         ", ".join([str(tuple(t.shape)) for t in gather_list])
+                    #         if gather_list else "--"))
+
                     pax(0, {"gather_list": gather_list})
                     # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+                    # if torch.distributed.get_rank() in data_parallel_global_ranks:
+                    # if data_parallel_rank >= dp_rank_start and \
+                    #    data_parallel_rank < dp_rank_end:
+
+                    #     group_index, group_order = \
+                    #         self.model_param_group_index_map[model_param]
+                    #     main_param = self.optimizer.param_groups \
+                    #         [group_index]["params"][group_order] # .detach() # .cpu()
+
+                    #     if data_parallel_rank == dp_rank_start:
+                    #         gather_list = []
+                    #         for dp_rank in range(dp_rank_start, dp_rank_end):
+                    #             _, local_start, local_end = \
+                    #                 dp_rank_ranges[dp_rank - dp_rank_start]
+                    #             size = (local_end - local_start,)
+                    #             gather_list.append(torch.zeros(
+                    #                 size,
+                    #                 dtype=torch.float32,
+                    #                 device="cuda")) # "cpu"
+                    #     else:
+                    #         gather_list = None
+
+                    #     # pax(7, {
+                    #     #     "global dp start" :
+                    #     #     data_parallel_global_ranks[dp_rank_start],
+                    #     #     "main_param" : tp(main_param),
+                    #     #     "gather_list" : gather_list,
+                    #     # })
+                        
+                    #     print("start >>>>>>>>>")
+                    #     torch.distributed.gather(
+                    #         main_param,
+                    #         gather_list,
+                    #         # data_parallel_global_ranks[dp_rank_start],
+                    #         0,
+                    #         torch.distributed.new_group([
+                    #             data_parallel_global_ranks[r]
+                    #             for r in range(dp_rank_start, dp_rank_end)
+                    #         ]),
+                    #     )
+                    #     print("end >>>>>>>>>>>>>")
+
+                    #     pax(4, {
+                    #         "gather_list": gather_list,
+                    #     })
                     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                     torch.distributed.barrier()
                     exit()
