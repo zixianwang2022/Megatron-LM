@@ -364,8 +364,6 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
         os.makedirs(optimizer_dir, exist_ok = True)
         optimizer.save_state(optimizer_dir)
 
-    raise Exception("hi.")
-
     # Collect args, model, RNG.
     if not torch.distributed.is_initialized() \
        or mpu.get_data_parallel_rank() == 0:
@@ -394,6 +392,8 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
         # RNG states.
         if not args.no_save_rng:
             state_dict["rng_state"] = rng_state
+
+        # pax(0, {"state_dict": state_dict})
 
         # Save.
         ensure_directory_exists(checkpoint_name)
