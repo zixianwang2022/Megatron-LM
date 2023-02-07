@@ -40,6 +40,8 @@ class Range:
         return Range(start, start + self.size)
     def __str__(self):
         return "%d,%d [%d]" % (self.start, self.end, self.size)
+    def __len__(self):
+        return self.end - self.start
 
 
 class DistributedOptimizer(MixedPrecisionOptimizer):
@@ -249,17 +251,20 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         # Squeeze zero-size group ranges.
         for group_index, group_range in enumerate(group_ranges):
             group_range["orig_group"] = param_groups[group_index]
-        group_ranges = [ g for g in group_ranges if len(g["params"]) > 0 ]
+            # >>> inserted
+            group_range["orig_group_idx"] = param_groups[group_index]
+            # >>>
+        # >>> removed
+        # group_ranges = [ g for g in group_ranges if len(g["params"]) > 0 ]
+        # <<<
 
         # >>>
-        # pax(0, {
-        #     "param_groups" : param_groups,
-        #     **{"group_ranges / %d" % i : r for i, r in enumerate(group_ranges)},
-        # })
-        # pax(0, {
-        #     "local_param_group_map / values" :
-        #     list(local_param_group_map.values()),
-        # )})
+        # if any(len(g["params"]) == 0 for g in group_ranges):
+        #     pax(7, {
+        #         "param_groups" : param_groups,
+        #         **{"group_ranges / %d" % i : r
+        #            for i, r in enumerate(group_ranges)},
+        #     })
         # <<<
 
         # >>>
@@ -834,23 +839,28 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         The state dict must contain the fp32-from-float16 shards.
         """
         state_dict = {}
-        # state_dict['optimizer'] = self.optimizer.state_dict()
+
+        # Optimizer state.
         state_dict['optimizer'] = {
             k : v
-            for k,v in self.optimizer.state_dict().items()
+            for k, v in self.optimizer.state_dict().items()
             if k != "state"
         }
+        for param_group in state_dict["optimizer"]["param_groups"]:
+            del param_group["params"]
+
+        # Grad scaler state.
         if self.grad_scaler:
             state_dict['grad_scaler'] = self.grad_scaler.state_dict()
-        # state_dict['shard_fp32_from_float16_groups'] = \
-        #     self.shard_fp32_from_float16_groups
-        # pax(0, {
-        #     "state_dict" : state_dict,
-        #     **{"state_dict / %s" % k : v for k, v in state_dict.items()},
-        # })
+
         return state_dict
 
-    def save_state(self, optimizer_dirname):
+    def save_custom_state(self, optimizer_dirname):
+
+        # print_seq(str({
+        #     **self.optimizer.param_groups[1],
+        #     "params" : len(self.optimizer.param_groups[1]["params"]),
+        # }))
 
         data_parallel_world_size = mpu.get_data_parallel_world_size()
         data_parallel_rank = mpu.get_data_parallel_rank()
@@ -984,54 +994,223 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
     #             state_dict["shard_fp32_from_float16_groups"]):
     #         for current_param, saved_param in zip(current_group, saved_group):
     #             current_param.data.copy_(saved_param.data)
+    # def load_state_dict(self, state_dict):
+    #     """
+    #     Load the state dict.
+    #     """
+
+    #     # Collect shards & set main params.
+    #     optim_state_dicts = []
+    #     for shard_state_dict in state_dict["optimizer"]["state"]:
+
+    #         # Collect optimizer state.
+    #         optim_state_dicts.append((
+    #             shard_state_dict["state_order"],
+    #             shard_state_dict["optim"],
+    #         ))
+
+    #         # Set main params.
+    #         group_index = shard_state_dict["group_index"]
+    #         group_order = shard_state_dict["group_order"]
+    #         self.shard_fp32_from_float16_groups[group_index][group_order] \
+    #             .data.copy_(shard_state_dict["param"])
+
+    #     # Sort by pre-save state order.
+    #     optim_state_dicts.sort(key = lambda d : d[0])
+    #     optim_state_dicts = [ d[1] for d in optim_state_dicts ]
+
+    #     # Optimizer.
+    #     self.optimizer.load_state_dict({
+    #         **state_dict["optimizer"],
+    #         "state" : {i:d for i,d in enumerate(optim_state_dicts)},
+    #     })
+
+    #     # pax(0, {
+    #     #     "optimizer" : self.optimizer,
+    #     #     "optimizer / state" :
+    #     #     [tp(d["exp_avg"]) for d in self.optimizer.state.values()],
+    #     #     **{"optimizer / params / %d" % i : [tp(p) for p in g["params"]]
+    #     #        for i, g in enumerate(self.optimizer.param_groups)},
+    #     #     **{"shard_fp32_from_float16_groups / %d" % i : [tp(p) for p in g]
+    #     #        for i, g in enumerate(self.shard_fp32_from_float16_groups)},
+    #     # })
+
+    #     # Grad scaler.
+    #     if self.grad_scaler:
+    #         self.grad_scaler.load_state_dict(state_dict['grad_scaler'])
+    #     else:
+    #         print_rank_0('***WARNING*** found the grad scaler in the '
+    #                      'checkpoint but it is None in the class. '
+    #                      'Skipping loading grad scaler ...')
+    # def load_state_dict(self, state_dict):
+    #     """
+    #     Load the state dict.
+    #     """
+
+    #     # self.optimizer.step()
+    #     # pax(0, {
+    #     #     "optimizer" : self.optimizer,
+    #     #     "optimizer / state" : self.optimizer.state,
+    #     # })
+
+    #     # save_state_dict = self.state_dict()
+    #     inner_state_dict = self.optimizer.state_dict()
+
+    #     optim_states = []
+    #     for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
+    #         for dtype, gbuf_range_map in gbuf_range_maps.items():
+    #             # for param, param_range_map in gbuf_range_map.items():
+    #             for model_param, param_range_map in \
+    #                 gbuf_range_map["param_map"].items():
+
+    #                 group_index, group_order = \
+    #                     self.model_param_group_index_map[model_param]
+    #                 # world_order = param_range_map["gbuf_world_order"]
+
+    #                 # main_param = self.optimizer.param_groups[group_index]["params"][group_order]
+    #                 state_order = inner_state_dict["param_groups"][group_index]["params"][group_order]
+
+    #                 numel = len(param_range_map["gbuf_world"])
+    #                 init_shard = lambda : torch.zeros((numel,), dtype=torch.float32, device=torch.cuda.current_device())
+    #                 optim_states.append((state_order, {
+    #                     "exp_avg" : init_shard(),
+    #                     "exp_avg_sq" : init_shard(),
+    #                 }))
+
+    #                 # pax(0, {
+    #                 #     # "model_param" : tp(model_param),
+    #                 #     "param_range_map" : param_range_map,
+    #                 #     "state_order" : state_order,
+    #                 #     "numel" : numel,
+    #                 #     "optim_states / -1" : optim_states[-1],
+    #                 # })
+
+    #     optim_states.sort(key = lambda s : s[0])
+    #     optim_states = [ s[1] for s in optim_states ]
+
+    #     if 1:
+    #         pax(1, {
+    #             # "model_param_group_index_map" :
+    #             # self.model_param_group_index_map.values(),
+    #             **{"optimizer / param_groups / %d" % i : g["params"]
+    #                for i, g in enumerate(self.optimizer.param_groups)},
+    #             **{"state_dict / optimizer / %d" % i : g["params"]
+    #                for i, g in enumerate(state_dict["optimizer"]["param_groups"])},
+    #             # "optim_states" : optim_states,
+    #         })
+
+    #     # Optimizer.
+    #     self.optimizer.load_state_dict({
+    #         **state_dict["optimizer"],
+    #         "state" : optim_states,
+    #     })
+
+    #     raise Exception("hi.")
+
+    #     # Grad scaler.
+    #     if 'grad_scaler' not in state_dict:
+    #         if self.fp16:
+    #             print_rank_0('***WARNING*** found an old checkpoint, will not '
+    #                          'load grad scaler ...')
+    #     else:
+    #         if self.grad_scaler:
+    #             self.grad_scaler.load_state_dict(state_dict['grad_scaler'])
+    #         else:
+    #             print_rank_0('***WARNING*** fould the grad scaler in the '
+    #                          'checkpoint but it is None in the class. '
+    #                          'Skipping loading grad scaler ...')
+
+    #     # Copy data for the main params.
+    #     for current_group, saved_group in zip(
+    #             self.shard_fp32_from_float16_groups,
+    #             state_dict["shard_fp32_from_float16_groups"]):
+    #         for current_param, saved_param in zip(current_group, saved_group):
+    #             current_param.data.copy_(saved_param.data)
     def load_state_dict(self, state_dict):
         """
         Load the state dict.
         """
 
-        # Collect shards & set main params.
-        optim_state_dicts = []
-        for shard_state_dict in state_dict["optimizer"]["state"]:
+        optim_states = []
+        for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
+            for dtype, gbuf_range_map in gbuf_range_maps.items():
+                # for param, param_range_map in gbuf_range_map.items():
+                for model_param, param_range_map in \
+                    gbuf_range_map["param_map"].items():
 
-            # Collect optimizer state.
-            optim_state_dicts.append((
-                shard_state_dict["state_order"],
-                shard_state_dict["optim"],
-            ))
+                    group_index, group_order = \
+                        self.model_param_group_index_map[model_param]
+                    # world_order = param_range_map["gbuf_world_order"]
 
-            # Set main params.
-            group_index = shard_state_dict["group_index"]
-            group_order = shard_state_dict["group_order"]
-            self.shard_fp32_from_float16_groups[group_index][group_order] \
-                .data.copy_(shard_state_dict["param"])
+                    # main_param = self.optimizer.param_groups[group_index]["params"][group_order]
+                    state_order = inner_state_dict["param_groups"][group_index]["params"][group_order]
 
-        # Sort by pre-save state order.
-        optim_state_dicts.sort(key = lambda d : d[0])
-        optim_state_dicts = [ d[1] for d in optim_state_dicts ]
+                    numel = len(param_range_map["gbuf_world"])
+                    init_shard = lambda : torch.zeros((numel,), dtype=torch.float32, device=torch.cuda.current_device())
+                    optim_states.append((state_order, {
+                        "exp_avg" : init_shard(),
+                        "exp_avg_sq" : init_shard(),
+                    }))
+
+        # optim_states.sort(key = lambda s : s[0])
+        # optim_states = [ s[1] for s in optim_states ]
+
+        param_group_sizes_map = 
+
+        self.optimizer.load_state_dict(state_dict["optimizer"])
+
+        state_dict = dict(state_dict)
+        for param_group_idx, param_group in \
+            enumerate(self.optimizer.param_groups):
+
+            pax(1, {
+                "param_group_idx" : param_group_idx,
+                "param_group" : param_group,
+                "state / param_group" : state_dict["optimizer"]["param_groups"][param_group_idx],
+            })
+        # for 
+        pax(0, {
+            "state_dict / param_groups" : state_dict["optimizer"]["param_groups"],
+        })
+
+        if 1:
+            pax(1, {
+                # "model_param_group_index_map" :
+                # self.model_param_group_index_map.values(),
+                **{"optimizer / param_groups / %d" % i : g["params"]
+                   for i, g in enumerate(self.optimizer.param_groups)},
+                **{"state_dict / optimizer / %d" % i : g["params"]
+                   for i, g in enumerate(state_dict["optimizer"]["param_groups"])},
+                # "optim_states" : optim_states,
+            })
 
         # Optimizer.
         self.optimizer.load_state_dict({
             **state_dict["optimizer"],
-            "state" : {i:d for i,d in enumerate(optim_state_dicts)},
+            "state" : optim_states,
         })
 
-        # pax(0, {
-        #     "optimizer" : self.optimizer,
-        #     "optimizer / state" :
-        #     [tp(d["exp_avg"]) for d in self.optimizer.state.values()],
-        #     **{"optimizer / params / %d" % i : [tp(p) for p in g["params"]]
-        #        for i, g in enumerate(self.optimizer.param_groups)},
-        #     **{"shard_fp32_from_float16_groups / %d" % i : [tp(p) for p in g]
-        #        for i, g in enumerate(self.shard_fp32_from_float16_groups)},
-        # })
+        raise Exception("hi.")
 
         # Grad scaler.
-        if self.grad_scaler:
-            self.grad_scaler.load_state_dict(state_dict['grad_scaler'])
+        if 'grad_scaler' not in state_dict:
+            if self.fp16:
+                print_rank_0('***WARNING*** found an old checkpoint, will not '
+                             'load grad scaler ...')
         else:
-            print_rank_0('***WARNING*** found the grad scaler in the '
-                         'checkpoint but it is None in the class. '
-                         'Skipping loading grad scaler ...')
+            if self.grad_scaler:
+                self.grad_scaler.load_state_dict(state_dict['grad_scaler'])
+            else:
+                print_rank_0('***WARNING*** fould the grad scaler in the '
+                             'checkpoint but it is None in the class. '
+                             'Skipping loading grad scaler ...')
+
+        # Copy data for the main params.
+        for current_group, saved_group in zip(
+                self.shard_fp32_from_float16_groups,
+                state_dict["shard_fp32_from_float16_groups"]):
+            for current_param, saved_param in zip(current_group, saved_group):
+                current_param.data.copy_(saved_param.data)
 
 
     def zero_grad(self, set_to_none=True):
