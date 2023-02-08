@@ -1131,31 +1131,63 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         Load the state dict.
         """
 
-        optim_states = []
+        pax(0, {
+            **{"state_dict / groups / %d" % i : g
+               for i,g in enumerate(state_dict["optimizer"]["param_groups"])},
+            **{"inner / groups / %d" % i : g
+               for i,g in enumerate(self.optimizer.state_dict()["param_groups"])},
+        })
+        print_seq(" ... ".join(str(g["params"]) for g in self.optimizer.state_dict()["param_groups"]))
+
+        # optim_states = []
+        # param_group_size_map = defaultdict(lambda : 0)
+        param_group_sizes = [0] * len(self.optimizer.param_groups)
         for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
             for dtype, gbuf_range_map in gbuf_range_maps.items():
                 # for param, param_range_map in gbuf_range_map.items():
                 for model_param, param_range_map in \
                     gbuf_range_map["param_map"].items():
 
+                    # >>>
+                    # group_index, group_order = \
+                    #     self.model_param_group_index_map[model_param]
+                    # # world_order = param_range_map["gbuf_world_order"]
+
+                    # # main_param = self.optimizer.param_groups[group_index]["params"][group_order]
+                    # state_order = inner_state_dict["param_groups"][group_index]["params"][group_order]
+
+                    # numel = len(param_range_map["gbuf_world"])
+                    # init_shard = lambda : torch.zeros((numel,), dtype=torch.float32, device=torch.cuda.current_device())
+                    # optim_states.append((state_order, {
+                    #     "exp_avg" : init_shard(),
+                    #     "exp_avg_sq" : init_shard(),
+                    # }))
+                    # +++
                     group_index, group_order = \
                         self.model_param_group_index_map[model_param]
-                    # world_order = param_range_map["gbuf_world_order"]
-
-                    # main_param = self.optimizer.param_groups[group_index]["params"][group_order]
-                    state_order = inner_state_dict["param_groups"][group_index]["params"][group_order]
-
-                    numel = len(param_range_map["gbuf_world"])
-                    init_shard = lambda : torch.zeros((numel,), dtype=torch.float32, device=torch.cuda.current_device())
-                    optim_states.append((state_order, {
-                        "exp_avg" : init_shard(),
-                        "exp_avg_sq" : init_shard(),
-                    }))
+                    param_group_sizes[group_index] += 1
+                    # <<<
 
         # optim_states.sort(key = lambda s : s[0])
         # optim_states = [ s[1] for s in optim_states ]
 
-        param_group_sizes_map = 
+        state_dict_param_groups = []
+        offset = 0
+        for idx, group in enumerate(state_dict["optimizer"]["param_groups"]):
+            group_size = param_group_sizes[idx]
+            state_dict_param_groups.append({
+                **group,
+                "params" : list(range(offset, offset + group_size)),
+            })
+            offset += group_size
+            
+        # print_seq("param_group_sizes = %s." % str(param_group_sizes))
+        pax(0, {
+            # "state_dict / optimizer / param_groups" :
+            # state_dict["optimizer"]["param_groups"],
+            **{"state_dict_param_groups / %d" % i : g
+               for i, g in enumerate(state_dict_param_groups)},
+        })
 
         self.optimizer.load_state_dict(state_dict["optimizer"])
 
