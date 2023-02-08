@@ -7,6 +7,7 @@
 
 
 # >>>
+from apex.optimizers import FusedAdam as Adam
 from collections import defaultdict
 import os
 from tqdm import tqdm
@@ -401,6 +402,10 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         # Verify that contiguous buffers are being used.
         # - Note: this should already be checked in arguments.py.
         assert use_contiguous_buffers_in_local_ddp
+        # >>>
+        assert isinstance(optimizer, Adam), \
+            "Only Adam currently supported, due to checkpointing requirements."
+        # <<<
 
         # Model grad buffer ranges.
         self.model_gbuf_ranges = []
@@ -659,111 +664,44 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
 
     def load_custom_state(self, optimizer_dirname):
 
-        raise Exception("load custom state.")
-
-        # print_seq(str({
-        #     **self.optimizer.param_groups[1],
-        #     "params" : len(self.optimizer.param_groups[1]["params"]),
-        # }))
-
-        data_parallel_world_size = mpu.get_data_parallel_world_size()
-        data_parallel_rank = mpu.get_data_parallel_rank()
-        data_parallel_group_gloo = mpu.get_data_parallel_group_gloo()
-        data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS)
-
         for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
 
             assert len(gbuf_range_maps) == 1, "single dtype supported, for now."
             for dtype, gbuf_range_map in gbuf_range_maps.items():
 
-                model = self.models[model_idx]
-                gbuf_world_numel = model._grad_buffers[dtype].numel_padded
-                gbuf_local_numel = int(gbuf_world_numel/data_parallel_world_size)
-                dp_shards = {key:torch.zeros((gbuf_local_numel,),
-                                             dtype=torch.float32,
-                                             device="cpu")
-                             for key in ("param", "exp_avg", "exp_avg_sq")}
+                for model_param, param_range_map in \
+                    tqdm(gbuf_range_map["param_map"].items(),
+                         "load distrib opt state",
+                         len(gbuf_range_map["param_map"]),
+                         disable = torch.distributed.get_rank() != 0):
 
-                for param_idx, (model_param, param_range_map) in \
-                    enumerate(gbuf_range_map["param_map"].items()):
+                    gbuf_world_order = param_range_map["gbuf_world_order"]
+                    param_start = param_range_map["param"].start
+                    param_end = param_range_map["param"].end
 
                     group_index, group_order = \
                         self.model_param_group_index_map[model_param]
-                    world_order = param_range_map["gbuf_world_order"]
 
-                    main_param = self.optimizer.param_groups[group_index]["params"][group_order]
-                    # state_order = default_state_dict["param_groups"][group_index]["params"][group_order]
-                    # optim_state = self.optimizer.state[main_param]
+                    filename = os.path.join(optimizer_dirname,
+                                            str(model_idx),
+                                            str(dtype),
+                                            f"{gbuf_world_order}.pt")
+                    param_state = torch.load(filename)
+
+                    main_param = self.optimizer.param_groups[group_index] \
+                        ["params"][group_order]
+                    main_param.data.copy_(
+                        param_state["param"][param_start:param_end])
+
                     optim_state = self.optimizer.state[main_param]
 
-                    tensors = {
-                        "param" : main_param,
-                        **optim_state,
-                    }
+                    for key, tensor in optim_state.items():
+                        tensor.data.copy_(param_state[key][param_start:param_end])
 
-                    # shard_state_dicts.append({
-                    #     "world_order" : world_order,
-                    #     "state_order" : state_order,
-                    #     "group_index" : group_index,
-                    #     "group_order" : group_order,
-                    #     "param_range_map" : param_range_map,
-                    #     "param" : main_param,
-                    #     "optim" : optim_state,
+                    # pax(0, {
+                    #     "main_param" : tp(main_param),
+                    #     "optim_state" : optim_state,
                     # })
-
-                    gbuf_local_start = param_range_map["gbuf_local"].start
-                    gbuf_local_end = param_range_map["gbuf_local"].end
-
-                    for key in dp_shards:
-                        dp_shards[key][gbuf_local_start:gbuf_local_end] \
-                            .data.copy_(tensors[key].detach().cpu())
-
-                # Gather on DP rank 0.
-                world_tensors = {}
-                for key, send_tensor in dp_shards.items():
-                    
-                    if data_parallel_rank == 0:
-                        recv_tensors = [torch.zeros((gbuf_local_numel,),
-                                                    dtype=torch.float32,
-                                                    device="cpu")
-                                        for _ in range(data_parallel_world_size)]
-                    else:
-                        recv_tensors = None
-
-                    torch.distributed.gather(
-                        send_tensor,
-                        recv_tensors,
-                        data_parallel_global_ranks[0],
-                        data_parallel_group_gloo,
-                    )
-
-                    if data_parallel_rank == 0:
-                        world_tensors[key] = torch.cat(recv_tensors)
-
-                # Save state.
-                if data_parallel_rank == 0:
-
-                    gbuf_index_map = self.models[model_idx]. \
-                        _grad_buffer_param_index_map[dtype]
-
-                    for gbuf_world_order, gbuf_world_start, gbuf_world_end in \
-                        tqdm(gbuf_index_map.values(),
-                             "save distrib opt state",
-                             len(gbuf_index_map)):
-
-                        param_state = {}
-                        for key in world_tensors:
-                            param_state[key] = world_tensors[key][gbuf_world_start:gbuf_world_end].detach().clone()
-
-                        filename = os.path.join(optimizer_dirname,
-                                                str(model_idx),
-                                                str(dtype),
-                                                f"{gbuf_world_order}.pt")
-                        os.makedirs(os.path.dirname(filename), exist_ok = True)
-                        torch.save(param_state, filename)
-
-                # Wait for DP rank 0.
-                torch.distributed.barrier()
 
 
     def zero_grad(self, set_to_none=True):

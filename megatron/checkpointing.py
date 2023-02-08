@@ -977,7 +977,6 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                     get_checkpoint_name(load_dir, iteration, release)
                 optimizer_dir = get_distributed_optimizer_dirname(checkpoint_name)
                 optimizer.load_custom_state(optimizer_dir)
-                raise Exception("hi.")
             if opt_param_scheduler is not None:
                 if 'lr_scheduler' in state_dict: # backward compatbility
                     opt_param_scheduler.load_state_dict(state_dict['lr_scheduler'])
