@@ -70,10 +70,10 @@ def ensure_directory_exists(filename):
     """Build filename's path if it does not already exists."""
     dirname = os.path.dirname(filename)
     # >>>
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
+    # if not os.path.exists(dirname):
+    #     os.makedirs(dirname)
     # +++
-    # os.makedirs(dirname, exist_ok = True)
+    os.makedirs(dirname, exist_ok = True)
     # <<<
 
 
@@ -149,10 +149,13 @@ def get_checkpoint_name(checkpoints_path, iteration, release=False,
 
     return os.path.join(common_path, "model_optim_rng.pt")
 
-def get_distributed_optimizer_dirname(checkpoint_name):
-    dirname = os.path.join(os.path.dirname(checkpoint_name), "optim")
-    os.makedirs(dirname, exist_ok = True)
-    return dirname
+# def get_distributed_optimizer_dirname(checkpoint_name):
+#     dirname = os.path.join(os.path.dirname(checkpoint_name), "optim")
+#     os.makedirs(dirname, exist_ok = True)
+#     return dirname
+def get_distributed_optimizer_checkpoint_name(model_checkpoint_name):
+    return os.path.join(os.path.dirname(model_checkpoint_name),
+                        "distrib_optim.pt")
 # <<<
 
 # >>>
@@ -391,8 +394,13 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
 
     # Save distributed optimizer.
     if args.use_distributed_optimizer:
-        optimizer_dir = get_distributed_optimizer_dirname(checkpoint_name)
-        optimizer.save_custom_state(optimizer_dir)
+        # optimizer_dir = get_distributed_optimizer_dirname(checkpoint_name)
+        # optimizer.save_custom_state(optimizer_dir)
+
+        optim_checkpoint_name = \
+            get_distributed_optimizer_checkpoint_name(checkpoint_name)
+        ensure_directory_exists(optim_checkpoint_name)
+        optimizer.save_custom_state(optim_checkpoint_name)
 
     # Collect args, model, RNG.
     if not torch.distributed.is_initialized() \

@@ -555,20 +555,20 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                              'Skipping loading grad scaler ...')
 
 
-    def save_custom_state(self, optimizer_dirname):
-
-        # print_seq(str({
-        #     **self.optimizer.param_groups[1],
-        #     "params" : len(self.optimizer.param_groups[1]["params"]),
-        # }))
+    # def save_custom_state(self, optimizer_dirname):
+    def save_custom_state(self, filename):
 
         data_parallel_world_size = mpu.get_data_parallel_world_size()
         data_parallel_rank = mpu.get_data_parallel_rank()
         data_parallel_group_gloo = mpu.get_data_parallel_group_gloo()
         data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS)
 
+        # Collect param states.
+        state = {}
         for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
 
+            # Iterate grad buffers (by data type).
+            dtype_state = {}
             assert len(gbuf_range_maps) == 1, "single dtype supported, for now."
             for dtype, gbuf_range_map in gbuf_range_maps.items():
 
@@ -580,16 +580,15 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                                              device="cpu")
                              for key in ("param", "exp_avg", "exp_avg_sq")}
 
+                # Build contiguous DP rank shards (for param + optim states).
                 for param_idx, (model_param, param_range_map) in \
                     enumerate(gbuf_range_map["param_map"].items()):
 
+                    # Main param & optimizer states.
                     group_index, group_order = \
                         self.model_param_group_index_map[model_param]
-                    world_order = param_range_map["gbuf_world_order"]
-
-                    main_param = self.optimizer.param_groups[group_index]["params"][group_order]
-                    # state_order = default_state_dict["param_groups"][group_index]["params"][group_order]
-                    # optim_state = self.optimizer.state[main_param]
+                    main_param = self.optimizer.param_groups \
+                        [group_index]["params"][group_order]
                     optim_state = self.optimizer.state[main_param]
 
                     tensors = {
@@ -597,27 +596,18 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                         **optim_state,
                     }
 
-                    # shard_state_dicts.append({
-                    #     "world_order" : world_order,
-                    #     "state_order" : state_order,
-                    #     "group_index" : group_index,
-                    #     "group_order" : group_order,
-                    #     "param_range_map" : param_range_map,
-                    #     "param" : main_param,
-                    #     "optim" : optim_state,
-                    # })
-
+                    # Copy states into contiguous shard.
                     gbuf_local_start = param_range_map["gbuf_local"].start
                     gbuf_local_end = param_range_map["gbuf_local"].end
-
                     for key in dp_shards:
                         dp_shards[key][gbuf_local_start:gbuf_local_end] \
                             .data.copy_(tensors[key].detach().cpu())
 
-                # Gather on DP rank 0.
+                # Gather contiguous shards on DP rank 0.
                 world_tensors = {}
                 for key, send_tensor in dp_shards.items():
                     
+                    # Received tensor list.
                     if data_parallel_rank == 0:
                         recv_tensors = [torch.zeros((gbuf_local_numel,),
                                                     dtype=torch.float32,
@@ -626,6 +616,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                     else:
                         recv_tensors = None
 
+                    # Gather.
                     torch.distributed.gather(
                         send_tensor,
                         recv_tensors,
@@ -633,33 +624,54 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                         data_parallel_group_gloo,
                     )
 
+                    # Concatenate.
                     if data_parallel_rank == 0:
                         world_tensors[key] = torch.cat(recv_tensors)
 
-                # Save state.
-                if data_parallel_rank == 0:
+                # Collect world state.
+                dtype_state[dtype] = world_tensors
+            state[model_idx] = dtype_state
 
-                    gbuf_index_map = self.models[model_idx]. \
-                        _grad_buffer_param_index_map[dtype]
+                # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                # # Save param states.
+                # if data_parallel_rank == 0:
 
-                    for gbuf_world_order, gbuf_world_start, gbuf_world_end in \
-                        tqdm(gbuf_index_map.values(),
-                             "save distrib opt state",
-                             len(gbuf_index_map)):
+                #     gbuf_index_map = self.models[model_idx]. \
+                #         _grad_buffer_param_index_map[dtype]
 
-                        param_state = {}
-                        for key in world_tensors:
-                            param_state[key] = world_tensors[key][gbuf_world_start:gbuf_world_end].detach().clone()
+                #     # Collect param state.
+                #     for gbuf_world_order, gbuf_world_start, gbuf_world_end in \
+                #         tqdm(gbuf_index_map.values(),
+                #              "save distrib opt state",
+                #              len(gbuf_index_map)):
 
-                        filename = os.path.join(optimizer_dirname,
-                                                str(model_idx),
-                                                str(dtype),
-                                                f"{gbuf_world_order}.pt")
-                        os.makedirs(os.path.dirname(filename), exist_ok = True)
-                        torch.save(param_state, filename)
+                #         # Clone tensor (never save a view).
+                #         param_state = {}
+                #         for key in world_tensors:
+                #             param_state[key] = world_tensors[key] \
+                #                 [gbuf_world_start:gbuf_world_end] \
+                #                 .detach().clone()
 
-                # Wait for DP rank 0.
-                torch.distributed.barrier()
+                #         # >>>
+                #         # # Save param state.
+                #         # filename = os.path.join(optimizer_dirname,
+                #         #                         str(model_idx),
+                #         #                         str(dtype),
+                #         #                         f"{gbuf_world_order}.pt")
+                #         # os.makedirs(os.path.dirname(filename), exist_ok = True)
+                #         # torch.save(param_state, filename)
+                #         # +++
+                #         param_states[model_idx][dtype][gbuf_world_order] = \
+                #             param_state
+                #         # <<<
+                
+                # # Wait for DP rank 0.
+                # torch.distributed.barrier()
+                # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        # Save param state.
+        if data_parallel_rank == 0:
+            torch.save(state, filename)
 
 
     def load_custom_state(self, optimizer_dirname):
