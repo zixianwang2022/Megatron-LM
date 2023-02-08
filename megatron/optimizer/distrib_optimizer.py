@@ -674,41 +674,79 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             torch.save(state, filename)
 
 
-    def load_custom_state(self, optimizer_dirname):
+    # def load_custom_state(self, optimizer_dirname):
+
+    #     for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
+
+    #         assert len(gbuf_range_maps) == 1, "single dtype supported, for now."
+    #         for dtype, gbuf_range_map in gbuf_range_maps.items():
+
+    #             for model_param, param_range_map in \
+    #                 tqdm(gbuf_range_map["param_map"].items(),
+    #                      "load distrib opt state",
+    #                      len(gbuf_range_map["param_map"]),
+    #                      disable = torch.distributed.get_rank() != 0):
+
+    #                 gbuf_world_order = param_range_map["gbuf_world_order"]
+    #                 param_start = param_range_map["param"].start
+    #                 param_end = param_range_map["param"].end
+
+    #                 group_index, group_order = \
+    #                     self.model_param_group_index_map[model_param]
+
+    #                 filename = os.path.join(optimizer_dirname,
+    #                                         str(model_idx),
+    #                                         str(dtype),
+    #                                         f"{gbuf_world_order}.pt")
+    #                 param_state = torch.load(filename)
+
+    #                 main_param = self.optimizer.param_groups[group_index] \
+    #                     ["params"][group_order]
+    #                 main_param.data.copy_(
+    #                     param_state["param"][param_start:param_end])
+
+    #                 optim_state = self.optimizer.state[main_param]
+
+    #                 for key, tensor in optim_state.items():
+    #                     tensor.data.copy_(param_state[key][param_start:param_end])
+
+    #                 # pax(0, {
+    #                 #     "main_param" : tp(main_param),
+    #                 #     "optim_state" : optim_state,
+    #                 # })
+    def load_custom_state(self, filename):
+
+        loaded_state = torch.load(filename)
+        # pax(0, {"loaded_state": loaded_state})
 
         for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
-
-            assert len(gbuf_range_maps) == 1, "single dtype supported, for now."
             for dtype, gbuf_range_map in gbuf_range_maps.items():
-
                 for model_param, param_range_map in \
                     tqdm(gbuf_range_map["param_map"].items(),
                          "load distrib opt state",
                          len(gbuf_range_map["param_map"]),
                          disable = torch.distributed.get_rank() != 0):
 
-                    gbuf_world_order = param_range_map["gbuf_world_order"]
-                    param_start = param_range_map["param"].start
-                    param_end = param_range_map["param"].end
-
+                    gbuf_world_start = param_range_map["gbuf_world"].start
+                    gbuf_world_end = param_range_map["gbuf_world"].end
                     group_index, group_order = \
                         self.model_param_group_index_map[model_param]
 
-                    filename = os.path.join(optimizer_dirname,
-                                            str(model_idx),
-                                            str(dtype),
-                                            f"{gbuf_world_order}.pt")
-                    param_state = torch.load(filename)
+                    # State for this model & dtype.
+                    buffer_state = loaded_state[model_idx][dtype]
 
+                    # Set main param.
                     main_param = self.optimizer.param_groups[group_index] \
                         ["params"][group_order]
                     main_param.data.copy_(
-                        param_state["param"][param_start:param_end])
+                        buffer_state["param"] \
+                        [gbuf_world_start:gbuf_world_end])
 
+                    # Set optim params.
                     optim_state = self.optimizer.state[main_param]
-
-                    for key, tensor in optim_state.items():
-                        tensor.data.copy_(param_state[key][param_start:param_end])
+                    for key, optim_param in optim_state.items():
+                        optim_param.data.copy_(
+                            buffer_state[key][gbuf_world_start:gbuf_world_end])
 
                     # pax(0, {
                     #     "main_param" : tp(main_param),

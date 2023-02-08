@@ -981,10 +981,19 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
             if args.use_distributed_optimizer:
                 tracker_filename = get_checkpoint_tracker_filename(load_dir)
                 iteration, release = read_metadata(tracker_filename)
-                checkpoint_name = \
+                # >>>
+                # checkpoint_name = \
+                #     get_checkpoint_name(load_dir, iteration, release)
+                # optimizer_dir = get_distributed_optimizer_dirname(checkpoint_name)
+                # optimizer.load_custom_state(optimizer_dir)
+                # +++
+                model_checkpoint_name = \
                     get_checkpoint_name(load_dir, iteration, release)
-                optimizer_dir = get_distributed_optimizer_dirname(checkpoint_name)
-                optimizer.load_custom_state(optimizer_dir)
+                optim_checkpoint_name = \
+                    get_distributed_optimizer_checkpoint_name(
+                        model_checkpoint_name)
+                optimizer.load_custom_state(optim_checkpoint_name)
+                # <<<
             if opt_param_scheduler is not None:
                 if 'lr_scheduler' in state_dict: # backward compatbility
                     opt_param_scheduler.load_state_dict(state_dict['lr_scheduler'])
