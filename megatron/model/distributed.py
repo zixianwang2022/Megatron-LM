@@ -206,7 +206,8 @@ class DistributedDataParallel(DistributedDataParallelBase):
             for _, buffer_ in self._grad_buffers.items():
                 buffer_.data /= mpu.get_data_parallel_world_size()
                 torch.distributed.all_reduce(
-                    buffer_.data, group=mpu.get_data_parallel_group())
+                    buffer_.data, group=mpu.get_data_parallel_group(),
+                    async_op=True)
         else:
             # Otherwise, bucketize and all-reduce
             buckets = {}

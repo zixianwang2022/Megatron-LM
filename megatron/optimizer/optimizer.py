@@ -279,19 +279,20 @@ class MegatronOptimizer(ABC):
     def reduce_model_grads(self, args, timers):
         """All-reduce all grads, and all-reduce embeddings."""
 
+        # All-reduce if needed.
+        #if args.DDP_impl == 'local':
+        #    timers('grads-all-reduce', log_level=1).start(
+        #        barrier=args.barrier_with_L1_time)
+        #    for model in self.models:
+        #        model.allreduce_gradients()
+        #    timers('grads-all-reduce').stop()
+         
         # All-reduce layer-norm grads (for sequence parallelism).
         timers('layernorm-grads-all-reduce', log_level=1).start(
             barrier=args.barrier_with_L1_time)
         self.allreduce_layernorm_grads(args)
         timers('layernorm-grads-all-reduce').stop()
 
-        # All-reduce if needed.
-        if args.DDP_impl == 'local':
-            timers('grads-all-reduce', log_level=1).start(
-                barrier=args.barrier_with_L1_time)
-            for model in self.models:
-                model.allreduce_gradients()
-            timers('grads-all-reduce').stop()
 
         # All-reduce embedding grads.
         timers('embedding-grads-all-reduce', log_level=1).start(

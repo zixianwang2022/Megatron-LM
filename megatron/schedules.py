@@ -264,6 +264,8 @@ def forward_backward_pipelining_with_interleaving(forward_step_func,
 
     args = get_args()
 
+    mbs_so_far = [0]*len(model)
+
     input_tensors = [[] for _ in range(len(model))]
     output_tensors = [[] for _ in range(len(model))]
     forward_data_store = []
@@ -362,6 +364,10 @@ def forward_backward_pipelining_with_interleaving(forward_step_func,
                           output_tensor_grad,
                           timers)
 
+        mbs_so_far[model_chunk_id] = mbs_so_far[model_chunk_id] + 1
+        if get_num_microbatches() == mbs_so_far[model_chunk_id]:
+            model[model_chunk_id].allreduce_gradients()
+         
         return input_tensor_grad
 
     # Run warmup forward passes.
