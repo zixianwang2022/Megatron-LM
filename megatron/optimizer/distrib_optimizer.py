@@ -15,10 +15,6 @@ from megatron.model.module import param_is_not_shared
 
 from .optimizer import MixedPrecisionOptimizer, _zero_grad_group_helper
 
-# >>>
-from lutil import pax, print_seq, tp
-# <<<
-
 
 class Range:
     """
@@ -441,6 +437,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         """
         The state dict must contain the fp32-from-float16 shards.
         """
+
         state_dict = {}
 
         # Optimizer state.
@@ -535,7 +532,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                 model = self.models[model_idx]
                 gbuf_world_numel = model._grad_buffers[dtype].numel_padded
                 gbuf_local_numel = int(gbuf_world_numel/data_parallel_world_size)
-                dp_shards = {key:torch.zeros((gbuf_local_numel,),
+                local_shards = {key:torch.zeros((gbuf_local_numel,),
                                              dtype=torch.float32,
                                              device="cpu")
                              for key in ("param", "exp_avg", "exp_avg_sq")}
@@ -559,15 +556,15 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                     # Copy states into contiguous shard.
                     gbuf_local_start = param_range_map["gbuf_local"].start
                     gbuf_local_end = param_range_map["gbuf_local"].end
-                    for key in dp_shards:
-                        dp_shards[key][gbuf_local_start:gbuf_local_end] \
+                    for key in local_shards:
+                        local_shards[key][gbuf_local_start:gbuf_local_end] \
                             .data.copy_(tensors[key].detach().cpu())
 
                 # Gather contiguous shards on DP rank 0.
                 world_tensors = {}
-                for key, send_tensor in dp_shards.items():
+                for key, send_tensor in local_shards.items():
                     
-                    # Received tensor list.
+                    # Gather tensor list.
                     if data_parallel_rank == 0:
                         recv_tensors = [torch.zeros((gbuf_local_numel,),
                                                     dtype=torch.float32,
@@ -597,40 +594,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             torch.save(state, filename)
 
 
-    # def load_custom_state(self, filename):
-
-    #     loaded_state = torch.load(filename)
-
-    #     raise Exception("load on dp rank 0.")
-
-    #     for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
-    #         for dtype, gbuf_range_map in gbuf_range_maps.items():
-    #             for model_param, param_range_map in \
-    #                 tqdm(gbuf_range_map["param_map"].items(),
-    #                      "load distrib opt state",
-    #                      len(gbuf_range_map["param_map"]),
-    #                      disable = torch.distributed.get_rank() != 0):
-
-    #                 gbuf_world_start = param_range_map["gbuf_world"].start
-    #                 gbuf_world_end = param_range_map["gbuf_world"].end
-    #                 group_index, group_order = \
-    #                     self.model_param_group_index_map[model_param]
-
-    #                 # State for this model & dtype.
-    #                 buffer_state = loaded_state[model_idx][dtype]
-
-    #                 # Set main param.
-    #                 main_param = self.optimizer.param_groups[group_index] \
-    #                     ["params"][group_order]
-    #                 main_param.data.copy_(
-    #                     buffer_state["param"] \
-    #                     [gbuf_world_start:gbuf_world_end])
-
-    #                 # Set optim params.
-    #                 optim_state = self.optimizer.state[main_param]
-    #                 for key, optim_param in optim_state.items():
-    #                     optim_param.data.copy_(
-    #                         buffer_state[key][gbuf_world_start:gbuf_world_end])
     def load_custom_state(self, filename):
 
         data_parallel_world_size = mpu.get_data_parallel_world_size()
@@ -638,15 +601,19 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         data_parallel_group_gloo = mpu.get_data_parallel_group_gloo()
         data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS)
 
+        # Load on DP rank 0.
         if data_parallel_rank == 0:
             loaded_state = torch.load(filename)
 
+        # Scatter tensors to all DP ranks.
         for model_idx, gbuf_range_maps in enumerate(self.model_gbuf_ranges):
             for dtype, gbuf_range_map in gbuf_range_maps.items():
 
                 model = self.models[model_idx]
                 gbuf_world_numel = model._grad_buffers[dtype].numel_padded
                 gbuf_local_numel = int(gbuf_world_numel/data_parallel_world_size)
+
+                # Contiguous local shards (received from DP rank 0).
                 local_shards = {key:torch.zeros((gbuf_local_numel,),
                                                 dtype=torch.float32,
                                                 device="cpu")
@@ -673,11 +640,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                         data_parallel_group_gloo,
                     )
 
-                # pax(0, {
-                #     "filename" : filename,
-                #     "local_shards" : local_shards,
-                # })
-
+                # Copy local contiguous shards to param/optim shards.
                 for model_param, param_range_map in \
                     gbuf_range_map["param_map"].items():
 

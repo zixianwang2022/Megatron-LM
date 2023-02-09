@@ -488,7 +488,7 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
     if state_dict is None:
         return 0
 
-    # set checkpoint version
+    # Set checkpoint version.
     set_checkpoint_version(state_dict.get('checkpoint_version', 0))
 
     # Set iteration.
@@ -528,7 +528,7 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
             mpu.set_virtual_pipeline_model_parallel_rank(i)
             model[i].load_state_dict(state_dict['model%d' % i], strict=strict)
 
-    # Fix up query/key/value matrix ordering if needed
+    # Fix up query/key/value matrix ordering if needed.
     checkpoint_version = get_checkpoint_version()
     print_rank_0(f' checkpoint version {checkpoint_version}')
     fix_query_key_value_ordering(model, checkpoint_version)
