@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 from abc import ABC
 from abc import abstractmethod
@@ -10,10 +10,6 @@ from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors
 from megatron import get_args
 from megatron.core import mpu
 from .module import MegatronModule
-
-# >>>
-from lutil import pax
-# <<<
 
 
 class MemoryBuffer:
@@ -123,9 +119,7 @@ class DistributedDataParallel(DistributedDataParallelBase):
                     self.accumulate_allreduce_grads_in_fp32 else param.dtype
 
             # First calculate total number of elements per type.
-            # >>>
             type_count = {}
-            # <<<
             type_num_elements = {}
             for param in self.module.parameters():
                 if param.requires_grad:
@@ -160,13 +154,11 @@ class DistributedDataParallel(DistributedDataParallelBase):
                         param.data.shape, type_num_elements[dtype])
                     if dtype not in self._grad_buffer_param_index_map:
                         self._grad_buffer_param_index_map[dtype] = {}
-                    # >>>
                     self._grad_buffer_param_index_map[dtype][param] = (
-                        type_count[dtype], # new
+                        type_count[dtype],
                         type_num_elements[dtype],
                         type_num_elements[dtype] + param.data.nelement(),
                     )
-                    # <<<
 
             # Backward hook.
             # Accumalation function for the gradients. We need
@@ -181,18 +173,6 @@ class DistributedDataParallel(DistributedDataParallelBase):
                     grad_acc = param_tmp.grad_fn.next_functions[0][0]
                     grad_acc.register_hook(self._make_param_hook(param))
                     self.grad_accs.append(grad_acc)
-
-        # >>>
-        # pax(0, {
-        #     "_grad_buffers" : self._grad_buffers,
-        #     "_grad_buffer_param_index_map" : self._grad_buffer_param_index_map,
-        #     **{"_grad_buffers / %s" % d : b
-        #        for d, b in self._grad_buffers.items()},
-        #     **{"_grad_buffers_param_index_map / %s" % d : {
-        #         f"{id(p)} / {p.shape}" : i for p, i in m.items()
-        #     } for d, m in self._grad_buffer_param_index_map.items()},
-        # })
-        # <<<
 
 
     def _make_param_hook(self, param):
