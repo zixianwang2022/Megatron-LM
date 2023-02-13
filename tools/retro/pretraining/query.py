@@ -221,7 +221,7 @@ def query_pretraining_neighbors():
     args = get_retro_args()
 
     # Num threads.
-    faiss.omp_set_num_threads(16) # <= 4 procs/node, <= 64 threads/node
+    faiss.omp_set_num_threads(64)
 
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")

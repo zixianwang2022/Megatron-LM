@@ -5,8 +5,26 @@ unset NCCL_DEBUG
 
 NPROCS=16 # NPROCS must be <= number of GPUs.
 
+set_current_dir() {
+    DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+}
+
+################ Dataset configs. ################
+# This script contains methods to customize arguments to specific dataset
+# types. Customize this script as needed for your datasets.
+set_current_dir
+. $DIR/get_dataset_configs.sh
+
+################ Environment variables. ################
+# *Note*: See 'Required environment variables' in 'get_preprocess_cmd.sh' for
+# a description of the required environment variables. These variables can be
+# set however a user would like. In our setup, we use another bash script
+# (location defined by $RETRO_ENV_VARS) that sets all the environment variables
+# at once.
+. $RETRO_ENV_VARS
+
 ######## Environment vars. ########
-DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+set_current_dir
 . ${DIR}/get_preprocess_cmd.sh
 
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"

@@ -77,6 +77,8 @@ def remove_embeddings():
 def train_index():
     '''Train index on DB chunks.'''
 
+    args = get_retro_args()
+
     # Check if trained index already exists.
     if not os.path.isfile(get_empty_index_path()):
 

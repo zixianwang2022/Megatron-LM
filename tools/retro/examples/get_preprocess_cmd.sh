@@ -5,12 +5,7 @@
 set -u
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-################ Dataset configs. ################
-# This script contains methods to customize arguments to specific dataset
-# types. Customize this script as needed for your datasets.
-. $DIR/get_dataset_configs.sh
-
-######## Environment variables. ########
+################ Required environment variables. ################
 # Required environment variables:
 # - REPO_DIR : Root directory of Megatron codebase.
 # - RETRO_WORKDIR : Root directory of this Retro project's processed data. (For
@@ -32,11 +27,6 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 #     BertWordPieceCase).
 # - BERT_EMBEDDER_TYPE : One of 'megatron' or 'huggingface'.
 # - EXTRA_ARGS : Extra arguments (else, leave empty).
-
-# *Note*: The variables above can be set however a user would like. In our
-# setup, we use another bash script (location defined in $RETRO_ENV_VARS) that
-# sets all the environment variables at once.
-. $RETRO_ENV_VARS
 
 ################ Data blend. ################
 . ${DATA_BLEND_SCRIPT}
