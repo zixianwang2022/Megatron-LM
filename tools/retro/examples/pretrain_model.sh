@@ -7,28 +7,28 @@
 set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
-DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 NPROCS=8 # NPROCS must be <= number of GPUs.
 
-######## Environment variables. ########
-# (See get_preprocess_cmd.sh for description of environment variables and
-#  $RETRO_ENV_VARS.)
+################ Dataset configs. ################
+# This script contains methods to customize arguments to specific dataset
+# types. Customize this script as needed for your datasets.
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+. $DIR/get_dataset_configs.sh
+
+################ Environment variables. ################
+# *Note*: See 'Required environment variables' in 'get_preprocess_cmd.sh' for
+# a description of the required environment variables. These variables can be
+# set however a user would like. In our setup, we use another bash script
+# (location defined by $RETRO_ENV_VARS) that sets all the environment variables
+# at once.
 . $RETRO_ENV_VARS
 
-######## Data corpus. ########
-CORPUS="wiki"
-# CORPUS="wiki-tiny"
-# CORPUS="corpus"
-
-. ${DIR}/get_corpus_config.sh
-
-######## Data blend. ########
-. ${BLEND_SCRIPT_DIR}/data_blend_${CORPUS}.sh
+################ Data blend. ################
+. ${DATA_BLEND_SCRIPT}
 DATA_PATH=${DATA_BLEND}
 
 ######## Retro setup. ########
-RETRO_WORKDIR=${RETRO_WORKDIRS}/${CORPUS}
 RETRO_ADD_RETRIEVER=1
 RETRO_CYCLIC_TRAIN_ITERS=750000
 RETRO_NUM_NEIGHBORS=2
@@ -37,12 +37,12 @@ RETRO_NUM_NEIGHBORS=2
 CHECKPOINT_DIR=${RETRO_WORKDIR}/checkpoints/${RETRO_ADD_RETRIEVER}
 TENSORBOARD_DIR="${CHECKPOINT_DIR}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
-options=" \
+ARGS=" \
     --save-interval 1000 \
     --save ${CHECKPOINT_DIR} \
     --load ${CHECKPOINT_DIR} \
     --tensorboard-dir ${TENSORBOARD_DIR} \
-    --log-interval 100 \
+    --log-interval 5 \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers 12 \
@@ -81,7 +81,7 @@ options=" \
 if [ "$RETRO_ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py
 else
-    options="${options} \
+    ARGS="${ARGS} \
     --retro-add-retriever \
     --retro-workdir ${RETRO_WORKDIR} \
     --retro-cyclic-train-iters ${RETRO_CYCLIC_TRAIN_ITERS} \
@@ -90,6 +90,10 @@ else
     SCRIPT=pretrain_retro.py
 fi
 
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
+echo "ARGS = '$ARGS'."
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
+
 python -m torch.distributed.launch \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \
@@ -97,4 +101,4 @@ python -m torch.distributed.launch \
     --master_addr localhost \
     --master_port 6000 \
     ${SCRIPT} \
-    ${options} \
+    ${ARGS} \
