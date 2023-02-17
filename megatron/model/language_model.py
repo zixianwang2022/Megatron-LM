@@ -351,39 +351,54 @@ class TransformerLanguageModel(MegatronModule):
                                        self.num_tokentypes)
             self._embedding_key = 'embedding'
 
-        # Retriever (bi-directional transformer with cross attention)
-        if args.retro_add_retriever:
-            self.retriever = ParallelRetroEncoder(
-                self.init_method,
-                output_layer_init_method,
-                self_attn_mask_type=AttnMaskType.padding,
-                pre_process=self.pre_process,
-                post_process=False,
-            )
-            self._retriever_key = 'retriever'
-        else:
-            self.retriever = None
+        # >>>
+        # # Retriever (bi-directional transformer with cross attention)
+        # if args.retro_add_retriever:
+        #     self.retriever = ParallelRetroEncoder(
+        #         self.init_method,
+        #         output_layer_init_method,
+        #         self_attn_mask_type=AttnMaskType.padding,
+        #         pre_process=self.pre_process,
+        #         post_process=False,
+        #     )
+        #     self._retriever_key = 'retriever'
+        # else:
+        #     self.retriever = None
+        # <<<
+        raise Exception("args.model_type == %s." % args.model_type)
 
         # Encoder (usually set to True, False if part of an encoder-decoder
         # architecture and in encoder-only stage).
         if self.add_encoder:
-            if args.retro_add_retriever:
-                self.encoder = ParallelRetroTransformer(
-                    self.init_method,
-                    output_layer_init_method,
-                    self_attn_mask_type=self.encoder_attn_mask_type,
-                    pre_process=self.pre_process,
-                    post_process=self.post_process,
-                    retriever=self.retriever,
-                )
-            else:
-                self.encoder = ParallelTransformer(
-                    self.init_method,
-                    output_layer_init_method,
-                    self_attn_mask_type=self.encoder_attn_mask_type,
-                    pre_process=self.pre_process,
-                    post_process=self.post_process,
-                )
+            # >>>
+            # if args.retro_add_retriever:
+            #     self.encoder = ParallelRetroTransformer(
+            #         self.init_method,
+            #         output_layer_init_method,
+            #         self_attn_mask_type=self.encoder_attn_mask_type,
+            #         pre_process=self.pre_process,
+            #         post_process=self.post_process,
+            #         retriever=self.retriever,
+            #     )
+            # else:
+            #     self.encoder = ParallelTransformer(
+            #         self.init_method,
+            #         output_layer_init_method,
+            #         self_attn_mask_type=self.encoder_attn_mask_type,
+            #         pre_process=self.pre_process,
+            #         post_process=self.post_process,
+            #     )
+            # +++
+            self.encoder = ParallelTransformer(
+                self.init_method,
+                output_layer_init_method,
+                model_type=args.model_type if not args.retro_add_retriever \
+                    else ModelType.retro_decoder,
+                self_attn_mask_type=self.encoder_attn_mask_type,
+                pre_process=self.pre_process,
+                post_process=self.post_process,
+            )
+            # <<<
             self._encoder_key = 'encoder'
         else:
             self.encoder = None
@@ -438,7 +453,11 @@ class TransformerLanguageModel(MegatronModule):
 
     def forward(self, enc_input_ids, enc_position_ids, enc_attn_mask,
                 dec_input_ids=None, dec_position_ids=None, dec_attn_mask=None,
-                ret_input_ids=None, ret_position_ids=None, ret_attn_mask=None,
+                # >>>
+                retriever_input_ids=None,
+                retriever_position_ids=None,
+                retriever_attn_mask=None,
+                # <<<
                 enc_dec_attn_mask=None, tokentype_ids=None,
                 inference_params=None,
                 pooling_sequence_index=0,
