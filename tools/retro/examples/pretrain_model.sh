@@ -73,7 +73,7 @@ ARGS=" \
     --log-num-zeros-in-grad \
     --fp16 \
     --DDP-impl local \
-    --dataloader-type cyclic \
+    --dataloader-type ${DATALOADER_TYPE} \
     --no-data-sharding \
     --no-gradient-accumulation-fusion \
 "

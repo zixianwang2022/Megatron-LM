@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 """Transformer."""
 import math
@@ -1278,7 +1278,25 @@ class ParallelTransformer(MegatronModule):
             elif args.num_layers == 40:
                 self.retro_layer_numbers = np.arange(9, 41, 3).tolist()
                 self.retro_layer_numbers.append(40)
-            self.retriever = retriever
+
+            # self.retriever = retriever
+            # self.retriever = ParallelTransformerParallelRetroEncoder(
+            #     self.init_method,
+            #     output_layer_init_method,
+            #     self_attn_mask_type=AttnMaskType.padding,
+            #     pre_process=self.pre_process,
+            #     post_process=False,
+            # )
+            self.retriever = ParallelTransformer(
+                self.init_method,
+                output_layer_init_method,
+                model_type=ModelType.retro_encoder,
+                self_attn_mask_type=AttnMaskType.padding,
+                pre_process=self.pre_process,
+                post_process=False,
+            )
+        if model_type == ModelType.retro_encoder:
+            self.num_layers = args.retro_encoder_num_layers
         # <<<
 
         # Transformer layers.
