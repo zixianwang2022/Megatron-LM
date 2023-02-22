@@ -520,7 +520,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                              'Skipping loading grad scaler ...')
 
 
-    def save_custom_state(self, filename):
+    def save_parameter_state(self, filename):
 
         data_parallel_world_size = mpu.get_data_parallel_world_size()
         data_parallel_rank = mpu.get_data_parallel_rank()
@@ -601,7 +601,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             torch.save(state, filename)
 
 
-    def load_custom_state(self, filename):
+    def load_parameter_state(self, filename):
 
         data_parallel_world_size = mpu.get_data_parallel_world_size()
         data_parallel_rank = mpu.get_data_parallel_rank()

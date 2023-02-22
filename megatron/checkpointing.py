@@ -223,12 +223,12 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
     # Checkpoint name.
     checkpoint_name = get_checkpoint_name(args.save, iteration)
 
-    # Save distributed optimizer.
+    # Save distributed optimizer's custom parameter state.
     if args.use_distributed_optimizer:
         optim_checkpoint_name = \
             get_distributed_optimizer_checkpoint_name(checkpoint_name)
         ensure_directory_exists(optim_checkpoint_name)
-        optimizer.save_custom_state(optim_checkpoint_name)
+        optimizer.save_parameter_state(optim_checkpoint_name)
 
     # Collect args, model, RNG.
     if not torch.distributed.is_initialized() \
@@ -536,8 +536,11 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
     # Optimizer.
     if not release and not args.finetune and not args.no_load_optim:
         try:
+            # Load state dict.
             if optimizer is not None:
                 optimizer.load_state_dict(state_dict['optimizer'])
+
+            # Load distributed optimizer's custom parameter state.
             if args.use_distributed_optimizer:
                 tracker_filename = get_checkpoint_tracker_filename(load_dir)
                 iteration, release = read_metadata(tracker_filename)
@@ -546,7 +549,9 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                 optim_checkpoint_name = \
                     get_distributed_optimizer_checkpoint_name(
                         model_checkpoint_name)
-                optimizer.load_custom_state(optim_checkpoint_name)
+                optimizer.load_parameter_state(optim_checkpoint_name)
+
+            # Load scheduler.
             if opt_param_scheduler is not None:
                 if 'lr_scheduler' in state_dict: # backward compatbility
                     opt_param_scheduler.load_state_dict(state_dict['lr_scheduler'])
