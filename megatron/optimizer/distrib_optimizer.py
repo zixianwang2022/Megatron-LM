@@ -96,8 +96,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         for param, param_world_indexes in param_world_index_map.items():
 
             # Param range.
-            param_world_order, param_world_start, param_world_end = \
-                param_world_indexes
+            param_world_start, param_world_end = param_world_indexes
             param_local_start = max(
                 0,
                 param_world_start - gbuf_world_range.start)
@@ -113,7 +112,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                 sub_param_start = max(0, gbuf_world_range.start-param_world_start)
                 sub_param_range = param_local_range.normalize(sub_param_start)
                 param_range_map[param] = {
-                    "gbuf_world_order" : param_world_order,
                     "gbuf_world" : param_world_range,
                     "gbuf_local" : param_local_range,
                     "param" : sub_param_range,
@@ -820,7 +818,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         # Copy from param buffer to each param.
         for model_id, model in enumerate(self.models):
             for dtype, param_map in model._grad_buffer_param_index_map.items():
-                for param, (buf_order, buf_start, buf_end) in param_map.items():
+                for param, (buf_start, buf_end) in param_map.items():
                     param_buf = self.param_buffers[model_id][dtype]
                     param_buf_shard = param_buf[buf_start:buf_end]
                     param.view(-1).detach().copy_(param_buf_shard)

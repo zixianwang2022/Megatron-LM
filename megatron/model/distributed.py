@@ -119,12 +119,10 @@ class DistributedDataParallel(DistributedDataParallelBase):
                     self.accumulate_allreduce_grads_in_fp32 else param.dtype
 
             # First calculate total number of elements per type.
-            type_count = {}
             type_num_elements = {}
             for param in self.module.parameters():
                 if param.requires_grad:
                     dtype = _get_buffer_type(param)
-                    type_count[dtype] = type_count.get(dtype, 0) + 1
                     type_num_elements[dtype] = type_num_elements.get(dtype, 0) \
                                                + param.data.nelement()
 
@@ -148,14 +146,12 @@ class DistributedDataParallel(DistributedDataParallelBase):
             for param in self.module.parameters():
                 if param.requires_grad:
                     dtype = _get_buffer_type(param)
-                    type_count[dtype] -= 1
                     type_num_elements[dtype] -= param.data.nelement()
                     param.main_grad = self._grad_buffers[dtype].get(
                         param.data.shape, type_num_elements[dtype])
                     if dtype not in self._grad_buffer_param_index_map:
                         self._grad_buffer_param_index_map[dtype] = {}
                     self._grad_buffer_param_index_map[dtype][param] = (
-                        type_count[dtype],
                         type_num_elements[dtype],
                         type_num_elements[dtype] + param.data.nelement(),
                     )
