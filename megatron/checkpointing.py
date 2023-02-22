@@ -485,7 +485,16 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
 
     state_dict, release = _load_base_checkpoint(load_dir, rank0=False)
 
+    # Checkpoint not loaded.
     if state_dict is None:
+
+        # Conditionally exit at this point.
+        if args.exit_on_missing_checkpoint:
+            print_rank_0(">> '--exit-on-missing-checkpoint' set ... exiting. <<")
+            torch.distributed.barrier()
+            sys.exit()
+
+        # Iteration defaults to 0.
         return 0
 
     # Set checkpoint version.
