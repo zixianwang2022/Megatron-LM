@@ -533,6 +533,7 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
         # Layer norm post the self attention.  # [ns, bs, d]
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         """
         notations:
             l: number of chunks
@@ -627,6 +628,7 @@ class ParallelRetroTransformerEncoderLayer(MegatronModule):
 
         # Layer norm post the decoder attention
         layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # MLP.
         mlp_output, mlp_bias = self.mlp(layernorm_output)
@@ -768,6 +770,7 @@ class ParallelRetroTransformerLayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         args = get_args()
         retro_args = get_retro_args()
         chunk_length = retro_args.retro_gpt_chunk_length
@@ -817,6 +820,7 @@ class ParallelRetroTransformerLayer(MegatronModule):
 
         # Layer norm post the decoder attention
         layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # MLP.
         mlp_output, mlp_bias = self.mlp(layernorm_output)
@@ -960,6 +964,7 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         # Neighbors.
         args = get_args()
         retro_args = get_retro_args()
@@ -1011,6 +1016,7 @@ class ParallelRetroEncoderTransformerCALayer(MegatronModule):
             torch.stack(layernorm_inputs, dim=1).reshape(ns, bs, d)
         layernorm_output = \
             torch.stack(layernorm_outputs, dim=1).reshape(ns, bs, d)
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # MLP.
         mlp_output, mlp_bias = self.mlp(layernorm_output)

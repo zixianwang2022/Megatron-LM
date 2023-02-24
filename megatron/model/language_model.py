@@ -484,7 +484,7 @@ class TransformerLanguageModel(MegatronModule):
                     encoder_output = self.encoder(
                         encoder_input,
                         enc_attn_mask,
-                        retriever_output=retriever_input,
+                        retriever_input=retriever_input,
                         retriever_attn_mask=ret_attn_mask,
                         inference_params=inference_params)
                 else:
