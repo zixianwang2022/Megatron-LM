@@ -383,7 +383,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             self.build_model_param_gbuf_map(self.model_gbuf_ranges)
 
         # Optimizer ranges.
-        # self.opt_group_ranges = self.build_optimizer_group_ranges(
         self.model_param_group_index_map, self.opt_group_ranges = \
             self.build_optimizer_group_ranges(self.optimizer.param_groups,
                                               self.model_gbuf_ranges)
