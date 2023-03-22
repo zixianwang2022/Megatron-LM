@@ -38,6 +38,7 @@ def get_batch(data_iterator):
     # Broadcast data.
     if data_iterator is not None:
         data = next(data_iterator)
+        pax({"data": data})
     else:
         data = None
 
@@ -106,6 +107,9 @@ def forward_step(data_iterator, model):
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
     args = get_args()
+    # >>>
+    # raise Exception("hi, %s." % args.retro_add_retriever)
+    # <<<
     if args.retro_add_retriever:
         return get_retro_datasets()
     else:
@@ -115,5 +119,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 if __name__ == "__main__":
 
     pretrain(train_valid_test_datasets_provider, model_provider,
-             ModelType.encoder_or_decoder,
+             # >>>
+             ModelType.retro_decoder,
+             # <<<
              forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})

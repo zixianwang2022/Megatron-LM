@@ -8,7 +8,7 @@ set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NPROCS=8 # NPROCS must be <= number of GPUs.
+NPROCS=1 # NPROCS must be <= number of GPUs.
 
 ################ Dataset configs. ################
 # This script contains methods to customize arguments to specific dataset
@@ -91,6 +91,7 @@ else
 fi
 
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
+echo "SCRIPT = '$SCRIPT'."
 echo "ARGS = '$ARGS'."
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 

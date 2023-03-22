@@ -14,13 +14,9 @@ class LayerType(enum.Enum):
     encoder = 1
     decoder = 2
     # >>>
-    # retro_encoder_ca = 3
-    # retro_decoder_sa = 4
-    # retro_decoder_ca = 5
     retro_encoder = 3
     retro_decoder = 4
-    # retro_decoder_other = 5
-    # retro_decoder_other = 5
+    retro_decoder_with_retriever = 5
     # <<<
  
 class AttnType(enum.Enum):

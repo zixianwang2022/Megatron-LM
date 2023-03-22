@@ -13,10 +13,15 @@ from tools.retro.external_libs import h5py
 
 from .dataset import DBDataset
 
+# >>>
+from lutil import pax
+# <<<
+
 
 def get_base_db_workdir():
     '''Sub-directory for DB data.'''
     args = get_retro_args()
+    # pax({"args": args})
     return os.path.join(args.retro_workdir, "db")
 
 
