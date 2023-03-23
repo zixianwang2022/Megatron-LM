@@ -680,6 +680,7 @@ class ParallelTransformerLayer(MegatronModule):
         # if self.layer_type == LayerType.decoder:
         if self.layer_type in (LayerType.decoder,
                                LayerType.retro_decoder,
+                               LayerType.retro_decoder_with_retriever,
                                LayerType.retro_encoder):
         # <<<
             self.inter_attention = ParallelAttention(
