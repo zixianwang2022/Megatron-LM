@@ -348,7 +348,7 @@ class TransformerLanguageModel(MegatronModule):
         self.add_pooler = add_pooler
         self.encoder_hidden_state = None
         # >>>
-        self.retro_add_retriever = args.retro_add_retriever
+        # self.retro_add_retriever = args.retro_add_retriever
         # <<<
 
         # Embeddings.
