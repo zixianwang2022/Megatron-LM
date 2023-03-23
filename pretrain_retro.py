@@ -21,6 +21,10 @@ from pretrain_gpt import (
     train_valid_test_datasets_provider as standard_datasets_provider,
 )
 
+# >>>
+from lutil import pax, tp
+# <<<
+
 
 def get_batch(data_iterator):
     """Generate a batch"""
@@ -38,7 +42,6 @@ def get_batch(data_iterator):
     # Broadcast data.
     if data_iterator is not None:
         data = next(data_iterator)
-        pax({"data": data})
     else:
         data = None
 
@@ -88,6 +91,7 @@ def forward_step(data_iterator, model):
         tokens, labels, loss_mask, attention_mask, position_ids, \
             neighbor_tokens, neighbor_attention_mask, neighbor_position_ids = \
                 get_batch(data_iterator)
+        # pax({"neighbor_attention_mask": tp(neighbor_attention_mask)})
     else:
         tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
             data_iterator)
@@ -96,9 +100,9 @@ def forward_step(data_iterator, model):
     timers('batch-generator').stop()
 
     output_tensor = model(tokens, position_ids, attention_mask,
-                          ret_input_ids=neighbor_tokens,
-                          ret_position_ids=neighbor_position_ids,
-                          ret_attn_mask=neighbor_attention_mask,
+                          retriever_input_ids=neighbor_tokens,
+                          retriever_position_ids=neighbor_position_ids,
+                          retriever_attn_mask=neighbor_attention_mask,
                           labels=labels)
 
     return output_tensor, partial(loss_func, loss_mask)

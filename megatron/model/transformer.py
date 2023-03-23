@@ -1,8 +1,8 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 """Transformer."""
-import math
 from contextlib import nullcontext
+import math
 import torch
 import torch.nn.functional as F
 
@@ -26,7 +26,10 @@ except ImportError:
     flash_attn_unpadded_func = None
 
 # >>>
-from lutil import pax
+import numpy as np
+from megatron import get_retro_args
+
+from lutil import pax, tp
 # <<<
 
 
@@ -744,6 +747,24 @@ class ParallelTransformerLayer(MegatronModule):
         num_neighbors = args.retro_num_neighbors
 
         ns, bs, d = layernorm_output.shape # [r, bs * l * k, d]
+
+        # >>>
+        #### temporary ####
+        assert retrieved_length == 128
+        assert num_neighbors == 2
+        assert ns == 2048
+        assert bs == 4
+        assert d == 768
+
+        pax({
+            "retrieved_length" : retrieved_length,
+            "num_neighbors" : num_neighbors,
+            "ns" : ns,
+            "bs" : bs,
+            "d" : d,
+        })
+        # <<<
+
         chunked_outputs = layernorm_output.reshape(retrieved_length, -1,
                                                    num_neighbors, d)
         chunked_outputs_before_layer_norm = \
@@ -792,7 +813,9 @@ class ParallelTransformerLayer(MegatronModule):
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    def get_retro_decoder_cross_attention(self):
+    def get_retro_decoder_cross_attention(self,
+                                          layernorm_input,
+                                          layernorm_output):
         """
         notations:
             l: number of chunks
@@ -803,11 +826,28 @@ class ParallelTransformerLayer(MegatronModule):
             r: number of tokens per neighbors (neighbors + continuation)
         """
 
-        args = get_args()
+        # args = get_args()
         retro_args = get_retro_args()
         chunk_length = retro_args.retro_gpt_chunk_length
         ns, bs, d = layernorm_output.shape
         l = int(np.ceil(ns / chunk_length))
+
+        # >>>
+        #### temporary ####
+        assert chunk_length == 64
+        assert ns == 2048
+        assert bs == 4
+        assert d == 768
+        assert l == 32
+
+        # pax({
+        #     "chunk_length" : chunk_length,
+        #     "ns" : ns,
+        #     "bs" : bs,
+        #     "d" : d,
+        #     "l" : l,
+        # })
+        # <<<
 
         # Chunks.
         pad = (ns - 1) % chunk_length
@@ -844,6 +884,7 @@ class ParallelTransformerLayer(MegatronModule):
                 .contiguous()
 
             # Get Encoder Output
+            raise Exception("hi.")
             # retriever_output = self.retriever(
             #     retriever_output,
             #     retriever_attn_mask,
@@ -898,8 +939,9 @@ class ParallelTransformerLayer(MegatronModule):
                 encoder_output=None, enc_dec_attn_mask=None,
                 # >>>
                 # retriever_output=None, retriever_attn_mask=None,
-                retriever_input_ids=None,
-                retriever_position_ids=None,
+                # retriever_input_ids=None,
+                # retriever_position_ids=None,
+                retriever_input=None,
                 retriever_output=None,
                 retriever_attn_mask=None,
                 # <<<
@@ -907,11 +949,15 @@ class ParallelTransformerLayer(MegatronModule):
         # hidden_states: [s, b, h]
 
         # Layer norm at the beginning of the transformer layer.
-        # >>>
-        # try:
         layernorm_output = self.input_layernorm(hidden_states)
-        # except:
-        #     pax({"hidden_states": hidden_states})
+
+        # >>>
+        # if retriever_input is not None:
+        #     pax({
+        #         "retriever_input" : tp(retriever_input),
+        #         "retriever_output" : tp(retriever_output),
+        #         "retriever_attn_mask" : tp(retriever_attn_mask),
+        #     })
         # <<<
 
         # Self attention.
@@ -962,16 +1008,29 @@ class ParallelTransformerLayer(MegatronModule):
         elif self.layer_type == LayerType.decoder:
             layernorm_input, layernorm_output = \
                 self.get_default_decoder_cross_attention()
+            pax({
+                "layernorm_input" : tp(layernorm_input),
+                "layernorm_output" : tp(layernorm_output),
+            })
         elif self.layer_type == LayerType.retro_encoder:
-            raise Exception("hi.")
             layernorm_input, layernorm_output = \
                 self.get_retro_encoder_cross_attention()
+            pax({
+                "layernorm_input" : tp(layernorm_input),
+                "layernorm_output" : tp(layernorm_output),
+                "retriever_output" : retriever_output,
+            })
         elif self.layer_type in (LayerType.retro_decoder,
-                                  LayerType.retro_decoder_with_retriever):
-            raise Exception("hi.")
+                                 LayerType.retro_decoder_with_retriever):
             layernorm_input, layernorm_output = \
-                self.get_retro_decoder_cross_attention()
-            pax(0, {"retriever_output": retriever_output})
+                self.get_retro_decoder_cross_attention(
+                    layernorm_input,
+                    layernorm_output)
+            pax({
+                "layernorm_input" : tp(layernorm_input),
+                "layernorm_output" : tp(layernorm_output),
+                "retriever_output" : retriever_output,
+            })
         else:
             raise Exception("Unsupported layer type, '%s'." %
                             self.layer_type.name)
@@ -1529,8 +1588,9 @@ class ParallelTransformer(MegatronModule):
                 encoder_output=None, enc_dec_attn_mask=None,
                 # >>>
                 # retriever_input=None, retriever_attn_mask=None,
-                retriever_input_ids=None,
-                retriever_position_ids=None,
+                # retriever_input_ids=None,
+                # retriever_position_ids=None,
+                retriever_input=None,
                 retriever_attn_mask=None,
                 # <<<
                 inference_params=None):
@@ -1618,8 +1678,9 @@ class ParallelTransformer(MegatronModule):
                         'enc_dec_attn_mask': enc_dec_attn_mask,
                         # >>>
                         # 'retriever_output': retriever_output,
-                        'retriever_input_ids': retriever_input_ids,
-                        'retriever_position_ids': retriever_position_ids,
+                        # 'retriever_input_ids': retriever_input_ids,
+                        # 'retriever_position_ids': retriever_position_ids,
+                        'retriever_input': retriever_input,
                         'retriever_output': None,
                         'retriever_attn_mask': retriever_attn_mask,
                         # <<<
@@ -1642,6 +1703,10 @@ class ParallelTransformer(MegatronModule):
                         if isinstance(hidden_states, tuple):
                             assert len(hidden_states) == 2
                             hidden_states, retriever_output = hidden_states
+                            pax({
+                                "hidden_states" : hidden_states,
+                                "retriever_output" : retriever_output,
+                            })
                             forward_kwargs["retriever_output"] = retriever_output
                         # <<<
 
