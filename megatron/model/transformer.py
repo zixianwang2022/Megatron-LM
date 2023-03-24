@@ -631,6 +631,7 @@ class ParallelTransformerLayer(MegatronModule):
                  layer_number, layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
                  drop_path_rate=0.):
+                 # retriever=None):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
@@ -729,22 +730,11 @@ class ParallelTransformerLayer(MegatronModule):
                 pre_process=True, # self.pre_process,
                 post_process=False,
             )
-            # self.encoder = ParallelTransformer(
-            #     self.init_method,
-            #     output_layer_init_method,
-            #     model_type=args.model_type if not args.retro_add_retriever \
-            #         else ModelType.retro_decoder,
-            #     self_attn_mask_type=self.encoder_attn_mask_type,
-            #     pre_process=self.pre_process,
-            #     post_process=self.post_process,
-            # )
-
-            # ???
             self._retriever_key = 'retriever'
-
-            # pax({"retriever": self.retriever})
         else:
             self.retriever = None
+        # +++
+        # self.retriever=retriever
         # <<<
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1068,8 +1058,9 @@ class ParallelTransformerLayer(MegatronModule):
         layernorm_output = self.input_layernorm(hidden_states)
 
         # >>>
-        # if retriever_input is not None:
+        # if True or retriever_input is not None:
         #     pax({
+        #         "hidden_states"
         #         "retriever_input" : tp(retriever_input),
         #         "retriever_output" : tp(retriever_output),
         #         "retriever_attn_mask" : tp(retriever_attn_mask),
@@ -1085,6 +1076,7 @@ class ParallelTransformerLayer(MegatronModule):
 
         # if self.layer_type == LayerType.retro_encoder:
         #     pax({
+        #         "layer_number" : self.layer_number,
         #         "hidden_states" : tp(hidden_states),
         #         "attention_mask" : tp(attention_mask),
         #         "layernorm_output" : tp(layernorm_output),
@@ -1126,6 +1118,15 @@ class ParallelTransformerLayer(MegatronModule):
                     attention_bias.expand_as(residual),
                     residual,
                     self.hidden_dropout)
+                # if self.layer_type == LayerType.retro_encoder:
+                #     pax({
+                #         "attention_output" : tp(attention_output),
+                #         "attention_bias" : tp(attention_bias.clone()),
+                #         "residual" : tp(residual),
+                #         "hidden_dropout" : self.hidden_dropout,
+                #         "bias_dropout_add_func" : bias_dropout_add_func.name,
+                #         "layernorm_input" : tp(layernorm_input),
+                #     })
         else:
             out = torch.nn.functional.dropout(attention_output + attention_bias,
                                               p=self.hidden_dropout,
@@ -1134,6 +1135,15 @@ class ParallelTransformerLayer(MegatronModule):
 
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
+
+        # if self.layer_type == LayerType.retro_encoder:
+        #     pax({
+        #         "layer_number" : self.layer_number,
+        #         "drop_path" : self.drop_path,
+        #         "residual" : tp(residual),
+        #         "layernorm_input" : tp(layernorm_input),
+        #         "layernorm_output" : tp(layernorm_output),
+        #     })
 
         # >>>
         # Cross attention.
@@ -1349,8 +1359,10 @@ class ParallelTransformer(MegatronModule):
                  layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
                  post_layer_norm=True,
-                 pre_process=True, post_process=True,
+                 pre_process=True,
+                 post_process=True,
                  drop_path_rate=0.0):
+                 # retriever=None):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 
@@ -1416,8 +1428,6 @@ class ParallelTransformer(MegatronModule):
         # >>>
         self.retro_layer_numbers = None
         if model_type == ModelType.retro_decoder:
-            # raise Exception("hi.")
-            # self.retro_layer_type = LayerType.retro_decoder
             if args.num_layers == 12:
                 self.retro_layer_numbers = [6, 9, 12]
             elif args.num_layers == 24:
@@ -1428,20 +1438,7 @@ class ParallelTransformer(MegatronModule):
             else:
                 raise Exception("Unsupported number of decoder layers. "
                                 "Please choose from 12, 24, or 40.")
-
-            # self.retriever = ParallelTransformer(
-            #     self.init_method,
-            #     output_layer_init_method,
-            #     model_type=ModelType.retro_encoder,
-            #     self_attn_mask_type=AttnMaskType.padding,
-            #     pre_process=self.pre_process,
-            #     post_process=False,
-            # )
-            # pax({"num_layers": self.num_layers})
         if model_type == ModelType.retro_encoder:
-            # pax({"num_layers": self.num_layers})
-            # self.num_layers = args.retro_encoder_num_layers
-            # self.retro_layer_type = LayerType.retro_encoder
             self.retro_layer_numbers = [1]
         # <<<
 
@@ -1454,20 +1451,9 @@ class ParallelTransformer(MegatronModule):
         def build_layer(layer_number):
             if args.transformer_impl == 'local':
                 # >>>
-                # current_layer_type = layer_type
-                # if args.retro_add_retriever:
-                #     if layer_number == min(self.retro_layer_numbers):
-                #         current_layer_type = LayerType.retro_decoder_first
-                #     elif layer_number in self.retro_layer_numbers:
-                #         current_layer_type = LayerType.retro_decoder_other
                 current_layer_type = _get_layer_type(
                     model_type, layer_type, self.retro_layer_numbers,
                     layer_number)
-                # if current_layer_type != LayerType.encoder:
-                #     pax({
-                #         "layer_number" : layer_number,
-                #         "current_layer_type" : current_layer_type,
-                #     })
                 # <<<
                 return ParallelTransformerLayer(
                     init_method,
@@ -1479,6 +1465,7 @@ class ParallelTransformer(MegatronModule):
                     # <<<
                     self_attn_mask_type=self_attn_mask_type,
                     drop_path_rate=self.drop_path_rates[layer_number - 1])
+                    # retriever=retriever)
             else:
                 return transformer_engine.pytorch.TransformerLayer(
                     args.hidden_size,
@@ -1774,6 +1761,13 @@ class ParallelTransformer(MegatronModule):
         if not self.pre_process:
             # See set_input_tensor()
             hidden_states = self.input_tensor
+
+        # pax({
+        #     "hidden_states" : tp(hidden_states),
+        #     "attention_mask" : tp(attention_mask),
+        #     "retriever_input" : tp(retriever_input),
+        #     "retriever_attn_mask" : tp(retriever_attn_mask),
+        # })
 
         # Viewless tensor.
         # - We only need to create a viewless tensor in the case of micro batch

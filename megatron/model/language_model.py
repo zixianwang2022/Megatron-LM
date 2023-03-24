@@ -13,7 +13,7 @@ from megatron.core import mpu, tensor_parallel
 from .enums import AttnMaskType, LayerType, ModelType
 # <<<
 from .module import MegatronModule
-from .retro_transformer import ParallelRetroEncoder, ParallelRetroTransformer
+# from .retro_transformer import ParallelRetroEncoder, ParallelRetroTransformer
 from .transformer import ParallelTransformer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
@@ -364,41 +364,23 @@ class TransformerLanguageModel(MegatronModule):
         # >>>
         # # Retriever (bi-directional transformer with cross attention)
         # if args.retro_add_retriever:
-        #     self.retriever = ParallelRetroEncoder(
-        #         self.init_method,
+        #     self.retriever = ParallelTransformer(
+        #         init_method,
         #         output_layer_init_method,
+        #         model_type=ModelType.retro_encoder,
         #         self_attn_mask_type=AttnMaskType.padding,
-        #         pre_process=self.pre_process,
+        #         pre_process=True, # self.pre_process,
         #         post_process=False,
         #     )
         #     self._retriever_key = 'retriever'
         # else:
         #     self.retriever = None
         # <<<
-        # raise Exception("args.model_type == %s." % args.model_type)
 
         # Encoder (usually set to True, False if part of an encoder-decoder
         # architecture and in encoder-only stage).
         if self.add_encoder:
             # >>>
-            # if args.retro_add_retriever:
-            #     self.encoder = ParallelRetroTransformer(
-            #         self.init_method,
-            #         output_layer_init_method,
-            #         self_attn_mask_type=self.encoder_attn_mask_type,
-            #         pre_process=self.pre_process,
-            #         post_process=self.post_process,
-            #         retriever=self.retriever,
-            #     )
-            # else:
-            #     self.encoder = ParallelTransformer(
-            #         self.init_method,
-            #         output_layer_init_method,
-            #         self_attn_mask_type=self.encoder_attn_mask_type,
-            #         pre_process=self.pre_process,
-            #         post_process=self.post_process,
-            #     )
-            # +++
             self.encoder = ParallelTransformer(
                 self.init_method,
                 output_layer_init_method,
@@ -407,6 +389,7 @@ class TransformerLanguageModel(MegatronModule):
                 self_attn_mask_type=self.encoder_attn_mask_type,
                 pre_process=self.pre_process,
                 post_process=self.post_process,
+                # retriever=self.retriever,
             )
             # <<<
             self._encoder_key = 'encoder'
@@ -480,12 +463,12 @@ class TransformerLanguageModel(MegatronModule):
             retriever_input = self.embedding(retriever_input_ids,
                                              retriever_position_ids,
                                              tokentype_ids=tokentype_ids)
-            pax({
-                "retriever_position_ids" : tp(retriever_position_ids),
-                "retriever_input_ids" : tp(retriever_input_ids),
-                "retriever_input" : tp(retriever_input),
-                "retriever_attn_mask" : tp(retriever_attn_mask),
-            })
+            # pax({
+            #     "retriever_position_ids" : tp(retriever_position_ids),
+            #     "retriever_input_ids" : tp(retriever_input_ids),
+            #     "retriever_input" : tp(retriever_input),
+            #     "retriever_attn_mask" : tp(retriever_attn_mask),
+            # })
         else:
             retriever_input = None
         # <<<
