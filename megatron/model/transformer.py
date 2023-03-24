@@ -902,19 +902,6 @@ class ParallelTransformerLayer(MegatronModule):
             })
         # <<<
 
-        # Chunks.
-        pad = (ns - 1) % self.retro_chunk_length
-        attending_chunks = layernorm_output[pad:]
-        padded_chunks = torch.nn.functional.pad(
-            attending_chunks,
-            (0, 0, 0, 0, 0, self.retro_chunk_length - 1),
-            'constant', 0)
-        padded_chunked_output = padded_chunks \
-            .reshape(l, self.retro_chunk_length, bs, d) \
-            .permute(1, 2, 0, 3)
-        padded_chunked_output = padded_chunked_output.reshape(
-            self.retro_chunk_length, bs * l, d).contiguous()
-
         # Retrieve neighbors.
         if self.layer_type == LayerType.retro_decoder_with_retriever:
             first_ns = ns % self.retro_chunk_length
@@ -937,6 +924,14 @@ class ParallelTransformerLayer(MegatronModule):
                 .contiguous()
 
             # Get Encoder Output
+            pax({
+                "retriever_input" : tp(retriever_input),
+                "retriever_attn_mask" : tp(retriever_attn_mask),
+                "layernorm_input" : tp(layernorm_input),
+                "layernorm_output" : tp(layernorm_output),
+                "first_ns" : tp(first_ns),
+                "chunked_output" : tp(chunked_output),
+            })
             retriever_output = self.retriever(
                 hidden_states=retriever_input,
                 attention_mask=retriever_attn_mask,
@@ -946,6 +941,26 @@ class ParallelTransformerLayer(MegatronModule):
             retriever_output = retriever_output.reshape(
                 self.retro_retrieved_length * self.retro_num_neighbors, bs * l, d) # [r * k, bs * l, d]
             # pax({"retriever_output": retriever_output})
+
+        # Chunks.
+        pad = (ns - 1) % self.retro_chunk_length
+        attending_chunks = layernorm_output[pad:]
+        padded_chunks = torch.nn.functional.pad(
+            attending_chunks,
+            (0, 0, 0, 0, 0, self.retro_chunk_length - 1),
+            'constant', 0)
+        padded_chunked_output = padded_chunks \
+            .reshape(l, self.retro_chunk_length, bs, d) \
+            .permute(1, 2, 0, 3)
+        padded_chunked_output = padded_chunked_output.reshape(
+            self.retro_chunk_length, bs * l, d).contiguous()
+
+        pax({
+            "pad" : tp(pad),
+            "attending_chunks" : tp(attending_chunks),
+            "padded_chunks" : tp(padded_chunks),
+            "padded_chunked_output" : tp(padded_chunked_output),
+        })
 
         # Encoder output.
         attention_output, attention_bias = \
@@ -1020,6 +1035,15 @@ class ParallelTransformerLayer(MegatronModule):
         else:
             residual = hidden_states
 
+        pax({
+            "layer_number" : self.layer_number,
+            "hidden_states" : tp(hidden_states),
+            "attention_mask" : tp(attention_mask),
+            "attention_output" : tp(attention_output),
+            "attention_bias" : tp(attention_bias.clone()),
+            "residual" : tp(residual),
+        })
+
         if self.drop_path is None:
             # jit scripting for a nn.module (with dropout) is not
             # trigerring the fusion kernel. For now, we use two
@@ -1060,18 +1084,25 @@ class ParallelTransformerLayer(MegatronModule):
                 "layernorm_output" : tp(layernorm_output),
             })
         elif self.layer_type == LayerType.retro_encoder:
+            pax({
+                "layer_number" : self.layer_number,
+                "layernorm_input" : tp(layernorm_input),
+                "layernorm_output" : tp(layernorm_output),
+            })
             layernorm_input, layernorm_output = \
                 self.get_retro_encoder_cross_attention(
                     retriever_output,
                     layernorm_input,
                     layernorm_output,
                     bias_dropout_add_func)
-            # pax({
-            #     "layernorm_input" : tp(layernorm_input),
-            #     "layernorm_output" : tp(layernorm_output),
-            # })
         elif self.layer_type in (LayerType.retro_decoder,
                                  LayerType.retro_decoder_with_retriever):
+            pax({
+                "layer_number" : self.layer_number,
+                "hidden_states" : tp(hidden_states),
+                "layernorm_input" : tp(layernorm_input),
+                "layernorm_output" : tp(layernorm_output),
+            })
             retriever_output, layernorm_input, layernorm_output = \
                 self.get_retro_decoder_cross_attention(
                     retriever_input,
