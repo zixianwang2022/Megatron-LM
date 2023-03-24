@@ -760,7 +760,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
 
         # Exiting based on iterations
         if args.exit_interval and iteration % args.exit_interval == 0:
-            if not saved_checkpoint:
+            if args.save and not saved_checkpoint:
                 save_checkpoint_and_time(iteration, model, optimizer,
                                          opt_param_scheduler)
             torch.distributed.barrier()

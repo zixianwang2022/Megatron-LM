@@ -480,12 +480,12 @@ class TransformerLanguageModel(MegatronModule):
             retriever_input = self.embedding(retriever_input_ids,
                                              retriever_position_ids,
                                              tokentype_ids=tokentype_ids)
-            # pax({
-            #     "retriever_position_ids" : tp(retriever_position_ids),
-            #     "retriever_input_ids" : tp(retriever_input_ids),
-            #     "retriever_input" : tp(retriever_input),
-            #     "retriever_attn_mask" : tp(retriever_attn_mask),
-            # })
+            pax({
+                "retriever_position_ids" : tp(retriever_position_ids),
+                "retriever_input_ids" : tp(retriever_input_ids),
+                "retriever_input" : tp(retriever_input),
+                "retriever_attn_mask" : tp(retriever_attn_mask),
+            })
         else:
             retriever_input = None
         # <<<
@@ -496,6 +496,13 @@ class TransformerLanguageModel(MegatronModule):
                                            tokentype_ids=tokentype_ids)
         else:
             encoder_input = None
+
+        # pax({
+        #     "enc_input_ids" : tp(enc_input_ids),
+        #     "enc_position_ids" : tp(enc_position_ids),
+        #     "retriever_input_ids" : tp(retriever_input_ids),
+        #     "retriever_position_ids" : tp(retriever_position_ids),
+        # })
 
         # Run encoder.
         if enc_hidden_states is None:
