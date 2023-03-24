@@ -7,13 +7,14 @@ import torch
 import torch.nn.functional as F
 
 from megatron import get_timers, get_args, core, get_num_microbatches
-from .module import MegatronModule
 from megatron.core import mpu, tensor_parallel
-from megatron.model.enums import AttnMaskType, ModelType, LayerType, AttnType
-from megatron.model import LayerNorm
-from megatron.model.fused_softmax import FusedScaleMaskSoftmax
-from megatron.model.fused_bias_gelu import bias_gelu_impl
-from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu
+
+from .enums import AttnMaskType, ModelType, LayerType, AttnType
+from .fused_bias_gelu import bias_gelu_impl
+from .fused_layer_norm import MixedFusedLayerNorm as LayerNorm
+from .fused_softmax import FusedScaleMaskSoftmax
+from .module import MegatronModule
+from .utils import attention_mask_func, openai_gelu, erf_gelu
 
 try:
     from einops import rearrange
@@ -861,7 +862,8 @@ class ParallelTransformerLayer(MegatronModule):
                                           retriever_attn_mask,
                                           layernorm_input,
                                           layernorm_output,
-                                          inference_params):
+                                          inference_params,
+                                          bias_dropout_add_func):
         """
         notations:
             l: number of chunks
@@ -977,7 +979,7 @@ class ParallelTransformerLayer(MegatronModule):
         # Layer norm post the decoder attention
         layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
 
-        return layernorm_input, layernorm_output, retriever_output
+        return retriever_output, layernorm_input, layernorm_output
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     def forward(self, hidden_states, attention_mask,
@@ -1070,19 +1072,20 @@ class ParallelTransformerLayer(MegatronModule):
             # })
         elif self.layer_type in (LayerType.retro_decoder,
                                  LayerType.retro_decoder_with_retriever):
-            layernorm_input, layernorm_output = \
+            retriever_output, layernorm_input, layernorm_output = \
                 self.get_retro_decoder_cross_attention(
                     retriever_input,
                     retriever_output,
                     retriever_attn_mask,
                     layernorm_input,
                     layernorm_output,
-                    inference_params)
-            pax({
-                "layernorm_input" : tp(layernorm_input),
-                "layernorm_output" : tp(layernorm_output),
-                "retriever_output" : retriever_output,
-            })
+                    inference_params,
+                    bias_dropout_add_func)
+            # pax({
+            #     "retriever_output" : tp(retriever_output),
+            #     "layernorm_input" : tp(layernorm_input),
+            #     "layernorm_output" : tp(layernorm_output),
+            # })
         else:
             raise Exception("Unsupported layer type, '%s'." %
                             self.layer_type.name)
@@ -1776,10 +1779,10 @@ class ParallelTransformer(MegatronModule):
                         if isinstance(hidden_states, tuple):
                             assert len(hidden_states) == 2
                             hidden_states, retriever_output = hidden_states
-                            pax({
-                                "hidden_states" : hidden_states,
-                                "retriever_output" : retriever_output,
-                            })
+                            # pax({
+                            #     "hidden_states" : tp(hidden_states),
+                            #     "retriever_output" : tp(retriever_output),
+                            # })
                             forward_kwargs["retriever_output"] = retriever_output
                         # <<<
 
