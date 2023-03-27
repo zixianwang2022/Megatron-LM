@@ -81,8 +81,8 @@ ARGS=" \
 "
 
 # >>>
-ARGS="${ARGS} --loss-scale 1024"
-ARGS="${ARGS} --exit-interval 1000" # 50"
+# ARGS="${ARGS} --loss-scale 1024"
+# ARGS="${ARGS} --exit-interval 1000" # 50"
 # <<<
 
 if [ "$RETRO_ADD_RETRIEVER" = "0" ]; then
