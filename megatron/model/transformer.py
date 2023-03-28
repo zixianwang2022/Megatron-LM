@@ -3,10 +3,12 @@
 """Transformer."""
 from contextlib import nullcontext
 import math
+import numpy as np
 import torch
 import torch.nn.functional as F
 
-from megatron import get_timers, get_args, core, get_num_microbatches
+from megatron import get_timers, get_args, get_retro_args, \
+    core, get_num_microbatches
 from megatron.core import mpu, tensor_parallel
 
 from .enums import AttnMaskType, ModelType, LayerType, AttnType
@@ -25,13 +27,6 @@ try:
     from flash_attn.flash_attn_interface import flash_attn_unpadded_func
 except ImportError:
     flash_attn_unpadded_func = None
-
-# >>>
-import numpy as np
-from megatron import get_retro_args
-
-from lutil import pax, tp
-# <<<
 
 
 """ We use the following notation throughout this file:
@@ -604,9 +599,7 @@ def get_bias_dropout_add(training):
     return _bias_dropout_add
 
 
-# >>>
 @torch.jit.script
-# <<<
 def bias_dropout_add_fused_train(x: torch.Tensor,
                                  bias: torch.Tensor,
                                  residual: torch.Tensor,
@@ -660,16 +653,7 @@ class ParallelTransformerLayer(MegatronModule):
             layer_number,
             attention_type=AttnType.self_attn,
             attn_mask_type=self_attn_mask_type)
-        # >>>
         self.hidden_dropout = args.hidden_dropout
-        # +++
-        # if layer_type == LayerType.retro_encoder:
-        #     self.self_attention.attention_dropout = \
-        #         torch.nn.Dropout(args.retro_encoder_attention_dropout)
-        #     self.hidden_dropout = args.retro_encoder_hidden_dropout
-        # else:
-        #     self.hidden_dropout = args.hidden_dropout
-        # <<<
         self.bias_dropout_fusion = args.bias_dropout_fusion
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
 
@@ -680,13 +664,11 @@ class ParallelTransformerLayer(MegatronModule):
             no_persist_layer_norm=args.no_persist_layer_norm,
             sequence_parallel=args.sequence_parallel)
 
-        # >>>
-        # if self.layer_type == LayerType.decoder:
+        # Cross attention.
         if self.layer_type in (LayerType.decoder,
                                LayerType.retro_decoder,
                                LayerType.retro_decoder_with_retriever,
                                LayerType.retro_encoder):
-        # <<<
             self.inter_attention = ParallelAttention(
                 init_method,
                 output_layer_init_method,
@@ -712,16 +694,12 @@ class ParallelTransformerLayer(MegatronModule):
         self.bias_dropout_add_exec_handler = \
                 nullcontext if use_nvfuser else torch.enable_grad
 
-        # >>>
         if args.retro_add_retriever:
-            # args = get_args()
             retro_args = get_retro_args()
             self.retro_num_neighbors = args.retro_num_neighbors
             self.retro_chunk_length = retro_args.retro_gpt_chunk_length
             self.retro_retrieved_length = retro_args.retro_gpt_retrieved_length
-        # <<<
 
-        # >>>
         # Retriever (bi-directional transformer with cross attention)
         if layer_type == LayerType.retro_decoder_with_retriever:
             self.retriever = ParallelTransformer(
@@ -729,32 +707,29 @@ class ParallelTransformerLayer(MegatronModule):
                 output_layer_init_method,
                 model_type=ModelType.retro_encoder,
                 self_attn_mask_type=AttnMaskType.padding,
-                pre_process=True, # self.pre_process,
+                pre_process=True,
                 post_process=False,
             )
             self._retriever_key = 'retriever'
         else:
             self.retriever = None
-        # +++
-        # self.retriever=retriever
-        # <<<
 
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # def get_decoder_cross_attention(self):
     def get_default_decoder_cross_attention(self):
+        '''Cross attention for a standard encoder-decoder model.'''
 
+        # Attention.
         attention_output, attention_bias = \
             self.inter_attention(layernorm_output,
                                  enc_dec_attn_mask,
                                  encoder_output=encoder_output)
-        # <<<
 
-        # residual connection
+        # Residual connection.
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = layernorm_input
 
+        # Bias-dropout-add.
         with self.bias_dropout_add_exec_handler():
             layernorm_input = bias_dropout_add_func(
                 attention_output,
@@ -762,46 +737,27 @@ class ParallelTransformerLayer(MegatronModule):
                 residual,
                 self.hidden_dropout)
 
-        # Layer norm post the decoder attention
+        # Layer norm.
         layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
 
         return layernorm_input, layernorm_output
-    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     def get_retro_encoder_cross_attention(self,
                                           retriever_output,
                                           layernorm_input,
                                           layernorm_output,
                                           bias_dropout_add_func):
-        # Neighbors.
-        # args = get_args()
-        # retro_args = get_retro_args()
-        # retrieved_length = retro_args.retro_gpt_retrieved_length
-        # num_neighbors = args.retro_num_neighbors
+        """Cross attention for Retro encoder.
+
+        Notation:
+            ns : Sequence length.
+            bs : Batch size.
+            d  : Hidden size.
+        """
 
         ns, bs, d = layernorm_output.shape # [r, bs * l * k, d]
 
-        # >>>
-        #### temporary ####
-        try:
-            # assert retrieved_length == 128
-            # assert num_neighbors == 2
-            assert ns == 128
-            assert bs == 256
-            assert d == 768
-        except:
-            pax({
-                # "retrieved_length" : retrieved_length,
-                # "num_neighbors" : num_neighbors,
-                "ns" : ns,
-                "bs" : bs,
-                "d" : d,
-            })
-        # <<<
-
-        # pax({"layernorm_output": tp(layernorm_output)})
-
+        # Divide sequence dimension into chunks.
         chunked_outputs = layernorm_output.reshape(self.retro_retrieved_length,
                                                    -1,
                                                    self.retro_num_neighbors,
@@ -810,33 +766,18 @@ class ParallelTransformerLayer(MegatronModule):
             layernorm_input.reshape(self.retro_retrieved_length, -1,
                                     self.retro_num_neighbors, d) # [r, bs*l, k, d]
 
-        # pax({
-        #     "retriever_output" : tp(retriever_output),
-        #     "layernorm_input" : tp(layernorm_input),
-        #     "layernorm_output" : tp(layernorm_output),
-        #     "chunked_outputs" : tp(chunked_outputs),
-        #     "chunked_outputs_before_layer_norm" :
-        #     tp(chunked_outputs_before_layer_norm),
-        # })
-
+        # Per-chunk attention.
         layernorm_inputs = []
         layernorm_outputs = []
         for k in range(self.retro_num_neighbors):
+
+            # Attention.
             chunked_output = chunked_outputs[:,:,k].contiguous()
-            # pax({
-            #     "chunked_output" : tp(chunked_output),
-            #     "retriever_output" : tp(retriever_output),
-            # })
             attention_output, attention_bias = \
                 self.inter_attention(
                     chunked_output, # Q (neighbor embedding)
                     None,
                     encoder_output=retriever_output) # K, V (hidden act)
-
-            # pax({
-            #     "attention_output" : tp(attention_output),
-            #     "attention_bias" : tp(attention_bias.clone()),
-            # })
 
             # Residual connection.
             if self.apply_residual_connection_post_layernorm:
@@ -851,14 +792,14 @@ class ParallelTransformerLayer(MegatronModule):
                     attention_bias.expand_as(residual),
                     residual,
                     self.hidden_dropout)
-
                 layernorm_inputs.append(layernorm_input)
 
-            # Layer norm post the decoder attention
+            # Layer norm.
             layernorm_output = \
                 self.post_inter_attention_layernorm(layernorm_input)
             layernorm_outputs.append(layernorm_output)
 
+        # Concatenate layer norms.
         # layernorm_input : [r, k * bs * l, d]
         # layernorm_output : [r, k * bs * l, d]
         layernorm_input = \
@@ -866,15 +807,8 @@ class ParallelTransformerLayer(MegatronModule):
         layernorm_output = \
             torch.stack(layernorm_outputs, dim=1).reshape(ns, bs, d)
 
-        # pax({
-        #     "layernorm_input" : tp(layernorm_input),
-        #     "layernorm_output" : tp(layernorm_output),
-        # })
-
         return layernorm_input, layernorm_output
-    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     def get_retro_decoder_cross_attention(self,
                                           retriever_input,
                                           retriever_output,
@@ -883,53 +817,23 @@ class ParallelTransformerLayer(MegatronModule):
                                           layernorm_output,
                                           inference_params,
                                           bias_dropout_add_func):
-        """
-        notations:
-            l: number of chunks
-            m: number of token per chunk
-            bs: batch size
-            d: hidden size
-            k: number of neighbors
-            r: number of tokens per neighbors (neighbors + continuation)
-        """
+        """Cross attention for Retro decoder.
 
-        # args = get_args()
-        # retro_args = get_retro_args()
-        # num_neighbors = args.retro_num_neighbors
-        # chunk_length = retro_args.retro_gpt_chunk_length
-        # retrieved_length = retro_args.retro_gpt_retrieved_length
+        Notation:
+            ns : Sequence length.
+            bs : Batch size.
+            d  : Hidden size.
+            l  : Number of chunks per sample (i.e., seq_length/chunk_length).
+        """
 
         ns, bs, d = layernorm_output.shape
         l = int(np.ceil(ns / self.retro_chunk_length))
-
-        # >>>
-        #### temporary ####
-        try:
-            # assert chunk_length == 64
-            assert ns == 2048
-            assert bs == 4
-            assert d == 768
-            assert l == 32
-            assert layernorm_input.shape == layernorm_output.shape
-        except:
-            pax({
-                # "chunk_length" : self.retro_chunk_length,
-                "ns" : ns,
-                "bs" : bs,
-                "d" : d,
-                "l" : l,
-            })
-        # <<<
-
-        # pax({"layer_type": self.layer_type})
 
         # Retrieve neighbors.
         if self.layer_type == LayerType.retro_decoder_with_retriever:
             first_ns = ns % self.retro_chunk_length
             if first_ns > 0:
-                # >>>
-                raise Exception("other case.")
-                # <<<
+                raise Exception("test this case.")
                 first_chunk, rest_chunk = \
                     layernorm_output[:first_ns], layernorm_output[first_ns:]
                 first_chunk = torch.nn.functional.pad(
@@ -941,38 +845,21 @@ class ParallelTransformerLayer(MegatronModule):
                     torch.cat((first_chunk, rest_chunk), dim=0) # [l * m, bs, d]
             else:
                 chunked_output = layernorm_output # [l * m, bs, d]
-            # pax({"chunked_output": tp(chunked_output)})
             chunked_output = chunked_output \
                 .reshape(l, self.retro_chunk_length, bs, d) \
                 .permute(1, 2, 0, 3) \
                 .reshape(self.retro_chunk_length, bs * l, d) \
                 .contiguous()
-            # chunked_output = chunked_output \
-            #     .reshape(l, self.retro_chunk_length, bs, d) \
-            #     .permute(2, 0, 1, 3) \
-            #     .reshape(bs * l, self.retro_chunk_length, d) \
-            #     .contiguous()
-            # pax({"chunked_output": tp(chunked_output)})
 
             # Get Encoder Output
-            # pax({
-            #     "retriever_input" : tp(retriever_input),
-            #     "retriever_attn_mask" : tp(retriever_attn_mask),
-            #     "layernorm_input" : tp(layernorm_input),
-            #     "layernorm_output" : tp(layernorm_output),
-            #     "first_ns" : tp(first_ns),
-            #     "chunked_output" : tp(chunked_output),
-            # })
             retriever_output = self.retriever(
                 hidden_states=retriever_input,
                 attention_mask=retriever_attn_mask,
                 retriever_output=chunked_output,
                 retriever_attn_mask=retriever_attn_mask,
                 inference_params=inference_params) # [r, k * bs * l , d]
-            # pax({"retriever_output": tp(retriever_output)})
             retriever_output = retriever_output.reshape(
                 self.retro_retrieved_length * self.retro_num_neighbors, bs * l, d) # [r * k, bs * l, d]
-            # pax({"retriever_output": tp(retriever_output)})
 
         # Chunks.
         pad = (ns - 1) % self.retro_chunk_length
@@ -986,14 +873,6 @@ class ParallelTransformerLayer(MegatronModule):
             .permute(1, 2, 0, 3)
         padded_chunked_output = padded_chunked_output.reshape(
             self.retro_chunk_length, bs * l, d).contiguous()
-
-        # pax({
-        #     "pad" : tp(pad),
-        #     "layernorm_output" : tp(layernorm_output),
-        #     "attending_chunks" : tp(attending_chunks),
-        #     "padded_chunks" : tp(padded_chunks),
-        #     "padded_chunked_output" : tp(padded_chunked_output),
-        # })
 
         # Encoder output.
         attention_output, attention_bias = \
@@ -1009,12 +888,6 @@ class ParallelTransformerLayer(MegatronModule):
 
         # Re-enable torch grad to enable fused optimization.
         with torch.enable_grad():
-            # pax({
-            #     "hidden_dropout" : self.hidden_dropout,
-            #     "attention_output" : tp(attention_output),
-            #     "attention_bias" : tp(attention_bias.clone()),
-            #     "residual" : tp(residual),
-            # })
             layernorm_input = bias_dropout_add_func(
                 attention_output,
                 attention_bias.expand_as(attention_output),
@@ -1033,41 +906,18 @@ class ParallelTransformerLayer(MegatronModule):
         # Layer norm post the decoder attention
         layernorm_output = self.post_inter_attention_layernorm(layernorm_input)
 
-        # pax({
-        #     "layernorm_input" : tp(layernorm_input),
-        #     "layernorm_output" : tp(layernorm_output),
-        #     # "mlp_output" : tp(mlp_output),
-        #     # "mlp_bias" : tp(mlp_bias.clone()),
-        # })
-
         return retriever_output, layernorm_input, layernorm_output
-    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
-                # >>>
-                # retriever_output=None, retriever_attn_mask=None,
-                # retriever_input_ids=None,
-                # retriever_position_ids=None,
                 retriever_input=None,
                 retriever_output=None,
                 retriever_attn_mask=None,
-                # <<<
                 inference_params=None):
         # hidden_states: [s, b, h]
 
         # Layer norm at the beginning of the transformer layer.
         layernorm_output = self.input_layernorm(hidden_states)
-
-        # >>>
-        # if True or retriever_input is not None:
-        #     pax({
-        #         "hidden_states"
-        #         "retriever_input" : tp(retriever_input),
-        #         "retriever_output" : tp(retriever_output),
-        #         "retriever_attn_mask" : tp(retriever_attn_mask),
-        #     })
-        # <<<
 
         # Self attention.
         attention_output, attention_bias = \
@@ -1076,32 +926,11 @@ class ParallelTransformerLayer(MegatronModule):
                 attention_mask,
                 inference_params=inference_params)
 
-        # >>>
-        # if self.layer_type == LayerType.retro_encoder:
-        #     pax({
-        #         "layer_number" : self.layer_number,
-        #         "hidden_states" : tp(hidden_states),
-        #         "attention_mask" : tp(attention_mask),
-        #         "layernorm_output" : tp(layernorm_output),
-        #         "attention_output" : tp(attention_output),
-        #         "attention_bias" : tp(attention_bias.clone()),
-        #     })
-        # <<<
-
         # Residual connection.
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = hidden_states
-
-        # pax({
-        #     "layer_number" : self.layer_number,
-        #     "hidden_states" : tp(hidden_states),
-        #     "attention_mask" : tp(attention_mask),
-        #     "attention_output" : tp(attention_output),
-        #     "attention_bias" : tp(attention_bias.clone()),
-        #     "residual" : tp(residual),
-        # })
 
         if self.drop_path is None:
             # jit scripting for a nn.module (with dropout) is not
@@ -1122,17 +951,6 @@ class ParallelTransformerLayer(MegatronModule):
                     attention_bias.expand_as(residual),
                     residual,
                     self.hidden_dropout)
-                # >>>
-                # if self.layer_type == LayerType.retro_encoder:
-                #     pax({
-                #         "attention_output" : tp(attention_output),
-                #         "attention_bias" : tp(attention_bias.clone()),
-                #         "residual" : tp(residual),
-                #         "hidden_dropout" : self.hidden_dropout,
-                #         # "bias_dropout_add_func" : bias_dropout_add_func.name,
-                #         "layernorm_input" : tp(layernorm_input),
-                #     })
-                # <<<
         else:
             out = torch.nn.functional.dropout(attention_output + attention_bias,
                                               p=self.hidden_dropout,
@@ -1142,32 +960,13 @@ class ParallelTransformerLayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
-        # if self.layer_type == LayerType.retro_encoder:
-        #     pax({
-        #         "layer_number" : self.layer_number,
-        #         "drop_path" : self.drop_path,
-        #         "residual" : tp(residual),
-        #         "layernorm_input" : tp(layernorm_input),
-        #         "layernorm_output" : tp(layernorm_output),
-        #     })
-
-        # >>>
         # Cross attention.
         if self.layer_type == LayerType.encoder:
             pass
         elif self.layer_type == LayerType.decoder:
             layernorm_input, layernorm_output = \
                 self.get_default_decoder_cross_attention()
-            pax({
-                "layernorm_input" : tp(layernorm_input),
-                "layernorm_output" : tp(layernorm_output),
-            })
         elif self.layer_type == LayerType.retro_encoder:
-            # pax({
-            #     "layer_number" : self.layer_number,
-            #     "layernorm_input" : tp(layernorm_input),
-            #     "layernorm_output" : tp(layernorm_output),
-            # })
             layernorm_input, layernorm_output = \
                 self.get_retro_encoder_cross_attention(
                     retriever_output,
@@ -1176,12 +975,6 @@ class ParallelTransformerLayer(MegatronModule):
                     bias_dropout_add_func)
         elif self.layer_type in (LayerType.retro_decoder,
                                  LayerType.retro_decoder_with_retriever):
-            # pax({
-            #     "layer_number" : self.layer_number,
-            #     "hidden_states" : tp(hidden_states),
-            #     "layernorm_input" : tp(layernorm_input),
-            #     "layernorm_output" : tp(layernorm_output),
-            # })
             retriever_output, layernorm_input, layernorm_output = \
                 self.get_retro_decoder_cross_attention(
                     retriever_input,
@@ -1191,15 +984,9 @@ class ParallelTransformerLayer(MegatronModule):
                     layernorm_output,
                     inference_params,
                     bias_dropout_add_func)
-            # pax({
-            #     "retriever_output" : tp(retriever_output),
-            #     "layernorm_input" : tp(layernorm_input),
-            #     "layernorm_output" : tp(layernorm_output),
-            # })
         else:
             raise Exception("Unsupported layer type, '%s'." %
                             self.layer_type.name)
-        # <<<
 
         # MLP.
         mlp_output, mlp_bias = self.mlp(layernorm_output)
@@ -1234,23 +1021,10 @@ class ParallelTransformerLayer(MegatronModule):
                                               training=self.training)
             output = residual + self.drop_path(out)
 
-        # >>>
-        # return output
-        # +++
-        # outputs = {
-        #     "hidden_states" : output,
-        # }
-        # # if retriever_output is not None:
-        # if self.layer_type == LayerType.retro_decoder_with_retriever:
-        #     assert retriever_output is not None
-        #     outputs["retriever_output"] : retriever_output
-        # return outputs
-        # +++
         if self.layer_type == LayerType.retro_decoder_with_retriever:
             return output, retriever_output
         else:
             return output
-        # <<<
 
 
 class NoopTransformerLayer(MegatronModule):
@@ -1279,17 +1053,12 @@ class NoopTransformerLayer(MegatronModule):
         return hidden_states.clone()
 
 
-# >>>
-# def _get_num_layers(args, is_encoder_and_decoder_model, is_decoder=False):
 def _get_num_layers(args, model_type, is_decoder=False):
-# <<<
     """Compute the number of transformer layers resident on the current rank."""
-    # >>>
     is_encoder_and_decoder_model = (model_type == ModelType.encoder_and_decoder)
     if model_type == ModelType.retro_encoder:
         num_layers = args.retro_encoder_layers
     elif mpu.get_pipeline_model_parallel_world_size() > 1:
-    # <<<
         if is_encoder_and_decoder_model:
             assert args.pipeline_model_parallel_split_rank is not None
 
@@ -1359,24 +1128,17 @@ class ParallelTransformer(MegatronModule):
     """Transformer class."""
 
     def __init__(self, init_method, output_layer_init_method,
-                 # >>>
-                 model_type, # =ModelType.encoder_or_decoder,
-                 # <<<
-                 layer_type=LayerType.encoder,
+                 model_type, layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
                  post_layer_norm=True,
                  pre_process=True,
                  post_process=True,
                  drop_path_rate=0.0):
-                 # retriever=None):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 
         self.layer_type = layer_type
-        # >>>
-        # self.model_type = args.model_type
         self.model_type = model_type
-        # <<<
         self.bf16 = args.bf16
         self.fp32_residual_connection = args.fp32_residual_connection
         self.post_layer_norm = post_layer_norm
@@ -1421,17 +1183,13 @@ class ParallelTransformer(MegatronModule):
         self.checkpoint_core_attention = args.recompute_granularity == 'selective'
 
         # Number of layers.
-        self.num_layers = _get_num_layers(
-            args,
-            # >>>
-            # args.model_type == ModelType.encoder_and_decoder,
-            model_type,
-            # <<<
-            layer_type == LayerType.decoder)
+        self.num_layers = _get_num_layers(args, model_type,
+                                          layer_type==LayerType.decoder)
 
-        self.drop_path_rates = [rate.item() for rate in torch.linspace(0, self.drop_path_rate, args.num_layers)]
+        self.drop_path_rates = [
+            rate.item() for rate in
+            torch.linspace(0, self.drop_path_rate, args.num_layers)]
 
-        # >>>
         self.retro_layer_numbers = None
         if model_type == ModelType.retro_decoder:
             if args.num_layers == 12:
@@ -1446,32 +1204,23 @@ class ParallelTransformer(MegatronModule):
                                 "Please choose from 12, 24, or 40.")
         if model_type == ModelType.retro_encoder:
             self.retro_layer_numbers = [1]
-        # <<<
 
         # Transformer layers.
-        # >>>
         if args.retro_add_retriever:
             assert args.transformer_impl == 'local', \
                 "Transformer engine does not support Retro layers."
-        # <<<
         def build_layer(layer_number):
             if args.transformer_impl == 'local':
-                # >>>
                 current_layer_type = _get_layer_type(
                     model_type, layer_type, self.retro_layer_numbers,
                     layer_number)
-                # <<<
                 return ParallelTransformerLayer(
                     init_method,
                     output_layer_init_method,
                     layer_number,
-                    # >>>
-                    # layer_type=layer_type,
                     layer_type=current_layer_type,
-                    # <<<
                     self_attn_mask_type=self_attn_mask_type,
                     drop_path_rate=self.drop_path_rates[layer_number - 1])
-                    # retriever=retriever)
             else:
                 return transformer_engine.pytorch.TransformerLayer(
                     args.hidden_size,
@@ -1548,26 +1297,17 @@ class ParallelTransformer(MegatronModule):
             self.layers = torch.nn.ModuleList(
                 [build_layer(i + 1 + offset) for i in range(self.num_layers)])
 
-            # >>>
+            # Update dropout rate for Retro encoder.
             if model_type == ModelType.retro_encoder:
                 for layer in self.layers:
-                    # pax(0, {"layer": layer})
                     if args.use_flash_attn:
-                        pax({"attention_dropout": layer})
+                        raise Exception("test w/ flash attn.")
                         layer.self_attention.core_attention_flash.dropout_p = \
                             torch.nn.Dropout(args.retro_encoder_attention_dropout)
                     else:
-                        # pax({
-                        #     "attention_dropout" :
-                        #     layer.self_attention.core_attention.attention_dropout,
-                        #     "retro dropout": args.retro_encoder_attention_dropout,
-                        # })
-                        #layer.self_attention.core_attention.attention_dropout = \
-                        #   torch.nn.Dropout(args.retro_encoder_attention_dropout)
                         layer.self_attention.core_attention.attention_dropout.p =\
                             args.retro_encoder_attention_dropout
                     layer.hidden_dropout = args.retro_encoder_hidden_dropout
-            # <<<
 
         if self.post_process and self.post_layer_norm:
             # Final layer norm before output.
@@ -1582,9 +1322,6 @@ class ParallelTransformer(MegatronModule):
 
     def _checkpointed_forward(self, hidden_states, attention_mask,
                               encoder_output, enc_dec_attn_mask,
-                              # >>>
-                              retriever_output, retriever_attn_mask,
-                              # <<<
                               is_first_microbatch):
         """Forward method with activation checkpointing."""
         def custom(start, end, is_transformer_engine=False):
@@ -1601,8 +1338,8 @@ class ParallelTransformer(MegatronModule):
                 return custom_forward_transformer_engine
 
         if self.recompute_method == 'uniform':
-            # Uniformly divide the total number of Transformer layers and checkpoint
-            # the input activation of each divided chunk.
+            # Uniformly divide the total number of Transformer layers and
+            # checkpoint the input activation of each divided chunk.
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
             while l < self.num_layers:
@@ -1615,20 +1352,11 @@ class ParallelTransformer(MegatronModule):
                         hidden_states, attention_mask,
                         encoder_output, enc_dec_attn_mask)
                 else:
-                    # >>>
-                    # hidden_states = tensor_parallel.checkpoint(
-                    outputs = tensor_parallel.checkpoint(
-                    # <<<
+                    hidden_states = tensor_parallel.checkpoint(
                         custom(l, l + self.recompute_num_layers),
                         self.distribute_saved_activations,
                         hidden_states, attention_mask,
-                        encoder_output, enc_dec_attn_mask,
-                        retriever_output, retriever_attn_mask)
-                    # >>>
-                    hidden_states = output["hidden_states"]
-                    retriever_output = \
-                        output.get("retriever_output", retriever_output)
-                    # <<<
+                        encoder_output, enc_dec_attn_mask)
 
                 l += self.recompute_num_layers
 
@@ -1647,32 +1375,20 @@ class ParallelTransformer(MegatronModule):
                             hidden_states, attention_mask,
                             encoder_output, enc_dec_attn_mask)
                     else:
-                        outputs = tensor_parallel.checkpoint(
+                        hidden_states = tensor_parallel.checkpoint(
                             custom(l, l + 1),
                             self.distribute_saved_activations,
                             hidden_states, attention_mask,
-                            encoder_output, enc_dec_attn_mask,
-                            retriever_output, retriever_attn_mask)
-                        # >>>
-                        hidden_states = output["hidden_states"]
-                        retriever_output = \
-                            output.get("retriever_output", retriever_output)
-                        # <<<
+                            encoder_output, enc_dec_attn_mask)
                 else:
                     if self.transformer_impl == 'transformer_engine':
                         hidden_states = custom(l, l + 1, is_transformer_engine=True)(
                             hidden_states, attention_mask,
                             encoder_output, enc_dec_attn_mask)
                     else:
-                        outputs = custom(l, l + 1)(
+                        hidden_states = custom(l, l + 1)(
                             hidden_states, attention_mask,
-                            encoder_output, enc_dec_attn_mask,
-                            retriever_output, retriever_attn_mask)
-                        # >>>
-                        hidden_states = output["hidden_states"]
-                        retriever_output = \
-                            output.get("retriever_output", retriever_output)
-                        # <<<
+                            encoder_output, enc_dec_attn_mask)
         else:
             raise ValueError("Invalid activation recompute method.")
 
@@ -1688,76 +1404,13 @@ class ParallelTransformer(MegatronModule):
         forward_step_func"""
         self.input_tensor = input_tensor
 
-    # def retrieve_neighbors(self):
-    #     """
-    #     notations:
-    #         l: number of chunks
-    #         m: number of token per chunk
-    #         bs: batch size
-    #         d: hidden size
-    #         k: number of neighbors
-    #         r: number of tokens per neighbors (neighbors + continuation)
-    #     """
-
-    #     args = get_args()
-    #     retro_args = get_retro_args()
-
-    #     chunk_length = retro_args.retro_gpt_chunk_length
-    #     retrieved_length = retro_args.retro_gpt_retrieved_length
-    #     num_neighbors = args.retro_num_neighbors
-
-    #     ns, bs, d = layernorm_output.shape
-    #     l = int(np.ceil(ns / chunk_length))
-    #     first_ns = ns % chunk_length
-    #     if first_ns > 0:
-    #         first_chunk, rest_chunk = \
-    #             layernorm_output[:first_ns], layernorm_output[first_ns:]
-    #         first_chunk = torch.nn.functional.pad(
-    #             first_chunk,
-    #             (0, 0, 0, 0, 0, chunk_length - first_ns),
-    #             'constant',
-    #             0)
-    #         chunked_output = \
-    #             torch.cat((first_chunk, rest_chunk), dim=0) # [l * m, bs, d]
-    #     else:
-    #         chunked_output = layernorm_output # [l * m, bs, d]
-    #     chunked_output = chunked_output \
-    #         .reshape(l, chunk_length, bs, d) \
-    #         .permute(1, 2, 0, 3) \
-    #         .reshape(chunk_length, bs * l, d) \
-    #         .contiguous()
-
-    #     # Get Encoder Output
-    #     retriever_output = self.retriever(
-    #         retriever_output,
-    #         retriever_attn_mask,
-    #         retriever_output=chunked_output,
-    #         retriever_attn_mask=retriever_attn_mask,
-    #         inference_params=inference_params) # [r, k * bs * l , d]
-    #     retriever_output = retriever_output.reshape(
-    #         retrieved_length * num_neighbors, bs * l, d) # [r * k, bs * l, d]
-
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
-                # >>>
-                # retriever_input=None, retriever_attn_mask=None,
-                # retriever_input_ids=None,
-                # retriever_position_ids=None,
                 retriever_input=None,
                 retriever_output=None,
                 retriever_attn_mask=None,
-                # <<<
                 inference_params=None):
         # hidden_states: [s, b, h]
-
-        # >>>
-        # # Save reference to encoder input, for Retro.
-        # encoder_input = hidden_states
-        # <<<
-        # pax({
-        #     "hidden_states" : tp(hidden_states),
-        #     "retriever_input" : tp(retriever_input),
-        # })
 
         # Checks.
         if inference_params:
@@ -1767,13 +1420,6 @@ class ParallelTransformer(MegatronModule):
         if not self.pre_process:
             # See set_input_tensor()
             hidden_states = self.input_tensor
-
-        # pax({
-        #     "hidden_states" : tp(hidden_states),
-        #     "attention_mask" : tp(attention_mask),
-        #     "retriever_input" : tp(retriever_input),
-        #     "retriever_attn_mask" : tp(retriever_attn_mask),
-        # })
 
         # Viewless tensor.
         # - We only need to create a viewless tensor in the case of micro batch
@@ -1795,15 +1441,6 @@ class ParallelTransformer(MegatronModule):
             requires_grad=True,
             keep_graph=True,
         )
-
-        # >>>
-        # # Retrieve neighbors.
-        # if self.model_type == ModelType.retro_decoder:
-        #     retriever_output = self.retriever()
-        #     pax(0, {"retriever_output": retriever_output})
-        # else:
-        #     retriever_output = None
-        # <<<
 
         # RNG context.
         if self.sequence_parallel:
@@ -1828,36 +1465,21 @@ class ParallelTransformer(MegatronModule):
 
                 # Forward pass.
                 if self.recompute_granularity == 'full':
-                    # >>>
                     assert not self.retro_add_retriever, \
                         "full recompute not supported for retro."
-                    # <<<
                     hidden_states = self._checkpointed_forward(
                         hidden_states,
                         attention_mask,
                         encoder_output,
                         enc_dec_attn_mask,
-                        # >>>
-                        # retriever_output,
-                        # retriever_attn_mask,
-                        # <<<
                         is_first_microbatch)
                 else:
                     forward_kwargs = {
-                        # >>> [ for retro ]
-                        # 'encoder_input': encoder_input,
-                        # 'encoder_attn_mask': attention_mask,
-                        # <<<
                         'encoder_output': encoder_output,
                         'enc_dec_attn_mask': enc_dec_attn_mask,
-                        # >>>
-                        # 'retriever_output': retriever_output,
-                        # 'retriever_input_ids': retriever_input_ids,
-                        # 'retriever_position_ids': retriever_position_ids,
                         'retriever_input': retriever_input,
-                        'retriever_output': retriever_output, # None,
+                        'retriever_output': retriever_output,
                         'retriever_attn_mask': retriever_attn_mask,
-                        # <<<
                         'inference_params': inference_params,
                     }
 
@@ -1872,22 +1494,14 @@ class ParallelTransformer(MegatronModule):
                             hidden_states,
                             attention_mask,
                             **forward_kwargs)
-                        
-                        # >>>
+
+                        # First Retro decoder layer returns both hidden_states
+                        # and retriever_output. Make retriever_output available
+                        # to subsequence Retro layers.
                         if isinstance(hidden_states, tuple):
                             assert len(hidden_states) == 2
                             hidden_states, retriever_output = hidden_states
-                            # pax({
-                            #     "hidden_states" : tp(hidden_states),
-                            #     "retriever_output" : tp(retriever_output),
-                            # })
                             forward_kwargs["retriever_output"] = retriever_output
-                        # <<<
-
-                        # >>>
-                        assert isinstance(hidden_states, torch.Tensor), \
-                            "hidden_states is <%s>."%type(hidden_states).__name__
-                        # <<<
 
                 # Skip counter update for eval and activation checkpointing
                 if torch.is_grad_enabled() and self.training:
