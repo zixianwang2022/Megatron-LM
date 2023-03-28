@@ -8,19 +8,11 @@ import torch.nn.functional as F
 from megatron import get_args
 from megatron.core import mpu, tensor_parallel
 
-# >>>
-# from .enums import LayerType, AttnMaskType
 from .enums import AttnMaskType, LayerType, ModelType
-# <<<
 from .module import MegatronModule
-# from .retro_transformer import ParallelRetroEncoder, ParallelRetroTransformer
 from .transformer import ParallelTransformer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
-
-# >>>
-from lutil import pax, tp
-# <<<
 
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
@@ -347,9 +339,7 @@ class TransformerLanguageModel(MegatronModule):
         self.decoder_attn_mask_type = decoder_attn_mask_type
         self.add_pooler = add_pooler
         self.encoder_hidden_state = None
-        # >>>
-        # self.retro_add_retriever = args.retro_add_retriever
-        # <<<
+        self.add_retriever = args.retro_add_retriever
 
         # Embeddings.
         if self.pre_process:
@@ -361,26 +351,9 @@ class TransformerLanguageModel(MegatronModule):
                                        self.num_tokentypes)
             self._embedding_key = 'embedding'
 
-        # >>>
-        # Retriever (bi-directional transformer with cross attention)
-        if args.retro_add_retriever:
-            self.retriever = ParallelTransformer(
-                init_method,
-                output_layer_init_method,
-                model_type=ModelType.retro_encoder,
-                self_attn_mask_type=AttnMaskType.padding,
-                pre_process=True, # self.pre_process,
-                post_process=False,
-            )
-            self._retriever_key = 'retriever'
-        else:
-            self.retriever = None
-        # <<<
-
         # Encoder (usually set to True, False if part of an encoder-decoder
         # architecture and in encoder-only stage).
         if self.add_encoder:
-            # >>>
             self.encoder = ParallelTransformer(
                 self.init_method,
                 output_layer_init_method,
@@ -389,9 +362,7 @@ class TransformerLanguageModel(MegatronModule):
                 self_attn_mask_type=self.encoder_attn_mask_type,
                 pre_process=self.pre_process,
                 post_process=self.post_process,
-                retriever=self.retriever,
             )
-            # <<<
             self._encoder_key = 'encoder'
         else:
             self.encoder = None
@@ -446,32 +417,13 @@ class TransformerLanguageModel(MegatronModule):
 
     def forward(self, enc_input_ids, enc_position_ids, enc_attn_mask,
                 dec_input_ids=None, dec_position_ids=None, dec_attn_mask=None,
-                # >>>
                 retriever_input_ids=None,
                 retriever_position_ids=None,
                 retriever_attn_mask=None,
-                # <<<
                 enc_dec_attn_mask=None, tokentype_ids=None,
                 inference_params=None,
                 pooling_sequence_index=0,
                 enc_hidden_states=None, output_enc_hidden=False):
-
-        # >>>
-        # Retriever embedding.
-        # if self.retriever and self.pre_process:
-        if retriever_input_ids is not None and self.pre_process:
-            retriever_input = self.embedding(retriever_input_ids,
-                                             retriever_position_ids,
-                                             tokentype_ids=tokentype_ids)
-            # pax({
-            #     "retriever_position_ids" : tp(retriever_position_ids),
-            #     "retriever_input_ids" : tp(retriever_input_ids),
-            #     "retriever_input" : tp(retriever_input),
-            #     "retriever_attn_mask" : tp(retriever_attn_mask),
-            # })
-        else:
-            retriever_input = None
-        # <<<
 
         # Encoder embedding.
         if self.pre_process:
@@ -480,39 +432,23 @@ class TransformerLanguageModel(MegatronModule):
         else:
             encoder_input = None
 
-        # pax({
-        #     "enc_input_ids" : tp(enc_input_ids),
-        #     "enc_position_ids" : tp(enc_position_ids),
-        #     "retriever_input_ids" : tp(retriever_input_ids),
-        #     "retriever_position_ids" : tp(retriever_position_ids),
-        # })
+        # Retriever embedding.
+        if self.add_retriever and self.pre_process:
+            retriever_input = self.embedding(retriever_input_ids,
+                                             retriever_position_ids,
+                                             tokentype_ids=tokentype_ids)
+        else:
+            retriever_input = None
 
         # Run encoder.
         if enc_hidden_states is None:
             if self.encoder is not None:
-                # >>>
-                # if self.retriever:
-                #     encoder_output = self.encoder(
-                #         encoder_input,
-                #         enc_attn_mask,
-                #         retriever_input=retriever_input,
-                #         retriever_attn_mask=retriever_attn_mask,
-                #         inference_params=inference_params)
-                # else:
-                #     encoder_output = self.encoder(
-                #         encoder_input,
-                #         enc_attn_mask,
-                #         inference_params=inference_params)
-                # +++
                 encoder_output = self.encoder(
                     encoder_input,
                     enc_attn_mask,
-                    # retriever_input_ids=retriever_input_ids,
-                    # retriever_position_ids=retriever_position_ids,
                     retriever_input=retriever_input,
                     retriever_attn_mask=retriever_attn_mask,
                     inference_params=inference_params)
-                # <<<
             else:
                 encoder_output = self.encoder_hidden_state
         else:

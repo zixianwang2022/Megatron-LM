@@ -632,8 +632,8 @@ class ParallelTransformerLayer(MegatronModule):
     def __init__(self, init_method, output_layer_init_method,
                  layer_number, layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
-                 drop_path_rate=0.,
-                 retriever=None):
+                 drop_path_rate=0.):
+                 # retriever=None):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
@@ -722,21 +722,21 @@ class ParallelTransformerLayer(MegatronModule):
         # <<<
 
         # >>>
-        # # Retriever (bi-directional transformer with cross attention)
-        # if layer_type == LayerType.retro_decoder_with_retriever:
-        #     self.retriever = ParallelTransformer(
-        #         init_method,
-        #         output_layer_init_method,
-        #         model_type=ModelType.retro_encoder,
-        #         self_attn_mask_type=AttnMaskType.padding,
-        #         pre_process=True, # self.pre_process,
-        #         post_process=False,
-        #     )
-        #     self._retriever_key = 'retriever'
-        # else:
-        #     self.retriever = None
+        # Retriever (bi-directional transformer with cross attention)
+        if layer_type == LayerType.retro_decoder_with_retriever:
+            self.retriever = ParallelTransformer(
+                init_method,
+                output_layer_init_method,
+                model_type=ModelType.retro_encoder,
+                self_attn_mask_type=AttnMaskType.padding,
+                pre_process=True, # self.pre_process,
+                post_process=False,
+            )
+            self._retriever_key = 'retriever'
+        else:
+            self.retriever = None
         # +++
-        self.retriever=retriever
+        # self.retriever=retriever
         # <<<
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1367,8 +1367,8 @@ class ParallelTransformer(MegatronModule):
                  post_layer_norm=True,
                  pre_process=True,
                  post_process=True,
-                 drop_path_rate=0.0,
-                 retriever=None):
+                 drop_path_rate=0.0):
+                 # retriever=None):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 
@@ -1470,8 +1470,8 @@ class ParallelTransformer(MegatronModule):
                     layer_type=current_layer_type,
                     # <<<
                     self_attn_mask_type=self_attn_mask_type,
-                    drop_path_rate=self.drop_path_rates[layer_number - 1],
-                    retriever=retriever)
+                    drop_path_rate=self.drop_path_rates[layer_number - 1])
+                    # retriever=retriever)
             else:
                 return transformer_engine.pytorch.TransformerLayer(
                     args.hidden_size,
