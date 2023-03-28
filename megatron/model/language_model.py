@@ -362,19 +362,19 @@ class TransformerLanguageModel(MegatronModule):
             self._embedding_key = 'embedding'
 
         # >>>
-        # # Retriever (bi-directional transformer with cross attention)
-        # if args.retro_add_retriever:
-        #     self.retriever = ParallelTransformer(
-        #         init_method,
-        #         output_layer_init_method,
-        #         model_type=ModelType.retro_encoder,
-        #         self_attn_mask_type=AttnMaskType.padding,
-        #         pre_process=True, # self.pre_process,
-        #         post_process=False,
-        #     )
-        #     self._retriever_key = 'retriever'
-        # else:
-        #     self.retriever = None
+        # Retriever (bi-directional transformer with cross attention)
+        if args.retro_add_retriever:
+            self.retriever = ParallelTransformer(
+                init_method,
+                output_layer_init_method,
+                model_type=ModelType.retro_encoder,
+                self_attn_mask_type=AttnMaskType.padding,
+                pre_process=True, # self.pre_process,
+                post_process=False,
+            )
+            self._retriever_key = 'retriever'
+        else:
+            self.retriever = None
         # <<<
 
         # Encoder (usually set to True, False if part of an encoder-decoder
@@ -389,7 +389,7 @@ class TransformerLanguageModel(MegatronModule):
                 self_attn_mask_type=self.encoder_attn_mask_type,
                 pre_process=self.pre_process,
                 post_process=self.post_process,
-                # retriever=self.retriever,
+                retriever=self.retriever,
             )
             # <<<
             self._encoder_key = 'encoder'
