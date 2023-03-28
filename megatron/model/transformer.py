@@ -810,14 +810,14 @@ class ParallelTransformerLayer(MegatronModule):
             layernorm_input.reshape(self.retro_retrieved_length, -1,
                                     self.retro_num_neighbors, d) # [r, bs*l, k, d]
 
-        pax({
-            "retriever_output" : tp(retriever_output),
-            "layernorm_input" : tp(layernorm_input),
-            "layernorm_output" : tp(layernorm_output),
-            "chunked_outputs" : tp(chunked_outputs),
-            "chunked_outputs_before_layer_norm" :
-            tp(chunked_outputs_before_layer_norm),
-        })
+        # pax({
+        #     "retriever_output" : tp(retriever_output),
+        #     "layernorm_input" : tp(layernorm_input),
+        #     "layernorm_output" : tp(layernorm_output),
+        #     "chunked_outputs" : tp(chunked_outputs),
+        #     "chunked_outputs_before_layer_norm" :
+        #     tp(chunked_outputs_before_layer_norm),
+        # })
 
         layernorm_inputs = []
         layernorm_outputs = []
@@ -1123,15 +1123,15 @@ class ParallelTransformerLayer(MegatronModule):
                     residual,
                     self.hidden_dropout)
                 # >>>
-                if self.layer_type == LayerType.retro_encoder:
-                    pax({
-                        "attention_output" : tp(attention_output),
-                        "attention_bias" : tp(attention_bias.clone()),
-                        "residual" : tp(residual),
-                        "hidden_dropout" : self.hidden_dropout,
-                        # "bias_dropout_add_func" : bias_dropout_add_func.name,
-                        "layernorm_input" : tp(layernorm_input),
-                    })
+                # if self.layer_type == LayerType.retro_encoder:
+                #     pax({
+                #         "attention_output" : tp(attention_output),
+                #         "attention_bias" : tp(attention_bias.clone()),
+                #         "residual" : tp(residual),
+                #         "hidden_dropout" : self.hidden_dropout,
+                #         # "bias_dropout_add_func" : bias_dropout_add_func.name,
+                #         "layernorm_input" : tp(layernorm_input),
+                #     })
                 # <<<
         else:
             out = torch.nn.functional.dropout(attention_output + attention_bias,
@@ -1142,14 +1142,14 @@ class ParallelTransformerLayer(MegatronModule):
         # Layer norm post the self attention.
         layernorm_output = self.post_attention_layernorm(layernorm_input)
 
-        if self.layer_type == LayerType.retro_encoder:
-            pax({
-                "layer_number" : self.layer_number,
-                "drop_path" : self.drop_path,
-                "residual" : tp(residual),
-                "layernorm_input" : tp(layernorm_input),
-                "layernorm_output" : tp(layernorm_output),
-            })
+        # if self.layer_type == LayerType.retro_encoder:
+        #     pax({
+        #         "layer_number" : self.layer_number,
+        #         "drop_path" : self.drop_path,
+        #         "residual" : tp(residual),
+        #         "layernorm_input" : tp(layernorm_input),
+        #         "layernorm_output" : tp(layernorm_output),
+        #     })
 
         # >>>
         # Cross attention.
