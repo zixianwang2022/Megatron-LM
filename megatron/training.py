@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 """Pretrain utilities."""
 
@@ -40,10 +40,6 @@ from megatron.utils import calc_params_l2_norm
 from megatron.schedules import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.model.vision.knn_monitor import compute_feature_bank
-
-# >>>
-from lutil import pax
-# <<<
 
 
 def print_datetime(string):
@@ -916,11 +912,6 @@ def build_train_valid_test_data_loaders(
         train_ds, valid_ds, test_ds = build_train_valid_test_datasets_provider(
             train_val_test_num_samples)
 
-        # >>>
-        # raise Exception("hi.")
-        # pax({"train_ds": train_ds})
-        # <<<
-
         # Build dataloders.
         train_dataloader = build_pretraining_data_loader(
             train_ds, args.consumed_train_samples)
@@ -946,14 +937,6 @@ def build_train_valid_test_data_loaders(
     args.do_valid = flags[1].item()
     args.do_test = flags[2].item()
 
-    # >>>
-    # raise Exception("hi.")
-    # pax({
-    #     "train_dataloader" : train_dataloader,
-    #     "train dataset / 0" : train_dataloader.dataset[0],
-    # })
-    # <<<
-
     return train_dataloader, valid_dataloader, test_dataloader
 
 
@@ -966,13 +949,6 @@ def build_train_valid_test_data_iterators(
     train_dataloader, valid_dataloader, test_dataloader = \
         build_train_valid_test_data_loaders(
             build_train_valid_test_datasets_provider)
-
-    # >>>
-    # pax({
-    #     "train ds" : train_dataloader.dataset,
-    #     "train ds / 0" : train_dataloader.dataset[0],
-    # })
-    # <<<
 
     # Build iterators.
     dl_type = args.dataloader_type

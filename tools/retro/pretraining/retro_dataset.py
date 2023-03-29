@@ -11,10 +11,6 @@ from tools.retro.external_libs import h5py
 
 from .chunk_dataset import get_chunk_dataset_map
 
-# >>>
-from lutil import pax
-# <<<
-
 
 class RetroDataset(torch.utils.data.Dataset):
     '''Dataset of retro samples.
@@ -107,10 +103,6 @@ class RetroDataset(torch.utils.data.Dataset):
 def get_retro_datasets():
     '''Get train, valid, test retro datasets.'''
 
-    # >>>
-    # raise Exception("hi.")
-    # <<<
-
     args = get_args()
     retro_args = get_retro_args()
 
@@ -157,15 +149,5 @@ def get_retro_datasets():
     train_ds = retro_dataset_map.get("train", None)
     valid_ds = retro_dataset_map.get("valid", None)
     test_ds = retro_dataset_map.get("test", None)
-
-    # >>>
-    # raise Exception("hi.")
-    # pax({
-    #     "train_ds" : train_ds,
-    #     "train_ds / 0" : train_ds[0],
-    #     # "valid_ds" : valid_ds,
-    #     # "test_ds" : test_ds,
-    # })
-    # <<<
 
     return train_ds, valid_ds, test_ds
