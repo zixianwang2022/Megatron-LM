@@ -436,10 +436,10 @@ def merge_dbs(indexed_dataset_infos, db_type):
 
         except Exception as e:
             if isinstance(e, OSError):
-                os.remove(full_db_path)
+                os.remove(db_path)
             elif isinstance(e, KeyError):
                 f.close()
-                os.remove(full_db_path)
+                os.remove(db_path)
             else:
                 raise e
 

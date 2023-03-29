@@ -25,7 +25,7 @@ def get_index_dir():
         args.retro_workdir,
         "index",
         args.retro_index_type,
-        args.retro_index_str,
+        "%s_tr%d" % (args.retro_index_str, get_num_training_vecs()),
     )
 
     # Make directory.
@@ -46,7 +46,8 @@ def num_samples_to_block_ranges(num_samples):
 
 
 def get_training_data_dir():
-    return os.path.join(get_index_dir(), "train_tmp")
+    args = get_retro_args()
+    return os.path.join(args.retro_workdir, "index", "train_emb")
 
 
 def get_training_data_paths():
@@ -93,9 +94,23 @@ def get_training_data_group_infos():
     return groups
 
 
-def load_training_block(path, load_fraction):
+def get_training_block_nload(path, load_fraction):
     with h5py.File(path) as f:
-        n_load = int(load_fraction * f["data"].shape[0])
+        return int(load_fraction * f["data"].shape[0])
+
+
+def get_num_training_vecs():
+    args = get_retro_args()
+    block_paths = get_training_data_paths()
+    ntrain = sum(get_training_block_nload(p, args.retro_index_train_load_fraction)
+		 for p in tqdm(block_paths, "ntrain"))
+    # pax({"block_paths": block_paths, "ntrain": ntrain})
+    return ntrain
+
+
+def load_training_block(path, load_fraction):
+    n_load = get_training_block_nload(path, load_fraction)
+    with h5py.File(path) as f:
         return np.copy(f["data"][:n_load])
 
 
@@ -129,8 +144,10 @@ def get_training_data_merged():
 
     # Setup.
     ds_infos = get_indexed_dataset_infos()
-    n_chunks_sampled = sum(d["n_chunks_sampled"] for d in ds_infos)
     load_fraction = args.retro_index_train_load_fraction
+    n_chunks_sampled = sum(get_training_block_nload(p, load_fraction)
+                           for p in tqdm(get_training_data_paths(),
+                                         "count training samples"))
 
     # Initialize merged data.
     print("allocate training data array.")
@@ -166,7 +183,7 @@ def get_training_data_merged():
             gc.collect()
 
         # Handle load ratio <1.
-        data = data[:start_idx]
+        assert data.shape[0] == n_chunks_sampled
         print("> training block data.shape = %s." % str(data.shape))
 
     return data

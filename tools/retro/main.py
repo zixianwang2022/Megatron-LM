@@ -31,12 +31,12 @@ def add_retro_args(parser):
 
     group = parser.add_argument_group(title="Retro preprocessing.")
 
-    group.add_argument("--retro-gpt-vocab-file", required=True,
-                       help="GPT vocab file.")
-    group.add_argument("--retro-gpt-merge-file", required=True,
-                       help="GPT merge file.")
     group.add_argument("--retro-gpt-tokenizer-type", required=True,
                        help="GPT tokenizer type.")
+    group.add_argument("--retro-gpt-vocab-file", help="GPT vocab file.")
+    group.add_argument("--retro-gpt-merge-file", help="GPT merge file.")
+    group.add_argument("--retro-gpt-tokenizer-model",
+                       help="GPT tokenizer model file.")
     group.add_argument("--retro-gpt-seq-length", type=int, default=2048,
                        help="GPT sequence length.")
     group.add_argument("--retro-gpt-chunk-length", type=int, default=64,
