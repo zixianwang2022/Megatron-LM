@@ -8,7 +8,7 @@ set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NPROCS=16 # NPROCS must be <= number of GPUs.
+NPROCS=8 # NPROCS must be <= number of GPUs.
 
 ################ Dataset configs. ################
 # This script contains methods to customize arguments to specific dataset
@@ -30,7 +30,6 @@ DATA_PATH=${DATA_BLEND}
 
 ######## Retro setup. ########
 RETRO_ADD_RETRIEVER=1
-# RETRO_ADD_RETRIEVER=0
 RETRO_CYCLIC_TRAIN_ITERS=750000
 RETRO_NUM_NEIGHBORS=2
 
@@ -38,12 +37,11 @@ RETRO_NUM_NEIGHBORS=2
 CHECKPOINT_DIR=${RETRO_WORKDIR}/checkpoints/${RETRO_ADD_RETRIEVER}
 TENSORBOARD_DIR="${CHECKPOINT_DIR}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
-# ARGS=" \
-#     --save-interval 1000 \
-#     --save ${CHECKPOINT_DIR} \
-#     --load ${CHECKPOINT_DIR} \
-#     --tensorboard-dir ${TENSORBOARD_DIR} \
 ARGS=" \
+    --save-interval 1000 \
+    --save ${CHECKPOINT_DIR} \
+    --load ${CHECKPOINT_DIR} \
+    --tensorboard-dir ${TENSORBOARD_DIR} \
     --log-interval 5 \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
@@ -79,11 +77,6 @@ ARGS=" \
     --no-data-sharding \
     --no-gradient-accumulation-fusion \
 "
-
-# >>>
-# ARGS="${ARGS} --loss-scale 1024"
-# ARGS="${ARGS} --exit-interval 1000" # 50"
-# <<<
 
 if [ "$RETRO_ADD_RETRIEVER" = "0" ]; then
     SCRIPT=pretrain_gpt.py

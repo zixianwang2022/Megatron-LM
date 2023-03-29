@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from megatron import get_timers, get_args, get_retro_args, \
     core, get_num_microbatches
 from megatron.core import mpu, tensor_parallel
+from megatron.core.enums import ModelType
 
 from .enums import AttnMaskType, ModelType, LayerType, AttnType
 from .fused_bias_gelu import bias_gelu_impl

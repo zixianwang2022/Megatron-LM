@@ -7,8 +7,9 @@ import torch.nn.functional as F
 
 from megatron import get_args
 from megatron.core import mpu, tensor_parallel
+from megatron.core.enums import ModelType
 
-from .enums import AttnMaskType, LayerType, ModelType
+from .enums import AttnMaskType, LayerType
 from .module import MegatronModule
 from .transformer import ParallelTransformer
 from .utils import get_linear_layer
@@ -424,6 +425,13 @@ class TransformerLanguageModel(MegatronModule):
                 inference_params=None,
                 pooling_sequence_index=0,
                 enc_hidden_states=None, output_enc_hidden=False):
+
+        # Retriever embedding.
+        if self.retriever and self.pre_process:
+            retriever_input = self.embedding(ret_input_ids, ret_position_ids,
+                                             tokentype_ids=tokentype_ids)
+        else:
+            retriever_input = None
 
         # Encoder embedding.
         if self.pre_process:
