@@ -119,4 +119,5 @@ if __name__ == "__main__":
              model_provider,
              ModelType.retro_decoder,
              forward_step,
-             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
+             args_defaults={'tokenizer_type': 'GPT2BPETokenizer',
+                            'retro_add_retriever': True})

@@ -8,7 +8,9 @@ from megatron import get_retro_args
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
-    _GPTSentencePieceTokenizer,
+    # >>>
+    # _GPTSentencePieceTokenizer, # coming soon.
+    # <<<
 )
 
 

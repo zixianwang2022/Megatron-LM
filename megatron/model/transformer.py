@@ -12,12 +12,12 @@ from megatron import get_timers, get_args, get_retro_args, \
 from megatron.core import mpu, tensor_parallel
 from megatron.core.enums import ModelType
 
-from .enums import AttnMaskType, ModelType, LayerType, AttnType
+from .enums import AttnMaskType, AttnType, LayerType
 from .fused_bias_gelu import bias_gelu_impl
 from .fused_layer_norm import MixedFusedLayerNorm as LayerNorm
 from .fused_softmax import FusedScaleMaskSoftmax
 from .module import MegatronModule
-from .utils import attention_mask_func, openai_gelu, erf_gelu
+from .utils import attention_mask_func, erf_gelu, openai_gelu
 
 try:
     from einops import rearrange

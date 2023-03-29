@@ -132,10 +132,7 @@ def build_partial_db(
 
         # Remove EOD token.
         doc = indexed_dataset.get(doc_id)
-        # >>>
-        if doc[-1].item() == tokenizers.gpt.eod_id:
-        # if doc[-1].item() == tokenizers.gpt.eod: # next-llm
-        # <<<
+        if doc[-1].item() == tokenizers.gpt.eod:
             doc = doc[:-1]
         doc_len = len(doc)
 
@@ -154,10 +151,7 @@ def build_partial_db(
                 offset=chunk_start_idx,
                 length=chunk_end_idx - chunk_start_idx,
             )
-            # >>>
-            text = tokenizers.gpt.detokenize(gpt_token_ids)
-            # text = tokenizers.gpt.detokenize(gpt_token_ids.tolist()) # next-llm
-            # <<<
+            text = tokenizers.gpt.detokenize(gpt_token_ids.tolist())
             bert_token_ids = tokenizers.bert.tokenize(text)
 
             # 'Valid' for non-empty Bert chunks; 'invalid' otherwise.
@@ -187,6 +181,9 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     indexed_dataset = dataset_info["dataset"]
 
     # Missing db blocks.
+    # >>>
+    assert len(indexed_dataset) == len(indexed_dataset.doc_idx) - 1
+    # <<<
     n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
         db_dir,
         # >>>
@@ -583,7 +580,7 @@ def build_db():
         return
 
     # Update n_chunks & save indexed dataset infos.
-    if not os.path.exists(get_indexed_dataset_infos_path()):
+    if True or not os.path.exists(get_indexed_dataset_infos_path()):
         update_chunk_counts(indexed_dataset_infos)
         save_indexed_dataset_infos(indexed_dataset_infos)
     indexed_dataset_infos = get_indexed_dataset_infos()
