@@ -24,6 +24,8 @@ from tools.retro.external_libs import h5py
 from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
 from .utils import (
+    get_indexed_dataset_infos,
+    get_indexed_dataset_infos_path,
     get_individual_db,
     get_individual_db_dir,
     get_merged_dataset,
@@ -52,7 +54,7 @@ def init_indexed_dataset_infos():
         prefix = args.data_path[i + 1]
         path = prefix + ".bin"
         name = os.path.basename(prefix)
-        assert os.path.exists(path)
+        assert os.path.exists(path), "couldn't find '%s'." % path
         infos.append({
             "ratio" : ratio,
             "prefix" : prefix,
@@ -130,7 +132,10 @@ def build_partial_db(
 
         # Remove EOD token.
         doc = indexed_dataset.get(doc_id)
+        # >>>
         if doc[-1].item() == tokenizers.gpt.eod_id:
+        # if doc[-1].item() == tokenizers.gpt.eod: # next-llm
+        # <<<
             doc = doc[:-1]
         doc_len = len(doc)
 
@@ -149,7 +154,10 @@ def build_partial_db(
                 offset=chunk_start_idx,
                 length=chunk_end_idx - chunk_start_idx,
             )
+            # >>>
             text = tokenizers.gpt.detokenize(gpt_token_ids)
+            # text = tokenizers.gpt.detokenize(gpt_token_ids.tolist()) # next-llm
+            # <<<
             bert_token_ids = tokenizers.bert.tokenize(text)
 
             # 'Valid' for non-empty Bert chunks; 'invalid' otherwise.
@@ -181,9 +189,13 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     # Missing db blocks.
     n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
         db_dir,
+        # >>>
         len(indexed_dataset.doc_idx) - 1,
+        # len(indexed_dataset), # next-llm
+        # <<<
         args.retro_doc_block_size,
-        validate=lambda f : f["chunks_valid"].shape[1] == 4)
+        validate=lambda f : f["chunks_valid"].shape == (0,) \
+            or f["chunks_valid"].shape[1] == 4)
 
     # Prevent missing-path-write race condition.
     torch.distributed.barrier()
@@ -284,6 +296,52 @@ def build_individual_dbs(indexed_dataset_infos):
                             ds_info, tokenizers)
 
 
+# >>>
+# def update_chunk_counts(indexed_dataset_infos):
+#     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
+
+#     args = get_retro_args()
+
+#     if torch.distributed.get_rank() != 0:
+#         return
+
+#     # Training split size (split at document level).
+#     train_fraction = float(args.split.split(",")[0]) / 100
+#     assert train_fraction > 0 and train_fraction <= 1
+
+#     # Set n_chunks (including n_chunks_sampled for unambiguity).
+#     print_rank_0(" > compute n_chunks.")
+#     for ds_index, ds_info in \
+#         enumerate(tqdm(indexed_dataset_infos, "count_chunks")):
+
+#         db_dir = ds_info["db_dir"]
+#         db_paths = sorted(glob.glob(db_dir + "/*.hdf5"))
+
+#         # Update counts.
+#         ds_info["n_docs"] = len(ds_info["dataset"].doc_idx) - 1
+#         ds_info["n_docs_train"] = int(train_fraction * ds_info["n_docs"])
+#         ds_info["n_chunks"] = 0 # previously, 'n_chunks_valid'
+#         ds_info["n_chunks_train"] = 0
+#         ds_info["n_chunks_invalid"] = 0
+#         for db_path in db_paths:
+#             with h5py.File(db_path, "r") as f:
+#                 ds_info["n_chunks"] += len(f["chunks_valid"])
+#                 ds_info["n_chunks_invalid"] += len(f["chunks_invalid"])
+#                 ds_info["n_chunks_train"] += \
+#                     (np.copy(f["chunks_valid"][:, 0]) < ds_info["n_docs_train"]) \
+#                     .sum().item()
+
+#         ds_info["n_chunks_sampled"] = \
+#             int(round(args.retro_nchunks_sampled * ds_info["ratio"]))
+
+#         # Verify counts.
+#         assert ds_info["n_chunks_train"] <= ds_info["n_chunks"], \
+#             "n_train (%d) > n_total (%d)." % (
+#                 ds_info["n_chunks_train"], ds_info["n_chunks"])
+#         assert ds_info["n_chunks_sampled"] <= ds_info["n_chunks_train"], \
+#             "n_sampled (%d) > n_train (%d)." % (
+#                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
+# <<<
 def update_chunk_counts(indexed_dataset_infos):
     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
 
@@ -292,14 +350,16 @@ def update_chunk_counts(indexed_dataset_infos):
     if torch.distributed.get_rank() != 0:
         return
 
+    # Data ratio sum (for setting index training chunks).
+    data_ratio_sum = sum([ d["ratio"] for d in indexed_dataset_infos ])
+
     # Training split size (split at document level).
     train_fraction = float(args.split.split(",")[0]) / 100
     assert train_fraction > 0 and train_fraction <= 1
 
     # Set n_chunks (including n_chunks_sampled for unambiguity).
     print_rank_0(" > compute n_chunks.")
-    for ds_index, ds_info in \
-        enumerate(tqdm(indexed_dataset_infos, "count_chunks")):
+    for ds_index, ds_info in enumerate(indexed_dataset_infos):
 
         db_dir = ds_info["db_dir"]
         db_paths = sorted(glob.glob(db_dir + "/*.hdf5"))
@@ -310,16 +370,17 @@ def update_chunk_counts(indexed_dataset_infos):
         ds_info["n_chunks"] = 0 # previously, 'n_chunks_valid'
         ds_info["n_chunks_train"] = 0
         ds_info["n_chunks_invalid"] = 0
-        for db_path in db_paths:
-            with h5py.File(db_path, "r") as f:
+        for db_path in tqdm(db_paths, "%d/%d, %s" % (
+                ds_index, len(indexed_dataset_infos), ds_info["name"])):
+           with h5py.File(db_path, "r") as f:
                 ds_info["n_chunks"] += len(f["chunks_valid"])
                 ds_info["n_chunks_invalid"] += len(f["chunks_invalid"])
                 ds_info["n_chunks_train"] += \
                     (np.copy(f["chunks_valid"][:, 0]) < ds_info["n_docs_train"]) \
                     .sum().item()
 
-        ds_info["n_chunks_sampled"] = \
-            int(round(args.retro_nchunks_sampled * ds_info["ratio"]))
+        ds_info["n_chunks_sampled"] = int(args.retro_nchunks_sampled *
+                                          ds_info["ratio"] / data_ratio_sum)
 
         # Verify counts.
         assert ds_info["n_chunks_train"] <= ds_info["n_chunks"], \
@@ -521,14 +582,14 @@ def build_db():
     if torch.distributed.get_rank() != 0:
         return
 
-    # Update n_chunks.
-    update_chunk_counts(indexed_dataset_infos)
+    # Update n_chunks & save indexed dataset infos.
+    if not os.path.exists(get_indexed_dataset_infos_path()):
+        update_chunk_counts(indexed_dataset_infos)
+        save_indexed_dataset_infos(indexed_dataset_infos)
+    indexed_dataset_infos = get_indexed_dataset_infos()
 
     # Merge dbs.
     merge_dbs(indexed_dataset_infos, "sampled")
     merge_dbs(indexed_dataset_infos, "train")
     merge_dbs(indexed_dataset_infos, "valid")
     build_doc_chunk_map(indexed_dataset_infos, "train")
-
-    # Save (fully annotated) indexed dataset infos.
-    save_indexed_dataset_infos(indexed_dataset_infos)
