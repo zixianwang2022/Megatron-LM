@@ -181,15 +181,9 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     indexed_dataset = dataset_info["dataset"]
 
     # Missing db blocks.
-    # >>>
-    assert len(indexed_dataset) == len(indexed_dataset.doc_idx) - 1
-    # <<<
     n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
         db_dir,
-        # >>>
-        len(indexed_dataset.doc_idx) - 1,
-        # len(indexed_dataset), # next-llm
-        # <<<
+        len(indexed_dataset),
         args.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
             or f["chunks_valid"].shape[1] == 4)
@@ -293,52 +287,6 @@ def build_individual_dbs(indexed_dataset_infos):
                             ds_info, tokenizers)
 
 
-# >>>
-# def update_chunk_counts(indexed_dataset_infos):
-#     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
-
-#     args = get_retro_args()
-
-#     if torch.distributed.get_rank() != 0:
-#         return
-
-#     # Training split size (split at document level).
-#     train_fraction = float(args.split.split(",")[0]) / 100
-#     assert train_fraction > 0 and train_fraction <= 1
-
-#     # Set n_chunks (including n_chunks_sampled for unambiguity).
-#     print_rank_0(" > compute n_chunks.")
-#     for ds_index, ds_info in \
-#         enumerate(tqdm(indexed_dataset_infos, "count_chunks")):
-
-#         db_dir = ds_info["db_dir"]
-#         db_paths = sorted(glob.glob(db_dir + "/*.hdf5"))
-
-#         # Update counts.
-#         ds_info["n_docs"] = len(ds_info["dataset"].doc_idx) - 1
-#         ds_info["n_docs_train"] = int(train_fraction * ds_info["n_docs"])
-#         ds_info["n_chunks"] = 0 # previously, 'n_chunks_valid'
-#         ds_info["n_chunks_train"] = 0
-#         ds_info["n_chunks_invalid"] = 0
-#         for db_path in db_paths:
-#             with h5py.File(db_path, "r") as f:
-#                 ds_info["n_chunks"] += len(f["chunks_valid"])
-#                 ds_info["n_chunks_invalid"] += len(f["chunks_invalid"])
-#                 ds_info["n_chunks_train"] += \
-#                     (np.copy(f["chunks_valid"][:, 0]) < ds_info["n_docs_train"]) \
-#                     .sum().item()
-
-#         ds_info["n_chunks_sampled"] = \
-#             int(round(args.retro_nchunks_sampled * ds_info["ratio"]))
-
-#         # Verify counts.
-#         assert ds_info["n_chunks_train"] <= ds_info["n_chunks"], \
-#             "n_train (%d) > n_total (%d)." % (
-#                 ds_info["n_chunks_train"], ds_info["n_chunks"])
-#         assert ds_info["n_chunks_sampled"] <= ds_info["n_chunks_train"], \
-#             "n_sampled (%d) > n_train (%d)." % (
-#                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
-# <<<
 def update_chunk_counts(indexed_dataset_infos):
     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
 
