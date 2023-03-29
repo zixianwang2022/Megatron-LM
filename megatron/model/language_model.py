@@ -426,13 +426,6 @@ class TransformerLanguageModel(MegatronModule):
                 pooling_sequence_index=0,
                 enc_hidden_states=None, output_enc_hidden=False):
 
-        # Retriever embedding.
-        if self.retriever and self.pre_process:
-            retriever_input = self.embedding(ret_input_ids, ret_position_ids,
-                                             tokentype_ids=tokentype_ids)
-        else:
-            retriever_input = None
-
         # Encoder embedding.
         if self.pre_process:
             encoder_input = self.embedding(enc_input_ids, enc_position_ids,
