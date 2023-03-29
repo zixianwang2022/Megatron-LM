@@ -95,7 +95,7 @@ echo "SCRIPT = '$SCRIPT'."
 echo "ARGS = '$ARGS'."
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 
-python -m torch.distributed.launch \
+python -m torch.distributed.run \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \
     --node_rank 0 \

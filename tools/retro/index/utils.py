@@ -25,7 +25,7 @@ def get_index_dir():
         args.retro_workdir,
         "index",
         args.retro_index_type,
-        "%s_tr%d" % (args.retro_index_str, get_num_training_vecs()),
+        "%s_t%d" % (args.retro_index_str, get_num_training_vecs()),
     )
 
     # Make directory.
@@ -182,8 +182,9 @@ def get_training_data_merged():
             del group_data
             gc.collect()
 
-        # Handle load ratio <1.
-        assert data.shape[0] == n_chunks_sampled
+        # Verify num loaded.
+        assert start_idx == n_chunks_sampled
+
         print("> training block data.shape = %s." % str(data.shape))
 
     return data
