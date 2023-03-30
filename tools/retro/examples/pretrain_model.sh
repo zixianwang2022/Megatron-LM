@@ -29,7 +29,7 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 DATA_PATH=${DATA_BLEND}
 
 ######## Retro setup. ########
-RETRO_ADD_RETRIEVER=1
+RETRO_ADD_RETRIEVER=0
 RETRO_CYCLIC_TRAIN_ITERS=750000
 RETRO_NUM_NEIGHBORS=2
 
