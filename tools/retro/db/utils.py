@@ -128,20 +128,29 @@ def get_train_doc_chunk_map_dir():
     return dirname
 
 
-def get_train_doc_chunk_map():
+# >>>
+# def get_merged_train_doc_chunk_map_path():
+def get_train_doc_chunk_db_path():
+    return os.path.join(get_base_db_workdir(), "merged", "train_doc_chunk_map.db")
+# <<<
 
-    paths = sorted(glob.glob(get_train_doc_chunk_map_dir() + "/*.json"))
 
-    doc_map = defaultdict(set)
-    for path in tqdm(paths, "load train doc maps"):
+# >>>
+# def get_train_doc_chunk_map():
 
-        # Read file.
-        with open(path) as f:
-            crnt_doc_map = json.load(f)
+#     paths = sorted(glob.glob(get_train_doc_chunk_map_dir() + "/*.json"))
 
-        # Add to doc map.
-        for key, chunk_ids in crnt_doc_map.items():
-            key = tuple(int(i) for i in key.split(","))
-            doc_map[key].update(chunk_ids)
+#     doc_map = defaultdict(set)
+#     for path in tqdm(paths, "load train doc maps"):
 
-    return doc_map
+#         # Read file.
+#         with open(path) as f:
+#             crnt_doc_map = json.load(f)
+
+#         # Add to doc map.
+#         for key, chunk_ids in crnt_doc_map.items():
+#             key = tuple(int(i) for i in key.split(","))
+#             doc_map[key].update(chunk_ids)
+
+#     return doc_map
+# <<<

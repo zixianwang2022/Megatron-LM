@@ -30,9 +30,14 @@ from .utils import (
     get_individual_db_dir,
     get_merged_dataset,
     get_merged_db_path_map,
+    get_train_doc_chunk_db_path,
     get_train_doc_chunk_map_dir,
     save_indexed_dataset_infos,
 )
+
+# >>>
+from lutil import pax
+# <<<
 
 
 def init_indexed_dataset_infos():
@@ -448,8 +453,90 @@ def get_partial_banned_chunk_map(proc_id, db_path, chunk_range_info):
             .append(chunk_id)
 
     # Save output.
+    # >>>
     with open(output_path, "w") as f:
         json.dump(banned_chunk_map, f)
+    # +++
+    # pax({
+    #     # "banned_chunk_map" : banned_chunk_map,
+    #     "banned_chunk_map / 0" : list(banned_chunk_map.items())[0],
+    # })
+    # <<<
+
+
+# >>>
+import hashlib
+import sqlite3
+# from .utils import get_base_db_workdir
+
+# def get_train_doc_chunk_map():
+def merge_doc_chunk_maps():
+    '''Merge multiple doc map jsons into sqlite database.'''
+
+    # Connect to database.
+    db_path = get_train_doc_chunk_db_path()
+    with sqlite3.connect(db_path) as conn:
+
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Init tables.
+        rs = cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
+        table_names = set(r["name"] for r in rs)
+        # if "doc_chunks" not in table_names:
+        if not table_names:
+            cursor.execute("CREATE TABLE doc_chunks ("
+                           "  doc_hash INTEGER PRIMARY KEY,"
+                           "  doc_key TEXT NOT NULL,"
+                           "  chunk_ids TEXT NOT NULL"
+                           ")")
+            cursor.execute("CREATE TABLE completed_paths (path TEXT NOT NULL)")
+            # cursor.execute("CREATE TABLE completed (completed INTEGER)")
+
+        # Individual json map paths.
+        completed_paths = cursor.execute("SELECT * FROM completed_paths")
+        completed_paths = set(r["path"] for r in completed_paths)
+        paths = sorted(glob.glob(get_train_doc_chunk_map_dir() + "/*.json"))
+        paths = [ p for p in paths if os.path.basename(p) not in completed_paths ]
+
+        # Iterate json map paths.
+        doc_map = defaultdict(set)
+        for path_index, path in enumerate(tqdm(paths, "merge train doc maps")):
+
+            # Loaded doc map.
+            with open(path) as f:
+                loaded_doc_map = json.load(f)
+                loaded_doc_map = {
+                    int(hashlib.sha256(doc_key.encode()).hexdigest()[:10], 16) : (
+                        tuple(int(i) for i in doc_key.split(",")),
+                        set(chunk_ids),
+                    ) for doc_key, chunk_ids in loaded_doc_map.items()}
+
+            # Existing doc map.
+            existing_rows = cursor.execute("SELECT * FROM doc_chunks WHERE doc_hash IN (%s)" % ",".join(str(i) for i in loaded_doc_map.keys()))
+            existing_doc_map = {r["doc_hash"]: (
+                tuple(json.loads(r["doc_key"])),
+                set(json.loads(r["chunk_ids"])),
+            ) for r in existing_rows}
+
+            # Add to doc map.
+            merged_doc_map = existing_doc_map
+            for doc_hash, (doc_key, loaded_chunk_ids) in loaded_doc_map.items():
+                existing_entry = existing_doc_map.get(doc_hash, (None, set()))
+                existing_chunk_ids = existing_entry[1]
+                merged_chunk_ids = existing_chunk_ids | loaded_chunk_ids
+                assert len(merged_chunk_ids) == \
+                    len(loaded_chunk_ids) + len(existing_chunk_ids)
+                merged_doc_map[doc_hash] = (doc_key, merged_chunk_ids)
+
+            # Insert into database.
+            insert_rows = [
+                (doc_hash, json.dumps(list(doc_key)), json.dumps(list(chunk_ids)))
+                for doc_hash, (doc_key, chunk_ids) in merged_doc_map.items()]
+            cursor.execute("INSERT OR REPLACE INTO doc_chunks (doc_hash, doc_key, chunk_ids) VALUES %s" % ",".join("(?,?,?)" for _ in range(len(insert_rows))), [item for row in insert_rows for item in row ])
+            cursor.execute("INSERT INTO completed_paths (path) VALUES (?)", (os.path.basename(path),))
+            conn.commit()
+# <<<
 
 
 def build_doc_chunk_map(indexed_dataset_infos, db_type):
@@ -508,6 +595,11 @@ def build_doc_chunk_map(indexed_dataset_infos, db_type):
         for finished_idx, future in enumerate(as_completed(futures)):
             print("finished %d / %d." % (finished_idx, n_procs))
             future.result()
+
+    # >>>
+    merge_doc_chunk_maps()
+    raise Exception("merged?")
+    # <<<
 
 
 def build_db():

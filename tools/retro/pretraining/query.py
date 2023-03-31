@@ -12,7 +12,7 @@ from tools.bert_embedding import BertEmbedder
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
 from tools.retro.db.utils import (
     get_merged_train_dataset as get_db_merged_train_dataset,
-    get_train_doc_chunk_map,
+    # get_train_doc_chunk_map,
 )
 from tools.retro.external_libs import faiss, h5py
 from tools.retro.index.factory import IndexFactory

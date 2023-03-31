@@ -3,7 +3,9 @@
 set -u
 unset NCCL_DEBUG
 
-NPROCS=8 # NPROCS must be <= number of GPUs.
+# >>>
+NPROCS=1 # 8 # NPROCS must be <= number of GPUs.
+# <<<
 
 set_current_dir() {
     DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
