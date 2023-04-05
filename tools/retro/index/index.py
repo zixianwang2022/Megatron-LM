@@ -5,6 +5,9 @@ import numpy as np
 import os
 import torch
 
+# >>>
+from megatron import get_retro_args
+# <<<
 from tools.retro.external_libs import faiss
 
 from .utils import get_index_dir
@@ -29,14 +32,31 @@ class Index(abc.ABC):
         assert isinstance(v, bool)
         faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
 
+    # >>>
     def get_empty_index_path(self):
-        return os.path.join(get_index_dir(), "empty.faissindex")
+        # return os.path.join(get_index_dir(), "empty.faissindex")
+        args = get_retro_args()
+        return os.path.join(
+            get_index_dir(),
+            "empty_%.3f.faissindex" % args.retro_index_train_load_fraction,
+        )
+    # <<<
 
     def get_empty_index(self):
         return faiss.read_index(self.get_empty_index_path())
 
+    # >>>
     def get_added_index_path(self):
-        return os.path.join(get_index_dir(), "added.faissindex")
+        # return os.path.join(get_index_dir(), "added.faissindex")
+        args = get_retro_args()
+        return os.path.join(
+            get_index_dir(),
+            "added_%.3f_%.3f.faissindex" % (
+                args.retro_index_train_load_fraction,
+                args.retro_index_add_load_fraction,
+            ),
+        )
+    # <<<
 
     def get_added_index(self):
         return faiss.read_index(self.get_added_index_path())

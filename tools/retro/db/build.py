@@ -597,8 +597,8 @@ def build_doc_chunk_map(indexed_dataset_infos, db_type):
             future.result()
 
     # >>>
+    # Merge json maps into sqlite db.
     merge_doc_chunk_maps()
-    raise Exception("merged?")
     # <<<
 
 
