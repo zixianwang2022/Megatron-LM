@@ -65,7 +65,8 @@ def get_training_data_block_paths():
     return sorted(glob.glob(get_training_data_block_dir() + "/*.hdf5"))
 
 
-def get_training_data_bin_path():
+# def get_training_data_bin_path():
+def get_training_data_merged_path():
     args = get_retro_args()
     return os.path.join(get_training_data_root_dir(),
                         "train_%.3f.bin" % args.retro_index_train_load_fraction)
@@ -73,7 +74,7 @@ def get_training_data_bin_path():
 
 
 def get_added_codes_dir():
-    return os.path.join(get_index_dir(), "add_tmp")
+    return os.path.join(get_index_dir(), "add_codes")
 
 
 def get_added_code_paths():

@@ -113,6 +113,12 @@ def add_retro_args(parser):
                        "use too much memory; lowering the load fraction is "
                        "less costly than re-embedding a new sampled dataset "
                        "from scratch.")
+    group.add_argument("--retro-index-add-load-fraction",
+                       type=float, default=1.,
+                       help="Fraction of database chunks to use for adding to "
+                       "the index. Useful when our total index size would "
+                       "use too much memory; lowering the load fraction is "
+                       "less costly than re-designing our token datasets.")
     group.add_argument("--retro-num-neighbors-query", type=int, default=2000,
                        help="Number of neighbors to retrieve when calling "
                        "index.search().")
@@ -125,6 +131,11 @@ def add_retro_args(parser):
                        action='store_false',
                        dest="retro_delete_index_training_embeddings",
                        help="Skip deleting training embeddings for the search "
+                       "index. Useful for debugging.")
+    group.add_argument("--retro-no-delete-index-added-codes",
+                       action='store_false',
+                       dest="retro_delete_index_added_codes",
+                       help="Skip deleting added codes for the search "
                        "index. Useful for debugging.")
 
     # Enforce argument naming convention.

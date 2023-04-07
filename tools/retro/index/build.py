@@ -25,7 +25,7 @@ from tools.retro.utils import GPTToTextDataset
 from .utils import (
     get_training_data_block_dir,
     get_training_data_block_paths,
-    get_training_data_bin_path,
+    get_training_data_merged_path,
 )
 # <<<
 
@@ -48,9 +48,9 @@ def get_empty_index_path():
 
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# def get_block_nload(block_path, load_fraction):
-#     with h5py.File(block_path) as fi:
-#         return int(load_fraction * fi["data"].shape[0])
+def get_block_nload(block_path, load_fraction):
+    with h5py.File(block_path) as fi:
+        return int(load_fraction * fi["data"].shape[0])
 
 
 # def get_block_and_merged_paths():
@@ -87,22 +87,24 @@ def merge_embedding_blocks():
     if torch.distributed.get_rank() != 0:
         return
 
-    # Get block, merged paths
-    # block_paths, merged_path = get_block_and_merged_paths()
-    block_paths = get_training_data_block_paths()
-    bin_path = get_training_data_bin_path()
+    args = get_retro_args()
 
+    # Get block, merged paths.
+    load_fraction = args.retro_index_train_load_fraction
+    block_paths = get_training_data_block_paths()
+    bin_path = get_training_data_merged_path()
+
+    # Skip, if already built.
     if os.path.exists(bin_path):
         return
 
-    pax({"block_paths": block_paths, "bin_path": bin_path})
-
-    with open(output_path, "wb") as fo:
+    # Merge blocks.
+    with open(bin_path, "wb") as fo:
         byte_offset = 0
-        for block_idx, block_path in enumerate(tqdm(block_paths,file=sys.stdout)):
+        for block_idx, block_path in enumerate(tqdm(block_paths)):
             with h5py.File(block_path) as fi:
 
-                nload = get_block_nload(block_path, args.load_fraction)
+                nload = get_block_nload(block_path, load_fraction)
                 block = np.array(fi["data"][:nload], copy = False)
 
                 fo.write(block.tobytes())
@@ -120,6 +122,14 @@ def embed_db():
     '''
 
     args = get_retro_args()
+
+    # >>>
+    merged_train_data_path = get_training_data_merged_path()
+    # pax({"merged_train_data_path": merged_train_data_path})
+    if os.path.exists(merged_train_data_path):
+        return
+    raise Exception("embed again?")
+    # <<<
 
     # Get db dataset.
     gpt_dataset = get_merged_sampled_dataset()
@@ -140,7 +150,7 @@ def embed_db():
     # >>>
     # Merge embeddings.
     merge_embedding_blocks()
-    raise Exception("merge embeddings.")
+    # raise Exception("merge embeddings.")
     # <<<
 
 
@@ -148,7 +158,10 @@ def train_on_embeddings():
     '''Train index on embedded DB chunks.'''
     args = get_retro_args()
     index = IndexFactory.get_index(args.retro_index_type)
-    index.train(get_training_data_merged)
+    # >>>
+    # index.train(get_training_data_merged)
+    index.train()
+    # <<<
 
 
 def remove_embeddings():
