@@ -11,8 +11,10 @@ from megatron import get_retro_args, mpu, print_rank_0
 from tools.bert_embedding import BertEmbedder
 from tools.bert_embedding.utils import get_missing_blocks_by_rank
 from tools.retro.db.utils import (
+    # get_banned_doc_hash,
     get_merged_train_dataset as get_db_merged_train_dataset,
     # get_train_doc_chunk_map,
+    # get_train_banned_doc_db_cursor,
 )
 from tools.retro.external_libs import faiss, h5py
 from tools.retro.index.factory import IndexFactory
@@ -20,6 +22,10 @@ from tools.retro.index.utils import get_index_dir, num_samples_to_block_ranges
 from tools.retro.utils import GPTToTextDataset
 
 from .chunk_dataset import get_chunk_dataset_map
+
+# >>>
+from lutil import pax
+# <<<
 
 
 def get_index(chunk_db_dataset, ondisk=False):
@@ -55,13 +61,132 @@ def embed_block(gpt_dataset, block, embedder):
         GPTToTextDataset(gpt_dataset),
         range(*block["range"]),
     )
+    # >>>
     return embedder.embed_text_dataset(text_block_dataset)
+    # +++
+    # args = get_retro_args()
+    # embeddings = np.random.rand(
+    #     block["range"][1] - block["range"][0],
+    #     args.hidden_size,
+    # ).astype("f4")
+    # # pax({"block": block, "embeddings": embeddings})
+    # return embeddings
+    # <<<
 
 
-def query_embeddings(index, banned_chunk_map, chunk_id_range,
+# >>>
+# def query_embeddings(index, banned_doc_cursor, chunk_id_range,
+#                      embeddings, sample_map, n_chunks_per_sample,
+#                      verbose=True):
+#     '''Query neighbors of a block of embeddings.'''
+
+#     args = get_retro_args()
+
+#     # Query neighbor ids.
+#     if verbose: print_rank_0("search.")
+#     t = time.time()
+#     assert index.ntotal > 0, "check we don't accidentally have an empty index."
+#     _, query_neighbor_ids = \
+#         index.search(embeddings, args.retro_num_neighbors_query)
+#     if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
+
+#     # Banned neighbor ids.
+#     if verbose: print_rank_0("get banned neighbor ids.")
+#     sample_banned_chunk_id_map = {}
+#     for sample_id, sample in sample_map.items():
+#         dataset_idx = sample["dataset_idx"].item()
+#         doc_ids = sample["doc_ids"].tolist()
+#         # >>>
+#         # banned_chunk_ids = set()
+#         # for doc_id in doc_ids:
+#         #     banned_chunk_ids.update(banned_chunk_map[(dataset_idx, doc_id)])
+#         # +++
+#         doc_tuples = [ (dataset_idx, doc_id) for doc_id in doc_ids ]
+#         doc_hashes = [ get_banned_doc_hash(*t) for t in doc_tuples ]
+#         rs = banned_doc_cursor.execute("SELECT * FROM doc_chunks WHERE doc_hash IN (%s)" % ",".join(str(h) for h in doc_hashes))
+        
+#         pax({"doc_tuples": doc_tuples, "doc_hashes": doc_hashes, "rs": list(rs)})
+#         # <<<
+#         sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
+
+#     # Filter banned neighbor ids.
+#     if verbose: print_rank_0("filter banned neighbor ids.")
+#     filtered_neighbor_ids = np.full(
+#         shape=(len(query_neighbor_ids), args.retro_num_neighbors_target),
+#         fill_value=-1,
+#         dtype="int64",
+#     )
+#     min_chunk_id, max_chunk_id = chunk_id_range
+#     for chunk_id in range(min_chunk_id, max_chunk_id):
+
+#         sample_id = chunk_id // n_chunks_per_sample
+
+#         # Get valid neighbors (!= -1).
+#         query_row = [ i for i in query_neighbor_ids[chunk_id-min_chunk_id]
+#                       if i >= 0 ]
+
+#         # Filter row.
+#         filtered_row = [i for i in query_row
+#                         if i not in sample_banned_chunk_id_map[sample_id]]
+#         filtered_row = filtered_row[:args.retro_num_neighbors_target]
+#         filtered_row += \
+#             [-1] * (args.retro_num_neighbors_target - len(filtered_row))
+#         filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
+
+#     return query_neighbor_ids, filtered_neighbor_ids
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+def filter_neighbor_ids(chunk_db_dataset,
+                        sample_map,
+                        n_chunks_per_sample,
+                        chunk_id,
+                        query_neighbor_ids):
+
+    args = get_retro_args()
+
+    sample_id = chunk_id // n_chunks_per_sample
+    sample = sample_map[sample_id]
+    sample_dataset_idx = sample["dataset_idx"].item()
+    sample_doc_ids = sample["doc_ids"].tolist()
+    sample_doc_tuples = [(sample_dataset_idx, sample_doc_id)
+                         for sample_doc_id in sample_doc_ids]
+
+    # if len(sample_doc_tuples) != 1:
+    #     pax({"sample_doc_tuples": sample_doc_tuples})
+
+    filtered_neighbor_ids = []
+    for neighbor_id in query_neighbor_ids:
+        if neighbor_id < 0:
+            continue
+        chunk_entry = chunk_db_dataset.chunks[neighbor_id]
+        nbr_dataset_idx = chunk_entry[0].item()
+        nbr_doc_id = chunk_entry[1].item()
+        nbr_doc_tuple = (nbr_dataset_idx, nbr_doc_id)
+        if nbr_doc_tuple not in sample_doc_tuples:
+            filtered_neighbor_ids.append(neighbor_id)
+
+    filtered_neighbor_ids = \
+        filtered_neighbor_ids[:args.retro_num_neighbors_target]
+    filtered_neighbor_ids += \
+        [-1] * (args.retro_num_neighbors_target - len(filtered_neighbor_ids))
+
+    # pax({
+    #     "chunk_db_dataset" : chunk_db_dataset,
+    #     "query_neighbor_ids" : query_neighbor_ids,
+    #     "filtered_neighbor_ids" : filtered_neighbor_ids,
+    # })
+
+    return filtered_neighbor_ids
+
+
+def query_embeddings(index, banned_doc_cursor, chunk_id_range,
                      embeddings, sample_map, n_chunks_per_sample,
+                     # >>>
+                     chunk_db_dataset,
+                     # <<<
                      verbose=True):
     '''Query neighbors of a block of embeddings.'''
+
+    # pax({"embeddings": embeddings, "chunk_db_dataset": chunk_db_dataset})
 
     args = get_retro_args()
 
@@ -73,46 +198,35 @@ def query_embeddings(index, banned_chunk_map, chunk_id_range,
         index.search(embeddings, args.retro_num_neighbors_query)
     if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
 
-    # Banned neighbor ids.
-    if verbose: print_rank_0("get banned neighbor ids.")
-    sample_banned_chunk_id_map = {}
-    for sample_id, sample in sample_map.items():
-        dataset_idx = sample["dataset_idx"].item()
-        doc_ids = sample["doc_ids"].tolist()
-        banned_chunk_ids = set()
-        for doc_id in doc_ids:
-            banned_chunk_ids.update(banned_chunk_map[(dataset_idx, doc_id)])
-        sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
-
-    # Filter banned neighbor ids.
+    # Filter neighbor ids that break causality.
     if verbose: print_rank_0("filter banned neighbor ids.")
-    filtered_neighbor_ids = np.full(
-        shape=(len(query_neighbor_ids), args.retro_num_neighbors_target),
-        fill_value=-1,
-        dtype="int64",
-    )
     min_chunk_id, max_chunk_id = chunk_id_range
-    for chunk_id in range(min_chunk_id, max_chunk_id):
+    filtered_neighbor_ids = [
+        filter_neighbor_ids(
+            chunk_db_dataset,
+            sample_map,
+            n_chunks_per_sample,
+            i + min_chunk_id,
+            q,
+        )
+        for i, q in enumerate(query_neighbor_ids)]
+    filtered_neighbor_ids = np.array(filtered_neighbor_ids, dtype="int64")
 
-        sample_id = chunk_id // n_chunks_per_sample
-
-        # Get valid neighbors (!= -1).
-        query_row = [ i for i in query_neighbor_ids[chunk_id-min_chunk_id]
-                      if i >= 0 ]
-
-        # Filter row.
-        filtered_row = [i for i in query_row
-                        if i not in sample_banned_chunk_id_map[sample_id]]
-        filtered_row = filtered_row[:args.retro_num_neighbors_target]
-        filtered_row += \
-            [-1] * (args.retro_num_neighbors_target - len(filtered_row))
-        filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
+    # pax({
+    #     "query_neighbor_ids" : query_neighbor_ids,
+    #     "filtered_neighbor_ids" : filtered_neighbor_ids,
+    # })
 
     return query_neighbor_ids, filtered_neighbor_ids
+# <<<
 
 
-def query_embedding_block(index, banned_chunk_map, chunk_id_range,
-                          embeddings, sample_map, n_chunks_per_sample):
+def query_embedding_block(index, banned_doc_cursor, chunk_id_range,
+                          embeddings, sample_map, n_chunks_per_sample,
+                          # >>>
+                          chunk_db_dataset,
+                          # <<<
+):
 
     query_neighbor_ids = []
     filtered_neighbor_ids = []
@@ -131,8 +245,11 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
             chunk_id_range[0] + partial_end_idx,
         )
         partial_query_neighbor_ids, partial_filtered_neighbor_ids = \
-            query_embeddings(index, banned_chunk_map, partial_chunk_id_range,
+            query_embeddings(index, banned_doc_cursor, partial_chunk_id_range,
                              partial_embeddings, sample_map, n_chunks_per_sample,
+                             # >>>
+                             chunk_db_dataset,
+                             # <<<
                              verbose=False)
         query_neighbor_ids.append(partial_query_neighbor_ids)
         filtered_neighbor_ids.append(partial_filtered_neighbor_ids)
@@ -141,11 +258,20 @@ def query_embedding_block(index, banned_chunk_map, chunk_id_range,
     query_neighbor_ids = np.concatenate(query_neighbor_ids, axis=0)
     filtered_neighbor_ids = np.concatenate(filtered_neighbor_ids, axis=0)
 
+    pax({
+        "query_neighbor_ids" : query_neighbor_ids,
+        "filtered_neighbor_ids" : filtered_neighbor_ids,
+    })
+
     return query_neighbor_ids, filtered_neighbor_ids
 
 
-def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
-                          block, embedder):
+def query_block_neighbors(index, banned_doc_cursor, chunk_dataset,
+                          block, embedder,
+                          # >>>
+                          chunk_db_dataset,
+                          # <<<
+):
     '''Query neighbors of a dataset block (i.e., range).'''
 
     args = get_retro_args()
@@ -154,16 +280,35 @@ def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
     # Sample map.
     sample_ids = sorted(list(set(chunk_id // n_chunks_per_sample
                                  for chunk_id in range(*block["range"]))))
-    sample_map = {i:chunk_dataset.sample_dataset[i] for i in sample_ids}
+    # >>>
+    # sample_map = {i:chunk_dataset.sample_dataset[i] for i in sample_ids}
+    # +++
+    sample_map = {}
+    for i in sample_ids:
+        sample = chunk_dataset.sample_dataset[i]
+        # pax({"sample": sample})
+        sample_map[i] = {
+            "dataset_idx" : sample["dataset_idx"],
+            "doc_ids" : sample["doc_ids"],
+        }
+    # pax({
+    #     "sample_map": sample_map,
+    #     "sample_map / 0": list(sample_map.values())[0],
+    # })
+    # <<<
 
     # Embed block.
     embeddings = embed_block(chunk_dataset, block, embedder)
 
     # Query embeddings.
     _, filtered_neighbor_ids = query_embedding_block(
-        index, banned_chunk_map, block["range"],
+        index, banned_doc_cursor, block["range"],
         embeddings, sample_map,
-        n_chunks_per_sample)
+        n_chunks_per_sample,
+        # >>>
+        chunk_db_dataset,
+        # <<<
+    )
 
     # Save neighbors.
     print_rank_0("save neighbors.")
@@ -173,9 +318,13 @@ def query_block_neighbors(index, banned_chunk_map, chunk_dataset,
     f.close()
 
 
-def query_dataset_neighbors(index, banned_chunk_map,
+def query_dataset_neighbors(index, banned_doc_cursor,
                             prefix, chunk_dataset, neighbor_dir,
-                            embedder):
+                            embedder,
+                            # >>>
+                            chunk_db_dataset,
+                            # <<<
+):
     '''Query neighbors of each chunk within a dataset.'''
 
     args = get_retro_args()
@@ -207,8 +356,12 @@ def query_dataset_neighbors(index, banned_chunk_map,
             ))
 
             # Query block neighbors.
-            query_block_neighbors(index, banned_chunk_map,
-                                  chunk_dataset, block, embedder)
+            query_block_neighbors(index, banned_doc_cursor,
+                                  chunk_dataset, block, embedder,
+                                  # >>>
+                                  chunk_db_dataset,
+                                  # <<<
+            )
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")
@@ -232,7 +385,12 @@ def query_pretraining_neighbors():
     index = get_index(chunk_db_dataset)
 
     print_rank_0(" > get banned doc-chunk id map.")
-    banned_chunk_map = get_train_doc_chunk_map()
+    # >>>
+    # banned_chunk_map = get_train_doc_chunk_map()
+    # _, banned_doc_cursor = get_train_banned_doc_db_cursor()
+    banned_doc_cursor = None
+    # pax({"banned_chunk_cursor": banned_chunk_cursor})
+    # <<<
 
     print_rank_0(" > get dataset map.")
     chunk_dataset_map = get_chunk_dataset_map()
@@ -247,6 +405,10 @@ def query_pretraining_neighbors():
     for prefix, info in chunk_dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
-        query_dataset_neighbors(index, banned_chunk_map,
+        query_dataset_neighbors(index, banned_doc_cursor,
                                 prefix, info["data"], info["neighbor_dir"],
-                                embedder)
+                                embedder,
+                                # >>>
+                                chunk_db_dataset,
+                                # <<<
+        )

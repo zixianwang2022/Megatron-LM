@@ -26,6 +26,7 @@ from .utils import (
     get_training_data_block_dir,
     get_training_data_block_paths,
     get_training_data_merged_path,
+    get_training_data_root_dir,
 )
 # <<<
 
@@ -128,7 +129,7 @@ def embed_db():
     # pax({"merged_train_data_path": merged_train_data_path})
     if os.path.exists(merged_train_data_path):
         return
-    raise Exception("embed again?")
+    # raise Exception("embed again?")
     # <<<
 
     # Get db dataset.
@@ -171,7 +172,7 @@ def remove_embeddings():
         return
     empty_index_path = get_empty_index_path()
     assert os.path.isfile(empty_index_path)
-    shutil.rmtree(get_training_data_dir(), ignore_errors=True)
+    shutil.rmtree(get_training_data_root_dir(), ignore_errors=True)
 
 
 def train_index():

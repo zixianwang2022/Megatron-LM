@@ -2,9 +2,15 @@
 
 from collections import defaultdict
 import glob
+# >>>
+# import hashlib
+# <<<
 import json
 import numpy as np
 import os
+# >>>
+# import sqlite3
+# <<<
 from tqdm import tqdm
 
 from megatron import get_retro_args, print_rank_0
@@ -122,35 +128,56 @@ def get_merged_valid_dataset(indexed_dataset_infos=None):
     return get_merged_dataset("valid", indexed_dataset_infos)
 
 
-def get_train_doc_chunk_map_dir():
-    dirname = os.path.join(get_base_db_workdir(), "merged", "train_doc_chunk_map")
-    os.makedirs(dirname, exist_ok=True)
-    return dirname
+# # >>>
+# # def get_train_doc_chunk_map_dir():
+# #     dirname = os.path.join(get_base_db_workdir(), "merged", "train_doc_chunk_map")
+# #     os.makedirs(dirname, exist_ok=True)
+# #     return dirname
+# def get_train_banned_doc_json_dir():
+#     dirname = os.path.join(get_base_db_workdir(), "merged",
+#                            "train_banned_doc_json")
+#     os.makedirs(dirname, exist_ok=True)
+#     return dirname
+# # <<<
 
 
-# >>>
-# def get_merged_train_doc_chunk_map_path():
-def get_train_doc_chunk_db_path():
-    return os.path.join(get_base_db_workdir(), "merged", "train_doc_chunk_map.db")
-# <<<
+# # >>>
+# # def doc_tuple_to_hash(dataset_id, doc_id):
+# def get_banned_doc_hash(dataset_id, doc_id):
+#     return int(hashlib.sha256(f"{dataset_id},{doc_id}".encode()).hexdigest()[:10], 16)
+
+# # def get_merged_train_doc_chunk_map_path():
+# # def get_train_doc_chunk_db_path():
+# #     return os.path.join(get_base_db_workdir(),"merged","train_doc_chunk_map.db")
+# def get_train_banned_doc_db_path():
+#     return os.path.join(get_base_db_workdir(), "merged", "train_banned_doc.db")
+
+# # def get_train_doc_chunk_db_cursor():
+# def get_train_banned_doc_db_cursor():
+#     path = get_train_banned_doc_db_path()
+#     conn = sqlite3.connect(path)
+#     conn.row_factory = sqlite3.Row
+#     cursor = conn.cursor()
+#     return conn, cursor
+# # <<<
 
 
-# >>>
-# def get_train_doc_chunk_map():
+# # >>>
+# # def get_train_doc_chunk_map():
 
-#     paths = sorted(glob.glob(get_train_doc_chunk_map_dir() + "/*.json"))
+# #     paths = sorted(glob.glob(get_train_doc_chunk_map_dir() + "/*.json"))
 
-#     doc_map = defaultdict(set)
-#     for path in tqdm(paths, "load train doc maps"):
+# #     doc_map = defaultdict(set)
+# #     for path in tqdm(paths, "load train doc maps"):
 
-#         # Read file.
-#         with open(path) as f:
-#             crnt_doc_map = json.load(f)
+# #         # Read file.
+# #         with open(path) as f:
+# #             crnt_doc_map = json.load(f)
 
-#         # Add to doc map.
-#         for key, chunk_ids in crnt_doc_map.items():
-#             key = tuple(int(i) for i in key.split(","))
-#             doc_map[key].update(chunk_ids)
+# #         # Add to doc map.
+# #         for key, chunk_ids in crnt_doc_map.items():
+# #             key = tuple(int(i) for i in key.split(","))
+# #             doc_map[key].update(chunk_ids)
 
-#     return doc_map
-# <<<
+# #     return doc_map
+# # <<<
