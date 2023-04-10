@@ -8,9 +8,7 @@ from megatron import get_retro_args
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
-    # >>>
-    _GPTSentencePieceTokenizer, # coming soon.
-    # <<<
+    _GPTSentencePieceTokenizer,
 )
 
 
@@ -38,11 +36,9 @@ def get_gpt_tokenizer():
             vocab_file=args.retro_gpt_vocab_file,
             merge_file=args.retro_gpt_merge_file,
         )
-    # >>>
-    # elif tokenizer_type == 'GPTSentencePieceTokenizer':
-    #     assert args.retro_gpt_tokenizer_model is not None
-    #     return _GPTSentencePieceTokenizer(args.retro_gpt_tokenizer_model)
-    # <<<
+    elif tokenizer_type == 'GPTSentencePieceTokenizer':
+        assert args.retro_gpt_tokenizer_model is not None
+        return _GPTSentencePieceTokenizer(args.retro_gpt_tokenizer_model)
     else:
         raise Exception("unrecognized gpt tokenizer, '%s'." % tokenizer_type)
 

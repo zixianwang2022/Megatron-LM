@@ -631,10 +631,6 @@ def build_db():
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()
 
-    # >>>
-    # pax({"indexed_dataset_infos": indexed_dataset_infos})
-    # <<<
-
     if 0:
         # Build dbs.
         build_individual_dbs(indexed_dataset_infos)
@@ -643,17 +639,19 @@ def build_db():
         if torch.distributed.get_rank() != 0:
             return
 
-        # Update n_chunks & save indexed dataset infos.
-        if True or not os.path.exists(get_indexed_dataset_infos_path()):
-            update_chunk_counts(indexed_dataset_infos)
-            save_indexed_dataset_infos(indexed_dataset_infos)
-        indexed_dataset_infos = get_indexed_dataset_infos()
+    # Update n_chunks & save indexed dataset infos.
+    if not os.path.exists(get_indexed_dataset_infos_path()):
+        update_chunk_counts(indexed_dataset_infos)
+        save_indexed_dataset_infos(indexed_dataset_infos)
+    indexed_dataset_infos = get_indexed_dataset_infos()
 
-        # Merge dbs.
+    # >>>
+    # pax({"indexed_dataset_infos": indexed_dataset_infos})
+    # <<<
+
+    # Merge dbs.
+    if 0:
         merge_dbs(indexed_dataset_infos, "sampled")
         merge_dbs(indexed_dataset_infos, "train")
         merge_dbs(indexed_dataset_infos, "valid")
-    # >>>
-    # build_doc_chunk_map(indexed_dataset_infos, "train")
     build_banned_doc_db(indexed_dataset_infos, "train")
-    # <<<
