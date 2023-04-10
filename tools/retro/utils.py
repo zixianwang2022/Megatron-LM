@@ -9,7 +9,7 @@ from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
     # >>>
-    # _GPTSentencePieceTokenizer, # coming soon.
+    _GPTSentencePieceTokenizer, # coming soon.
     # <<<
 )
 
