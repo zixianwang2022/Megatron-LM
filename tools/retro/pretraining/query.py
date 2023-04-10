@@ -62,15 +62,15 @@ def embed_block(gpt_dataset, block, embedder):
         range(*block["range"]),
     )
     # >>>
-    return embedder.embed_text_dataset(text_block_dataset)
+    # return embedder.embed_text_dataset(text_block_dataset)
     # +++
-    # args = get_retro_args()
-    # embeddings = np.random.rand(
-    #     block["range"][1] - block["range"][0],
-    #     args.hidden_size,
-    # ).astype("f4")
-    # # pax({"block": block, "embeddings": embeddings})
-    # return embeddings
+    args = get_retro_args()
+    embeddings = np.random.rand(
+        block["range"][1] - block["range"][0],
+        args.hidden_size,
+    ).astype("f4")
+    # pax({"block": block, "embeddings": embeddings})
+    return embeddings
     # <<<
 
 
@@ -153,6 +153,23 @@ def filter_neighbor_ids(chunk_db_dataset,
     # if len(sample_doc_tuples) != 1:
     #     pax({"sample_doc_tuples": sample_doc_tuples})
 
+    # >>>
+    query_neighbor_ids = query_neighbor_ids.tolist()
+    # <<<
+
+    # >>>
+    query_neighbor_ids.sort()
+    chunk_entries = chunk_db_dataset.chunks[query_neighbor_ids, :2]
+    # chunk_entries = chunk_db_dataset.chunks[[0, 1]]
+    # chunk_entries = [chunk_db_dataset.chunks[i, :2] for i in query_neighbor_ids]
+    # pax({"chunk_entries": chunk_entries})
+    # query_doc_tuples = [ (
+    # <<<
+
+    # >>>
+    return [-1] * args.retro_num_neighbors_target
+    # <<<
+
     filtered_neighbor_ids = []
     for neighbor_id in query_neighbor_ids:
         if neighbor_id < 0:
@@ -169,11 +186,14 @@ def filter_neighbor_ids(chunk_db_dataset,
     filtered_neighbor_ids += \
         [-1] * (args.retro_num_neighbors_target - len(filtered_neighbor_ids))
 
+    # >>>
+    # list2str = lambda a : "%d / %s" % (len(a), str(a))
     # pax({
     #     "chunk_db_dataset" : chunk_db_dataset,
-    #     "query_neighbor_ids" : query_neighbor_ids,
-    #     "filtered_neighbor_ids" : filtered_neighbor_ids,
+    #     "query_neighbor_ids" : list2str(query_neighbor_ids),
+    #     "filtered_neighbor_ids" : list2str(filtered_neighbor_ids),
     # })
+    # <<<
 
     return filtered_neighbor_ids
 
@@ -200,6 +220,7 @@ def query_embeddings(index, banned_doc_cursor, chunk_id_range,
 
     # Filter neighbor ids that break causality.
     if verbose: print_rank_0("filter banned neighbor ids.")
+    # >>>
     min_chunk_id, max_chunk_id = chunk_id_range
     filtered_neighbor_ids = [
         filter_neighbor_ids(
@@ -211,6 +232,13 @@ def query_embeddings(index, banned_doc_cursor, chunk_id_range,
         )
         for i, q in enumerate(query_neighbor_ids)]
     filtered_neighbor_ids = np.array(filtered_neighbor_ids, dtype="int64")
+    # +++
+    # filtered_neighbor_ids = None
+    # +++
+    # filtered_neighbor_ids = np.zeros(
+    #     (query_neighbor_ids.shape[0], args.retro_num_neighbors_target),
+    #     dtype="int64")
+    # <<<
 
     # pax({
     #     "query_neighbor_ids" : query_neighbor_ids,
