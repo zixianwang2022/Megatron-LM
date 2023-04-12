@@ -427,198 +427,352 @@ def merge_dbs(indexed_dataset_infos, db_type):
         f.close()
 
 
-def get_partial_banned_chunk_map(proc_id, db_path, chunk_range_info):
-    '''Build partial mapping of {(dataset_id,doc_id):[chunk_ids]}.
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# def get_partial_banned_chunk_map(proc_id, db_path, chunk_range_info):
+#     '''Build partial mapping of {(dataset_id,doc_id):[chunk_ids]}.
 
-    In this method, only chunks within the range (start_chunk_id, end_chunk_id]
-    are processed.'''
+#     In this method, only chunks within the range (start_chunk_id, end_chunk_id]
+#     are processed.'''
 
-    start_chunk_id = chunk_range_info["start"]
-    end_chunk_id = chunk_range_info["end"]
-    output_path = chunk_range_info["path"]
+#     start_chunk_id = chunk_range_info["start"]
+#     end_chunk_id = chunk_range_info["end"]
+#     output_path = chunk_range_info["path"]
 
-    # Skip, if output file exists.
-    if os.path.exists(output_path):
-        return
+#     # Skip, if output file exists.
+#     if os.path.exists(output_path):
+#         return
 
-    # Chunk subset.
-    with h5py.File(db_path) as f:
-        sub_chunk_db = np.copy(f["chunks"][start_chunk_id:end_chunk_id, :2])
+#     # Chunk subset.
+#     with h5py.File(db_path) as f:
+#         sub_chunk_db = np.copy(f["chunks"][start_chunk_id:end_chunk_id, :2])
 
-    # Map docs to chunks.
-    banned_chunk_map = defaultdict(list)
-    for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
-            sub_chunk_db,
-            "map banned docs, proc %d" % proc_id,
-            total=sub_chunk_db.shape[0],
-    )):
-        chunk_id = start_chunk_id + rel_chunk_id
-        banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
-            .append(chunk_id)
+#     # Map docs to chunks.
+#     banned_chunk_map = defaultdict(list)
+#     for rel_chunk_id, (dataset_id, doc_id) in enumerate(tqdm(
+#             sub_chunk_db,
+#             "map banned docs, proc %d" % proc_id,
+#             total=sub_chunk_db.shape[0],
+#     )):
+#         chunk_id = start_chunk_id + rel_chunk_id
+#         banned_chunk_map["%d,%d" % (dataset_id.item(), doc_id.item())] \
+#             .append(chunk_id)
 
-    # Save output.
-    # >>>
-    with open(output_path, "w") as f:
-        json.dump(banned_chunk_map, f)
-    # +++
-    # pax({
-    #     # "banned_chunk_map" : banned_chunk_map,
-    #     "banned_chunk_map / 0" : list(banned_chunk_map.items())[0],
-    # })
-    # <<<
-
-
-# >>>
-# def get_train_doc_chunk_map():
-def merge_doc_chunk_maps():
-    '''Merge multiple doc map jsons into sqlite database.'''
-
-    # Connect to database.
-    db_path = get_train_banned_doc_db_path()
-    with sqlite3.connect(db_path) as conn:
-
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        # Init tables.
-        rs = cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
-        table_names = set(r["name"] for r in rs)
-        # if "doc_chunks" not in table_names:
-        if not table_names:
-            cursor.execute("CREATE TABLE doc_chunks ("
-                           "  doc_hash INTEGER PRIMARY KEY,"
-                           "  doc_key TEXT NOT NULL,"
-                           "  chunk_ids TEXT NOT NULL"
-                           ")")
-            cursor.execute("CREATE TABLE completed_paths (path TEXT NOT NULL)")
-            # cursor.execute("CREATE TABLE completed (completed INTEGER)")
-
-        # Individual json map paths.
-        completed_paths = cursor.execute("SELECT * FROM completed_paths")
-        completed_paths = set(r["path"] for r in completed_paths)
-        paths = sorted(glob.glob(get_train_banned_doc_json_dir() + "/*.json"))
-        paths = [ p for p in paths if os.path.basename(p) not in completed_paths ]
-
-        # Iterate json map paths.
-        doc_map = defaultdict(set)
-        for path_index, path in enumerate(tqdm(paths, "merge train doc maps")):
-
-            # Loaded doc map.
-            # >>>
-            # with open(path) as f:
-            #     loaded_doc_map = json.load(f)
-            #     loaded_doc_map = {
-            #         int(hashlib.sha256(doc_key.encode()).hexdigest()[:10], 16):(
-            #             tuple(int(i) for i in doc_key.split(",")),
-            #             set(chunk_ids),
-            #         ) for doc_key, chunk_ids in loaded_doc_map.items()}
-            # +++
-            with open(path) as f:
-                loaded_doc_map = {}
-                _loaded_doc_map = json.load(f)
-                for doc_tuple_str, chunk_id_str in _loaded_doc_map.items():
-                    doc_tuple = tuple(int(i) for i in doc_tuple_str.split(","))
-                    doc_hash = get_banned_doc_hash(*doc_tuple)
-                    chunk_ids = set(chunk_id_str)
-                    # pax({
-                    #     "doc_tuple" : doc_tuple,
-                    #     "doc_hash" : doc_hash,
-                    #     "chunk_ids" : chunk_ids,
-                    # })
-                    loaded_doc_map[doc_hash] = (doc_tuple, chunk_ids)
-            # <<<
-
-            # Existing doc map.
-            existing_rows = cursor.execute("SELECT * FROM doc_chunks WHERE doc_hash IN (%s)" % ",".join(str(i) for i in loaded_doc_map.keys()))
-            existing_doc_map = {r["doc_hash"]: (
-                tuple(json.loads(r["doc_key"])),
-                set(json.loads(r["chunk_ids"])),
-            ) for r in existing_rows}
-
-            # Add to doc map.
-            merged_doc_map = existing_doc_map
-            for doc_hash, (doc_key, loaded_chunk_ids) in loaded_doc_map.items():
-                existing_entry = existing_doc_map.get(doc_hash, (None, set()))
-                existing_chunk_ids = existing_entry[1]
-                merged_chunk_ids = existing_chunk_ids | loaded_chunk_ids
-                assert len(merged_chunk_ids) == \
-                    len(loaded_chunk_ids) + len(existing_chunk_ids)
-                merged_doc_map[doc_hash] = (doc_key, merged_chunk_ids)
-
-            # Insert into database.
-            insert_rows = [
-                (doc_hash, json.dumps(list(doc_key)), json.dumps(list(chunk_ids)))
-                for doc_hash, (doc_key, chunk_ids) in merged_doc_map.items()]
-            cursor.execute("INSERT OR REPLACE INTO doc_chunks (doc_hash, doc_key, chunk_ids) VALUES %s" % ",".join("(?,?,?)" for _ in range(len(insert_rows))), [item for row in insert_rows for item in row ])
-            cursor.execute("INSERT INTO completed_paths (path) VALUES (?)", (os.path.basename(path),))
-            conn.commit()
-# <<<
+#     # Save output.
+#     # >>>
+#     with open(output_path, "w") as f:
+#         json.dump(banned_chunk_map, f)
+#     # +++
+#     # pax({
+#     #     # "banned_chunk_map" : banned_chunk_map,
+#     #     "banned_chunk_map / 0" : list(banned_chunk_map.items())[0],
+#     # })
+#     # <<<
 
 
-# >>>
-# def build_doc_chunk_map(indexed_dataset_infos, db_type):
+# # >>>
+# # def get_train_doc_chunk_map():
+# def merge_doc_chunk_maps():
+#     '''Merge multiple doc map jsons into sqlite database.'''
+
+#     # Connect to database.
+#     db_path = get_train_banned_doc_db_path()
+#     with sqlite3.connect(db_path) as conn:
+
+#         conn.row_factory = sqlite3.Row
+#         cursor = conn.cursor()
+
+#         # Init tables.
+#         rs = cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
+#         table_names = set(r["name"] for r in rs)
+#         # if "doc_chunks" not in table_names:
+#         if not table_names:
+#             cursor.execute("CREATE TABLE doc_chunks ("
+#                            "  doc_hash INTEGER PRIMARY KEY,"
+#                            "  doc_key TEXT NOT NULL,"
+#                            "  chunk_ids TEXT NOT NULL"
+#                            ")")
+#             cursor.execute("CREATE TABLE completed_paths (path TEXT NOT NULL)")
+#             # cursor.execute("CREATE TABLE completed (completed INTEGER)")
+
+#         # Individual json map paths.
+#         completed_paths = cursor.execute("SELECT * FROM completed_paths")
+#         completed_paths = set(r["path"] for r in completed_paths)
+#         paths = sorted(glob.glob(get_train_banned_doc_json_dir() + "/*.json"))
+#         paths = [ p for p in paths if os.path.basename(p) not in completed_paths ]
+
+#         # pax({"completed_paths": completed_paths, "paths": paths[:10]})
+
+#         # Iterate json map paths.
+#         doc_map = defaultdict(set)
+#         # for path_index, path in enumerate(tqdm(paths, "merge train doc maps")):
+#         for path_index, path in enumerate(paths):
+
+#             # Loaded doc map.
+#             # >>>
+#             # with open(path) as f:
+#             #     loaded_doc_map = json.load(f)
+#             #     loaded_doc_map = {
+#             #         int(hashlib.sha256(doc_key.encode()).hexdigest()[:10], 16):(
+#             #             tuple(int(i) for i in doc_key.split(",")),
+#             #             set(chunk_ids),
+#             #         ) for doc_key, chunk_ids in loaded_doc_map.items()}
+#             # +++
+#             with open(path) as f:
+#                 loaded_doc_map = {}
+#                 _loaded_doc_map = json.load(f)
+#                 for doc_tuple_str, chunk_id_str in _loaded_doc_map.items():
+#                     doc_tuple = tuple(int(i) for i in doc_tuple_str.split(","))
+#                     doc_hash = get_banned_doc_hash(*doc_tuple)
+#                     chunk_ids = set(chunk_id_str)
+#                     # pax({
+#                     #     "doc_tuple" : doc_tuple,
+#                     #     "doc_hash" : doc_hash,
+#                     #     "chunk_ids" : chunk_ids,
+#                     # })
+#                     loaded_doc_map[doc_hash] = (doc_tuple, chunk_ids)
+#             # <<<
+
+#             # Existing doc map.
+#             existing_rows = cursor.execute("SELECT * FROM doc_chunks WHERE doc_hash IN (%s)" % ",".join(str(i) for i in loaded_doc_map.keys()))
+#             existing_doc_map = {r["doc_hash"]: (
+#                 tuple(json.loads(r["doc_key"])),
+#                 set(json.loads(r["chunk_ids"])),
+#             ) for r in existing_rows}
+
+#             # Add to doc map.
+#             merged_doc_map = existing_doc_map
+#             for doc_hash, (doc_key, loaded_chunk_ids) in loaded_doc_map.items():
+#                 existing_entry = existing_doc_map.get(doc_hash, (None, set()))
+#                 existing_chunk_ids = existing_entry[1]
+#                 merged_chunk_ids = existing_chunk_ids | loaded_chunk_ids
+#                 assert len(merged_chunk_ids) == \
+#                     len(loaded_chunk_ids) + len(existing_chunk_ids)
+#                 merged_doc_map[doc_hash] = (doc_key, merged_chunk_ids)
+
+#             # Insert into database.
+#             insert_rows = [
+#                 (doc_hash, json.dumps(list(doc_key)), json.dumps(list(chunk_ids)))
+#                 for doc_hash, (doc_key, chunk_ids) in merged_doc_map.items()]
+#             # >>>
+#             # pax({
+#             #     "insert_rows" : len(insert_rows),
+#             #     "insert_rows / 0" : insert_rows[:10],
+#             # })
+#             # <<<
+#             block_size = 10000
+#             pbar = tqdm(range(0, len(insert_rows), block_size))
+#             for row_start in pbar:
+#                 pbar.set_description("merge banned docs %d / %d" %
+#                                      (path_index, len(paths)))
+#                 row_end = min(len(insert_rows), row_start + block_size)
+#                 block_rows = insert_rows[row_start:row_end]
+#                 cursor.execute("INSERT OR REPLACE INTO doc_chunks (doc_hash, doc_key, chunk_ids) VALUES %s" % ",".join("(?,?,?)" for _ in range(len(block_rows))), [item for row in block_rows for item in row ])
+#                 conn.commit()
+
+#             cursor.execute("INSERT INTO completed_paths (path) VALUES (?)", (os.path.basename(path),))
+#             conn.commit()
+# # <<<
+
+
+# # >>>
+# # def build_doc_chunk_map(indexed_dataset_infos, db_type):
+# def build_banned_doc_db(indexed_dataset_infos, db_type):
+# # <<<
+#     '''Build mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
+
+#     if torch.distributed.get_rank() != 0:
+#         return
+
+#     print(" > build %s doc-chunk map." % db_type)
+
+#     n_procs = 128
+
+#     # Get dataset.
+#     db_dataset = get_merged_dataset(db_type, indexed_dataset_infos)
+
+#     # Sub-ranges for parallel processing.
+#     n_chunks = db_dataset.chunks.shape[0]
+#     n_chunks_per_proc = max(1, int(np.ceil(n_chunks / n_procs)))
+#     chunk_id_starts = list(range(0, n_chunks, n_chunks_per_proc))
+#     chunk_id_ranges = [(s, min(n_chunks, s + n_chunks_per_proc))
+#                        for s in chunk_id_starts]
+
+#     # Wrap range info with output path.
+#     n_digits = int(np.ceil(np.log(n_chunks) / np.log(10)) + 1)
+#     output_dirname = get_train_banned_doc_json_dir()
+#     chunk_range_infos = [{
+#         "start" : start_id,
+#         "end" : end_id,
+#         "path" : os.path.join(output_dirname, "%s-%s.json" % (
+#             str(start_id).zfill(n_digits),
+#             str(end_id).zfill(n_digits),
+#         )),
+#     } for start_id, end_id in chunk_id_ranges ]
+
+#     # Build doc-chunk map.
+#     print_rank_0("build doc-chunk-map.")
+#     with ProcessPoolExecutor(max_workers=n_procs) as executor:
+
+#         # Build partial chunk maps.
+#         futures = []
+#         for proc_id, chunk_range_info in enumerate(chunk_range_infos):
+
+#             if os.path.exists(chunk_range_info["path"]):
+#                 continue
+
+#             # Submit job.
+#             futures.append(executor.submit(
+#                 get_partial_banned_chunk_map,
+#                 proc_id,
+#                 db_dataset.db_path,
+#                 chunk_range_info,
+#             ))
+
+#         # Wait for processes to finish.
+#         banned_chunk_paths = []
+#         for finished_idx, future in enumerate(as_completed(futures)):
+#             print("finished %d / %d." % (finished_idx, n_procs))
+#             future.result()
+
+#     # >>>
+#     # Merge json maps into sqlite db.
+#     merge_doc_chunk_maps()
+#     # <<<
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 def build_banned_doc_db(indexed_dataset_infos, db_type):
-# <<<
     '''Build mapping of {(dataset_id,doc_id):[chunk_ids]}.'''
 
     if torch.distributed.get_rank() != 0:
         return
 
-    print(" > build %s doc-chunk map." % db_type)
-
-    n_procs = 128
+    print(" > build %s banned doc map." % db_type)
 
     # Get dataset.
     db_dataset = get_merged_dataset(db_type, indexed_dataset_infos)
 
-    # Sub-ranges for parallel processing.
-    n_chunks = db_dataset.chunks.shape[0]
-    n_chunks_per_proc = max(1, int(np.ceil(n_chunks / n_procs)))
-    chunk_id_starts = list(range(0, n_chunks, n_chunks_per_proc))
-    chunk_id_ranges = [(s, min(n_chunks, s + n_chunks_per_proc))
-                       for s in chunk_id_starts]
+    # pax({
+    #     "indexed_dataset_infos": indexed_dataset_infos,
+    #     "db_dataset" : db_dataset,
+    #     "db_dataset / len" : len(db_dataset),
+    # })
 
-    # Wrap range info with output path.
-    n_digits = int(np.ceil(np.log(n_chunks) / np.log(10)) + 1)
-    output_dirname = get_train_banned_doc_json_dir()
-    chunk_range_infos = [{
-        "start" : start_id,
-        "end" : end_id,
-        "path" : os.path.join(output_dirname, "%s-%s.json" % (
-            str(start_id).zfill(n_digits),
-            str(end_id).zfill(n_digits),
-        )),
-    } for start_id, end_id in chunk_id_ranges ]
+    # Connect to database.
+    db_path = get_train_banned_doc_db_path()
+    # db_path = "test.db"
+    # with sqlite3.connect(db_path) as conn:
+    conn = sqlite3.connect(db_path)
 
-    # Build doc-chunk map.
-    print_rank_0("build doc-chunk-map.")
-    with ProcessPoolExecutor(max_workers=n_procs) as executor:
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
 
-        # Build partial chunk maps.
-        futures = []
-        for proc_id, chunk_range_info in enumerate(chunk_range_infos):
-
-            if os.path.exists(chunk_range_info["path"]):
-                continue
-
-            # Submit job.
-            futures.append(executor.submit(
-                get_partial_banned_chunk_map,
-                proc_id,
-                db_dataset.db_path,
-                chunk_range_info,
-            ))
-
-        # Wait for processes to finish.
-        banned_chunk_paths = []
-        for finished_idx, future in enumerate(as_completed(futures)):
-            print("finished %d / %d." % (finished_idx, n_procs))
-            future.result()
+    # Init tables.
+    rs = cursor.execute("SELECT * FROM sqlite_master WHERE type='table'")
+    table_names = set(r["name"] for r in rs)
+    if not table_names:
+        cursor.execute("CREATE TABLE doc_chunks ("
+                       "  doc_hash INTEGER PRIMARY KEY,"
+                       "  doc_tuple TEXT NOT NULL,"
+                       "  chunk_ids TEXT NOT NULL"
+                       ")")
+        cursor.execute("CREATE TABLE n_chunks_completed (n INTEGER NOT NULL)")
 
     # >>>
-    # Merge json maps into sqlite db.
-    merge_doc_chunk_maps()
+    # print("insert.")
+    # conn.execute("INSERT INTO doc_chunks (doc_hash, doc_tuple, chunk_ids) VALUES (?, ?, ?)", (0, "hi", "there"))
+    # print("inserted.")
+    # conn.commit()
+    # print("committed.")
+    # conn.close()
+    # print("closed.")
+    # exit()
     # <<<
+
+    rs = cursor.execute("SELECT n FROM n_chunks_completed")
+    n_chunks_completed = sorted([r["n"] for r in rs])
+    n_chunks_completed = n_chunks_completed[-1] if n_chunks_completed else 0
+    # if n_chunks_completed not in (100000,):
+    #     pax({"n_chunks_completed": n_chunks_completed})
+
+    block_size = 100000
+    # block_size = 1000
+    for chunk_start_idx in tqdm(
+            range(n_chunks_completed, len(db_dataset), block_size),
+            "banned docs"):
+
+        chunk_end_idx = min(len(db_dataset), chunk_start_idx + block_size)
+
+        #pax({"chunk_start_idx": chunk_start_idx, "chunk_end_idx": chunk_end_idx})
+
+        # Current doc map.
+        current_doc_map = defaultdict(set)
+        for local_chunk_idx, doc_entry in \
+            enumerate(db_dataset.chunks[chunk_start_idx:chunk_end_idx, :2]):
+            doc_tuple = tuple(doc_entry.tolist())
+            current_doc_map[doc_tuple].add(chunk_start_idx + local_chunk_idx)
+        current_doc_map = {get_banned_doc_hash(*t) : (t, c)
+                           for t, c in current_doc_map.items()}
+        # pax({"%d / %s" % (i, t) : ("%d / %s" % (len(c), str(c)))
+        #      for i,(t,c) in current_doc_map.items()})
+
+        # Existing doc map.
+        existing_rows = cursor.execute("SELECT * FROM doc_chunks WHERE doc_hash IN (%s)" % ",".join(str(i) for i in current_doc_map.keys()))
+        existing_doc_map = {r["doc_hash"]: (
+            tuple(json.loads(r["doc_tuple"])),
+            set(json.loads(r["chunk_ids"])),
+        ) for r in existing_rows}
+
+        # >>>
+        # if existing_doc_map:
+        #     pax({
+        #         "current_doc_map" : current_doc_map,
+        #         "existing_doc_map" : existing_doc_map,
+        #     })
+        # <<<
+
+        # Add to doc map.
+        # merged_doc_map = existing_doc_map
+        # merged_doc_map = dict(existing_doc_map)
+        merged_doc_map = {}
+        for doc_hash,(doc_tuple,current_chunk_ids) in current_doc_map.items():
+            existing_entry = existing_doc_map.get(doc_hash, (None, set()))
+            existing_chunk_ids = existing_entry[1]
+            merged_chunk_ids = existing_chunk_ids | current_chunk_ids
+            assert len(merged_chunk_ids) == \
+                len(current_chunk_ids) + len(existing_chunk_ids)
+            merged_doc_map[doc_hash] = (doc_tuple, merged_chunk_ids)
+
+        # >>>
+        if existing_doc_map:
+            pax({str(i):"%s | %d | %s" % (t, len(c), c) for i, (t, c) in merged_doc_map.items()})
+        # <<<
+
+        # Insert into database.
+        insert_rows = [(
+            doc_hash,
+            json.dumps(list(doc_tuple)),
+            json.dumps(list(chunk_ids)),
+        ) for doc_hash, (doc_tuple, chunk_ids) in merged_doc_map.items()]
+        # >>>
+        # pax({
+        #     "insert_rows" : len(insert_rows),
+        #     "insert_rows / 0" : insert_rows, # [:10],
+        #     "tmp0" : ",".join(["(?,?,?)"] * len(insert_rows)),
+        #     # "tmp1" : [ item for row in insert_rows for item in row ],
+        #     "tmp1" : [ ("%d / %s" % (len(item), item)) if isinstance(item, str) else item for row in insert_rows for item in row ],
+        # })
+        # <<<
+        cursor.execute("INSERT OR REPLACE INTO doc_chunks (doc_hash, doc_tuple, chunk_ids) VALUES %s" % ",".join("(?,?,?)" for _ in range(len(insert_rows))), [item for row in insert_rows for item in row ])
+        cursor.execute("INSERT INTO n_chunks_completed (n) VALUES (?)",
+                       (chunk_end_idx,))
+        conn.commit()
+
+        # >>>
+        # print("committed; exit.")
+        # conn.close()
+        # raise Exception("hi.")
+        # <<<
+# <<<
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 def build_db():
