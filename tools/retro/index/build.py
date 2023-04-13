@@ -127,11 +127,9 @@ def embed_db():
 
     # >>>
     merged_train_data_path = get_training_data_merged_path()
-    # pax({"merged_train_data_path": merged_train_data_path})
     if os.path.exists(merged_train_data_path):
-        # raise Exception("hi.")
         return
-    raise Exception("embed again?")
+    # raise Exception("embed again?")
     # <<<
 
     # Get db dataset.
@@ -143,19 +141,12 @@ def embed_db():
                                             args.retro_bert_max_chunk_length,
                                             args.retro_block_size,
                                             args.bert_embedder_type)
-    # >>>
-    # embedder.embed_text_dataset("index", get_training_data_dir(), text_dataset)
     embedder.embed_text_dataset("index",
                                 get_training_data_block_dir(),
                                 text_dataset)
-    # <<<
 
-    # >>>
     # Merge embeddings.
-    raise Exception("merge / start.")
     merge_embedding_blocks()
-    raise Exception("merge / end.")
-    # <<<
 
 
 def train_on_embeddings():

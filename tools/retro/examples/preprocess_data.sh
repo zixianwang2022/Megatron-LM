@@ -4,7 +4,7 @@ set -u
 unset NCCL_DEBUG
 
 # >>>
-NPROCS=8 # NPROCS must be <= number of GPUs.
+NPROCS=1 # NPROCS must be <= number of GPUs.
 # <<<
 
 set_current_dir() {

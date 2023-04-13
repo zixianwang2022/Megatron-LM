@@ -94,7 +94,7 @@ class FaissBaseIndex(Index):
         self.c_verbose(index_ivf.clustering_index, True)
         # <<<
 
-        raise Exception("hi.")
+        # raise Exception("hi.")
 
         # Train index.
         index.train(inp)
@@ -113,7 +113,6 @@ class FaissBaseIndex(Index):
             # >>>
             # self._train(input_data_loader)
             self._train()
-            raise Exception("hi.")
             # <<<
 
         torch.distributed.barrier()
