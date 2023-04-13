@@ -74,6 +74,11 @@ def init_indexed_dataset_infos():
             "dataset" : make_indexed_dataset(prefix, "mmap", True),
         })
 
+    # >>>
+    # info = infos[0]
+    # pax({"info": info, "dataset": len(info["dataset"])})
+    # <<<
+
     return infos
 
 
@@ -900,7 +905,7 @@ def build_banned_doc_db(indexed_dataset_infos, db_type):
     n_chunks_completed = n_chunks_completed[-1] if n_chunks_completed else 0
 
     time_map = {}
-    block_size = 1000000
+    block_size = 100000
     pbar = tqdm(range(n_chunks_completed, len(db_dataset), block_size))
     for start_chunk_id in pbar:
         end_chunk_id = min(len(db_dataset), start_chunk_id + block_size)
@@ -1041,7 +1046,9 @@ def build_db():
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()
 
-    if 0:
+    # >>>
+    if 1:
+    # <<<
         # Build dbs.
         build_individual_dbs(indexed_dataset_infos)
 
@@ -1060,8 +1067,14 @@ def build_db():
     # <<<
 
     # Merge dbs.
-    if 0:
+    # >>>
+    if 1:
+    # <<<
         merge_dbs(indexed_dataset_infos, "sampled")
         merge_dbs(indexed_dataset_infos, "train")
         merge_dbs(indexed_dataset_infos, "valid")
-    build_banned_doc_db(indexed_dataset_infos, "train")
+
+    # >>>
+    # # Build banned document map.
+    # build_banned_doc_db(indexed_dataset_infos, "train")
+    # <<<

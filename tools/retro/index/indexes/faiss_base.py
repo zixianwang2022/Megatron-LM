@@ -76,13 +76,25 @@ class FaissBaseIndex(Index):
 
         # Move to GPU.
         index_ivf = faiss.extract_index_ivf(index)
+        # >>>
+        # raise Exception("hi.")
         clustering_index = \
             faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+        # clustering_index = faiss.index_cpu_to_gpu(
+        #     faiss.StandardGpuResourcess(),
+        #     0,
+        #     faiss.IndexFlatL2(index_ivf.d))
         index_ivf.clustering_index = clustering_index
+        # raise Exception("hi.")
+        # <<<
         self.c_verbose(index, True)
         self.c_verbose(index_ivf, True)
         self.c_verbose(index_ivf.quantizer, True)
+        # >>>
         self.c_verbose(index_ivf.clustering_index, True)
+        # <<<
+
+        raise Exception("hi.")
 
         # Train index.
         index.train(inp)
@@ -101,6 +113,7 @@ class FaissBaseIndex(Index):
             # >>>
             # self._train(input_data_loader)
             self._train()
+            raise Exception("hi.")
             # <<<
 
         torch.distributed.barrier()

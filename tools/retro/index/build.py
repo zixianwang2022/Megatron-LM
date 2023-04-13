@@ -102,7 +102,8 @@ def merge_embedding_blocks():
     # Merge blocks.
     with open(bin_path, "wb") as fo:
         byte_offset = 0
-        for block_idx, block_path in enumerate(tqdm(block_paths)):
+        for block_idx, block_path in \
+            enumerate(tqdm(block_paths, "merge train embeddings")):
             with h5py.File(block_path) as fi:
 
                 nload = get_block_nload(block_path, load_fraction)
@@ -128,8 +129,9 @@ def embed_db():
     merged_train_data_path = get_training_data_merged_path()
     # pax({"merged_train_data_path": merged_train_data_path})
     if os.path.exists(merged_train_data_path):
+        # raise Exception("hi.")
         return
-    # raise Exception("embed again?")
+    raise Exception("embed again?")
     # <<<
 
     # Get db dataset.
@@ -150,8 +152,9 @@ def embed_db():
 
     # >>>
     # Merge embeddings.
+    raise Exception("merge / start.")
     merge_embedding_blocks()
-    # raise Exception("merge embeddings.")
+    raise Exception("merge / end.")
     # <<<
 
 
@@ -162,6 +165,7 @@ def train_on_embeddings():
     # >>>
     # index.train(get_training_data_merged)
     index.train()
+    raise Exception("hi.")
     # <<<
 
 
@@ -188,6 +192,7 @@ def train_index():
 
         # Train index on embeddings.
         train_on_embeddings()
+        raise Exception("hi.")
 
     # Wait for (single-process) training to complete.
     torch.distributed.barrier()
