@@ -31,7 +31,11 @@ from .utils import (
     get_indexed_dataset_infos,
     get_indexed_dataset_infos_path,
     get_individual_db,
-    get_individual_db_dir,
+    # >>>
+    # get_individual_db_dir,
+    # get_individual_doc_offset_dir,
+    get_individual_dirs,
+    # <<<
     get_merged_dataset,
     get_merged_db_path_map,
     get_train_banned_doc_db_path,
@@ -65,12 +69,19 @@ def init_indexed_dataset_infos():
         path = prefix + ".bin"
         name = os.path.basename(prefix)
         assert os.path.exists(path), "couldn't find '%s'." % path
+        chunk_db_dir, doc_offset_dir = get_individual_dirs(name)
+        # pax({"chunk_db_dir": chunk_db_dir, "doc_offset_dir": doc_offset_dir})
         infos.append({
             "ratio" : ratio,
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            "db_dir" : get_individual_db_dir(name),
+            # >>>
+            # "db_dir" : get_individual_db_dir(name),
+            # "doc_offset_dir" : get_individual_doc_offset_dir(name),
+            "chunk_db_dir" : chunk_db_dir,
+            "doc_offset_dir" : doc_offset_dir,
+            # <<<
             "dataset" : make_indexed_dataset(prefix, "mmap", True),
         })
 
@@ -131,6 +142,9 @@ def build_partial_db(
     # Iterate documents & parse chunks.
     chunk_db_valid = []
     chunk_db_invalid = []
+    # >>>
+    doc_size_map = {}
+    # <<<
     for doc_id in pbar:
 
         # Progress description.
@@ -157,6 +171,9 @@ def build_partial_db(
                           for s in chunk_start_idxs]
 
         # Re-tokenize each chunk to Bert/Wordpiece (empty bert -> 'invalid').
+        # >>>
+        doc_size_map[doc_id] = 0
+        # <<<
         for i, chunk_start_idx in enumerate(chunk_start_idxs):
 
             # Re-tokenize.
@@ -170,9 +187,17 @@ def build_partial_db(
             bert_token_ids = tokenizers.bert.tokenize(text)
 
             # 'Valid' for non-empty Bert chunks; 'invalid' otherwise.
-            _chunk_db = chunk_db_invalid \
-                if len(bert_token_ids) == 0 else \
-                   chunk_db_valid
+            # >>>
+            # _chunk_db = chunk_db_invalid \
+            #     if len(bert_token_ids) == 0 else \
+            #        chunk_db_valid
+            # +++
+            if len(bert_token_ids) == 0:
+                _chunk_db = chunk_db_invalid
+            else:
+                _chunk_db = chunk_db_valid
+                doc_size_map[doc_id] += 1
+            # <<<
             _chunk_db.append((
                 doc_id,
                 chunk_start_idx,
@@ -180,7 +205,14 @@ def build_partial_db(
                 len(bert_token_ids),
             ))
 
-    return proc_id, chunk_db_valid, chunk_db_invalid
+    # >>>
+    # pax({"doc_size_map": doc_size_map})
+    # <<<
+
+    # >>>
+    # return proc_id, chunk_db_valid, chunk_db_invalid
+    return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map
+    # <<<
 
 
 def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
@@ -189,15 +221,19 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     args = get_retro_args()
 
     # Make directory.
-    db_dir = dataset_info["db_dir"]
-    os.makedirs(db_dir, exist_ok=True)
+    # >>>
+    chunk_db_dir = dataset_info["chunk_db_dir"]
+    os.makedirs(chunk_db_dir, exist_ok=True)
+    doc_offset_dir = dataset_info["doc_offset_dir"]
+    os.makedirs(doc_offset_dir, exist_ok=True)
+    # <<<
 
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
 
     # Missing db blocks.
     n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
-        db_dir,
+        chunk_db_dir,
         len(indexed_dataset),
         args.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
@@ -227,6 +263,16 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
 
             if block is not None:
 
+                # >>>
+                chunk_db_path = block["path"]
+                doc_offset_path = os.path.join(doc_offset_dir,
+                                               os.path.basename(chunk_db_path))
+                # pax({
+                #     "chunk_db_path" : chunk_db_path,
+                #     "doc_offset_path" : doc_offset_path,
+                # })
+                # <<<
+
                 # Build partial dbs.
                 print_rank_0(' > build partial dbs.')
                 futures = []
@@ -255,6 +301,23 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
                 chunk_db_invalid = [item
                                     for partial_chunk_db in partial_chunk_dbs
                                     for item in partial_chunk_db[2]]
+                # >>>
+                # doc_size_map = {k:v
+                #                 for partial_chunk_db in partial_chunk_dbs
+                #                 for k, v in partial_chunk_db[3].items()}
+                doc_sizes = [(d, s)
+                             for partial_chunk_db in partial_chunk_dbs
+                             for d, s in partial_chunk_db[3].items()]
+                doc_sizes.sort(key = lambda item : item[0])
+                doc_offsets = np.cumsum([item[1] for item in doc_sizes])
+                # pax({
+                #     "doc_sizes / start" : doc_sizes[:5],
+                #     "doc_sizes / end" : doc_sizes[-5:],
+                #     "doc_offsets / start" : doc_offsets[:5],
+                #     "doc_offsets / end" : doc_offsets[-5:],
+                #     "block" : block,
+                # })
+                # <<<
 
                 # Convert to numpy.
                 print_rank_0(' > converting chunk db to numpy.')
@@ -263,10 +326,11 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
 
                 # Save DB.
                 print_rank_0(" > saving individual db.")
-                f = h5py.File(block["path"], "w")
-                dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
-                dset = f.create_dataset("chunks_invalid", data=chunk_db_invalid)
-                f.close()
+                with h5py.File(chunk_db_path, "w") as f:
+                    dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
+                    dset = f.create_dataset("chunks_invalid", data=chunk_db_invalid)
+                with h5py.File(doc_offset_path, "w") as f:
+                    dset = f.create_dataset("doc_offsets", data=doc_offsets)
 
             # Wait for all ranks to finish block.
             print_rank_0(" > waiting for all ranks to finish block.")

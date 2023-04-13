@@ -61,12 +61,26 @@ def get_indexed_dataset_infos():
     return infos
 
 
-def get_individual_db_dir(name):
-    '''Individual DB's directory.'''
-    return os.path.join(get_base_db_workdir(), "individual", name, "db")
+# >>>
+# def get_individual_db_dir(name):
+#     '''Individual DB's directory.'''
+#     return os.path.join(get_base_db_workdir(), "individual", name, "db")
 
 
-def get_individual_db(ds_id, ds_info):
+# def get_individual_doc_offset_dir(name):
+#     '''Individual doc offset directory.'''
+#     return os.path.join(get_base_db_workdir(), "individual", name, "doc_offset")
+def get_individual_dirs(name):
+    '''Individual chunk db & doc offset directories.'''
+    common_dir = os.path.join(get_base_db_workdir(), "individual", name)
+    return (os.path.join(common_dir, "chunk_db"),
+            os.path.join(common_dir, "doc_offset"))
+# <<<
+
+
+# >>>
+# def get_individual_db(ds_id, ds_info):
+def get_individual_chunk_db(ds_id, ds_info):
     '''Load individual dataset's chunk DB.'''
     db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
     # *Note*: convert to dataset, rather than copying to memory.
@@ -83,6 +97,28 @@ def get_individual_db(ds_id, ds_info):
     assert start_idx == ds_info["n_chunks"]
 
     return db
+
+
+def get_individual_doc_offsets(ds_id, ds_info):
+    '''Load individual dataset's chunk DB.'''
+    paths = sorted(glob.glob(ds_info["doc_offset_dir"] + "/*hdf5"))
+    pax({"paths": paths})
+    # *Note*: convert to dataset, rather than copying to memory.
+    doc_offsets = np.zeros((ds_info["n_docs"], 2), dtype="i8")
+    offset = 0
+    for path in paths:
+        with h5py.File(path) as f:
+            current_doc_offsets = np.copy(f["doc_offsets"])
+            current_doc_offsets[:, 1] += offset
+            offset = current_doc_offsets[-1, 1].item()
+            # n_docs_current = f["doc_offsets"].shape[0]
+            doc_offsets[offset:(offset+current_doc_offsets.shape[0])] = \
+                current_doc_offsets
+
+    pax({"doc_offsets": doc_offsets})
+
+    return doc_offsets
+# <<<
 
 
 def get_merged_db_path_map():
