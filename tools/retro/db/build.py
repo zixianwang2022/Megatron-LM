@@ -9,7 +9,7 @@ import numpy as np
 import os
 from pathlib import Path
 # >>>
-import sqlite3
+# import sqlite3
 # <<<
 import threading
 import torch
@@ -30,14 +30,19 @@ from .utils import (
     get_banned_doc_hash,
     get_indexed_dataset_infos,
     get_indexed_dataset_infos_path,
-    get_individual_db,
     # >>>
-    # get_individual_db_dir,
+    # get_individual_db,
+    get_individual_db_dir,
+    get_individual_chunk_db,
+    get_individual_doc_offsets,
     # get_individual_doc_offset_dir,
-    get_individual_dirs,
+    # get_individual_dirs,
     # <<<
     get_merged_dataset,
+    # >>>
     get_merged_db_path_map,
+    # get_merged_path_map,
+    # <<<
     get_train_banned_doc_db_path,
     get_train_banned_doc_json_dir,
     save_indexed_dataset_infos,
@@ -45,7 +50,7 @@ from .utils import (
 
 # >>>
 import time
-from lutil import pax
+from lutil import pax, np as _np
 # <<<
 
 
@@ -69,7 +74,7 @@ def init_indexed_dataset_infos():
         path = prefix + ".bin"
         name = os.path.basename(prefix)
         assert os.path.exists(path), "couldn't find '%s'." % path
-        chunk_db_dir, doc_offset_dir = get_individual_dirs(name)
+        # chunk_db_dir, doc_offset_dir = get_individual_dirs(name)
         # pax({"chunk_db_dir": chunk_db_dir, "doc_offset_dir": doc_offset_dir})
         infos.append({
             "ratio" : ratio,
@@ -77,10 +82,9 @@ def init_indexed_dataset_infos():
             "path" : path,
             "name" : name,
             # >>>
-            # "db_dir" : get_individual_db_dir(name),
-            # "doc_offset_dir" : get_individual_doc_offset_dir(name),
-            "chunk_db_dir" : chunk_db_dir,
-            "doc_offset_dir" : doc_offset_dir,
+            "db_dir" : get_individual_db_dir(name),
+            # "chunk_db_dir" : chunk_db_dir,
+            # "doc_offset_dir" : doc_offset_dir,
             # <<<
             "dataset" : make_indexed_dataset(prefix, "mmap", True),
         })
@@ -221,19 +225,15 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     args = get_retro_args()
 
     # Make directory.
-    # >>>
-    chunk_db_dir = dataset_info["chunk_db_dir"]
-    os.makedirs(chunk_db_dir, exist_ok=True)
-    doc_offset_dir = dataset_info["doc_offset_dir"]
-    os.makedirs(doc_offset_dir, exist_ok=True)
-    # <<<
+    db_dir = dataset_info["db_dir"]
+    os.makedirs(db_dir, exist_ok=True)
 
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
 
     # Missing db blocks.
     n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
-        chunk_db_dir,
+        db_dir,
         len(indexed_dataset),
         args.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
@@ -263,14 +263,11 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
 
             if block is not None:
 
+                db_path = block["path"]
                 # >>>
-                chunk_db_path = block["path"]
-                doc_offset_path = os.path.join(doc_offset_dir,
-                                               os.path.basename(chunk_db_path))
-                # pax({
-                #     "chunk_db_path" : chunk_db_path,
-                #     "doc_offset_path" : doc_offset_path,
-                # })
+                # chunk_db_path = block["path"]
+                # doc_offset_path = os.path.join(doc_offset_dir,
+                #                                os.path.basename(chunk_db_path))
                 # <<<
 
                 # Build partial dbs.
@@ -301,35 +298,36 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
                 chunk_db_invalid = [item
                                     for partial_chunk_db in partial_chunk_dbs
                                     for item in partial_chunk_db[2]]
-                # >>>
-                # doc_size_map = {k:v
-                #                 for partial_chunk_db in partial_chunk_dbs
-                #                 for k, v in partial_chunk_db[3].items()}
+
+                # Convert to numpy.
+                print_rank_0(' > converting chunk db to numpy.')
+                chunk_db_valid = np.array(chunk_db_valid, dtype="uint32")
+                chunk_db_invalid = np.array(chunk_db_invalid, dtype="uint32")
+
+                # Document offsets.
                 doc_sizes = [(d, s)
                              for partial_chunk_db in partial_chunk_dbs
                              for d, s in partial_chunk_db[3].items()]
                 doc_sizes.sort(key = lambda item : item[0])
-                doc_offsets = np.cumsum([item[1] for item in doc_sizes])
-                # pax({
-                #     "doc_sizes / start" : doc_sizes[:5],
-                #     "doc_sizes / end" : doc_sizes[-5:],
-                #     "doc_offsets / start" : doc_offsets[:5],
-                #     "doc_offsets / end" : doc_offsets[-5:],
-                #     "block" : block,
-                # })
-                # <<<
+                doc_offsets = np.cumsum([item[1] for item in doc_sizes]) \
+                                .astype("uint64")
+                doc_offsets = np.stack((
+                    np.array([item[0] for item in doc_sizes], dtype="uint64"),
+                    doc_offsets), axis=1)
 
-                # Convert to numpy.
-                print_rank_0(' > converting chunk db to numpy.')
-                chunk_db_valid = np.array(chunk_db_valid)
-                chunk_db_invalid = np.array(chunk_db_invalid)
+                # print("~~~")
+                # print(doc_offsets)
+                # pax({
+                #     "chunk_db_valid" : _np(chunk_db_valid),
+                #     "chunk_db_invalid" : _np(chunk_db_invalid),
+                #     "doc_offsets" : _np(doc_offsets),
+                # })
 
                 # Save DB.
                 print_rank_0(" > saving individual db.")
-                with h5py.File(chunk_db_path, "w") as f:
+                with h5py.File(db_path, "w") as f:
                     dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
                     dset = f.create_dataset("chunks_invalid", data=chunk_db_invalid)
-                with h5py.File(doc_offset_path, "w") as f:
                     dset = f.create_dataset("doc_offsets", data=doc_offsets)
 
             # Wait for all ranks to finish block.
@@ -424,23 +422,36 @@ def merge_dbs(indexed_dataset_infos, db_type):
     print(" > build %s chunk db." % db_type)
 
     # Count chunks.
-    if db_type == "full":
-        raise Exception("deprecated; use 'train' or 'sampled'.")
-        n_chunks_key = "n_chunks"
-    elif db_type == "sampled":
+    if db_type == "sampled":
         n_chunks_key = "n_chunks_sampled"
+        n_docs_key = None
     elif db_type == "train":
         n_chunks_key = "n_chunks_train"
+        n_docs_key = "n_docs_train"
     elif db_type == "valid":
-        pass
+        # >>>
+        # pass
+        n_docs_key = None
+        # <<<
     else:
         raise Exception("handle db_type '%s'." % db_type)
 
     if db_type == "valid":
         n_chunks = sum(m["n_chunks"] - m["n_chunks_train"]
                        for m in indexed_dataset_infos)
+        # >>>
+        # n_docs = sum(m["n_docs"] - m["n_docs_train"]
+        #                for m in indexed_dataset_infos)
+        # <<<
     else:
         n_chunks = sum(m[n_chunks_key] for m in indexed_dataset_infos)
+        n_docs = None if n_docs_key is None else \
+            sum(m[n_docs_key] for m in indexed_dataset_infos)
+
+    # >>>
+    # if n_docs_key is not None:
+    #     pax({"n_chunks": n_chunks, "n_docs": n_docs})
+    # <<<
 
     # DB path.
     db_path = get_merged_db_path_map()[db_type]
@@ -474,25 +485,98 @@ def merge_dbs(indexed_dataset_infos, db_type):
         f = h5py.File(db_path, "w")
 
         # Initialize output arrays.
-        merged_db = f.create_dataset("chunks", (n_chunks, 5), dtype="i8")
+        merged_chunk_db = \
+            f.create_dataset("chunks", (n_chunks, 5), dtype="uint32")
+        merged_doc_offsets = None if n_docs_key is None else \
+            f.create_dataset("doc_offsets", (n_docs, 3), dtype="uint64")
         n_written = f.create_dataset("n_written", (1,), dtype="uint64")
         n_written[0] = 0
 
         # Iterate indexed datasets & collect chunks.
-        start_index = 0
+        chunk_start_index = 0
+        doc_start_index = 0
+        doc_start_offset = 0
         for ds_idx, ds_info in enumerate(indexed_dataset_infos):
             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
                   (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-            individual_db = get_individual_db(ds_idx, ds_info)
+            individual_chunk_db = get_individual_chunk_db(ds_idx, ds_info)
+            individual_doc_offsets = None if n_docs_key is None else \
+                get_individual_doc_offsets(ds_idx, ds_info)
+
+            # >>>
+            # if n_docs_key is not None and ds_idx != 0:
+            #     print("~~~"); print(individual_chunk_db)
+            #     print("~~~"); print(individual_doc_offsets)
+            #     pax({
+            #         "db_type" : db_type,
+            #         "individual_chunk_db" : _np(individual_chunk_db),
+            #         "individual_doc_offsets" : _np(individual_doc_offsets),
+            #     })
+            # <<<
 
             if db_type == "valid":
-                individual_db = individual_db[ds_info["n_chunks_train"]:]
-            else:
-                individual_db = individual_db[:ds_info[n_chunks_key]]
+                individual_chunk_db = \
+                    individual_chunk_db[ds_info["n_chunks_train"]:]
+                # >>>
+                if n_docs_key is None:
+                    individual_doc_offsets = None
+                else:
+                    train_doc_offset = \
+                        individual_doc_offsets[ds_info["n_docs_train"] - 1, 2]
+                    individual_doc_offsets = \
+                        np.copy(individual_doc_offsets[ds_info["n_docs_train"]:])
+                    individual_doc_offsets[:, 2] -= train_doc_offset
 
-            merged_db[start_index:start_index+len(individual_db)] = individual_db
-            start_index += len(individual_db)
-            n_written[0] = start_index
+                    print("~~~")
+                    print(individual_doc_offsets)
+                    pax({"train_doc_offset": train_doc_offset})
+                # <<<
+            else:
+                individual_chunk_db = \
+                    individual_chunk_db[:ds_info[n_chunks_key]]
+                individual_doc_offsets = None if n_docs_key is None else \
+                    np.copy(individual_doc_offsets[:ds_info[n_docs_key]])
+
+            merged_chunk_db[chunk_start_index:chunk_start_index+len(individual_chunk_db)] = individual_chunk_db
+            chunk_start_index += len(individual_chunk_db)
+            n_written[0] = chunk_start_index
+            if n_docs_key is not None:
+                individual_doc_offsets[:, 2] += doc_start_offset
+                doc_end_index = doc_start_index + individual_doc_offsets.shape[0]
+                # >>>
+                # individual_doc_offsets = np.concatenate([
+                #     np.arange(doc_start_index,
+                #               doc_end_index,
+                #               dtype="uint64").reshape((-1, 1)),
+                #     individual_doc_offsets,
+                # ], axis=1)
+                # print("~~~")
+                # print(individual_doc_offsets)
+                # pax({
+                #     "doc_start_index" : doc_start_index,
+                #     "doc_end_index" : doc_end_index,
+                #     "individual_doc_offsets" : individual_doc_offsets,
+                # })
+                # <<<
+                merged_doc_offsets[doc_start_index:doc_end_index] = \
+                    individual_doc_offsets
+                doc_start_index = doc_end_index
+                doc_start_offset = individual_doc_offsets[-1, 2].item()
+
+                # >>>
+                # if ds_idx != 0:
+                #     print("~~~")
+                #     print(individual_chunk_db)
+                #     print(individual_doc_offsets)
+                #     pax({
+                #         "db_type" : db_type,
+                #         "chunk_start_index" : chunk_start_index,
+                #         "doc_start_index" : doc_start_index,
+                #         "doc_start_offset" : doc_start_offset,
+                #         "individual_chunk_db" : _np(individual_chunk_db),
+                #         "individual_doc_offsets" : _np(individual_doc_offsets),
+                #     })
+                # <<<
 
         f.close()
 
@@ -1109,6 +1193,13 @@ def build_db():
 
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos()
+
+    # pax({
+    #     "indexed_dataset_infos" : indexed_dataset_infos,
+    #     "ndocs list" : [ len(info["dataset"]) for info in indexed_dataset_infos ],
+    #     "ndocs" :
+    #     sum([ len(info["dataset"]) for info in indexed_dataset_infos ]),
+    # })
 
     # >>>
     if 1:
