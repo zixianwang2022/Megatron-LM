@@ -82,3 +82,18 @@ class DBDataset(torch.utils.data.Dataset):
         assert self.doc_chunk_map, "call 'load_doc_chunk_map()' first."
         return self.doc_chunk_map[dataset_id][doc_id]
     # <<<
+
+    # >>>
+    # def load_doc_chunk_map(self):
+    #     self.doc_tuples = np.zeros(shape=(len(self), 2), dtype="uint32")
+    #     block_size = int(1e8)
+    #     for start_idx in tqdm(range(0, len(self), block_size)):
+    #         end_idx = min(len(self), start_idx + block_size)
+    #         self.doc_tuples[start_idx:end_idx] = self.chunks[start_idx:end_idx,:2]
+            
+    #     pax({
+    #         "db" : self,
+    #         "db / len" : len(self),
+    #         "doc_tuples": self.doc_tuples,
+    #     })
+    # <<<
