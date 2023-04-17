@@ -182,7 +182,6 @@ def train_index():
 
         # Train index on embeddings.
         train_on_embeddings()
-        raise Exception("hi.")
 
     # Wait for (single-process) training to complete.
     torch.distributed.barrier()

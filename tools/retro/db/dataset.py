@@ -8,6 +8,12 @@ from megatron import get_args, print_rank_0
 from tools.retro.external_libs import h5py
 from tools.retro.utils import get_gpt_tokenizer
 
+# >>>
+from collections import defaultdict
+from tqdm import tqdm
+from lutil import pax
+# <<<
+
 
 class DBDataset(torch.utils.data.Dataset):
     '''Dataset for iterating chunks.
@@ -27,6 +33,7 @@ class DBDataset(torch.utils.data.Dataset):
         self.db_path = db_path
         self.indexed_datasets = indexed_datasets
         self.chunks = chunks
+        self.doc_chunk_map = None
 
         self.max_chunk_length = max_chunk_length
         self.eod_token_id = get_gpt_tokenizer().eod
@@ -58,3 +65,20 @@ class DBDataset(torch.utils.data.Dataset):
             "doc_id" : doc_id,
             "text" : np.array(token_ids, dtype=np.int64),
         }
+
+    # >>>
+    # def load_doc_offsets(self):
+    def load_doc_chunk_map(self):
+        print("load doc offsets.")
+        with h5py.File(self.db_path) as f:
+            self.doc_chunk_map = defaultdict(dict)
+            start_chunk_id = 0
+            for dataset_id, doc_id, end_chunk_id in tqdm(f["doc_offsets"]):
+                self.doc_chunk_map[dataset_id.item()][doc_id.item()] = \
+                    (start_chunk_id, end_chunk_id.item())
+                start_chunk_id = end_chunk_id.item()
+
+    def get_doc_chunk_range(self, dataset_id, doc_id):
+        assert self.doc_chunk_map, "call 'load_doc_chunk_map()' first."
+        return self.doc_chunk_map[dataset_id][doc_id]
+    # <<<
