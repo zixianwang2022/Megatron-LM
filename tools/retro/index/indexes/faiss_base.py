@@ -66,35 +66,28 @@ class FaissBaseIndex(Index):
 	    mode = "r",
         ).reshape((-1, args.hidden_size))
 
-        # >>>
-        # pax({"merged_path": merged_path, "inp": inp})
-        # <<<
-
         # Init index.
         index = faiss.index_factory(args.retro_index_nfeats,
                                     args.retro_index_str)
 
         # Move to GPU.
+        print("> move faiss index to gpu.")
         index_ivf = faiss.extract_index_ivf(index)
         # >>>
-        # raise Exception("hi.")
-        clustering_index = \
-            faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-        # clustering_index = faiss.index_cpu_to_gpu(
-        #     faiss.StandardGpuResourcess(),
-        #     0,
-        #     faiss.IndexFlatL2(index_ivf.d))
-        index_ivf.clustering_index = clustering_index
-        # raise Exception("hi.")
+        move_to_gpu = True
+        if move_to_gpu:
+            clustering_index = \
+                faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+            index_ivf.clustering_index = clustering_index
+            print("> finished moving to gpu.")
         # <<<
         self.c_verbose(index, True)
         self.c_verbose(index_ivf, True)
         self.c_verbose(index_ivf.quantizer, True)
         # >>>
-        self.c_verbose(index_ivf.clustering_index, True)
+        if move_to_gpu:
+            self.c_verbose(index_ivf.clustering_index, True)
         # <<<
-
-        # raise Exception("hi.")
 
         # Train index.
         index.train(inp)

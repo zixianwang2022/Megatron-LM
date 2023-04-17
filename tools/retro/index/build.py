@@ -156,7 +156,6 @@ def train_on_embeddings():
     # >>>
     # index.train(get_training_data_merged)
     index.train()
-    raise Exception("hi.")
     # <<<
 
 
