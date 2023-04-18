@@ -201,6 +201,15 @@ class BertEmbedder:
 
         assert args.output_bert_embeddings
 
+        # >>>
+        from lutil import pax
+        from megatron import get_retro_args
+        retro_args = get_retro_args()
+        pax({
+            "hidden_size" : args.hidden_size,
+            "hidden_size / retro" : retro_args.hidden_size,
+        })
+        # <<<
         self.models, optimizer, opt_param_scheduler = \
             setup_model_and_optimizer(model_provider,
                                       ModelType.encoder_or_decoder)
