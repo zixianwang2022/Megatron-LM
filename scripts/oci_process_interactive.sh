@@ -7,7 +7,7 @@
 
 ######## Command. ########
 unset NCCL_DEBUG
-NPROCS=1 # 8
+NPROCS=8
 # python -m torch.distributed.launch \
 # torchrun \
 FULL_CMD="\

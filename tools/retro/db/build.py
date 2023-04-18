@@ -401,7 +401,7 @@ def update_chunk_counts(indexed_dataset_infos):
                     (np.copy(f["chunks_valid"][:, 0]) < ds_info["n_docs_train"]) \
                     .sum().item()
 
-        ds_info["n_chunks_sampled"] = int(args.retro_nchunks_sampled *
+        ds_info["n_chunks_sampled"] = int(args.retro_index_ntrain *
                                           ds_info["ratio"] / data_ratio_sum)
 
         # Verify counts.
