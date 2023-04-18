@@ -151,10 +151,16 @@ def add_retro_args(parser):
 def save_args(args):
     '''Save copy of args within retro workdir.'''
 
+    def default_dump(obj):
+        if isinstance(obj, torch.dtype):
+            return str(obj)
+        else:
+            raise Exception("specialize for <%s>." % type(obj).__name__)
+
     if torch.distributed.get_rank() == 0:
         args_path = get_args_path(args.retro_workdir)
         with open(args_path, "w") as f:
-            json.dump(vars(args), f, indent=4, default=lambda o : "<skipped>")
+            json.dump(vars(args), f, indent=4, default=default_dump)
 
     torch.distributed.barrier()
 
