@@ -2,11 +2,11 @@
 
 # from collections import defaultdict
 # import json
-# import numpy as np
-# import os
-# import time
+import numpy as np
+import os
+import time
 import torch
-# from tqdm import tqdm
+from tqdm import tqdm
 
 from megatron import get_retro_args, print_rank_0
 from tools.bert_embedding import BertEmbedder
@@ -16,7 +16,7 @@ from tools.retro.db.utils import \
 from tools.retro.external_libs import faiss, h5py
 from tools.retro.index.factory import IndexFactory
 from tools.retro.index.utils import get_index_dir # , num_samples_to_block_ranges
-# from tools.retro.utils import GPTToTextDataset
+from tools.retro.utils import GPTToTextDataset
 
 from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
 
@@ -50,9 +50,9 @@ def get_index(ondisk=False):
 
     # Search parameters.
     faiss.ParameterSpace().set_index_parameter(index, "efSearch",
-                                               args.retro_ef_search)
+                                               args.retro_query_ef_search)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe",
-                                               args.retro_nprobe)
+                                               args.retro_query_nprobe)
 
     return index
 
@@ -64,7 +64,7 @@ def embed_block(gpt_dataset, block, embedder):
         range(*block["range"]),
     )
     # >>>
-    if 0:
+    if 1:
         return embedder.embed_text_dataset(text_block_dataset)
     # +++
     else:
@@ -99,7 +99,7 @@ def query_embeddings(db_dataset, index,
     t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_neighbor_ids = \
-        index.search(embeddings, args.retro_num_neighbors_query)
+        index.search(embeddings, args.retro_query_num_neighbors_query)
     if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
 
     # Banned neighbor ids.
@@ -132,7 +132,7 @@ def query_embeddings(db_dataset, index,
     # Filter banned neighbor ids.
     if verbose: print_rank_0("filter banned neighbor ids.")
     filtered_neighbor_ids = np.full(
-        shape=(len(query_neighbor_ids), args.retro_num_neighbors_target),
+        shape=(len(query_neighbor_ids), args.retro_query_num_neighbors_save),
         fill_value=-1,
         dtype="int64",
     )
@@ -153,9 +153,9 @@ def query_embeddings(db_dataset, index,
         filtered_row = [ i for i in query_row
                          if not is_banned(i, banned_chunk_ranges) ]
         # <<<
-        filtered_row = filtered_row[:args.retro_num_neighbors_target]
+        filtered_row = filtered_row[:args.retro_query_num_neighbors_save]
         filtered_row += \
-            [-1] * (args.retro_num_neighbors_target - len(filtered_row))
+            [-1] * (args.retro_query_num_neighbors_save - len(filtered_row))
         filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
 
     # >>>
@@ -196,6 +196,15 @@ def query_embedding_block(db_dataset, index,
     query_neighbor_ids = []
     filtered_neighbor_ids = []
 
+    # pax({
+    #     "db_dataset" : db_dataset,
+    #     "index" : index,
+    #     "embeddings" : embeddings,
+    #     "chunk_id_range" : chunk_id_range,
+    #     "sample_map" : str(sample_map),
+    #     "n_chunks_per_samples" : n_chunks_per_sample,
+    # })
+
     # Query in sub-blocks.
     partial_block_size = 1000
     for partial_start_idx in tqdm(
@@ -230,10 +239,12 @@ def query_embedding_block(db_dataset, index,
     query_neighbor_ids = np.concatenate(query_neighbor_ids, axis=0)
     filtered_neighbor_ids = np.concatenate(filtered_neighbor_ids, axis=0)
 
-    pax({
-        "query_neighbor_ids" : query_neighbor_ids,
-        "filtered_neighbor_ids" : filtered_neighbor_ids,
-    })
+    # >>>
+    # pax({
+    #     "query_neighbor_ids" : query_neighbor_ids,
+    #     "filtered_neighbor_ids" : filtered_neighbor_ids,
+    # })
+    # <<<
 
     return query_neighbor_ids, filtered_neighbor_ids
 
@@ -284,8 +295,8 @@ def query_block_neighbors(db_dataset, query_dataset,
     #     # <<<
     # )
     _, filtered_neighbor_ids = query_embedding_block(
-        db_dataset, embeddings,
-        index, block["range"],
+        db_dataset, index,
+        embeddings, block["range"],
         sample_map, n_chunks_per_sample)
     # <<<
 
@@ -317,7 +328,7 @@ def query_dataset_neighbors(db_dataset, query_dataset,
     args = get_retro_args()
 
     def validate(f):
-        assert f["neighbors"].shape[1] == args.retro_num_neighbors_target, \
+        assert f["neighbors"].shape[1] == args.retro_query_num_neighbors_save, \
             "neighbors.shape == %s; num_neighbors_target == %d." % (
                 str(f["neighbors"].shape),
                 args.retro_num_neighbors_target,
@@ -395,6 +406,15 @@ def query_pretraining_neighbors():
 
     print_rank_0(" > get dataset map.")
     query_dataset_map = get_query_dataset_map()
+
+    # >>>
+    # pax({
+    #     "query_dataset_map" : query_dataset_map,
+    #     "train / chunk ds" : query_dataset_map["train"]["data"],
+    #     "train / sample ds" : query_dataset_map["train"]["data"].sample_dataset,
+    #     **{f"train / sample ds / {i}" : query_dataset_map["train"]["data"].sample_dataset[i] for i in range(10)},
+    # })
+    # <<<
 
     # Bert embedder.
     embedder = BertEmbedder(args.retro_bert_batch_size,

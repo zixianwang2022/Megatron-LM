@@ -15,8 +15,8 @@ import torch
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.global_vars import set_retro_args
 from tools.retro.db import build_db
-from tools.retro.index.build import add_to_index, build_index, train_index
-from tools.retro.pretraining.query import query_pretraining_neighbors
+from tools.retro.index import add_to_index, build_index, train_index
+from tools.retro.query import query_pretraining_neighbors
 from tools.retro.utils import get_args_path
 
 
@@ -37,9 +37,9 @@ def add_retro_args(parser):
                        "preprocesing pipeline by using '--retro-tasks build'. "
                        "Alternatively, run individual stages with tasks (in "
                        "this order) 'db-build', 'index-build', or "
-                       "'pretraining-query-neighbors'. For example, "
+                       "'query-pretraining-neighbors'. For example, "
                        "'--retro-tasks db-build,index-build,"
-                       "pretraining-query-neighbors' is equivalent to "
+                       "query-pretraining-neighbors' is equivalent to "
                        "'--retro-tasks build'; or the argument can contain "
                        "a subset of these tasks. Stages must always be run "
                        "in the correct order (listed above).")
@@ -220,7 +220,7 @@ if __name__ == "__main__":
             add_to_index() # add only
 
         # Pretraining.
-        elif task == "pretraining-query-neighbors":
+        elif task == "query-pretraining-neighbors":
             query_pretraining_neighbors()
 
         else:

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ######## Arguments. ########
-# . oci_args.sh
-. oci_args_nih.sh
+. oci_args.sh
+# . oci_args_nih.sh
 # . oci_args_wiki-tiny.sh
 
 ######## Command. ########

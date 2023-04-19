@@ -12,7 +12,7 @@ from megatron.training import (
 from tools.retro.db.utils import get_indexed_dataset_infos
 from tools.retro.utils import get_num_chunks_per_sample
 
-from .utils import get_pretraining_workdir
+from .utils import get_query_workdir
 
 
 class ChunkDataset(torch.utils.data.Dataset):
@@ -86,9 +86,6 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
-    # >>>
-    raise Exception("use args.retro_gpt_*.")
-    # <<<
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
         data_impl=args.data_impl,
@@ -98,6 +95,15 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup),
         return_doc_ids=args.retro_return_doc_ids)
+    # >>>
+    # from lutil import pax
+    # pax({
+    #     "train_ds" : train_ds,
+    #     "train_ds / 0" : train_ds[0],
+    #     "train_ds / 1" : train_ds[1],
+    # })
+    # raise Exception("use args.retro_gpt_*.")
+    # <<<
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
     return train_ds, valid_ds, test_ds
@@ -130,7 +136,7 @@ def get_chunk_dataset_map():
     }
 
     # Info dict.
-    workdir = get_pretraining_workdir()
+    workdir = get_query_workdir()
     dataset_map = {
         key : {
             "neighbor_dir" : os.path.join(

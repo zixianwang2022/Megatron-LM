@@ -166,10 +166,10 @@ class FaissParallelAddIndex(FaissBaseIndex):
         if torch.distributed.get_rank() != 0:
             return
         assert os.path.isfile(self.get_added_index_path())
-        # >>>
 
+        # >>>
         args = get_retro_args()
-        if args.retro_delete_index_added_codes:
+        if args.retro_index_delete_added_codes:
             raise Exception("remove?")
             shutil.rmtree(get_added_codes_dir(), ignore_errors=True)
         # <<<

@@ -2,20 +2,6 @@
 
 set -u
 
-######## gpt. ########
-
-RETRO_GPT_DATA_SPLIT="98,2,0"
-RETRO_GPT_DATALOADER_TYPE=single
-RETRO_GPT_TRAIN_SAMPLES=268554688
-RETRO_GPT_LR_DECAY_SAMPLES=255126953
-RETRO_GPT_LR_WARMUP_SAMPLES=122071
-RETRO_GPT_EVAL_INTERVAL=2000
-RETRO_GPT_EVAL_ITERS=50
-# RETRO_GPT_HIDDEN_SIZE=2048
-RETRO_GPT_SEQ_LENGTH=4096
-RETRO_GPT_GLOBAL_BATCH_SIZE=256
-RETRO_GPT_CHUNK_LENGTH=64
-
 ######## query. ########
 
 RETRO_QUERY_NUM_NEIGHBORS_QUERY=200
@@ -25,6 +11,8 @@ RETRO_QUERY_NPROBE=4096
 
 ######## args. ########
 
+# --micro-batch-size 16 \
+# --global-batch-size 1024 \
 ARGS=" \
     --distributed-timeout-minutes 600 \
     --tensor-model-parallel-size 1 \
@@ -32,8 +20,8 @@ ARGS=" \
     --num-layers 24 \
     --hidden-size 1024 \
     --num-attention-heads 16 \
-    --micro-batch-size 16 \
-    --global-batch-size 1024 \
+    --micro-batch-size 1 \
+    --global-batch-size ${RETRO_GPT_GLOBAL_BATCH_SIZE} \
     --seq-length 512 \
     --max-position-embeddings 512 \
     --load /lustre/fs1/portfolios/adlr/users/lmcafee/bert-23/checkpoints \

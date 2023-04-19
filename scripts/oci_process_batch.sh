@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #SBATCH -p batch_block1,batch_block2
-#SBATCH --nodes=1
+#SBATCH --nodes=4
 #SBATCH -A adlr
-#SBATCH -t 1:00:00
+#SBATCH -t 2:00:00
 #SBATCH --exclusive
 #SBATCH --job-name=adlr-nlp:retro-next-llm
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 
 set -u
@@ -21,8 +21,8 @@ DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 mkdir -p $DIR/logs
 
 ######## Arguments. ########
-# . oci_args.sh
-. oci_args_nih.sh
+. oci_args.sh
+# . oci_args_nih.sh
 
 ######## Command. ########
 CMD="export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && python -u ${REPO_DIR}/tools/retro/main.py ${ARGS}"

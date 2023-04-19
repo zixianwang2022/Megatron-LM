@@ -6,10 +6,12 @@
 # REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-retro-next-llm"
 REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-retro-dedupe-sqlite"
 
-RETRO_TASKS="db-build"
+######## task (db, index, query). ########
+
+# RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-# RETRO_TASKS="pretraining-query-neighbors"
+RETRO_TASKS="query-pretraining-neighbors"
 
 ######## data. ########
 
@@ -34,6 +36,20 @@ RETRO_INDEX_STR="OPQ32_64,IVF65536_HNSW8,PQ32"
 RETRO_INDEX_NTRAIN=1000000
 RETRO_INDEX_TRAIN_LOAD_FRACTION=0.97
 RETRO_INDEX_ADD_LOAD_FRACTION=0.95
+
+######## gpt. ########
+
+RETRO_GPT_DATA_SPLIT="98,2,0"
+RETRO_GPT_DATALOADER_TYPE=single
+RETRO_GPT_TRAIN_SAMPLES=1000000
+RETRO_GPT_LR_DECAY_SAMPLES=900000
+RETRO_GPT_LR_WARMUP_SAMPLES=10000
+RETRO_GPT_EVAL_INTERVAL=2000
+RETRO_GPT_EVAL_ITERS=50
+# RETRO_GPT_HIDDEN_SIZE=2048
+RETRO_GPT_SEQ_LENGTH=512
+RETRO_GPT_GLOBAL_BATCH_SIZE=256
+RETRO_GPT_CHUNK_LENGTH=64
 
 ######## common args. ########
 

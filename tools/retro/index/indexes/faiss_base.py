@@ -18,7 +18,7 @@ from tqdm import tqdm
 from megatron import get_retro_args, print_rank_0
 from tools.bert_embedding import BertEmbedder
 from tools.retro.external_libs import faiss
-from tools.retro.index import Index
+from tools.retro.index.index import Index
 # >>>
 # from tools.retro.index.utils import num_samples_to_block_ranges
 from tools.retro.index.utils import (
