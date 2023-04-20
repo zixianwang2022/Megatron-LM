@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #SBATCH -p batch_block1,batch_block2
-#SBATCH --nodes=4
+#SBATCH --nodes=1
 #SBATCH -A adlr
-#SBATCH -t 2:00:00
+#SBATCH -t 4:00:00
 #SBATCH --exclusive
 #SBATCH --job-name=adlr-nlp:retro-next-llm
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=1
 #SBATCH --dependency=singleton
 
 set -u

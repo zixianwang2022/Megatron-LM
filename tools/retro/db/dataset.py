@@ -102,14 +102,19 @@ class DBDataset(torch.utils.data.Dataset):
     # >>>
     # def load_doc_chunk_map(self):
     def load_doc_tuples(self):
-        # self.doc_tuples = np.zeros(shape=(len(self), 2), dtype="uint32")
-        self.doc_tuples = []
-        block_size = int(1e8)
+        self.doc_tuples = np.zeros(shape=(len(self), 2), dtype="uint32")
+        # self.doc_tuples = []
+        # block_size = int(1e8)
+        block_size = int(1e6)
         for start_idx in tqdm(range(0, len(self), block_size)):
             end_idx = min(len(self), start_idx + block_size)
-            # self.doc_tuples[start_idx:end_idx]=self.chunks[start_idx:end_idx,:2]
-            block = np.copy(self.chunks[start_idx:end_idx, :2])
-            [ self.doc_tuples.append(tuple(entry.tolist())) for entry in block ]
+            # >>>
+            self.doc_tuples[start_idx:end_idx]=self.chunks[start_idx:end_idx,:2]
+            # +++
+            # # block = np.copy(self.chunks[start_idx:end_idx, :2])
+            # block = self.chunks[start_idx:end_idx, :2]
+            # [ self.doc_tuples.append(tuple(entry.tolist())) for entry in block ]
+            # <<<
 
         # >>>
         # print("~~~")
