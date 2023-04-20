@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -u
+
 # REPO_DIR=/home/lmcafee/src/megatrons/megatron-lm-retro-next-llm
 REPO_DIR=/home/lmcafee/src/megatrons/megatron-lm-retro-dedupe-sqlite
 

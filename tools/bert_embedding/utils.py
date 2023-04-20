@@ -104,14 +104,14 @@ def get_missing_blocks(workdir, n_samples, block_size,
             try:
                 f = h5py.File(path, "r")
             except:
-                raise Exception("unable to open/validate '%s'." % path)
+                # raise Exception("unable to open/validate '%s'." % path)
                 os.remove(path)
                 continue
 
             try:
                 validate(f)
             except:
-                raise Exception("delete block file.")
+                # raise Exception("delete block file '%s'." % path)
                 os.remove(path)
             finally:
                 f.close()
