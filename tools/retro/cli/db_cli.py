@@ -10,9 +10,7 @@ from megatron.initialize import (
     initialize_megatron,
     _initialize_distributed,
     _set_random_seed,
-    # >>>
     _compile_dependencies,
-    # <<<
 )
 from tools.retro.db.utils import (
     get_indexed_dataset_infos as get_db_indexed_dataset_infos,
@@ -60,9 +58,7 @@ class retro:
         set_retro_args(cls.args)
         _initialize_distributed()
         _set_random_seed(cls.args.seed, cls.args.data_parallel_random_init)
-        # >>>
         _compile_dependencies()
-        # <<<
 
     @classmethod
     def init(cls, workdir):

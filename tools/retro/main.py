@@ -61,10 +61,6 @@ def add_retro_args(parser):
     group.add_argument("--retro-gpt-merge-file", help="GPT merge file.")
     group.add_argument("--retro-gpt-tokenizer-model",
                        help="GPT tokenizer model file.")
-    # >>>
-    # group.add_argument("--retro-gpt-hidden-size", type=int, required=True,
-    #                    help="GPT hidden size.")
-    # <<<
     group.add_argument("--retro-gpt-seq-length", type=int, default=2048,
                        help="GPT sequence length.")
     group.add_argument("--retro-gpt-global-batch-size", type=int, default=2048,
@@ -105,16 +101,6 @@ def add_retro_args(parser):
                        help="Number of database chunks to use for training "
                        "the index. This value must be less or equal to the "
                        "total number of chunks in the database.")
-    # >>>
-    # group.add_argument("--retro-index-train-block-size",
-    #                    type=int, default=3750000,
-    #                    help="As a memory fragmentation optimization, when "
-    #                    "loading training data for training the search index, "
-    #                    "enough data blocks loaded at a time until they reach "
-    #                    "retro_index_train_block_size, and then this "
-    #                    "data block is copied into the full training data "
-    #                    "array.")
-    # <<<
     group.add_argument("--retro-index-train-load-fraction",
                        type=float, default=1.,
                        help="Fraction of sampled chunks to use for training "

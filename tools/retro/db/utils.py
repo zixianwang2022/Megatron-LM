@@ -2,15 +2,9 @@
 
 from collections import defaultdict
 import glob
-# >>>
-import hashlib
-# <<<
 import json
 import numpy as np
 import os
-# >>>
-# import sqlite3
-# <<<
 from tqdm import tqdm
 
 from megatron import get_retro_args, print_rank_0
@@ -18,10 +12,6 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 from tools.retro.external_libs import h5py
 
 from .dataset import DBDataset
-
-# >>>
-from lutil import pax
-# <<<
 
 
 def get_base_db_workdir():
@@ -65,34 +55,16 @@ def get_indexed_dataset_infos():
     return infos
 
 
-# >>>
 def get_individual_db_dir(name):
     '''Individual DB's directory.'''
-    # return os.path.join(get_base_db_workdir(), "individual", name, "db")
     return os.path.join(get_base_db_workdir(), "individual", name)
 
 
-# def get_individual_doc_offset_dir(name):
-#     '''Individual doc offset directory.'''
-#     return os.path.join(get_base_db_workdir(), "individual", name, "doc_offset")
-# def get_individual_dirs(name):
-#     '''Individual chunk db & doc offset directories.'''
-#     common_dir = os.path.join(get_base_db_workdir(), "individual", name)
-#     return (os.path.join(common_dir, "chunk_db"),
-#             os.path.join(common_dir, "doc_offset"))
-# <<<
-
-
-# >>>
-# def get_individual_db(ds_id, ds_info):
 def get_individual_chunk_db(ds_id, ds_info):
     '''Load individual dataset's chunk DB.'''
     db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
     # *Note*: convert to dataset, rather than copying to memory.
-    # >>>
-    # db = np.zeros((ds_info["n_chunks"], 5), dtype="i8")
     db = np.zeros((ds_info["n_chunks"], 5), dtype="uint32")
-    # <<<
     db[:, 0] = ds_id
     start_idx = 0
     for db_path in db_paths:
@@ -124,26 +96,10 @@ def get_individual_doc_offsets(ds_id, ds_info):
                 current_doc_offsets
             start_idx += current_ndocs
             start_offset = current_doc_offsets[-1, 1].item()
-            # >>>
-            # if start_idx != 100000:
-            #     print("~~~")
-            #     print(current_doc_offsets)
-            #     # pax({"current_doc_offsets": current_doc_offsets})
-            #     pax({"start_idx": start_idx, "start_offset": start_offset})
-            # <<<
-
-    # >>>
-    # if ds_id != 0:
-    #     print("~~~")
-    #     print(doc_offsets)
-    #     pax({"paths": paths, "doc_offsets": doc_offsets})
-    # <<<
 
     return doc_offsets
-# <<<
 
 
-# >>>
 def get_merged_db_path_map():
     '''Paths to merged datasets.'''
     base_dir = get_base_db_workdir()
@@ -152,18 +108,6 @@ def get_merged_db_path_map():
         "train" : os.path.join(base_dir, "merged", "train.hdf5"),
         "valid" : os.path.join(base_dir, "merged", "valid.hdf5"),
     }
-# def get_merged_path_map():
-#     '''Paths to merged datasets.'''
-#     base_dir = get_base_db_workdir()
-#     get_paths = lambda prefix : tuple([
-#         os.path.join(base_dir, "merged", "%s_%s.hdf5" % (prefix, suffix))
-#         for suffix in ("chunk_db", "doc_offset")])
-#     return {
-#         "sampled" : get_paths("sampled"),
-#         "train" : get_paths("train"),
-#         "valid" : get_paths("valid"),
-#     }
-# <<<
 
 
 def get_merged_dataset(db_type, indexed_dataset_infos=None):
@@ -197,58 +141,3 @@ def get_merged_train_dataset(indexed_dataset_infos=None):
 
 def get_merged_valid_dataset(indexed_dataset_infos=None):
     return get_merged_dataset("valid", indexed_dataset_infos)
-
-
-# >>>
-# def get_train_doc_chunk_map_dir():
-#     dirname = os.path.join(get_base_db_workdir(), "merged", "train_doc_chunk_map")
-#     os.makedirs(dirname, exist_ok=True)
-#     return dirname
-# def get_train_banned_doc_json_dir():
-#     dirname = os.path.join(get_base_db_workdir(), "merged",
-#                            "train_banned_doc_json")
-#     os.makedirs(dirname, exist_ok=True)
-#     return dirname
-# <<<
-
-
-# >>>
-# # def doc_tuple_to_hash(dataset_id, doc_id):
-# def get_banned_doc_hash(dataset_id, doc_id):
-#     return int(hashlib.sha256(f"{dataset_id},{doc_id}".encode()).hexdigest()[:10], 16)
-
-# # def get_merged_train_doc_chunk_map_path():
-# # def get_train_doc_chunk_db_path():
-# #     return os.path.join(get_base_db_workdir(),"merged","train_doc_chunk_map.db")
-# def get_train_banned_doc_db_path():
-#     return os.path.join(get_base_db_workdir(), "merged", "train_banned_doc.db")
-
-# # def get_train_doc_chunk_db_cursor():
-# def get_train_banned_doc_db_cursor():
-#     path = get_train_banned_doc_db_path()
-#     conn = sqlite3.connect(path)
-#     conn.row_factory = sqlite3.Row
-#     cursor = conn.cursor()
-#     return conn, cursor
-# <<<
-
-
-# # >>>
-# # def get_train_doc_chunk_map():
-
-# #     paths = sorted(glob.glob(get_train_doc_chunk_map_dir() + "/*.json"))
-
-# #     doc_map = defaultdict(set)
-# #     for path in tqdm(paths, "load train doc maps"):
-
-# #         # Read file.
-# #         with open(path) as f:
-# #             crnt_doc_map = json.load(f)
-
-# #         # Add to doc map.
-# #         for key, chunk_ids in crnt_doc_map.items():
-# #             key = tuple(int(i) for i in key.split(","))
-# #             doc_map[key].update(chunk_ids)
-
-# #     return doc_map
-# # <<<

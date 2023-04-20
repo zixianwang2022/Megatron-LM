@@ -10,9 +10,7 @@ the vast majority of the computational effort is embarrassingly parallel.
 
 import numpy as np
 import os
-# >>>
 import psutil
-# <<<
 import shutil
 import torch
 from tqdm import tqdm
@@ -24,10 +22,6 @@ from tools.retro.external_libs import faiss, h5py
 from tools.retro.index.utils import get_added_codes_dir, get_added_code_paths
 
 from .faiss_base import FaissBaseIndex
-
-# >>>
-from lutil import pax, tp
-# <<<
 
 
 class FaissParallelAddIndex(FaissBaseIndex):
@@ -83,10 +77,6 @@ class FaissParallelAddIndex(FaissBaseIndex):
             validate=validate,
         )
 
-        # >>>
-        # pax({"codes_dir": codes_dir, "n_missing_blocks": n_missing_blocks})
-        # <<<
-
         # Encode each block.
         for block_index, block in enumerate(missing_code_blocks):
 
@@ -115,9 +105,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         if os.path.exists(added_index_path):
             return
 
-        # >>>
         args = get_retro_args()
-        # <<<
 
         # Index.
         print_rank_0("read empty index.")
@@ -127,12 +115,6 @@ class FaissParallelAddIndex(FaissBaseIndex):
         # Add codes.
         print_rank_0("add codes.")
         code_paths = get_added_code_paths()
-        # >>>
-        # for code_path in tqdm(code_paths, "add codes"):
-        #     with h5py.File(code_path) as f:
-        #         codes = np.copy(f["data"])
-        #         index_ivf.add_sa_codes(codes)
-        # +++
         pbar = tqdm(code_paths)
         for code_path in pbar:
             pbar.set_description("add codes, mem %.3f gb, %.1f%%" % (
@@ -144,15 +126,8 @@ class FaissParallelAddIndex(FaissBaseIndex):
                 nload = int(args.retro_index_add_load_fraction*f["data"].shape[0])
                 offset = int(os.path.basename(code_path).split("-")[0])
                 xids = np.arange(offset, offset + nload)
-                # >>>
                 codes = np.copy(f["data"][:nload])
-                # codes = np.random.randint(0,256,size=(100000,67),dtype=np.uint8)
-                # pax({"codes": tp(codes)})
-                # <<<
                 index_ivf.add_sa_codes(codes, xids)
-
-        # pax({"index_ivf": index_ivf})
-        # <<<
 
         # Update index's ntotal.
         index.ntotal = index_ivf.ntotal
@@ -167,30 +142,11 @@ class FaissParallelAddIndex(FaissBaseIndex):
             return
         assert os.path.isfile(self.get_added_index_path())
 
-        # >>>
         args = get_retro_args()
         if args.retro_index_delete_added_codes:
             raise Exception("remove?")
             shutil.rmtree(get_added_codes_dir(), ignore_errors=True)
-        # <<<
 
-    # >>>
-    # def add(self, text_dataset):
-
-    #     # Check if index already exists.
-    #     if not os.path.isfile(self.get_added_index_path()):
-
-    #         # Encode chunks.
-    #         self.encode(text_dataset)
-
-    #         # Add codes to index.
-    #         self.add_codes()
-
-    #     # Wait for (single-process) adding to complete.
-    #     torch.distributed.barrier()
-
-    #     # Remove codes.
-    #     self.remove_codes()
     def add(self, text_dataset):
 
         # Encode chunks.
@@ -204,4 +160,3 @@ class FaissParallelAddIndex(FaissBaseIndex):
 
         # Remove codes.
         self.remove_codes()
-    # <<<

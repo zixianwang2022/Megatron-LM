@@ -34,6 +34,3 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args.add_argument("chunk_id", required=True, type=int)
     args = parser.parse_args()
-
-    pax({"args": args})
-

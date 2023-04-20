@@ -3,16 +3,11 @@
 import json
 import numpy as np
 import torch
+from tqdm import tqdm
 
 from megatron import get_args, print_rank_0
 from tools.retro.external_libs import h5py
 from tools.retro.utils import get_gpt_tokenizer
-
-# >>>
-from collections import defaultdict
-from tqdm import tqdm
-from lutil import pax, np as _np
-# <<<
 
 
 class DBDataset(torch.utils.data.Dataset):
@@ -92,7 +87,6 @@ class DBDataset(torch.utils.data.Dataset):
     #                 self.doc_chunk_map[dataset_id.item()][doc_id.item()] = \
     #                     (start_chunk_id, end_chunk_id.item())
     #                 start_chunk_id = end_chunk_id.item()
-    #         pax({"doc_chunk_map": len(self.doc_chunk_map)})
 
     # def get_doc_chunk_range(self, dataset_id, doc_id):
     #     assert self.doc_chunk_map, "call 'load_doc_chunk_map()' first."
@@ -100,7 +94,6 @@ class DBDataset(torch.utils.data.Dataset):
     # <<<
 
     # >>>
-    # def load_doc_chunk_map(self):
     def load_doc_tuples(self):
         self.doc_tuples = np.zeros(shape=(len(self), 2), dtype="uint32")
         # self.doc_tuples = []
@@ -115,15 +108,4 @@ class DBDataset(torch.utils.data.Dataset):
             # block = self.chunks[start_idx:end_idx, :2]
             # [ self.doc_tuples.append(tuple(entry.tolist())) for entry in block ]
             # <<<
-
-        # >>>
-        # print("~~~")
-        # # print(self.doc_tuples)
-        # pax({
-        #     # "db" : self,
-        #     "db / len" : len(self),
-        #     **{f"doc_tuples / {i}" : str(self.doc_tuples[i])
-        #        for i in range(0,len(self.doc_tuples),len(self.doc_tuples)//10)},
-        # })
-        # <<<
     # <<<

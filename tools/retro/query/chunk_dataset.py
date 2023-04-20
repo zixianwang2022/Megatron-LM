@@ -95,15 +95,6 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup),
         return_doc_ids=args.retro_return_doc_ids)
-    # >>>
-    # from lutil import pax
-    # pax({
-    #     "train_ds" : train_ds,
-    #     "train_ds / 0" : train_ds[0],
-    #     "train_ds / 1" : train_ds[1],
-    # })
-    # raise Exception("use args.retro_gpt_*.")
-    # <<<
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
     return train_ds, valid_ds, test_ds

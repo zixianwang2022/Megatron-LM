@@ -17,22 +17,12 @@ from tools.retro.external_libs import h5py
 from tools.retro.index.factory import IndexFactory
 from tools.retro.utils import GPTToTextDataset
 
-# >>>
-# from .utils import (
-#     get_training_data_dir,
-#     get_training_data_merged,
-# )
 from .utils import (
     get_training_data_block_dir,
     get_training_data_block_paths,
     get_training_data_merged_path,
     get_training_data_root_dir,
 )
-# <<<
-
-# >>>
-from lutil import pax, tp
-# <<<
 
 
 ##################################################
@@ -48,39 +38,9 @@ def get_empty_index_path():
     return empty_index_path
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 def get_block_nload(block_path, load_fraction):
     with h5py.File(block_path) as fi:
         return int(load_fraction * fi["data"].shape[0])
-
-
-# def get_block_and_merged_paths():
-
-#     args = get_retro_args()
-#     load_fraction = args.retro_index_train_load_fraction
-
-#     block_paths = get_training_data_block_paths()
-#     nvecs = sum(get_block_nload(p, load_fraction)
-#                 for p in tqdm(block_paths, "nvecs"))
-#     pax({
-#         "block_paths" : block_paths,
-#         "load_fraction" : load_fraction,
-#         "nvecs" : nvecs,
-#     })
-
-#     dirname = "/raid/lmcafee/next-llm/%d" % nvecs
-#     os.makedirs(dirname, exist_ok = True)
-#     bin_path = os.path.join(dirname, "train_%.3f.bin" % args.ddddata.bin")
-#     index_path = os.path.join(dirname, "%s_empty.faissindex" % args.index_str)
-
-#     # pax({
-#     #     "block_paths" : block_paths,
-#     #     "nvecs" : nvecs,
-#     #     "bin_path" : bin_path,
-#     #     "index_path" : index_path,
-#     # })
-
-#     return block_paths, bin_path, index_path
 
 
 def merge_embedding_blocks():
@@ -113,7 +73,6 @@ def merge_embedding_blocks():
 
                 byte_offset += block.size * block.itemsize
                 fo.seek(byte_offset)
-# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 def embed_db():
@@ -125,12 +84,9 @@ def embed_db():
 
     args = get_retro_args()
 
-    # >>>
     merged_train_data_path = get_training_data_merged_path()
     if os.path.exists(merged_train_data_path):
         return
-    # raise Exception("embed again?")
-    # <<<
 
     # Get db dataset.
     gpt_dataset = get_merged_sampled_dataset()
@@ -153,10 +109,7 @@ def train_on_embeddings():
     '''Train index on embedded DB chunks.'''
     args = get_retro_args()
     index = IndexFactory.get_index(args.retro_index_type)
-    # >>>
-    # index.train(get_training_data_merged)
     index.train()
-    # <<<
 
 
 def remove_embeddings():

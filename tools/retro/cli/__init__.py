@@ -1,13 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 import json
-# >>>
-# import numpy as np
-# <<<
 import os
-# >>>
-# import torch
-# <<<
 import types
 
 from megatron.global_vars import set_global_variables, set_retro_args
@@ -20,9 +14,6 @@ from tools.retro.db.utils import (
     get_indexed_dataset_infos as get_db_indexed_dataset_infos,
     get_merged_train_dataset as get_db_dataset,
 )
-# >>>
-# from tools.retro.external_libs import h5py
-# <<<
 from tools.retro.main import add_retro_args
 from tools.retro.query.retro_dataset import get_retro_datasets
 from tools.retro.utils import get_args_path, get_bert_tokenizer, get_gpt_tokenizer

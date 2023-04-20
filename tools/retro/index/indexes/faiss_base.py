@@ -8,9 +8,7 @@ inherit from this class (see FaissParAddIndex, for an example).
 """
 
 from datetime import timedelta
-# >>>
 import numpy as np
-# <<<
 import os
 import torch
 from tqdm import tqdm
@@ -19,25 +17,15 @@ from megatron import get_retro_args, print_rank_0
 from tools.bert_embedding import BertEmbedder
 from tools.retro.external_libs import faiss
 from tools.retro.index.index import Index
-# >>>
-# from tools.retro.index.utils import num_samples_to_block_ranges
 from tools.retro.index.utils import (
     get_training_data_merged_path,
     num_samples_to_block_ranges,
 )
-# <<<
-
-# >>>
-from lutil import pax
-# <<<
 
 
 class FaissBaseIndex(Index):
 
-    # >>>
-    # def _train(self, input_data_loader):
     def _train(self):
-    # <<<
         '''Train index (rank 0's method).'''
 
         args = get_retro_args()
@@ -56,9 +44,6 @@ class FaissBaseIndex(Index):
             return
 
         # Load data.
-        # >>>
-        # inp = input_data_loader()
-        # +++
         merged_path = get_training_data_merged_path()
         inp = np.memmap(
 	    merged_path,
@@ -73,21 +58,14 @@ class FaissBaseIndex(Index):
         # Move to GPU.
         print("> move faiss index to gpu.")
         index_ivf = faiss.extract_index_ivf(index)
-        # >>>
-        move_to_gpu = True
-        if move_to_gpu:
-            clustering_index = \
-                faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
-            index_ivf.clustering_index = clustering_index
-            print("> finished moving to gpu.")
-        # <<<
+        clustering_index = \
+            faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+        index_ivf.clustering_index = clustering_index
+        print("> finished moving to gpu.")
         self.c_verbose(index, True)
         self.c_verbose(index_ivf, True)
         self.c_verbose(index_ivf.quantizer, True)
-        # >>>
-        if move_to_gpu:
-            self.c_verbose(index_ivf.clustering_index, True)
-        # <<<
+        self.c_verbose(index_ivf.clustering_index, True)
 
         # Train index.
         index.train(inp)
@@ -95,18 +73,12 @@ class FaissBaseIndex(Index):
         # Save index.
         faiss.write_index(index, empty_index_path)
 
-    # >>>
-    # def train(self, input_data_loader):
     def train(self):
-    # <<<
         '''Train index.'''
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            # >>>
-            # self._train(input_data_loader)
             self._train()
-            # <<<
 
         torch.distributed.barrier()
 

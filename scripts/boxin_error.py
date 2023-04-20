@@ -16,9 +16,6 @@ import torch
 
 # >>>
 del os.environ["NCCL_DEBUG"]
-from lutil import pax
-
-# pax({"dtype": torch.dtype("uint8")})
 # <<<
 
 process = psutil.Process(os.getpid())
@@ -50,20 +47,13 @@ from tools.bert_embedding import BertEmbedder
 #     # dtype="uint64",
 #     device="cuda",
 # )
-# pax({"tensor": tensor})
 # <<<
 
 # >>>
 if 0:
     print("~~~")
     print("params_dtype = %s." % args.params_dtype)
-    pax({
-        # "args" : args,
-        "retro_bert_batch_size" : args.retro_bert_batch_size,
-        "retro_bert_max_chunk_length" : args.retro_bert_max_chunk_length,
-        "bert_embedder_type" : args.bert_embedder_type,
-        "params_dtype" : args.params_dtype,
-    })
+    exit()
 # <<<
 
 embedder = BertEmbedder(args.retro_bert_batch_size,

@@ -19,10 +19,6 @@ from tools.retro.utils import GPTToTextDataset
 
 from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
 
-# >>>
-from lutil import pax, np as _np
-# <<<
-
 
 def get_index(ondisk=False):
     '''Read index from disk.'''
@@ -152,10 +148,7 @@ def embed_block(gpt_dataset, block, embedder):
 #     raise Exception("hi.")
 #     print("~~~"); print(query_neighbor_ids)
 #     print("~~~"); print(filtered_neighbor_ids)
-#     pax({
-#         "query_neighbor_ids" : query_neighbor_ids,
-#         "filtered_neighbor_ids" : filtered_neighbor_ids,
-#     })
+#     raise Exception("hi.")
 #     # <<<
 
 #     return query_neighbor_ids, filtered_neighbor_ids
@@ -211,11 +204,6 @@ def query_embeddings(db_dataset, index,
     #         match_idx = np.where(query_neighbor_ids[i] ==
     #                              filtered_neighbor_ids[i][0])[0][0]
     #     except Exception as e:
-    #         # pax({
-    #         #     "e" : e,
-    #         #     "query_neighbor_ids" : _np(query_neighbor_ids[i]),
-    #         #     "filtered_neighbor_ids" : _np(filtered_neighbor_ids[i]),
-    #         # })
     #         match_idx = -1
     #     print("[%d] ... %8d, %8d ... %8d, %8d." % (
     #         match_idx,
@@ -225,12 +213,6 @@ def query_embeddings(db_dataset, index,
     #         filtered_neighbor_ids[i][1],
     #     ))
     # raise Exception("hi.")
-    # print("~~~"); print(query_neighbor_ids)
-    # print("~~~"); print(filtered_neighbor_ids)
-    # pax({
-    #     "query_neighbor_ids" : query_neighbor_ids,
-    #     "filtered_neighbor_ids" : filtered_neighbor_ids,
-    # })
     # <<<
 
     return query_neighbor_ids, filtered_neighbor_ids
@@ -267,13 +249,6 @@ def query_embedding_block(db_dataset, index,
     # Concatenate.
     query_neighbor_ids = np.concatenate(query_neighbor_ids, axis=0)
     filtered_neighbor_ids = np.concatenate(filtered_neighbor_ids, axis=0)
-
-    # >>>
-    # pax({
-    #     "query_neighbor_ids" : query_neighbor_ids,
-    #     "filtered_neighbor_ids" : filtered_neighbor_ids,
-    # })
-    # <<<
 
     return query_neighbor_ids, filtered_neighbor_ids
 
@@ -385,7 +360,7 @@ def query_pretraining_neighbors():
     query_dataset_map = get_query_dataset_map()
 
     # >>>
-    # pax({
+    # check_these({
     #     "query_dataset_map" : query_dataset_map,
     #     "train / chunk ds" : query_dataset_map["train"]["data"],
     #     "train / sample ds" : query_dataset_map["train"]["data"].sample_dataset,
