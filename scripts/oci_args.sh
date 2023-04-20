@@ -6,10 +6,10 @@ REPO_DIR=/home/lmcafee/src/megatrons/megatron-lm-retro-dedupe-sqlite
 # RETRO_WORKDIR="/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/reddit-plus-mt-lower"
 RETRO_WORKDIR="/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/next-llm"
 
-RETRO_TASKS="db-build"
+# RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-# RETRO_TASKS="pretraining-query-neighbors"
+RETRO_TASKS="query-pretraining-neighbors"
 
 ######## data. ########
 

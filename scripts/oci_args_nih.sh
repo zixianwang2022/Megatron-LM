@@ -15,7 +15,7 @@ RETRO_TASKS="query-pretraining-neighbors"
 
 ######## data. ########
 
-if [ "0" = "0" ]; then
+if [ "1" = "0" ]; then
     RETRO_WORKDIR="/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/nih"
     DATA_BLEND="1.000 /lustre/fs1/portfolios/adlr/users/lmcafee/retro/data/MTNLG/NIHExporter_shuf_text_document"
 else
@@ -34,8 +34,10 @@ RETRO_INDEX_STR="OPQ32_64,IVF65536_HNSW8,PQ32"
 
 # RETRO_INDEX_NTRAIN=10000000
 RETRO_INDEX_NTRAIN=1000000
-RETRO_INDEX_TRAIN_LOAD_FRACTION=0.97
-RETRO_INDEX_ADD_LOAD_FRACTION=0.95
+RETRO_INDEX_TRAIN_LOAD_FRACTION=1.0
+RETRO_INDEX_ADD_LOAD_FRACTION=1.0
+# RETRO_INDEX_TRAIN_LOAD_FRACTION=0.97
+# RETRO_INDEX_ADD_LOAD_FRACTION=0.95
 
 ######## gpt. ########
 

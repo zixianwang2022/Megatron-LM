@@ -1,13 +1,13 @@
 #!/bin/bash
 
 ######## Arguments. ########
-. oci_args.sh
-# . oci_args_nih.sh
+# . oci_args.sh
+. oci_args_nih.sh
 # . oci_args_wiki-tiny.sh
 
 ######## Command. ########
 unset NCCL_DEBUG
-NPROCS=8
+NPROCS=1
 # python -m torch.distributed.launch \
 # torchrun \
 FULL_CMD="\
