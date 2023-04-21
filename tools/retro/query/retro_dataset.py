@@ -100,7 +100,7 @@ class RetroDataset(torch.utils.data.Dataset):
         return sample
 
 
-def get_retro_datasets():
+def get_retro_datasets(verify_sizes=True):
     '''Get train, valid, test retro datasets.'''
 
     args = get_args()
@@ -129,7 +129,15 @@ def get_retro_datasets():
         n_sample_chunks = len(chunk_dataset)
         n_neighbor_chunks = len(neighbor_path_map.id_index_map)
 
-        if n_sample_chunks != n_neighbor_chunks:
+        # >>>
+        # from lutil import pax
+        # pax({
+        #     "chunk_dataset" : chunk_dataset,
+        #     "neighbor_path_map" : neighbor_path_map,
+        #     # "id_index_map" : neighbor_path_map.id_index_map,
+        # })
+        # <<<
+        if verify_sizes and n_sample_chunks != n_neighbor_chunks:
             print("neighbor_dir : %s" % neighbor_dir)
             print("neighbor_path_map : %s" % neighbor_path_map)
             raise Exception("num sampled chunks (%d) != num neighbor chunks (%d)"

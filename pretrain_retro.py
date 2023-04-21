@@ -14,7 +14,7 @@ from megatron.core.enums import ModelType
 from megatron.model import GPTModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
-from tools.retro.pretraining.retro_dataset import get_retro_datasets
+from tools.retro.query.retro_dataset import get_retro_datasets
 
 from pretrain_gpt import (
     loss_func,

@@ -1,7 +1,9 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 import json
+import numpy as np
 import os
+import torch
 import types
 
 from megatron.global_vars import set_global_variables, set_retro_args
@@ -9,6 +11,7 @@ from megatron.initialize import (
     initialize_megatron,
     _initialize_distributed,
     _set_random_seed,
+    _compile_dependencies,
 )
 from tools.retro.db.utils import (
     get_indexed_dataset_infos as get_db_indexed_dataset_infos,
@@ -33,6 +36,14 @@ class retro:
     ##############################################
 
     @classmethod
+    def parse_dtype_str(cls, dtype_str):
+        return {
+            "torch.float16" : torch.float16,
+            "torch.float32" : torch.float32,
+            "torch.bfloat16" : torch.bfloat16,
+        }[dtype_str]
+
+    @classmethod
     def init_megatron(cls, workdir):
         '''Custom initialization of Megatron.'''
 
@@ -44,11 +55,13 @@ class retro:
             cls.args.retro_workdir = workdir # just in case workdir moved
             cls.args.rank = 0 # override env
             cls.args.world_size = 1 # override env
+            cls.args.params_dtype = cls.parse_dtype_str(cls.args.params_dtype)
 
         set_global_variables(cls.args)
         set_retro_args(cls.args)
         _initialize_distributed()
         _set_random_seed(cls.args.seed, cls.args.data_parallel_random_init)
+        _compile_dependencies()
 
     @classmethod
     def init(cls, workdir):
@@ -64,11 +77,17 @@ class retro:
 
         # Load data.
         cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos()
-        pt_train_ds, pt_valid_ds, _ = get_retro_datasets()
+        cls.db_dataset = get_db_dataset()
+        pt_train_ds, pt_valid_ds, _ = get_retro_datasets(verify_sizes=False)
         cls.pt_datasets = types.SimpleNamespace(
             train=pt_train_ds,
             valid=pt_valid_ds,
         )
+
+        # Retrieve max saved neighbors.
+        for key in vars(cls.pt_datasets):
+            getattr(cls.pt_datasets, key).num_neighbors = \
+                cls.args.retro_query_num_neighbors_save
 
         # Print usage.
         cls.print_usage()
@@ -80,7 +99,9 @@ class retro:
     @classmethod
     def gpt_to_text(cls, token_ids):
         '''GPT tokens to text.'''
-        return cls.tokenizers.gpt.detokenize(token_ids)
+        return cls.tokenizers.gpt.detokenize(token_ids.tolist()
+                                             if isinstance(token_ids, np.ndarray)
+                                             else token_ids)
 
     @classmethod
     def text_to_bert(cls, text):
@@ -104,7 +125,7 @@ class retro:
 
     @classmethod
     def get_db_dataset(cls):
-        return cls.pt_datasets.train.db_dataset
+        return cls.db_dataset
 
     @classmethod
     def get_db_num_chunks(cls):
@@ -164,8 +185,43 @@ class retro:
         return cls.get_pt_num_samples_and_chunks(data_key)[1]
 
     @classmethod
+    def get_pt_dataset(cls, data_key):
+        return getattr(cls.pt_datasets, data_key)
+
+    @classmethod
     def get_pt_sample(cls, data_key, idx):
         return getattr(cls.pt_datasets, data_key)[idx]
+
+    @classmethod
+    def get_neighbor_tokens(cls, sample_id, chunk_id, data_key="train"):
+        try:
+            sample = cls.get_pt_sample(data_key, sample_id)
+            sample_token_ids = sample["text"]
+            chunk_length = cls.args.retro_gpt_chunk_length
+            chunk_start_idx = chunk_id * chunk_length
+            chunk_end_idx = min(sample_token_ids.shape[0],
+                                chunk_start_idx + chunk_length)
+            chunk_token_ids = sample_token_ids[chunk_start_idx:chunk_end_idx]
+            neighbor_token_ids = sample["neighbor_tokens"][chunk_id]
+            return {
+                "chunk_tokens" : chunk_token_ids,
+                "neighbor_tokens" : neighbor_token_ids,
+            }
+        except:
+            return None
+
+    @classmethod
+    def print_neighbor_texts(cls, sample_id, chunk_id, data_key="train"):
+        tokens = cls.get_neighbor_tokens(sample_id, chunk_id, data_key)
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        try:
+            print("PRETRAINING CHUNK:")
+            print("  - %s" % shorten_str(cls.gpt_to_text(tokens["chunk_tokens"]), 150))
+            print("NEIGHBOR_CHUNKS:")
+            for token_ids in tokens["neighbor_tokens"]:
+                print("  - %s" % shorten_str(cls.gpt_to_text(token_ids), 150))
+        except:
+            print("<no neighbors for sample %d>" % sample_id)
 
     ##############################################
     # usage.
@@ -221,6 +277,8 @@ class retro:
             ))
 
         sample = cls.get_pt_sample("train", 0)
+        sample_chunk_id = sample["neighbor_tokens"].shape[0] // 2
+        sample_neighbor_id = 0 # sample["neighbor_tokens"].shape[1] // 2
         print()
         print("retro.get_pt_sample('train', sample_id) :")
         print("  {")
@@ -234,8 +292,30 @@ class retro:
         print("  sample['text'].shape : %s" % str(sample["text"].shape))
         print("  sample['neighbor_tokens'].shape : %s" % str(sample["neighbor_tokens"].shape))
         print("  sample['text'] : %s" % shorten_str(str(sample["text"]), 50))
-        print("  sample['neighbor_tokens'][17][1] : %s" % shorten_str(str(sample["neighbor_tokens"][17][1]), 50))
+        print("  sample['neighbor_tokens'][17][1] : %s" % shorten_str(str(sample["neighbor_tokens"][sample_chunk_id][sample_neighbor_id]), 50))
         print("  retro.gpt_to_text(sample['text']) : %s" % shorten_str(cls.gpt_to_text(sample["text"]), 50))
-        print("  retro.gpt_to_text(sample['neighbor_tokens']) : %s" % shorten_str(cls.gpt_to_text(sample["neighbor_tokens"][17][1]), 50))
+        print("  retro.gpt_to_text(sample['neighbor_tokens']) : %s" % shorten_str(cls.gpt_to_text(sample["neighbor_tokens"][sample_chunk_id][sample_neighbor_id]), 50))
 
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+# >>>
+if __name__ == "__main__":
+
+    retro.init("/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/next-llm")
+    # retro.init("/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/nih")
+    # retro.init("/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/nih-books2")
+
+    for i in range(0, len(retro.db_dataset), len(retro.db_dataset) // 10):
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print("gpt tokens  : %s" % str(retro.get_db_chunk_gpt(i)))
+        print("bert tokens : %s" % str(retro.get_db_chunk_bert(i)))
+        print("text        : %s" % str(retro.get_db_chunk_text(i)))
+
+    retro_dataset = retro.get_pt_dataset("train")
+    n_chunks_per_sample = retro_dataset.chunk_dataset.n_chunks_per_sample
+    n_samples = len(retro_dataset)
+    # for sample_id in range(0, n_samples, n_samples // 10):
+    for sample_id in range(0, 100000, 10000):
+        chunk_id = np.random.randint(n_chunks_per_sample)
+        retro.print_neighbor_texts(sample_id, chunk_id)
+# <<<
