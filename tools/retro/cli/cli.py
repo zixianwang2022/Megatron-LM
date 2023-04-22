@@ -315,13 +315,17 @@ if __name__ == "__main__":
     n_chunks_per_sample = retro_dataset.chunk_dataset.n_chunks_per_sample
     n_samples = len(retro_dataset)
     # >>>
-    import json
-    print_rank_0(json.dumps({
-        "retro_dataset" : retro_dataset,
-        "sample_dataset" : retro_dataset.chunk_dataset.sample_dataset,
-        "chunk_dataset" : retro_dataset.chunk_dataset,
-        "n_samples" : n_samples,
-    }, indent = 4))
+    # import json
+    # from megatron import print_rank_0
+    # print_rank_0(json.dumps({
+    #     "retro_dataset" : str(retro_dataset),
+    #     "sample_dataset" : str(retro_dataset.chunk_dataset.sample_dataset),
+    #     "chunk_dataset" : str(retro_dataset.chunk_dataset),
+    #     "n_samples" : n_samples,
+    # }, indent = 4))
+    # if torch.distributed.get_rank() == 0:
+    #     raise Exception("hi.")
+    # torch.distributed.barrier()
     # <<<
     # for sample_id in range(0, n_samples, n_samples // 10):
     for sample_id in range(0, 100000, 10000):

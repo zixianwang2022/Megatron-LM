@@ -59,18 +59,19 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                 test_datasets.append(test_ds)
 
         # >>>
-        import json
-        print_rank_0(json.dumps({
-            "train_valid_test_num_samples" : train_valid_test_num_samples,
-            "datasets_train_valid_test_num_samples" :
-            datasets_train_valid_test_num_samples,
-            "datasets_train_valid_test_num_samples / 0" :
-            sum(a[0] for a in datasets_train_valid_test_num_samples),
-            "train_datasets" : [ len(d) for d in train_datasets ],
-            "train_datasets / sum" : sum([ len(d) for d in train_datasets ]),
-        }, indent = 4))
-        torch.distributed.barrier()
-        exit()
+        # import json
+        # print_rank_0(json.dumps({
+        #     "train_valid_test_num_samples" : train_valid_test_num_samples,
+        #     "datasets_train_valid_test_num_samples" :
+        #     datasets_train_valid_test_num_samples,
+        #     "datasets_train_valid_test_num_samples / 0" :
+        #     sum(a[0] for a in datasets_train_valid_test_num_samples),
+        #     "train_datasets" : [ len(d) for d in train_datasets ],
+        #     "train_datasets / sum" : sum([ len(d) for d in train_datasets ]),
+        # }, indent = 4))
+        # if torch.distributed.get_rank() == 0:
+        #     raise Exception("hi.")
+        # torch.distributed.barrier()
         # <<<
 
         # Blend.
