@@ -314,6 +314,15 @@ if __name__ == "__main__":
     retro_dataset = retro.get_pt_dataset("train")
     n_chunks_per_sample = retro_dataset.chunk_dataset.n_chunks_per_sample
     n_samples = len(retro_dataset)
+    # >>>
+    import json
+    print_rank_0(json.dumps({
+        "retro_dataset" : retro_dataset,
+        "sample_dataset" : retro_dataset.chunk_dataset.sample_dataset,
+        "chunk_dataset" : retro_dataset.chunk_dataset,
+        "n_samples" : n_samples,
+    }, indent = 4))
+    # <<<
     # for sample_id in range(0, n_samples, n_samples // 10):
     for sample_id in range(0, 100000, 10000):
         chunk_id = np.random.randint(n_chunks_per_sample)

@@ -360,12 +360,12 @@ def query_pretraining_neighbors():
     query_dataset_map = get_query_dataset_map()
 
     # >>>
-    # check_these({
+    # print(json.dumps({
     #     "query_dataset_map" : query_dataset_map,
     #     "train / chunk ds" : query_dataset_map["train"]["data"],
     #     "train / sample ds" : query_dataset_map["train"]["data"].sample_dataset,
     #     **{f"train / sample ds / {i}" : query_dataset_map["train"]["data"].sample_dataset[i] for i in range(10)},
-    # })
+    # }, indent=4))
     # <<<
 
     # Bert embedder.

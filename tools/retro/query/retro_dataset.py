@@ -129,14 +129,6 @@ def get_retro_datasets(verify_sizes=True):
         n_sample_chunks = len(chunk_dataset)
         n_neighbor_chunks = len(neighbor_path_map.id_index_map)
 
-        # >>>
-        # from lutil import pax
-        # pax({
-        #     "chunk_dataset" : chunk_dataset,
-        #     "neighbor_path_map" : neighbor_path_map,
-        #     # "id_index_map" : neighbor_path_map.id_index_map,
-        # })
-        # <<<
         if verify_sizes and n_sample_chunks != n_neighbor_chunks:
             print("neighbor_dir : %s" % neighbor_dir)
             print("neighbor_path_map : %s" % neighbor_path_map)
