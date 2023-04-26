@@ -40,6 +40,7 @@ def format_answer(answer):
 def preprocess(data_file, inference_only=False):
 
     args = get_args()
+    assert args.ft_neighbours > 0 
     if args.longform_answer:
         nq_examples = []
         with open(data_file, "r") as f:
@@ -57,13 +58,10 @@ def preprocess(data_file, inference_only=False):
             contexts = instance["bert_pretrain_corpus_neighbours"]
             neighbours = ["source: " + ctx for ctx in contexts]
         else:
-            neighbours = None
-            if "ctxs" in instance:
-                contexts = instance["ctxs"]
-                if args.without_title:
-                    neighbours = ["source: " + ctx["text"] for ctx in contexts]
-                else:
-                    neighbours = ["title: " + ctx["title"] + ", source: " + ctx["text"] for ctx in contexts]
+            if "sub-paragraphs" in instance:
+                neighbours = ["title: , source: " + instance["sub-paragraphs"]]
+            else:
+                neighbours = ["title: , source: "]
 
         if inference_only:
             data.append((question, None, neighbours))
@@ -116,18 +114,7 @@ def eli5_preprocess(data_file):
 
 def get_processed_dataset(name, data_folder, processed=True, ratio=None, index=None, num_samples=None):
 
-    if name.lower() == 'nq' or name.lower() == "tqa" or 'benz' in name.lower() or 'landrover' in  name.lower() \
-            or name.lower() == "nq_longform" or 'att' in name.lower() or 'iternal' in name.lower():
-        training_file = data_folder + "/train.json"
-        validation_file = data_folder + "/dev.json"
-        test_file = data_folder + "/test.json"
-
-        dataset = {}
-        dataset["train"] = preprocess(training_file)
-        dataset["valid"] = preprocess(validation_file)
-        dataset["test"] = preprocess(test_file)
-
-    elif name.lower() == 'eli5':
+    if name.lower() == 'eli5':
         if processed:
             training_file = data_folder + "/eli5-train-kilt-with-neighbours.jsonl"
             validation_file = data_folder + "/eli5-dev-kilt-with-neighbours.jsonl"
@@ -142,8 +129,16 @@ def get_processed_dataset(name, data_folder, processed=True, ratio=None, index=N
         dataset["valid"] = eli5_preprocess(validation_file)
         dataset["test"] = eli5_preprocess(test_file)
     else:
-        raise ValueError("invalid value for name")
 
+        training_file = data_folder + "/{}/{}_QA_train.json".format(name, name)
+        validation_file = data_folder + "/{}/{}_QA_dev.json".format(name, name)
+        # test_file = data_folder + "/{}/{}_QA_test.json"
+
+        dataset = {}
+        dataset["train"] = preprocess(training_file)
+        dataset["valid"] = preprocess(validation_file)
+        dataset["test"] = preprocess(validation_file)
+    print(dataset["train"][0])
     return dataset
 
 def count_stat(dataset, tokenizer):
@@ -183,6 +178,7 @@ class FtDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
+        idx = idx % len(self.indexed_dataset)
         sample = self.indexed_dataset[idx]
        
         if self.args.add_retriever:
@@ -207,8 +203,6 @@ def build_normal_training_sample(sample,
                           dataset_name,
                           ft_neighbours=1,
                           shuffle_topn=False):
-    """Build training sample for retro NQ.
-    """
 
     # unpack tokens
     query, answer, neighbours = sample

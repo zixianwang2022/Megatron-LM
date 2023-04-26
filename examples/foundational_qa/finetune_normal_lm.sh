@@ -10,6 +10,8 @@ ft_neighbours=$5
 model_card=$6
 TASK=none
 
+train_iters=100
+
 . ./examples/foundational_qa/common_args.sh
 
 num_nodes=1
@@ -38,7 +40,7 @@ OUTPUT_ARGS="--log-interval 1 \
              --log-validation-ppl-to-tensorboard \
              --eval-iters 1"
 
-DATA_BLEND="0.5 att 0.5 att"
+DATA_BLEND="0.5 OBQA 0.5 PIQA"
 
 options=" \
     $GPT_ARGS \
@@ -50,8 +52,8 @@ options=" \
     --micro-batch-size 1 \
     --global-batch-size ${global_bsz} \
     --min-lr ${min_lr} \
-    --train-iters 100 \
-    --dataloader_type cyclic \
+    --train-iters ${train_iters} \
+    --dataloader-type cyclic \
     --save $CHECKPOINT_PATH \
     $OUTPUT_ARGS \
     $FT_ARGS"

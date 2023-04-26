@@ -1,4 +1,4 @@
-DATA_HOME="/lustre/fsw/portfolios/adlr/users/pengx/data/foundation_qa_data/" #"/lustre/fsw/portfolios/adlr/users/pengx/projects/retro/"
+DATA_HOME="/lustre/fsw/portfolios/llmservice/users/chankyul/s3_data/" #"/lustre/fsw/portfolios/adlr/users/pengx/projects/retro/"
 data_folder="$DATA_HOME"
 
 QA_HOME="/lustre/fsw/portfolios/adlr/users/pengx/projects/sft_43b_qa"

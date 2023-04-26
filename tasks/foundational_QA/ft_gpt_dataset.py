@@ -103,8 +103,7 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 
     args = get_args()
     # Indexed dataset.
-    print(args.data_folder, "/", data_prefix)
-    indexed_dataset = get_processed_dataset(data_prefix, args.data_folder + "/" + data_prefix)
+    indexed_dataset = get_processed_dataset(data_prefix, args.data_folder)
 
     train_dataset = SFTDataset(data_prefix, indexed_dataset["train"], seq_length)
     valid_dataset = SFTDataset(data_prefix, indexed_dataset["valid"], seq_length)
@@ -150,7 +149,7 @@ def _build_dataset(dataset_name, data_prefix, data_impl,
 
     args = get_args()
     # Indexed dataset.
-    indexed_dataset = get_processed_dataset(data_prefix, args.data_folder + "/" + data_prefix)
+    indexed_dataset = get_processed_dataset(data_prefix, args.data_folder)
 
     dataset = SFTDataset(data_prefix, indexed_dataset[dataset_name], seq_length)
 
