@@ -57,11 +57,13 @@ def preprocess(data_file, inference_only=False):
             contexts = instance["bert_pretrain_corpus_neighbours"]
             neighbours = ["source: " + ctx for ctx in contexts]
         else:
-            contexts = instance["ctxs"]
-            if args.without_title:
-                neighbours = ["source: " + ctx["text"] for ctx in contexts]
-            else:
-                neighbours = ["title: " + ctx["title"] + ", source: " + ctx["text"] for ctx in contexts]
+            neighbours = None
+            if "ctxs" in instance:
+                contexts = instance["ctxs"]
+                if args.without_title:
+                    neighbours = ["source: " + ctx["text"] for ctx in contexts]
+                else:
+                    neighbours = ["title: " + ctx["title"] + ", source: " + ctx["text"] for ctx in contexts]
 
         if inference_only:
             data.append((question, None, neighbours))
@@ -210,7 +212,6 @@ def build_normal_training_sample(sample,
 
     # unpack tokens
     query, answer, neighbours = sample
-    assert neighbours is not None
 
     # tokenization
     tokenizer = get_tokenizer()

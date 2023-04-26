@@ -8,13 +8,13 @@ import time
 import numpy as np
 import torch
 
-from megatron import print_rank_0
+from megatron import print_rank_0, get_args
 from megatron.core import mpu
 from megatron.data.blendable_dataset import BlendableDataset
 from megatron.data.dataset_utils import get_datasets_weights_and_num_samples
 from megatron.data.dataset_utils import get_train_valid_test_split_
-from dataset import RetroFtDataset as SFTDataset
-
+from dataset import FtDataset as SFTDataset
+from dataset import get_processed_dataset
 
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
@@ -103,7 +103,8 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 
     args = get_args()
     # Indexed dataset.
-    indexed_dataset = get_processed_dataset(args.sft_data_folder + "/" + data_prefix)
+    print(args.data_folder, "/", data_prefix)
+    indexed_dataset = get_processed_dataset(data_prefix, args.data_folder + "/" + data_prefix)
 
     train_dataset = SFTDataset(data_prefix, indexed_dataset["train"], seq_length)
     valid_dataset = SFTDataset(data_prefix, indexed_dataset["valid"], seq_length)
@@ -149,7 +150,7 @@ def _build_dataset(dataset_name, data_prefix, data_impl,
 
     args = get_args()
     # Indexed dataset.
-    indexed_dataset = get_processed_dataset(args.sft_data_folder + "/" + data_prefix)
+    indexed_dataset = get_processed_dataset(data_prefix, args.data_folder + "/" + data_prefix)
 
     dataset = SFTDataset(data_prefix, indexed_dataset[dataset_name], seq_length)
 

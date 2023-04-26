@@ -4,13 +4,16 @@
 
 import torch
 from functools import partial
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.join(os.path.dirname(__file__), os.path.pardir), os.path.pardir)))
 from megatron import get_args
 from megatron import print_rank_0
 from megatron import get_timers
 from megatron import get_tokenizer
 from megatron.core import tensor_parallel
 from megatron.core.enums import ModelType
-from megatron.data.gpt_dataset import build_train_valid_test_datasets
+from ft_gpt_dataset import build_train_valid_test_datasets
 from megatron.model import GPTModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
@@ -106,6 +109,7 @@ def get_batch(data_iterator):
             data = next(data_iterator)
         except BaseException:
             data = data_iterator
+            raise ValueError("error with data_iterator")
     else:
         data = None
 
