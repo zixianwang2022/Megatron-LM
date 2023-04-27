@@ -29,7 +29,7 @@ class DBDataset(torch.utils.data.Dataset):
         self.chunks = chunks
 
         self.max_chunk_length = max_chunk_length
-        self.eod_token_id = get_gpt_tokenizer().eod_id
+        self.eod_token_id = get_gpt_tokenizer().eod
 
     def __len__(self):
         return self.chunks.shape[0]
