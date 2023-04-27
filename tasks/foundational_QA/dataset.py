@@ -16,9 +16,10 @@
 import json
 import collections
 from multiprocessing.sharedctypes import Value
-from os import sendfile
+import os
 import torch
 import numpy as np
+import glob
 from megatron import get_tokenizer, get_args
 
 def format_question(question):
@@ -32,6 +33,15 @@ def format_question(question):
         qa_str = tokenizer.detokenize(tokenizer.tokenize(qa_pad_str)[-args.m:])
         return qa_str
     return  "question: {} \nanswer:".format(question)
+
+def format_multichoice(multichoice_options):
+
+    options_text = ["({}) {}".format(chr(ord('A')+i), option) for i, option in zip(range(len(multichoice_options)), multichoice_options)]
+    return "Choose one based on the following options: {}".format(" ".join(options_text))
+
+def format_multichoice_question(question, multichoice_options):
+
+    return  "question: {} \n{} \nanswer:".format(question, format_multichoice(multichoice_options))
 
 def format_answer(answer):
     return " {}".format(answer)
@@ -47,13 +57,18 @@ def preprocess(data_file, inference_only=False):
             for fn in f:
                 nq_examples.append(json.loads(fn))
     else:
-        with open(data_file, "r") as f:
-            nq_examples = json.load(f)
+        nq_examples = []
+        for my_data_file in sorted(glob.glob(data_file)):
+            with open(my_data_file, "r", encoding='utf-8') as f:
+                nq_examples.extend(json.load(f))
     
     data = []
     for instance in nq_examples:
         question = instance["question"]
-        question = format_question(question)
+        if 'qa_type' in instance and instance['qa_type'] == "multi_choice_qa":
+            question = format_multichoice_question(question, instance["multichoice_options"])
+        else:
+            question = format_question(question)
         if args.bert_retriever_neighbours:
             contexts = instance["bert_pretrain_corpus_neighbours"]
             neighbours = ["source: " + ctx for ctx in contexts]
@@ -130,7 +145,7 @@ def get_processed_dataset(name, data_folder, processed=True, ratio=None, index=N
         dataset["test"] = eli5_preprocess(test_file)
     else:
 
-        training_file = data_folder + "/{}/{}_QA_train.json".format(name, name)
+        training_file = data_folder + "/{}/{}_QA_train*.json".format(name, name)
         validation_file = data_folder + "/{}/{}_QA_dev.json".format(name, name)
         # test_file = data_folder + "/{}/{}_QA_test.json"
 
@@ -138,7 +153,11 @@ def get_processed_dataset(name, data_folder, processed=True, ratio=None, index=N
         dataset["train"] = preprocess(training_file)
         dataset["valid"] = preprocess(validation_file)
         dataset["test"] = preprocess(validation_file)
-    print(dataset["train"][0])
+    
+    print(name, "train", len(dataset["train"]))
+    print(name, "valid", len(dataset["valid"]))
+    print(name, "test", len(dataset["test"]))
+
     return dataset
 
 def count_stat(dataset, tokenizer):
@@ -225,6 +244,7 @@ def build_normal_training_sample(sample,
         context_tokens = tokenizer.tokenize(context)
         context_tokens = context_tokens[:max_seq_length - len(output_tokens) - len(input_tokens)]
         input_tokens = context_tokens + input_tokens
+    print(tokenizer.detokenize(input_tokens))
 
     # Padding
     tokens, answer_mask \

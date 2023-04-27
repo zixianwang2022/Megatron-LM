@@ -10,7 +10,7 @@ ft_neighbours=$5
 model_card=$6
 TASK=none
 
-train_iters=100
+train_iters=10000
 
 . ./examples/foundational_qa/common_args.sh
 
@@ -24,7 +24,7 @@ if [[ $model_size == "8b" ]]; then
 fi
 
 if [[ $model_size == "43b" ]]; then
-    num_nodes=16
+    num_nodes=8
     min_lr=0.0000001
 fi
 
@@ -34,13 +34,13 @@ TENSORBOARD_DIR="${QA_HOME}/tensorboard/${SAVENAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
 OUTPUT_ARGS="--log-interval 1 \
-             --save-interval 50 \
-             --eval-interval 2 \
+             --save-interval 100000 \
+             --eval-interval 500 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --log-validation-ppl-to-tensorboard \
-             --eval-iters 1"
+             --eval-iters 100"
 
-DATA_BLEND="0.5 OBQA 0.5 PIQA"
+. ./examples/foundational_qa/${blend_name}.sh
 
 options=" \
     $GPT_ARGS \
@@ -70,7 +70,7 @@ fi
 
 DIR=`pwd`
 # -m torch.distributed.launch --nproc_per_node 8
-run_cmd="python -m torch.distributed.launch --nproc_per_node 8 ${DIR}/tasks/foundational_QA/finetune_gpt_with_pretrain.py ${options}"
+run_cmd="python -u ${DIR}/tasks/foundational_QA/finetune_gpt_with_pretrain.py ${options}"
 # srun -l \
 #      --container-image "gitlab-master.nvidia.com/adlr/megatron-lm/boxinw/faissgpu" \
 #      --container-mounts "/home/pengx/projects/retro/:/home/pengx/projects/retro/" \
@@ -86,5 +86,5 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
-# submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 2 # --dependent_clones 4
-${run_cmd}
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 1 # --dependent_clones 4
+# ${run_cmd}
