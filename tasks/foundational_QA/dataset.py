@@ -244,7 +244,6 @@ def build_normal_training_sample(sample,
         context_tokens = tokenizer.tokenize(context)
         context_tokens = context_tokens[:max_seq_length - len(output_tokens) - len(input_tokens)]
         input_tokens = context_tokens + input_tokens
-    print(tokenizer.detokenize(input_tokens))
 
     # Padding
     tokens, answer_mask \

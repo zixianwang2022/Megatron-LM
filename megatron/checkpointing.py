@@ -584,6 +584,8 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
     else:
         if args.fp16 and optimizer is not None:
             optimizer.reload_model_params()
+        if args.bf16 and optimizer is not None:
+            optimizer.reload_model_params()
 
     # rng states.
     if not release and not args.finetune and not args.no_load_rng:

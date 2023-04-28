@@ -24,7 +24,7 @@ if [[ $model_size == "8b" ]]; then
 fi
 
 if [[ $model_size == "43b" ]]; then
-    num_nodes=8
+    num_nodes=32
     min_lr=0.0000001
 fi
 
@@ -33,9 +33,9 @@ CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
 TENSORBOARD_DIR="${QA_HOME}/tensorboard/${SAVENAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
-OUTPUT_ARGS="--log-interval 1 \
-             --save-interval 100000 \
-             --eval-interval 500 \
+OUTPUT_ARGS="--log-interval 10 \
+             --save-interval 5000 \
+             --eval-interval 2500 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --log-validation-ppl-to-tensorboard \
              --eval-iters 100"
@@ -86,5 +86,5 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
-submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 1 # --dependent_clones 4
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  # --dependent_clones 1
 # ${run_cmd}
