@@ -35,7 +35,7 @@ mkdir -p ${TENSORBOARD_DIR}
 
 OUTPUT_ARGS="--log-interval 10 \
              --save-interval 5000 \
-             --eval-interval 2500 \
+             --eval-interval 100 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --log-validation-ppl-to-tensorboard \
              --eval-iters 100"

@@ -1,0 +1,20 @@
+DATA_BLEND="0.003 Arc_Challenge \
+0.007 Arc_Easy \
+0.027 BoolQ \
+0.028 CommonsenseQA \
+0.085 drop \
+0.001 MCTest_mc160 \
+0.003 MCTest_mc500 \
+0.087 NarrativeQA \
+0.014 OBQA \
+0.047 PIQA \
+0.024 QASC \
+0.032 Quoref \
+0.032 ROPES \
+0.087 SIQA \
+0.087 squad1.1 \
+0.087 squad2.0 \
+0.087 Winogrande \
+0.087 gooaq \
+0.087 newsqa \
+0.087 stackexchange"
