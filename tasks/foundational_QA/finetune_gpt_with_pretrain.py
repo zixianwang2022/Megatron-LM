@@ -75,6 +75,7 @@ def get_tasks_args(parser):
     group.add_argument('--bert-retriever-neighbours', action='store_true', default=False)
     group.add_argument('--prefix', action='store_true', default=False)
     group.add_argument('--question-in-encoder', action='store_true', default=False)
+    group.add_argument('--reset_eval', type=bool, default=True) ## by default reset eval for each eval
     return parser
 
 

@@ -40,7 +40,7 @@ from megatron.utils import calc_params_l2_norm
 from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.model.vision.knn_monitor import compute_feature_bank
-
+from itertools import tee
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -157,10 +157,18 @@ def pretrain(train_valid_test_dataset_provider,
 
     if args.do_valid:
         prefix = 'the end of training for val data'
-        evaluate_and_print_results(prefix, forward_step_func,
-                                   valid_data_iterator, model,
-                                   iteration, process_non_loss_data_func,
-                                   False)
+        if getattr(args, "reset_eval", False):
+            valid_data_iterator, valid_data_iterator2 = tee(valid_data_iterator)
+            evaluate_and_print_results(prefix, forward_step_func,
+                                    valid_data_iterator, model,
+                                    iteration, process_non_loss_data_func,
+                                    False)
+            valid_data_iterator = valid_data_iterator2
+        else:
+            evaluate_and_print_results(prefix, forward_step_func,
+                                    valid_data_iterator, model,
+                                    iteration, process_non_loss_data_func,
+                                    False)
 
     if args.save and iteration != 0:
         save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
@@ -727,10 +735,18 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
         if args.eval_interval and iteration % args.eval_interval == 0 and \
            args.do_valid:
             prefix = 'iteration {}'.format(iteration)
-            evaluate_and_print_results(prefix, forward_step_func,
-                                       valid_data_iterator, model,
-                                       iteration, process_non_loss_data_func,
-                                       False)
+            if getattr(args, "reset_eval", False):
+                valid_data_iterator, valid_data_iterator2 = tee(valid_data_iterator)
+                evaluate_and_print_results(prefix, forward_step_func,
+                                        valid_data_iterator, model,
+                                        iteration, process_non_loss_data_func,
+                                        False)
+                valid_data_iterator = valid_data_iterator2
+            else:
+                evaluate_and_print_results(prefix, forward_step_func,
+                                        valid_data_iterator, model,
+                                        iteration, process_non_loss_data_func,
+                                        False)
 
         # Checkpointing
         saved_checkpoint = False
