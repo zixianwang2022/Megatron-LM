@@ -65,8 +65,7 @@ if [[ $model_card == *-pp1 ]]; then
     GPT_ARGS+=" --use-distributed-optimizer"
 fi
 
-FT_ARGS="--pretrained-checkpoint $PRETRAINED_CHECKPOINT \
-    --eod-mask-loss \
+FT_ARGS="--eod-mask-loss \
     --answer-loss-only \
     --ft_neighbours ${ft_neighbours} \
     --task $TASK"

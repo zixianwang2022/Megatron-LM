@@ -10,7 +10,7 @@ ft_neighbours=$5
 model_card=$6
 TASK=none
 
-train_iters=10000
+train_iters=15000
 
 . ./examples/foundational_qa/common_args.sh
 
@@ -20,12 +20,12 @@ num_gpus=8
 min_lr=0.000001
 if [[ $model_size == "8b" ]]; then
     num_nodes=4
-    min_lr=0.0000001
+    min_lr=0.00000001
 fi
 
 if [[ $model_size == "43b" ]]; then
-    num_nodes=32
-    min_lr=0.0000001
+    num_nodes=64
+    min_lr=0.00000001
 fi
 
 SAVENAME="${blend_name}_${model_card}_same_format_ctx${ft_neighbours}_${model_size}_${global_bsz}_${lr}"
@@ -34,11 +34,11 @@ TENSORBOARD_DIR="${QA_HOME}/tensorboard/${SAVENAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
 OUTPUT_ARGS="--log-interval 10 \
-             --save-interval 5000 \
+             --save-interval 1500 \
              --eval-interval 100 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --log-validation-ppl-to-tensorboard \
-             --eval-iters 100"
+             --eval-iters 200"
 
 . ./examples/foundational_qa/${blend_name}.sh
 
@@ -86,5 +86,5 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
-submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  # --dependent_clones 1
-# ${run_cmd}
+echo ${run_cmd}
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4   # --dependent_clones 1
