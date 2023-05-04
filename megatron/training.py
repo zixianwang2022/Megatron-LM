@@ -157,7 +157,7 @@ def pretrain(train_valid_test_dataset_provider,
 
     if args.do_valid:
         prefix = 'the end of training for val data'
-        if getattr(args, "reset_eval", False):
+        if getattr(args, "reset_eval", False) and valid_data_iterator is not None:
             valid_data_iterator, valid_data_iterator2 = tee(valid_data_iterator)
             evaluate_and_print_results(prefix, forward_step_func,
                                     valid_data_iterator, model,
@@ -735,7 +735,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
         if args.eval_interval and iteration % args.eval_interval == 0 and \
            args.do_valid:
             prefix = 'iteration {}'.format(iteration)
-            if getattr(args, "reset_eval", False):
+            if getattr(args, "reset_eval", False) and valid_data_iterator is not None:
                 valid_data_iterator, valid_data_iterator2 = tee(valid_data_iterator)
                 evaluate_and_print_results(prefix, forward_step_func,
                                         valid_data_iterator, model,
