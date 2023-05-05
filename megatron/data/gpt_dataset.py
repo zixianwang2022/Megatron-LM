@@ -58,22 +58,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             if test_ds:
                 test_datasets.append(test_ds)
 
-        # >>>
-        # import json
-        # print_rank_0(json.dumps({
-        #     "train_valid_test_num_samples" : train_valid_test_num_samples,
-        #     "datasets_train_valid_test_num_samples" :
-        #     datasets_train_valid_test_num_samples,
-        #     "datasets_train_valid_test_num_samples / 0" :
-        #     sum(a[0] for a in datasets_train_valid_test_num_samples),
-        #     "train_datasets" : [ len(d) for d in train_datasets ],
-        #     "train_datasets / sum" : sum([ len(d) for d in train_datasets ]),
-        # }, indent = 4))
-        # if torch.distributed.get_rank() == 0:
-        #     raise Exception("hi.")
-        # torch.distributed.barrier()
-        # <<<
-
         # Blend.
         blending_train_dataset = None
         if train_datasets:
@@ -333,10 +317,8 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
         # If we need only one epoch, then separating last epoch  does
         # not mean anything.
         if num_epochs == 1:
-            # >>>
             # Handle case of using less than total available tokens.
             tokens_per_epoch = type(tokens_per_epoch)(num_samples * seq_length)
-            # <<<
             separate_last_epoch = False
             print(' > only one epoch required, setting '
                   'separate_last_epoch to False', flush=True)

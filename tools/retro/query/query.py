@@ -49,109 +49,9 @@ def embed_block(gpt_dataset, block, embedder):
         GPTToTextDataset(gpt_dataset),
         range(*block["range"]),
     )
-    # >>>
-    if 1:
-        return embedder.embed_text_dataset(text_block_dataset)
-    # +++
-    else:
-        args = get_retro_args()
-        embeddings = np.random.rand(
-            block["range"][1] - block["range"][0],
-            args.hidden_size,
-        ).astype("f4")
-        return embeddings
-    # <<<
+    return embedder.embed_text_dataset(text_block_dataset)
 
 
-# def query_embeddings(db_dataset, index,
-#                      embeddings, chunk_id_range,
-#                      sample_map, n_chunks_per_sample,
-#                      verbose=True):
-#     '''Query neighbors of a block of embeddings.'''
-
-#     args = get_retro_args()
-
-#     # Query neighbor ids.
-#     if verbose: print_rank_0("search.")
-#     t = time.time()
-#     assert index.ntotal > 0, "check we don't accidentally have an empty index."
-#     _, query_neighbor_ids = \
-#         index.search(embeddings, args.retro_query_num_neighbors_query)
-#     if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
-
-#     # Banned neighbor ids.
-#     if verbose: print_rank_0("get banned neighbor ids.")
-#     # sample_banned_chunk_id_map = {}
-#     sample_banned_chunk_range_map = {}
-#     for sample_id, sample in sample_map.items():
-#         dataset_idx = sample["dataset_idx"].item()
-#         doc_ids = sample["doc_ids"].tolist()
-#         # >>>
-#         # banned_chunk_ids = set()
-#         # for doc_id in doc_ids:
-#         #     banned_chunk_ids.update(banned_chunk_map[(dataset_idx, doc_id)])
-#         # +++
-#         banned_chunk_ranges = []
-#         for doc_id in doc_ids:
-#             banned_chunk_ranges.append(
-#                 db_dataset.get_doc_chunk_range(dataset_idx,doc_id))
-#         # <<<
-#         # sample_banned_chunk_id_map[sample_id] = banned_chunk_ids
-#         sample_banned_chunk_range_map[sample_id] = banned_chunk_ranges
-
-#     # Method to check if chunk id falls within any banned range.
-#     def is_banned(chunk_id, banned_chunk_ranges):
-#         for start_chunk_id, end_chunk_id in banned_chunk_ranges:
-#             if chunk_id >= start_chunk_id and chunk_id < end_chunk_id:
-#                 return True
-#         return False
-
-#     # Filter banned neighbor ids.
-#     if verbose: print_rank_0("filter banned neighbor ids.")
-#     filtered_neighbor_ids = np.full(
-#         shape=(len(query_neighbor_ids), args.retro_query_num_neighbors_save),
-#         fill_value=-1,
-#         dtype="int64",
-#     )
-#     min_chunk_id, max_chunk_id = chunk_id_range
-#     for chunk_id in range(min_chunk_id, max_chunk_id):
-
-#         sample_id = chunk_id // n_chunks_per_sample
-#         banned_chunk_ranges = sample_banned_chunk_range_map[sample_id]
-
-#         # Get valid neighbors (!= -1).
-#         query_row = [ i for i in query_neighbor_ids[chunk_id-min_chunk_id]
-#                       if i >= 0 ]
-
-#         # Filter row.
-#         # >>>
-#         # filtered_row = [i for i in query_row
-#         #                 if i not in sample_banned_chunk_id_map[sample_id]]
-#         filtered_row = [ i for i in query_row
-#                          if not is_banned(i, banned_chunk_ranges) ]
-#         # <<<
-#         filtered_row = filtered_row[:args.retro_query_num_neighbors_save]
-#         filtered_row += \
-#             [-1] * (args.retro_query_num_neighbors_save - len(filtered_row))
-#         filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
-
-#     # >>>
-#     print("~~~")
-#     for i in range(query_neighbor_ids.shape[0]):
-#         print("[%d] ... %8d, %8d ... %8d, %8d." % (
-#             np.where(query_neighbor_ids[i] == filtered_neighbor_ids[i][0])[0][0],
-#             query_neighbor_ids[i][0],
-#             query_neighbor_ids[i][1],
-#             filtered_neighbor_ids[i][0],
-#             filtered_neighbor_ids[i][1],
-#         ))
-#     raise Exception("hi.")
-#     print("~~~"); print(query_neighbor_ids)
-#     print("~~~"); print(filtered_neighbor_ids)
-#     raise Exception("hi.")
-#     # <<<
-
-#     return query_neighbor_ids, filtered_neighbor_ids
 def query_embeddings(db_dataset, index,
                      embeddings, chunk_id_range,
                      sample_map, n_chunks_per_sample,
@@ -196,24 +96,6 @@ def query_embeddings(db_dataset, index,
         filtered_row += \
             [-1] * (args.retro_query_num_neighbors_save - len(filtered_row))
         filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
-
-    # >>>
-    # print("~~~")
-    # for i in range(query_neighbor_ids.shape[0]):
-    #     try:
-    #         match_idx = np.where(query_neighbor_ids[i] ==
-    #                              filtered_neighbor_ids[i][0])[0][0]
-    #     except Exception as e:
-    #         match_idx = -1
-    #     print("[%d] ... %8d, %8d ... %8d, %8d." % (
-    #         match_idx,
-    #         query_neighbor_ids[i][0],
-    #         query_neighbor_ids[i][1],
-    #         filtered_neighbor_ids[i][0],
-    #         filtered_neighbor_ids[i][1],
-    #     ))
-    # raise Exception("hi.")
-    # <<<
 
     return query_neighbor_ids, filtered_neighbor_ids
 
@@ -345,11 +227,7 @@ def query_pretraining_neighbors():
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")
     db_dataset = get_db_merged_train_dataset()
-    # >>>
-    # db_dataset.load_doc_chunk_map()
     db_dataset.load_doc_tuples()
-    # raise Exception("hi.")
-    # <<<
 
     # Load index.
     print_rank_0(" > get index.")
@@ -358,15 +236,6 @@ def query_pretraining_neighbors():
     # Load datasets.
     print_rank_0(" > get dataset map.")
     query_dataset_map = get_query_dataset_map()
-
-    # >>>
-    # print(json.dumps({
-    #     "query_dataset_map" : query_dataset_map,
-    #     "train / chunk ds" : query_dataset_map["train"]["data"],
-    #     "train / sample ds" : query_dataset_map["train"]["data"].sample_dataset,
-    #     **{f"train / sample ds / {i}" : query_dataset_map["train"]["data"].sample_dataset[i] for i in range(10)},
-    # }, indent=4))
-    # <<<
 
     # Bert embedder.
     embedder = BertEmbedder(args.retro_bert_batch_size,

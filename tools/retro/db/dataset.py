@@ -61,51 +61,14 @@ class DBDataset(torch.utils.data.Dataset):
             "text" : np.array(token_ids, dtype=np.int64),
         }
 
-    # >>>
-    # def load_doc_offsets(self):
-    # def load_doc_chunk_map(self):
-    #     print("load doc offsets.")
-    #     with h5py.File(self.db_path) as f:
-    #         self.doc_chunk_map = defaultdict(dict)
-    #         start_chunk_id = 0
-    #         for dataset_id, doc_id, end_chunk_id in tqdm(f["doc_offsets"]):
-    #             self.doc_chunk_map[dataset_id.item()][doc_id.item()] = \
-    #                 (start_chunk_id, end_chunk_id.item())
-    #             start_chunk_id = end_chunk_id.item()
-    # def load_doc_chunk_map(self):
-    #     print("load doc offsets.")
-    #     with h5py.File(self.db_path) as f:
-    #         self.doc_chunk_map = defaultdict(dict)
-    #         n_docs = f["doc_offsets"].shape[0]
-    #         block_size = int(1e6)
-    #         start_chunk_id = 0
-    #         for start_doc_id in tqdm(range(0, n_docs, block_size)):
-    #             end_doc_id = min(n_docs, start_doc_id + block_size)
-    #             block_doc_offsets = \
-    #                 np.copy(f["doc_offsets"][start_doc_id:end_doc_id])
-    #             for dataset_id, doc_id, end_chunk_id in block_doc_offsets:
-    #                 self.doc_chunk_map[dataset_id.item()][doc_id.item()] = \
-    #                     (start_chunk_id, end_chunk_id.item())
-    #                 start_chunk_id = end_chunk_id.item()
-
-    # def get_doc_chunk_range(self, dataset_id, doc_id):
-    #     assert self.doc_chunk_map, "call 'load_doc_chunk_map()' first."
-    #     return self.doc_chunk_map[dataset_id][doc_id]
-    # <<<
-
-    # >>>
     def load_doc_tuples(self):
+        '''Load the dataset & document ids.
+
+        Load the dataset id & document id of each chunk in the database, to
+        be used for causality filtering during querying.
+        '''
         self.doc_tuples = np.zeros(shape=(len(self), 2), dtype="uint32")
-        # self.doc_tuples = []
-        # block_size = int(1e8)
         block_size = int(1e6)
         for start_idx in tqdm(range(0, len(self), block_size)):
             end_idx = min(len(self), start_idx + block_size)
-            # >>>
             self.doc_tuples[start_idx:end_idx]=self.chunks[start_idx:end_idx,:2]
-            # +++
-            # # block = np.copy(self.chunks[start_idx:end_idx, :2])
-            # block = self.chunks[start_idx:end_idx, :2]
-            # [ self.doc_tuples.append(tuple(entry.tolist())) for entry in block ]
-            # <<<
-    # <<<

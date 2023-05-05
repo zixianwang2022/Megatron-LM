@@ -278,7 +278,7 @@ class retro:
 
         sample = cls.get_pt_sample("train", 0)
         sample_chunk_id = sample["neighbor_tokens"].shape[0] // 2
-        sample_neighbor_id = 0 # sample["neighbor_tokens"].shape[1] // 2
+        sample_neighbor_id = 0
         print()
         print("retro.get_pt_sample('train', sample_id) :")
         print("  {")
@@ -297,38 +297,3 @@ class retro:
         print("  retro.gpt_to_text(sample['neighbor_tokens']) : %s" % shorten_str(cls.gpt_to_text(sample["neighbor_tokens"][sample_chunk_id][sample_neighbor_id]), 50))
 
         print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
-
-# >>>
-if __name__ == "__main__":
-
-    retro.init("/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/next-llm")
-    # retro.init("/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/nih")
-    # retro.init("/lustre/fs1/portfolios/adlr/users/lmcafee/retro/workdirs/nih-books2")
-
-    for i in range(0, len(retro.db_dataset), len(retro.db_dataset) // 10):
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print("gpt tokens  : %s" % str(retro.get_db_chunk_gpt(i)))
-        print("bert tokens : %s" % str(retro.get_db_chunk_bert(i)))
-        print("text        : %s" % str(retro.get_db_chunk_text(i)))
-
-    retro_dataset = retro.get_pt_dataset("train")
-    n_chunks_per_sample = retro_dataset.chunk_dataset.n_chunks_per_sample
-    n_samples = len(retro_dataset)
-    # >>>
-    # import json
-    # from megatron import print_rank_0
-    # print_rank_0(json.dumps({
-    #     "retro_dataset" : str(retro_dataset),
-    #     "sample_dataset" : str(retro_dataset.chunk_dataset.sample_dataset),
-    #     "chunk_dataset" : str(retro_dataset.chunk_dataset),
-    #     "n_samples" : n_samples,
-    # }, indent = 4))
-    # if torch.distributed.get_rank() == 0:
-    #     raise Exception("hi.")
-    # torch.distributed.barrier()
-    # <<<
-    # for sample_id in range(0, n_samples, n_samples // 10):
-    for sample_id in range(0, 100000, 10000):
-        chunk_id = np.random.randint(n_chunks_per_sample)
-        retro.print_neighbor_texts(sample_id, chunk_id)
-# <<<

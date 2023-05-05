@@ -377,10 +377,6 @@ def merge_dbs(indexed_dataset_infos, db_type):
     if db_type == "valid":
         n_chunks = sum(m["n_chunks"] - m["n_chunks_train"]
                        for m in indexed_dataset_infos)
-        # >>>
-        # n_docs = sum(m["n_docs"] - m["n_docs_train"]
-        #                for m in indexed_dataset_infos)
-        # <<<
     else:
         n_chunks = sum(m[n_chunks_key] for m in indexed_dataset_infos)
         n_docs = None if n_docs_key is None else \
