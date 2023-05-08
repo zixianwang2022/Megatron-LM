@@ -1218,13 +1218,6 @@ def _get_num_layers(args, model_type, is_decoder=False):
                 args.num_layers // args.transformer_pipeline_model_parallel_size
             )
     else:
-        # >>>
-        # from lutil import pax
-        # pax({
-        #     "encoder_num_layers" : args.encoder_num_layers,
-        #     "decoder_num_layers" : args.decoder_num_layers,
-        # })
-        # <<<
         if not is_decoder:
             num_layers = args.encoder_num_layers
         else:
@@ -1309,16 +1302,6 @@ class ParallelTransformer(MegatronModule):
         # Number of layers.
         self.num_layers = _get_num_layers(args, model_type,
                                           layer_type==LayerType.decoder)
-        # >>>
-        # assert isinstance(self.num_layers, int)
-        from lutil import pax
-        if not self.num_layers:
-            pax({
-                "model_type" : str(model_type),
-                "layer_type" : str(layer_type),
-                "num_layers" : self.num_layers,
-            })
-        # <<<
 
         self.drop_path_rates = [
             rate.item() for rate in
