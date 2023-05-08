@@ -102,12 +102,10 @@ def validate_args(args, defaults={}):
     del args.model_parallel_size
 
     if args.checkpoint_activations:
-        args.recompute_granularity = 'full'
-        args.recompute_method = 'uniform'
         if args.rank == 0:
-            print('--checkpoint-activations is no longer valid, '
-                  'use --recompute-granularity and --recompute-method  instead. '
-                  'Defaulting to recompute-granularity=full and recompute-method=uniform.')
+            print('--checkpoint-activations is no longer valid, use --recompute-activations, '
+                  'or, for more control, --recompute-granularity and --recompute-method.')
+        exit()
     del args.checkpoint_activations
 
     if args.recompute_activations:
@@ -1033,6 +1031,8 @@ def _add_data_args(parser):
                        'form: dataset1-weight dataset1-path dataset2-weight '
                        'dataset2-path ...')
 
+    group.add_argument('--vocab-size', type=int, default=None,
+                       help='Size of vocab before EOD or padding.')
     group.add_argument('--vocab-file', type=str, default=None,
                        help='Path to the vocab file.')
     group.add_argument('--merge-file', type=str, default=None,
@@ -1067,7 +1067,8 @@ def _add_data_args(parser):
                                 'BertWordPieceCase',
                                 'GPT2BPETokenizer',
                                 'SentencePieceTokenizer',
-                                'GPTSentencePieceTokenizer'],
+                                'GPTSentencePieceTokenizer',
+                                'NullTokenizer'],
                        help='What type of tokenizer to use.')
     group.add_argument('--tokenizer-model', type=str, default=None,
                        help='Sentencepiece tokenizer model.')
