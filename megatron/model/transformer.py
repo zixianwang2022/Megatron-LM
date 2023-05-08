@@ -810,7 +810,12 @@ class ParallelTransformerLayer(MegatronModule):
         else:
             self.retriever = None
 
-    def get_default_decoder_cross_attention(self):
+    def get_default_decoder_cross_attention(self,
+                                            encoder_output,
+                                            enc_dec_attn_mask,
+                                            layernorm_input,
+                                            layernorm_output,
+                                            bias_dropout_add_func):
         '''Cross attention for a standard encoder-decoder model.'''
 
         # Attention.
@@ -1068,7 +1073,12 @@ class ParallelTransformerLayer(MegatronModule):
             pass
         elif self.layer_type == LayerType.decoder:
             layernorm_input, layernorm_output = \
-                self.get_default_decoder_cross_attention()
+                self.get_default_decoder_cross_attention(
+                    encoder_output,
+                    enc_dec_attn_mask,
+                    layernorm_input,
+                    layernorm_output,
+                    bias_dropout_add_func)
         elif self.layer_type == LayerType.retro_encoder:
             layernorm_input, layernorm_output = \
                 self.get_retro_encoder_cross_attention(
@@ -1208,6 +1218,13 @@ def _get_num_layers(args, model_type, is_decoder=False):
                 args.num_layers // args.transformer_pipeline_model_parallel_size
             )
     else:
+        # >>>
+        # from lutil import pax
+        # pax({
+        #     "encoder_num_layers" : args.encoder_num_layers,
+        #     "decoder_num_layers" : args.decoder_num_layers,
+        # })
+        # <<<
         if not is_decoder:
             num_layers = args.encoder_num_layers
         else:
@@ -1292,6 +1309,16 @@ class ParallelTransformer(MegatronModule):
         # Number of layers.
         self.num_layers = _get_num_layers(args, model_type,
                                           layer_type==LayerType.decoder)
+        # >>>
+        # assert isinstance(self.num_layers, int)
+        from lutil import pax
+        if not self.num_layers:
+            pax({
+                "model_type" : str(model_type),
+                "layer_type" : str(layer_type),
+                "num_layers" : self.num_layers,
+            })
+        # <<<
 
         self.drop_path_rates = [
             rate.item() for rate in

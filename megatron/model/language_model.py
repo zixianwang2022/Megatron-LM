@@ -403,6 +403,7 @@ class TransformerLanguageModel(MegatronModule):
             self.decoder = ParallelTransformer(
                 self.init_method,
                 output_layer_init_method,
+                model_type=args.model_type,
                 layer_type=LayerType.decoder,
                 self_attn_mask_type=self.decoder_attn_mask_type,
                 pre_process=self.pre_process,
