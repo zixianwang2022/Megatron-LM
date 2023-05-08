@@ -73,12 +73,9 @@ def ensure_directory_exists(filename):
     os.makedirs(dirname, exist_ok = True)
 
 
-def get_checkpoint_names(checkpoints_path, iteration,
-                         no_load_optim, use_distributed_optimizer,
-                         release=False,
-                         pipeline_parallel=None,
-                         tensor_rank=None,
-                         pipeline_rank=None):
+def get_checkpoint_name(checkpoints_path, iteration, release=False,
+                        pipeline_parallel=None,
+                        tensor_rank=None, pipeline_rank=None):
     """Determine the directory name for this rank's checkpoint."""
     if release:
         directory = 'release'
