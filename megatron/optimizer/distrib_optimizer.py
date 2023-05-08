@@ -409,13 +409,13 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
 
                 # Handle older/newer method for getting untyped storage.
                 try:
-                    untyped_storage = grad_buffer.data.storage()._untyped()
+                    storage = grad_buffer.data.storage()._untyped()
                 except:
-                    untyped_storage = grad_buffer.data.storage().untyped()
+                    storage = grad_buffer.data.storage().untyped()
 
                 # Typed param buffer.
                 param_buffer = torch.tensor(
-                    untyped_storage,
+                    storage,
                     dtype = params_dtype,
                     device = grad_buffer.data.device)
                 param_buffer = param_buffer[:grad_buffer.numel_padded]
