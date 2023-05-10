@@ -557,6 +557,16 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
     fix_query_key_value_ordering(model, checkpoint_version)
 
     # Optimizer.
+    # >>>
+    # release = True
+    # from lutil import pax
+    # pax({
+    #     "release" : release,
+    #     "finetune" : args.finetune,
+    #     "no_load_optim" : args.no_load_optim,
+    #     "?" : not release and not args.finetune and not args.no_load_optim,
+    # })
+    # <<<
     if not release and not args.finetune and not args.no_load_optim:
         try:
             # Load state dict.
@@ -587,7 +597,16 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                          'exiting ...'.format(checkpoint_name))
             sys.exit()
     else:
-        if args.fp16 and optimizer is not None:
+        # >>>
+        # raise Exception("hi.")
+        # from lutil import pax
+        # pax({
+        #     "fp16" : args.fp16,
+        #     "optimizer is not None" : optimizer is not None,
+        #     "?" : args.fp16 and optimizer is not None,
+        # })
+        # <<<
+        if (args.fp16 or args.bf16) and optimizer is not None:
             optimizer.reload_model_params()
 
     # rng states.

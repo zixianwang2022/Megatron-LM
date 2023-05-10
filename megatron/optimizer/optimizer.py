@@ -377,6 +377,9 @@ class MixedPrecisionOptimizer(MegatronOptimizer):
 
 
     def reload_model_params(self):
+        # >>>
+        # raise Exception("hi.")
+        # <<<
         self._copy_model_params_to_main_params()
 
 
