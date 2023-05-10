@@ -810,12 +810,12 @@ class ParallelTransformerLayer(MegatronModule):
         else:
             self.retriever = None
 
-    def get_default_decoder_cross_attention(self,
-                                            encoder_output,
-                                            enc_dec_attn_mask,
-                                            layernorm_input,
-                                            layernorm_output,
-                                            bias_dropout_add_func):
+    def default_decoder_cross_attention(self,
+                                        encoder_output,
+                                        enc_dec_attn_mask,
+                                        layernorm_input,
+                                        layernorm_output,
+                                        bias_dropout_add_func):
         '''Cross attention for a standard encoder-decoder model.'''
 
         # Attention.
@@ -846,11 +846,11 @@ class ParallelTransformerLayer(MegatronModule):
 
         return layernorm_input, layernorm_output
 
-    def get_retro_encoder_cross_attention(self,
-                                          retriever_output,
-                                          layernorm_input,
-                                          layernorm_output,
-                                          bias_dropout_add_func):
+    def retro_encoder_cross_attention(self,
+                                      retriever_output,
+                                      layernorm_input,
+                                      layernorm_output,
+                                      bias_dropout_add_func):
         """Cross attention for Retro encoder.
 
         Notation:
@@ -913,14 +913,14 @@ class ParallelTransformerLayer(MegatronModule):
 
         return layernorm_input, layernorm_output
 
-    def get_retro_decoder_cross_attention(self,
-                                          retriever_input,
-                                          retriever_output,
-                                          retriever_attn_mask,
-                                          layernorm_input,
-                                          layernorm_output,
-                                          inference_params,
-                                          bias_dropout_add_func):
+    def retro_decoder_cross_attention(self,
+                                      retriever_input,
+                                      retriever_output,
+                                      retriever_attn_mask,
+                                      layernorm_input,
+                                      layernorm_output,
+                                      inference_params,
+                                      bias_dropout_add_func):
         """Cross attention for Retro decoder.
 
         Notation:
@@ -1073,7 +1073,7 @@ class ParallelTransformerLayer(MegatronModule):
             pass
         elif self.layer_type == LayerType.decoder:
             layernorm_input, layernorm_output = \
-                self.get_default_decoder_cross_attention(
+                self.default_decoder_cross_attention(
                     encoder_output,
                     enc_dec_attn_mask,
                     layernorm_input,
@@ -1081,7 +1081,7 @@ class ParallelTransformerLayer(MegatronModule):
                     bias_dropout_add_func)
         elif self.layer_type == LayerType.retro_encoder:
             layernorm_input, layernorm_output = \
-                self.get_retro_encoder_cross_attention(
+                self.retro_encoder_cross_attention(
                     retriever_output,
                     layernorm_input,
                     layernorm_output,
@@ -1089,7 +1089,7 @@ class ParallelTransformerLayer(MegatronModule):
         elif self.layer_type in (LayerType.retro_decoder,
                                  LayerType.retro_decoder_with_retriever):
             retriever_output, layernorm_input, layernorm_output = \
-                self.get_retro_decoder_cross_attention(
+                self.retro_decoder_cross_attention(
                     retriever_input,
                     retriever_output,
                     retriever_attn_mask,
