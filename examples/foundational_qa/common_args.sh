@@ -24,7 +24,7 @@ if [[ $model_size == "43b" ]]; then
     hid_dim=8192
     heads=64
     pip_par=4
-    if [[ $model_card == *-pp1 ]]; then
+    if [[ $model_card == *pp1 ]]; then
         pip_par=1
     fi
 fi
