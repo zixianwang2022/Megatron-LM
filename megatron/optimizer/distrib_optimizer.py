@@ -993,61 +993,13 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                           self.model_fp32_groups)
 
 
-    # >>>
-    # def _copy_model_params_to_main_params(self):
-    #     """
-    #     Copy model params to main params.
-
-    #     This method is commonly called within `optimizer.reload_model_params()`
-    #     when loading a checkpoint.
-    #     """
-
-    #     # >>>
-    #     # # Model grad buffer ranges.
-    #     # self.model_gbuf_ranges = []
-    #     # for model_index, model in enumerate(self.models):
-    #     #     self.model_gbuf_ranges.append(self.build_model_gbuf_range_map(model))
-    #     # self.model_param_gbuf_map = \
-    #     #     self.build_model_param_gbuf_map(self.model_gbuf_ranges)
-    #     # <<<
-    #     for param, data in self.model_param_gbuf_map.items():
-
-    #         from lutil import pax
-    #         pax({
-    #             "param" : param,
-    #             "data" : data,
-    #         })
-
-    #     # >>>
-    #     # # Copy from param buffer to each param.
-    #     # for model_id, model in enumerate(self.models):
-    #     #     for dtype, param_map in model._grad_buffer_param_index_map.items():
-    #     #         for param, (buf_start, buf_end) in param_map.items():
-    #     #             param_buf = self.param_buffers[model_id][dtype]
-    #     #             param_buf_shard = param_buf[buf_start:buf_end]
-    #     #             param.view(-1).detach().copy_(param_buf_shard)
-    #     # <<<
-
-    #     # >>>
-    #     import numpy as np
-    #     from lutil import pax
-    #     # pax(6, {
-    #     #     # "model_param_group_index_map" : {"%d / %s" % (i, str(t.size())) : v for i, (t, v) in enumerate(self.model_param_group_index_map.items())},
-    #     #     "model_param_group_index_map" : {"%d / %s" % (i, str(t.size())) : self.optimizer.param_groups[gi]["params"][pi] for i, (t, (gi, pi)) in enumerate(self.model_param_group_index_map.items()) if np.prod(t.size()) != np.prod(self.optimizer.param_groups[gi]["params"][pi].size())},
-    #     #     # "optimizer" : self.optimizer,
-    #     # })
-    #     pax({
-    #         "model_gbuf_ranges" : self.model_gbuf_ranges,
-    #         "model_param_gbuf_map" : self.model_param_gbuf_map,
-    #     })
-    #     # <<<
     def _copy_model_params_to_main_params(self):
         """
-        Copy model grads to main grads.
+        Copy model params to main params.
 
-        Since this step follows a reduce-scatter through the DDP's grad
-        buffer, this method is responsible for copying the updated grads
-        from the grad buffer to the main shard's grad field.
+        During finetuning, this method is used to reload the main params from
+        the model params. This copy does not make use of the grad buffer as
+        an intermediary.
         """
 
         # Utility method for copying group params.
@@ -1065,21 +1017,8 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                         [param_range.start:param_range.end]
                     shard_main_param.data.copy_(shard_model_param)
 
-                    # >>>
-                    # from lutil import pax, tp
-                    # pax({
-                    #     "model_param" : tp(model_param),
-                    #     "model_param" : tp(model_param.view(-1)),
-                    #     "shard_model_param" : tp(shard_model_param),
-                    #     "shard_main_param" : tp(shard_main_param),
-                    #     "param_range_map" : param_range_map,
-                    #     "param_range" : param_range,
-                    # })
-                    # <<<
-
         # Copy model groups to shard groups.
         copy_group_params(self.model_float16_groups,
                           self.shard_fp32_from_float16_groups)
         copy_group_params(self.model_fp32_groups,
                           self.shard_fp32_groups)
-    # <<<

@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 """Megatron optimizer."""
 
@@ -377,9 +377,6 @@ class MixedPrecisionOptimizer(MegatronOptimizer):
 
 
     def reload_model_params(self):
-        # >>>
-        # raise Exception("hi.")
-        # <<<
         self._copy_model_params_to_main_params()
 
 
