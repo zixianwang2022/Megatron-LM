@@ -90,9 +90,25 @@ def preprocess(data_file, inference_only=False):
                 if "answers" in instance:
                     answers = instance["answers"]
                 elif "answer" in instance:
-                    answers = [instance["answer"]]
+                    if type(instance["answer"]) is str:
+                        answers = [instance["answer"]]
+                    elif type(instance["answer"]) is list:
+                        answers = instance["answer"]
+                    else:
+                        answers = [str(instance["answer"])]
                 else:
                     raise ValueError("need to have answer or answers")
+            if len(answers) < 1:
+                answers = ["This question cannot be answered based on the given information."]
+            else:
+                ## only take answer 0
+                if type(answers[0]) is dict:
+                    answers = [answers[0]["text"].strip()]
+                elif type(answers[0]) is str:
+                    answers = [answers[0]]
+                else:
+                    raise ValueError("unsupported type for answer(s)")
+
             for answer in answers:
                 answer = format_answer(answer)
                 data.append((question, answer, neighbours))
@@ -178,7 +194,7 @@ class FtDataset(torch.utils.data.Dataset):
                  max_seq_length_dec=0):
 
         # Params to store.
-        self.dataset_name = name
+        self.dataset_name = name ## dataset_name equals to data_prefix in pretrain
         self.max_seq_length = max_seq_length
 
         # Dataset.
@@ -215,6 +231,18 @@ class FtDataset(torch.utils.data.Dataset):
                                 self.args.ft_neighbours,
                                 self.args.shuffle_topn)
 
+def reformat_query(query, dataset_name):
+
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa"]
+    yes_no_without_context = ["BoolQ"]
+    prefix = ""
+    if dataset_name in short_span_with_context:
+        prefix = "Answer the following question with a short span.\n"
+    if dataset_name in yes_no_without_context:
+        prefix = "Answer the following question with True or False.\n"
+    return prefix + query
+
+
 def build_normal_training_sample(sample,
                           max_seq_length,
                           pad_id,
@@ -225,7 +253,8 @@ def build_normal_training_sample(sample,
 
     # unpack tokens
     query, answer, neighbours = sample
-
+    
+    query = reformat_query(query, dataset_name)
     # tokenization
     tokenizer = get_tokenizer()
 
@@ -245,6 +274,7 @@ def build_normal_training_sample(sample,
         context_tokens = context_tokens[:max_seq_length - len(output_tokens) - len(input_tokens)]
         input_tokens = context_tokens + input_tokens
 
+    # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)
     # Padding
     tokens, answer_mask \
         = pad_and_convert_to_numpy(input_tokens, output_tokens,
