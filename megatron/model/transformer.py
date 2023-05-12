@@ -8,18 +8,16 @@ import torch
 import torch.nn.functional as F
 from typing import Optional
 
-from megatron import get_timers, get_args, get_retro_args, \
-    core, get_num_microbatches
+from megatron import get_timers, get_args, get_retro_args, core, get_num_microbatches
+from .module import MegatronModule
 from megatron.core import mpu, tensor_parallel
 from megatron.core.enums import ModelType
-
-from .enums import AttnMaskType, AttnType, LayerType
-from .fused_bias_gelu import bias_gelu_impl
-from .fused_layer_norm import MixedFusedLayerNorm as LayerNorm
-from .fused_softmax import FusedScaleMaskSoftmax
-from .module import MegatronModule
-from .rotary_pos_embedding import apply_rotary_pos_emb
-from .utils import attention_mask_func, erf_gelu, openai_gelu
+from megatron.model import LayerNorm
+from megatron.model.enums import AttnMaskType, LayerType, AttnType
+from megatron.model.fused_softmax import FusedScaleMaskSoftmax
+from megatron.model.fused_bias_gelu import bias_gelu_impl
+from megatron.model.rotary_pos_embedding import apply_rotary_pos_emb
+from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu
 
 try:
     from einops import rearrange
