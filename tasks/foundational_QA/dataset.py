@@ -238,8 +238,10 @@ def reformat_query(query, dataset_name):
     prefix = ""
     if dataset_name in short_span_with_context:
         prefix = "Answer the following question with a short span.\n"
-    if dataset_name in yes_no_without_context:
+    elif dataset_name in yes_no_without_context:
         prefix = "Answer the following question with True or False.\n"
+    else:
+        prefix = "Answer the following question with a long complete answer.\n"
     return prefix + query
 
 
