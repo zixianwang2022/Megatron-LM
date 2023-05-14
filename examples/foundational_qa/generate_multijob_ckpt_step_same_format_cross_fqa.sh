@@ -9,6 +9,7 @@ num_gen=$6
 ckpt_step=$7
 ft_neighbours=$8
 SAVENAME=$9
+model_card=$9
 
 . ./examples/qa/common_args.sh
 
