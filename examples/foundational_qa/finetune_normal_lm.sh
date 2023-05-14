@@ -58,6 +58,10 @@ options=" \
     $OUTPUT_ARGS \
     $FT_ARGS"
 
+if [[ $model_card == *unbias* ]]; then
+    PRETRAINED_CHECKPOINT=$unbiased_cuckoo
+fi
+
 if [[ -d "$CHECKPOINT_PATH" ]]; then
     options="$options \
         --load $CHECKPOINT_PATH "
@@ -65,6 +69,7 @@ else
     options="$options \
         --load $PRETRAINED_CHECKPOINT \
         --finetune \
+	--no-load-rng \
         --no-load-optim "
 fi
 
