@@ -11,7 +11,8 @@ ft_neighbours=$8
 SAVENAME=$9
 model_card=$9
 
-. ./examples/qa/common_args.sh
+. ./examples/foundational_qa/common_args.sh
+. ./examples/foundational_qa/gen_input.sh
 
 top_k=1
 micro_bsz=1

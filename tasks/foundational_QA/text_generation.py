@@ -145,9 +145,9 @@ def generate_samples_conditional(model):
                         if args.shuffle_topn:
                             import random
                             random.seed(1234)
-                            random_neighbours = neighbours[0:args:ft_neighbours]
+                            random_neighbours = neighbours[0:args.ft_neighbours]
                             random.shuffle(random_neighbours)
-                            neighbours = random_neighbours + neighbours[ft_neighbours:]
+                            neighbours = random_neighbours + neighbours[args.ft_neighbours:]
                         if args.add_retriever: ## should be reverse order or not
                             raw_text = "\n".join(neighbours[0:args.ft_neighbours][::-1]) + "\n" + raw_text
                             raw_text = tokenizer.detokenize(tokenizer.tokenize(raw_text)[-(args.seq_length - max_target_len):])
@@ -193,7 +193,9 @@ def generate_samples_conditional(model):
                 datum = generation[len(prompt):]
                 if "<|endoftext|>" in datum:
                     datum = datum[:datum.find("<|endoftext|>")].strip()
-                datum = datum.replace("\n", " ")
+                if "\n" in datum:
+                    datum = datum.split("\n", 1)[0]
+                # datum = datum.replace("\n", " ")
                 # print("len of tokens", len(token))
                 print(datum)
                 yield datum
