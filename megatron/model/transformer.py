@@ -1307,16 +1307,22 @@ class ParallelTransformer(MegatronModule):
 
         self.retro_layer_numbers = None
         if model_type == ModelType.retro_decoder:
-            if args.num_layers == 12:
-                self.retro_layer_numbers = [6, 9, 12]
-            elif args.num_layers == 24:
-                self.retro_layer_numbers = np.arange(9, 25, 3).tolist()
-            elif args.num_layers == 40:
-                self.retro_layer_numbers = np.arange(9, 41, 3).tolist()
-                self.retro_layer_numbers.append(40)
-            else:
-                raise Exception("Unsupported number of decoder layers. "
-                                "Please choose from 12, 24, or 40.")
+            # >>>
+            # if args.num_layers == 12:
+            #     self.retro_layer_numbers = [6, 9, 12]
+            # elif args.num_layers == 24:
+            #     self.retro_layer_numbers = np.arange(9, 25, 3).tolist()
+            # elif args.num_layers == 40:
+            #     self.retro_layer_numbers = np.arange(9, 41, 3).tolist()
+            #     self.retro_layer_numbers.append(40)
+            # else:
+            #     raise Exception("Unsupported number of decoder layers. "
+            #                     "Please choose from 12, 24, or 40.")
+            # +++
+            retro_layer_start = 6 if args.num_layers <= 15 else 9
+            self.retro_layer_numbers = \
+                np.arange(retro_layer_start, args.num_layers + 1, 3).tolist()
+            # <<<
         if model_type == ModelType.retro_encoder:
             self.retro_layer_numbers = [1]
 
