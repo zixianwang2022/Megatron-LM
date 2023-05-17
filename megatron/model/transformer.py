@@ -418,7 +418,11 @@ class ParallelAttention(MegatronModule):
         self.params_dtype = args.params_dtype
         self.sequence_parallel = args.sequence_parallel
 
-        self.use_flash_attn = args.use_flash_attn
+        # >>>
+        # self.use_flash_attn = args.use_flash_attn
+        self.use_flash_attn = args.use_flash_attn \
+            and attention_type == AttnType.self_attn
+        # <<<
         if self.use_flash_attn:
             if flash_attn_unpadded_func is None:
                 raise ImportError('FlashAttention is not installed, please install with '
