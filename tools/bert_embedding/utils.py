@@ -200,7 +200,7 @@ def get_index_path_map(_dir):
 
     # Build index-path map.
     idx_path_map = IdPathMap(paths)
-    for path in paths:
+    for path in tqdm(paths, "get_index_path_map"):
         start_idx, end_idx = path_to_range(path)
         for idx in range(start_idx, end_idx):
             idx_path_map.add(idx, path)
