@@ -240,6 +240,10 @@ class GPTDataset(torch.utils.data.Dataset):
         return self.sample_idx.shape[0] - 1
 
     def __getitem__(self, idx):
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        # ......... hacky mchackers [ until sub-epoch fix ] .........
+        idx = idx % len(self)
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         # Get the shuffled index.
         idx = self.shuffle_idx[idx]
         # Start and end documents and offsets.
@@ -317,8 +321,11 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
         # If we need only one epoch, then separating last epoch  does
         # not mean anything.
         if num_epochs == 1:
+            # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            # ......... hacky: needs +1 samples .........
             # Handle case of using less than total available tokens.
             tokens_per_epoch = type(tokens_per_epoch)(num_samples * seq_length)
+            # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             separate_last_epoch = False
             print(' > only one epoch required, setting '
                   'separate_last_epoch to False', flush=True)

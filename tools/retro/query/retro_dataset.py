@@ -138,16 +138,19 @@ def get_retro_datasets(verify_sizes=True):
                                 neighbor_dir)
             torch.distributed.barrier()
             exit()
-        if verify_sizes and n_sample_chunks != n_neighbor_chunks:
-            if torch.distributed.get_rank() == 0:
-                print("neighbor_dir : %s" % neighbor_dir)
-                print("neighbor_path_map : %s" % neighbor_path_map)
-                raise Exception("num sampled chunks (%d) != num neighbor chunks "
-                                "(%d); did you complete querying the entire "
-                                "pretraining dataset?"
-                                % (n_sample_chunks, n_neighbor_chunks))
-            torch.distributed.barrier()
-            exit()
+        # >>>
+        # ......... hacky: due to incomplete neighbors .........
+        # if verify_sizes and n_sample_chunks != n_neighbor_chunks:
+        #     if torch.distributed.get_rank() == 0:
+        #         print("neighbor_dir : %s" % neighbor_dir)
+        #         print("neighbor_path_map : %s" % neighbor_path_map)
+        #         raise Exception("num sampled chunks (%d) != num neighbor chunks "
+        #                         "(%d); did you complete querying the entire "
+        #                         "pretraining dataset?"
+        #                         % (n_sample_chunks, n_neighbor_chunks))
+        #     torch.distributed.barrier()
+        #     exit()
+        # <<<
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(

@@ -421,7 +421,8 @@ class ParallelAttention(MegatronModule):
         # >>>
         # self.use_flash_attn = args.use_flash_attn
         self.use_flash_attn = args.use_flash_attn \
-            and attention_type == AttnType.self_attn
+            and attention_type == AttnType.self_attn \
+            and self.attn_mask_type == AttnMaskType.causal
         # <<<
         if self.use_flash_attn:
             if flash_attn_unpadded_func is None:
@@ -895,7 +896,7 @@ class ParallelTransformerLayer(MegatronModule):
             with torch.enable_grad():
                 layernorm_input = bias_dropout_add_func(
                     attention_output,
-                    attention_bias.expand_as(residual),
+                    None if attention_bias is None else attention_bias.expand_as(residual),
                     residual,
                     self.hidden_dropout)
                 layernorm_inputs.append(layernorm_input)
@@ -996,7 +997,7 @@ class ParallelTransformerLayer(MegatronModule):
         with torch.enable_grad():
             layernorm_input = bias_dropout_add_func(
                 attention_output,
-                attention_bias.expand_as(attention_output),
+                None if attention_bias is None else attention_bias.expand_as(attention_output),
                 torch.zeros_like(attention_output),
                 self.hidden_dropout)
             layernorm_input = layernorm_input \
@@ -1412,8 +1413,13 @@ class ParallelTransformer(MegatronModule):
             # Update dropout rate for Retro encoder.
             if model_type == ModelType.retro_encoder:
                 for layer in self.layers:
-                    if args.use_flash_attn:
+                    # >>>
+                    # if args.use_flash_attn:
+                    if layer.self_attention.use_flash_attn:
+                    # <<<
+                        # >>>
                         raise Exception("test w/ flash attn.")
+                        # <<<
                         layer.self_attention.core_attention_flash.dropout_p = \
                             torch.nn.Dropout(args.retro_encoder_attention_dropout)
                     else:
