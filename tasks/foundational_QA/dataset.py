@@ -47,7 +47,7 @@ def format_answer(answer):
     return " {}".format(answer)
 
 """GPT ft dataset."""
-def preprocess(data_file, inference_only=False):
+def preprocess(data_file, inference_only=False, retrieved_neighbours=False):
 
     args = get_args()
     assert args.ft_neighbours > 0 
@@ -73,10 +73,14 @@ def preprocess(data_file, inference_only=False):
             contexts = instance["bert_pretrain_corpus_neighbours"]
             neighbours = ["source: " + ctx for ctx in contexts]
         else:
-            if "sub-paragraphs" in instance:
-                neighbours = ["title: , source: " + instance["sub-paragraphs"]]
+            if retrieved_neighbours:
+                contexts = instance["ctxs"]
+                neighbours = ["title: " + ctx["title"] + ", source: " + ctx["text"] for ctx in contexts] 
             else:
-                neighbours = ["title: , source: "]
+                if "sub-paragraphs" in instance:
+                    neighbours = ["title: , source: " + instance["sub-paragraphs"]]
+                else:
+                    neighbours = ["title: , source: "]
 
         if inference_only:
             data.append((question, None, neighbours))
@@ -99,7 +103,8 @@ def preprocess(data_file, inference_only=False):
                 else:
                     raise ValueError("need to have answer or answers")
             if len(answers) < 1:
-                answers = ["This question cannot be answered based on the given information."]
+                continue
+                # answers = ["This question cannot be answered based on the given information."]
             else:
                 ## only take answer 0
                 if type(answers[0]) is dict:
@@ -233,7 +238,7 @@ class FtDataset(torch.utils.data.Dataset):
 
 def reformat_query(query, dataset_name):
 
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa"]
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
     yes_no_without_context = ["BoolQ"]
     prefix = ""
     if dataset_name in short_span_with_context:
@@ -431,6 +436,8 @@ def pad_and_convert_to_numpy(input_ids, output_ids,
                              pad_id, max_seq_length, 
                              eos_id):
     """Pad sequences and convert them to numpy."""
+    if len(input_ids) > max_seq_length:
+        input_ids = input_ids[:max_seq_length - 1]
 
     if len(input_ids + output_ids) > max_seq_length:
         output_ids = output_ids[:max_seq_length - len(input_ids)]
