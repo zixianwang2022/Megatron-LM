@@ -1283,8 +1283,9 @@ class ParallelTransformer(MegatronModule):
             import transformer_engine
         self.use_fp8 = args.fp8_e4m3 or args.fp8_hybrid
         self.fp8_recipe = None
-        self.fp8_group = mpu.get_data_parallel_group()
+        self.fp8_group = None
         if self.use_fp8:
+            self.fp8_group = mpu.get_data_parallel_group()
             if args.fp8_e4m3:
                 fp8_format = transformer_engine.common.recipe.Format.E4M3
             elif args.fp8_hybrid:
@@ -1602,12 +1603,13 @@ class ParallelTransformer(MegatronModule):
                         'retriever_output': retriever_output,
                         'retriever_attn_mask': retriever_attn_mask,
                         'inference_params': inference_params,
-                        'rotary_pos_emb': rotary_pos_emb,
                     }
 
                     if self.transformer_impl == 'transformer_engine':
                         forward_kwargs['is_first_microbatch'] = is_first_microbatch
                         forward_kwargs['checkpoint_core_attention'] = self.checkpoint_core_attention
+                    else:
+                        forward_kwargs['rotary_pos_emb'] = rotary_pos_emb
 
                     for index in range(self.num_layers):
                         layer = self._get_layer(index)
