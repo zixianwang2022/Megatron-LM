@@ -1,0 +1,300 @@
+import regex
+from tqdm import tqdm
+import numpy as np
+import string
+import json
+
+#Normalization from SQuAD evaluation script https://worksheets.codalab.org/rest/bundles/0x6b567e1cf2e041ec80d7098f031c5c9e/contents/blob/
+def normalize_answer(s):
+    def remove_articles(text):
+        return regex.sub(r'\b(a|an|the)\b', ' ', text)
+
+    def white_space_fix(text):
+        return ' '.join(text.split())
+
+    def remove_punc(text):
+        exclude = set(string.punctuation)
+        return ''.join(ch for ch in text if ch not in exclude)
+
+    def lower(text):
+        return text.lower()
+
+    return white_space_fix(remove_articles(remove_punc(lower(s))))
+
+def exact_match_score(prediction, ground_truth):
+    return normalize_answer(prediction) == normalize_answer(ground_truth)
+
+def read_grounds_truth(ground_truth_file):
+    ground_truths_list = []
+    
+    if ground_truth_file.endswith(('txt', 'lst')):
+        raw_data = open(ground_truth_file, 'r')
+    else:
+        with open(ground_truth_file, 'r') as f:
+            raw_data = json.load(f)
+
+    for each in raw_data:
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
+        
+        if 'answers' in each:
+            ground_truths_list.append(each['answers'])
+        elif 'answer' in each:
+            ground_truths_list.append(each['answer'])
+        else:
+            ground_truths_list.append([each])
+    
+    return ground_truths_list
+
+
+
+def read_prediction_withprob(prediction_withprob_file):
+    prediction_list = []
+    logprob_list = []
+    print('reading %s' % prediction_withprob_file)
+    with open(prediction_withprob_file, "r") as f:
+        for i, line_prob in enumerate(tqdm(f)):
+            line_split = line_prob.split('\t')
+            logprob = line_split[-1]
+            line = "\t".join(line_split[:-1])
+            logprob_list.append(float(logprob))
+
+            line = line.replace("Answer:","")
+            line = line.replace("Answer: ","")
+            line = line.replace('????  ', "")
+            line = line.replace('A: ',"")
+            line = line.replace("A:", "")
+            line = line.strip()
+
+            if "<|endoftext|>" in line:
+                line = line.replace("<|endoftext|>", "")
+            
+            line = normalize_answer(line) # normalize the answer
+            prediction_list.append(line)
+
+    return prediction_list, logprob_list
+
+def read_prediction(prediction_file):
+    prediction_list = []
+    print('reading %s' % prediction_file)
+    with open(prediction_file, "r") as f:
+        for i, line in enumerate(tqdm(f)):
+            if prediction_file.endswith("jsonl"):
+                line = json.loads(line)["pred"]
+                # print(line)
+            line = line.replace("Answer:","")
+            line = line.replace("Answer: ","")
+            line = line.replace('????  ', "")
+            line = line.replace('A: ',"")
+            line = line.replace("A:", "")
+
+            line = line.strip()
+
+            if "<|endoftext|>" in line:
+                line = line.replace("<|endoftext|>", "")
+            line = normalize_answer(line) # normalize the answer
+            prediction_list.append(line)
+
+    return prediction_list
+
+def ems(prediction, ground_truths):
+    return max([exact_match_score(prediction, gt) for gt in ground_truths])
+
+def evaluate_ems(prediction_file, ground_truth_file, dev_num=3000):
+    if prediction_file.endswith('withprob.txt'):
+        prediction_list, _ = read_prediction_withprob(prediction_file)
+    else:
+        prediction_list = read_prediction(prediction_file)
+
+    ground_truths_list = []
+
+    if ground_truth_file.endswith(('txt', 'lst')):
+        raw_data = open(ground_truth_file, 'r')
+    else:
+        with open(ground_truth_file, 'r') as f:
+            raw_data = json.load(f)
+    if "dev" in ground_truth_file:
+        raw_data = raw_data[:dev_num]
+        prediction_list = prediction_list[:dev_num]
+
+    for each in raw_data:
+        if ground_truth_file.endswith('txt'):
+            each = json.loads(each)
+
+        if 'answers' in each:
+            ground_truths_list.append(each['answers'])
+        elif 'answer' in each:
+            ground_truths_list.append(each['answer'])
+        else:
+            ground_truths_list.append([each])
+
+    exactmatch = []
+
+    good_example_list = []
+    for i,each in enumerate(prediction_list):
+        # print("=============")
+        # print(each)
+        # print(ground_truths_list[i])
+        score = ems(each, ground_truths_list[i])
+        # print(score)
+        exactmatch.append(score)
+        if score:
+            good_example_list.append(i)
+
+    final_em_score = np.mean(exactmatch)
+
+    print('Exact Match: %.4f;' % final_em_score)
+
+    print('done :-)')
+
+    return final_em_score, exactmatch
+
+
+def eval_1_3b():
+
+    ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ/dev.json"
+    for step in range(1500, 16500, 1500):
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_bert_retriever_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_dev_greedy_0_3000_8_{}.txt"
+        # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_bert_retriever_ctx1_1.3b_32_3e-6_0.0/generate_1.3b_dev_greedy_0_3000_{}.txt"
+        p_file = prediction_file.format(step)
+        # evaluate_ems(p_file, ground_truth_file)
+
+    ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ/test.json"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_bert_retriever_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_test_greedy_0_4000_8_15000.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_bert_retriever_ctx1_1.3b_32_3e-6_0.0/generate_1.3b_test_greedy_0_4000_15000.txt"
+    evaluate_ems(prediction_file, ground_truth_file)
+
+
+if __name__ == "__main__":
+
+    # eval_1_3b()
+    ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ/test.json"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_1.3b_32_3e-6_0.0_4/generate_1.3b_test_beam_0_4000.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_8.3b_32_3e-6_0.0_8/generate_8.3b_test_greedy_0_5000.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_8.3b_32_2e-6_0.0_8/generate_8.3b_test_greedy_0_4000.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_20.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_8.3b_32_1e-6_0.0_8_bk/generate_8.3b_test_greedy_0_6000_16.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_title_8.3b_32_1e-6_0.0_8_r192/generate_8.3b_test_greedy_0_6000_8_15000.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_title_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_6000.txt"
+    prediction_file ="/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_6000_10500.txt"
+
+    # prediction_file = "/home/pengx/projects/retro/checkpoints/applications/nq_retro_ft_126m_32_1e-5_0.0_8/generate_126m_test_greedy_0_4000.txt"
+    # prediction_file = "/home/pengx/projects/retro/checkpoints/applications/nq_retro_ft_126m_32_1e-5_0.0_16/generate_126m_test_greedy_0_4000.txt"
+    # prediction_file = "/home/pengx/projects/retro/checkpoints/applications/nq_retro_ft_126m_32_1e-5_0.0_20/generate_126m_test_greedy_0_4000.txt"
+    # prediction_file = "/home/pengx/projects/retro/checkpoints/applications/nq_retro_ft_357m_32_1e-5_0.0_20/generate_357m_test_greedy_0_4000.txt"
+    # prediction_file = "/home/pengx/projects/retro/checkpoints/applications/nq_retro_ft_357m_32_1e-5_0.0_16/generate_357m_test_greedy_0_4000.txt"
+    # prediction_file = "/mnt/fsx-main/pengx/projects/retro/checkpoints/applications/nq_retro_ft_357m_32_1e-5_0.0_20/generate_357m_test_beam_0_4000.txt"
+    # evaluate_ems(prediction_file, ground_truth_file)
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_title_8.3b_32_1e-6_0.0_8_r192/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_with_title_ctx_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_6000_{}.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_8.3b_32_1e-6_0.0/generate_without_ctx/generate_8.3b_test_greedy_0_6000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_6000_10500.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_10500.txt"
+    # evaluate_ems(prediction_file, ground_truth_file)
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_4000_10500.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_4000_8_10500.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx0_1.3b_32_3e-6_0.0/generate_1.3b_test_greedy_0_4000_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx0_357m_32_1e-5_0.0/generate_357m_test_greedy_0_4000_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx0_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_4000_15000.txt"
+    prediction_file = "prediction_NQ.jsonl"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_357m_32_1e-5_0.0_2/generate_357m_test_greedy_0_4000_2_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_357m_32_1e-5_0.0_4/generate_357m_test_greedy_0_4000_4_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_357m_32_1e-5_0.0_8/generate_357m_test_greedy_0_4000_8_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_357m_32_1e-5_0.0_16/generate_357m_test_greedy_0_4000_16_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/bf16_without_title_nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_4000_8_10500.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/bf16_nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_4000_8_10500.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_qie_ft_same_format_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_test_greedy_0_4000_8_10500.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_qie_ft_same_format_ctx0_1.3b_32_3e-6_0.0_8/generate_1.3b_test_greedy_0_4000_8_10500.txt"
+    # evaluate_ems(prediction_file, ground_truth_file)
+
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications//nq_retro_ft_same_format_ctx1_357m_32_1e-5_0.0_8/generate_357m_test_greedy_0_4000_8_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_357m_32_1e-5_0.0/generate_357m_test_greedy_0_4000_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_test_greedy_0_4000_8_15000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_1.3b_32_3e-6_0.0/generate_1.3b_test_greedy_0_4000_9000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_test_greedy_0_4000_8_10500.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx0_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_105000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx0_1.3b_32_3e-6_0.0_8/generate_1.3b_test_greedy_0_4000_8_10500.txt"
+    # evaluate_ems(prediction_file, ground_truth_file)
+
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_8.3b_32_1e-6_0.0/generate_8.3b_dev_greedy_0_3000_{}.txt"
+    # ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ/dev.json"
+
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_add_space_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format__ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_reuse_top_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_chunk0_ctx0_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_bert_retriever_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_4000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx2_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_6000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx4_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx2_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_4000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_6000_{}.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx8_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_4000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_12/generate_8.3b_test_greedy_0_4000_12_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx{}_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_10500.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx{}_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_4000_10500.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_bert_retriever_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_4000_10500.txt"
+    # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_bert_retriever_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_4000_8_10500.txt"
+    # for step in [1, 2, 4, 8]:
+    #     p_file = prediction_file.format(step)
+    #     print(p_file)
+    #     evaluate_ems(p_file, ground_truth_file)
+
+    ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/TQA/dev.json"
+    # for step in range(1500, 15000, 1500):
+    for step in range(12000, 180000, 12000):
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_dev_greedy_0_3000_8_{}.txt"
+        # prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_dev_greedy_0_3000_{}.txt"
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_dev_greedy_0_3000_8_{}.txt"
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx1_1.3b_32_3e-6_0.0/generate_1.3b_dev_greedy_0_3000_{}.txt"
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_dev_greedy_0_3000_8_{}.txt"
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx0_1.3b_32_3e-6_0.0/generate_1.3b_dev_greedy_0_3000_{}.txt"
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_dev_greedy_0_3000_{}.txt"
+        prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx0_8.3b_32_1e-6_0.0_8/generate_8.3b_dev_greedy_0_3000_8_{}.txt"
+        p_file = prediction_file.format(step)
+        # evaluate_ems(p_file, ground_truth_file)
+
+
+    ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/TQA/test.json"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_12000_9000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_12000_8_12000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_bert_retriever_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_12000_8_9000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_bert_retriever_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_12000_12000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_test_greedy_0_12000_8_144000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_357m_32_1e-5_0.0_8/generate_357m_test_greedy_0_12000_8_144000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx1_357m_32_1e-5_0.0/generate_357m_test_greedy_0_12000_132000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx1_1.3b_32_3e-6_0.0/generate_1.3b_test_greedy_0_12000_132000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_12000_8_144000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx1_8.3b_32_1e-6_0.0//generate_8.3b_test_greedy_0_12000_132000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_12000_8_96000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx0_1.3b_32_3e-6_0.0/generate_1.3b_test_greedy_0_12000_96000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx0_357m_32_1e-5_0.0/generate_357m_test_greedy_0_12000_96000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_ft_same_format_ctx0_8.3b_32_1e-6_0.0/generate_8.3b_test_greedy_0_12000_96000.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/tqa_retro_ft_same_format_ctx0_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_12000_8_96000.txt"
+    evaluate_ems(prediction_file, ground_truth_file)
+
+    ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ/test.json"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx0_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_10500.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_10500.txt"
+
+
+    ground_truth_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ/dev.json"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_8.3b_32_1e-6_0.0/generate_8.3b_dev_greedy_0_3000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_dev_greedy_0_3000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_bert_retriever_ctx1_8.3b_32_1e-6_0.0_8/generate_8.3b_dev_greedy_0_3000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx2_8.3b_32_1e-6_0.0/generate_8.3b_dev_greedy_0_4000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx0_8.3b_32_1e-6_0.0_8/generate_8.3b_test_greedy_0_6000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx8_8.3b_32_1e-6_0.0_8/generate_8.3b_dev_greedy_0_3000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_1.3b_32_3e-6_0.0_8/generate_1.3b_dev_greedy_0_3000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_1.3b_32_3e-6_0.0/generate_1.3b_dev_greedy_0_3000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx1_357m_32_1e-5_0.0/generate_357m_dev_greedy_0_3000_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_retro_ft_same_format_ctx1_357m_32_1e-5_0.0_8/generate_357m_dev_greedy_0_3000_8_{}.txt"
+    prediction_file = "/lustre/fsw/adlr/adlr-nlp/pengx/retro/checkpoints/applications/nq_ft_same_format_ctx0_1.3b_32_3e-6_0.0/generate_1.3b_dev_greedy_0_3000_{}.txt"
+    # for step in range(1500, 16500, 1500):
+    #     p_file = prediction_file.format(step)
+    #     print(p_file)
+    #     try:
+    #         evaluate_ems(p_file, ground_truth_file)
+    #     except:
+    #         continue
