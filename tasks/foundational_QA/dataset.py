@@ -65,7 +65,7 @@ def preprocess(data_file, inference_only=False):
 
             for answer in answers:
                 answer = format_answer(answer)
-                data.append((question, answer, neighbours))
+                data.append((question, answer, None))
     
     return data
 
