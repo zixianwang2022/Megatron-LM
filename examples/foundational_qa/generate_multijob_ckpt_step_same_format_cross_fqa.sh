@@ -10,6 +10,7 @@ ckpt_step=$7
 ft_neighbours=$8
 SAVENAME=$9
 model_card=$9
+use_retrieved_neighbours=${10}
 
 . ./examples/foundational_qa/common_args.sh
 . ./examples/foundational_qa/gen_input.sh
@@ -25,6 +26,10 @@ fi
 
 CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
 sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}.txt"
+
+if [[ $use_retrieved_neighbours ]]; then
+    sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_ret.txt"
+fi
 
 DIR=`pwd`
 
@@ -55,6 +60,10 @@ COMMAND="$COMMAND \
        --load $CHECKPOINT_PATH \
        --micro-batch-size $micro_bsz \
        $FT_ARGS"
+
+if [[ $use_retrieved_neighbours ]]; then
+        COMMAND+=" --use-retrieved-neighbours "
+fi
 
 export SUBMIT_LOGS="${QA_HOME}/megatron-lm/logs"
 mkdir -p $SUBMIT_LOGS

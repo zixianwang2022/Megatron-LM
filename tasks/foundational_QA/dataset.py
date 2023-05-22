@@ -236,6 +236,19 @@ class FtDataset(torch.utils.data.Dataset):
                                 self.args.ft_neighbours,
                                 self.args.shuffle_topn)
 
+def reformat_query_v2(query, dataset_name):
+
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
+    yes_no_without_context = ["BoolQ"]
+    prefix = ""
+    if dataset_name in short_span_with_context:
+        prefix = "Answer the following question with a short span.\n"
+    elif dataset_name in yes_no_without_context:
+        prefix = "Answer the following question with True or False.\n"
+    else:
+        prefix = "Please give a full and complete answer for the question.\n"
+    return prefix + query
+
 def reformat_query(query, dataset_name):
 
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
@@ -261,7 +274,8 @@ def build_normal_training_sample(sample,
     # unpack tokens
     query, answer, neighbours = sample
     
-    query = reformat_query(query, dataset_name)
+    # query = reformat_query(query, dataset_name)
+    query = reformat_query_v2(query, dataset_name)
     # tokenization
     tokenizer = get_tokenizer()
 

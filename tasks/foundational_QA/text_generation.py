@@ -95,6 +95,8 @@ def add_text_generate_args(parser):
                         help='project size for adapters')
     group.add_argument('--ckpt-step', type=int, default=None,
                         help='setting ckpt step manually')
+    group.add_argument("--use-retrieved-neighbours", action='store_true', default=False,
+                       help='Use retrieved neighbours')
     return parser
 
 def generate_samples_conditional(model):
@@ -105,7 +107,7 @@ def generate_samples_conditional(model):
     model.eval()
     if torch.distributed.get_rank() == 0:
 
-        data = preprocess(args.sample_input_file, inference_only=True)
+        data = preprocess(args.sample_input_file, inference_only=True, retrieved_neighbours=args.use_retrieved_neighbours)
         print("total rows {}".format(len(data)))
         all_raw_text = [item[0] for item in data]
         all_neighbours = [item[-1] for item in data]

@@ -7,6 +7,7 @@ split=$4
 gen_start=$5
 num_gen=$6
 ft_neighbours=$8
+use_retrieved_neighbours=$9
 model_card="unbiased_cuckoo_pp1"
 
 . ./examples/foundational_qa/common_args.sh
@@ -23,6 +24,9 @@ fi
 
 CHECKPOINT_PATH=${unbiased_cuckoo}
 sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}.txt"
+if [[ $use_retrieved_neighbours ]]; then
+    sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_ret.txt"
+fi
 
 DIR=`pwd`
 
@@ -53,6 +57,10 @@ COMMAND="$COMMAND \
        --micro-batch-size $micro_bsz \
        $FT_ARGS"
 
+if [[ $use_retrieved_neighbours ]]; then
+	COMMAND+=" --use-retrieved-neighbours "
+fi
+
 export SUBMIT_LOGS="${QA_HOME}/megatron-lm/logs"
 mkdir -p $SUBMIT_LOGS
 export NCCL_DEBUG=INFO
@@ -61,6 +69,6 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_zeroshot_${model_size}_${TASK}" --duration 2
-# $COMMAND
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_zeroshot_${model_size}_${TASK}" --duration 4
+echo $COMMAND
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 
