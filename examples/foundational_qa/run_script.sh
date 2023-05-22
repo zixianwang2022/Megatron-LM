@@ -16,5 +16,5 @@ bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv2 43b  64 3e-7 1 gp
 
 
 
-bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv3 43b  64 3e-7 1 gpt_1e-8_unbiased_cuckoo_pp1
-bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv3 43b  64 3e-7 1 gpt_1e-8
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv3 43b  64 3e-7 1 gpt_1e-8_format_v2_unbiased_cuckoo_pp1
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv3 43b  64 3e-7 1 gpt_1e-8_format_v2
