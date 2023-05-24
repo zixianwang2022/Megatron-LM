@@ -5,7 +5,10 @@ import os
 import torch
 
 from megatron import get_args, get_retro_args
-from tools.bert_embedding.utils import get_index_path_map
+# >>>
+# from tools.bert_embedding.utils import get_index_path_map
+from tools.bert_embedding.utils import get_block_path_map
+# <<<
 from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
 from tools.retro.external_libs import h5py
 
@@ -113,10 +116,29 @@ def get_retro_datasets(verify_sizes=True):
     chunk_ds_info_map = get_chunk_dataset_map()
     retro_dataset_map = {}
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
+        # >>>
+        # raise Exception("hi.")
+        from megatron import print_rank_0
+        print_rank_0("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print_rank_0("data_key = '%s'." % data_key)
+        print_rank_0("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # <<<
 
         chunk_dataset = chunk_ds_info["data"]
         neighbor_dir = chunk_ds_info["neighbor_dir"]
-        neighbor_path_map = get_index_path_map(neighbor_dir)
+        # >>>
+        # neighbor_path_map = get_index_path_map(neighbor_dir)
+        neighbor_path_map = get_block_path_map(neighbor_dir,
+                                               retro_args.retro_block_size)
+        # <<<
+
+        # >>>
+        # from lutil import pax
+        # pax({
+        #     "neighbor_dir" : neighbor_dir,
+        #     "neighbor_path_map" : neighbor_path_map,
+        # })
+        # <<<
 
         # Verify dataset prefixes.
         sample_prefix = chunk_dataset.sample_dataset.datasets[0].index_prefix
@@ -127,7 +149,18 @@ def get_retro_datasets(verify_sizes=True):
 
         # Verify num chunks.
         n_sample_chunks = len(chunk_dataset)
-        n_neighbor_chunks = len(neighbor_path_map.id_index_map)
+        # >>>
+        # n_neighbor_chunks = len(neighbor_path_map.id_index_map)
+        n_neighbor_chunks = neighbor_path_map.max_idx
+        # <<<
+
+        # >>>
+        # from lutil import pax
+        # pax({
+        #     "n_sample_chunks" : n_sample_chunks,
+        #     "n_neighbor_chunks" : n_neighbor_chunks,
+        # })
+        # <<<
 
         if not os.path.isdir(neighbor_dir):
             if torch.distributed.get_rank() == 0:

@@ -156,7 +156,69 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     return len(missing_blocks), rank_missing_blocks
 
 
-class IdPathMap:
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# class IdPathMap:
+#     '''Maps indexes to the containing block path.
+
+#     This class optimizing the mapping of a large number of indexes to the
+#     path of its containing block. For example, with block_size 1M, this class
+#     stores 1/1M as many (long) path strings, saving memory.
+#     '''
+
+#     def __init__(self, paths):
+#         self.paths = paths
+#         self.path_index_map = {p:i for i,p in enumerate(paths)}
+#         self.id_index_map = {}
+
+#     def __str__(self):
+#         return "%d paths; %d ids" % (len(self.paths), len(self.id_index_map))
+
+#     def add(self, id, path):
+#         '''Map index to a path.'''
+#         self.id_index_map[id] = self.path_index_map[path]
+
+#     def __contains__(self, idx):
+#         '''Index added to this object?'''
+#         return idx in self.id_index_map
+
+#     def __getitem__(self, idx):
+#         '''Get path from index.'''
+#         return self.paths[self.id_index_map[idx]]
+
+
+# def path_to_range(path):
+#     '''Parse start/end indexes from block path name (e.g., 00010-00011.hdf5 ->
+#     (10, 11).'''
+#     return tuple([
+#         int(i) for i in os.path.splitext(
+#             os.path.basename(path))[0].split("-")])
+
+
+# def get_index_path_map(_dir):
+#     '''Map contained indexes to block file path (on disk).'''
+
+#     paths = sorted(glob.glob(_dir + "/*.hdf5"))
+
+#     # Build index-path map.
+#     idx_path_map = IdPathMap(paths)
+#     # >>>
+#     # for path in tqdm(paths, "get_index_path_map"):
+#     #     start_idx, end_idx = path_to_range(path)
+#     #     for idx in range(start_idx, end_idx):
+#     #         idx_path_map.add(idx, path)
+#     # +++
+#     for path in tqdm(paths, "get_index_path_map"):
+#         # start_idx, end_idx = path_to_range(path)
+#         start_idx, end_idx = 0, 100000
+#         for idx in range(start_idx, end_idx):
+#             idx_path_map.add(idx, path)
+#     torch.distributed.barrier()
+#     exit()
+#     # <<<
+
+#     return idx_path_map
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+class BlockPathMap:
     '''Maps indexes to the containing block path.
 
     This class optimizing the mapping of a large number of indexes to the
@@ -164,45 +226,58 @@ class IdPathMap:
     stores 1/1M as many (long) path strings, saving memory.
     '''
 
-    def __init__(self, paths):
-        self.paths = paths
-        self.path_index_map = {p:i for i,p in enumerate(paths)}
-        self.id_index_map = {}
+    def __init__(self, block_paths, block_size):
+        # self.block_path_map = {int(os.path.basename(p).split("-")[0]):p
+        #                        for p in block_paths}
+        self.max_idx = 0
+        self.block_path_map = {}
+        for block_path in block_paths:
+            name = os.path.splitext(os.path.basename(block_path))[0]
+            start_idx, end_idx = [ int(i) for i in name.split("-") ]
+            self.block_path_map[start_idx] = block_path
+            self.max_idx = max(self.max_idx, end_idx)
+        self.block_size = block_size
+        # >>>
+        # from lutil import pax
+        # pax({
+        #     "block_path_map" : self.block_path_map,
+        #     "block_size" : self.block_size,
+        #     "max_idx" : self.max_idx,
+        # })
+        # <<<
 
     def __str__(self):
-        return "%d paths; %d ids" % (len(self.paths), len(self.id_index_map))
+        return "%d paths" % len(self.block_path_map)
 
-    def add(self, id, path):
-        '''Map index to a path.'''
-        self.id_index_map[id] = self.path_index_map[path]
-
-    def __contains__(self, idx):
-        '''Index added to this object?'''
-        return idx in self.id_index_map
+    # def __contains__(self, idx):
+    #     '''Index added to this object?'''
+    #     return idx in self.id_index_map
 
     def __getitem__(self, idx):
         '''Get path from index.'''
-        return self.paths[self.id_index_map[idx]]
+        block_start_idx = self.block_size * (idx // self.block_size)
+        block_path = self.block_path_map[block_start_idx]
+        # >>>
+        # if block_start_idx != 0:
+        #     from lutil import pax
+        #     pax({
+        #         "idx" : idx,
+        #         "block_start_idx" : block_start_idx,
+        #         "block_path" : block_path,
+        #     })
+        # <<<
+        return block_path
 
 
-def path_to_range(path):
-    '''Parse start/end indexes from block path name (e.g., 00010-00011.hdf5 ->
-    (10, 11).'''
-    return tuple([
-        int(i) for i in os.path.splitext(
-            os.path.basename(path))[0].split("-")])
-
-
-def get_index_path_map(_dir):
+def get_block_path_map(_dir, block_size):
     '''Map contained indexes to block file path (on disk).'''
+    return BlockPathMap(sorted(glob.glob(_dir + "/*.hdf5")), block_size)
 
-    paths = sorted(glob.glob(_dir + "/*.hdf5"))
 
-    # Build index-path map.
-    idx_path_map = IdPathMap(paths)
-    for path in tqdm(paths, "get_index_path_map"):
-        start_idx, end_idx = path_to_range(path)
-        for idx in range(start_idx, end_idx):
-            idx_path_map.add(idx, path)
-
-    return idx_path_map
+# def path_to_range(path):
+#     '''Parse start/end indexes from block path name (e.g., 00010-00011.hdf5 ->
+#     (10, 11).'''
+#     return tuple([
+#         int(i) for i in os.path.splitext(
+#             os.path.basename(path))[0].split("-")])
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
