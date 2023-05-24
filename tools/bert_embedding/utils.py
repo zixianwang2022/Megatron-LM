@@ -167,7 +167,8 @@ class BlockPathMap:
     @classmethod
     def from_dir(cls, _dir, block_size, ext="hdf5"):
         '''Map contained indexes to block file path (on disk).'''
-        return cls(sorted(glob.glob(_dir + f"/*.{ext}5")), block_size)
+        assert os.path.isdir(_dir), f"directory not found, '{_dir}'."
+        return cls(sorted(glob.glob(_dir + f"/*.{ext}")), block_size)
 
     def __init__(self, block_paths, block_size):
         self.max_idx = 0

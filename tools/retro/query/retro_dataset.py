@@ -5,10 +5,7 @@ import os
 import torch
 
 from megatron import get_args, get_retro_args
-# >>>
-# from tools.bert_embedding.utils import get_index_path_map
-from tools.bert_embedding.utils import get_block_path_map
-# <<<
+from tools.bert_embedding.utils import BlockPathMap
 from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
 from tools.retro.external_libs import h5py
 
@@ -119,11 +116,8 @@ def get_retro_datasets(verify_sizes=True):
 
         chunk_dataset = chunk_ds_info["data"]
         neighbor_dir = chunk_ds_info["neighbor_dir"]
-        # >>>
-        # neighbor_path_map = get_index_path_map(neighbor_dir)
-        neighbor_path_map = get_block_path_map(neighbor_dir,
-                                               retro_args.retro_block_size)
-        # <<<
+        neighbor_path_map = BlockPathMap.from_dir(neighbor_dir,
+                                                  retro_args.retro_block_size)
 
         # Verify dataset prefixes.
         sample_prefix = chunk_dataset.sample_dataset.datasets[0].index_prefix
@@ -134,10 +128,7 @@ def get_retro_datasets(verify_sizes=True):
 
         # Verify num chunks.
         n_sample_chunks = len(chunk_dataset)
-        # >>>
-        # n_neighbor_chunks = len(neighbor_path_map.id_index_map)
         n_neighbor_chunks = neighbor_path_map.max_idx
-        # <<<
 
         if not os.path.isdir(neighbor_dir):
             if torch.distributed.get_rank() == 0:
@@ -148,7 +139,7 @@ def get_retro_datasets(verify_sizes=True):
                                 neighbor_dir)
             torch.distributed.barrier()
             exit()
-        # >>>
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         # ......... hacky: due to incomplete neighbors .........
         # if verify_sizes and n_sample_chunks != n_neighbor_chunks:
         #     if torch.distributed.get_rank() == 0:
@@ -160,7 +151,7 @@ def get_retro_datasets(verify_sizes=True):
         #                         % (n_sample_chunks, n_neighbor_chunks))
         #     torch.distributed.barrier()
         #     exit()
-        # <<<
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
