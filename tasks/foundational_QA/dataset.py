@@ -249,6 +249,19 @@ def reformat_query_v2(query, dataset_name):
         prefix = "Please give a full and complete answer for the question.\n"
     return prefix + query
 
+def reformat_query_v3(query, dataset_name):
+
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
+    yes_no_without_context = ["BoolQ"]
+    prefix = ""
+    if dataset_name in short_span_with_context:
+        prefix = "[INSTRUCTION BEGIN] Answer the following question with a short span. [INSTRUCTION END]\n"
+    elif dataset_name in yes_no_without_context:
+        prefix = "[INSTRUCTION BEGIN] Answer the following question with True or False. [INSTRUCTION END]\n"
+    else:
+        prefix = "[INSTRUCTION BEGIN] Please give a full and complete answer for the question. [INSTRUCTION END]\n"
+    return prefix + query
+
 def reformat_query(query, dataset_name):
 
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
@@ -275,7 +288,7 @@ def build_normal_training_sample(sample,
     query, answer, neighbours = sample
     
     # query = reformat_query(query, dataset_name)
-    query = reformat_query_v2(query, dataset_name)
+    query = reformat_query_v3(query, dataset_name)
     # tokenization
     tokenizer = get_tokenizer()
 
@@ -294,6 +307,66 @@ def build_normal_training_sample(sample,
         context_tokens = tokenizer.tokenize(context)
         context_tokens = context_tokens[:max_seq_length - len(output_tokens) - len(input_tokens)]
         input_tokens = context_tokens + input_tokens
+
+    # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)
+    # Padding
+    tokens, answer_mask \
+        = pad_and_convert_to_numpy(input_tokens, output_tokens,
+                                   pad_id, max_seq_length, eos_id)
+
+    train_sample = {
+        'text': tokens,
+        'answer_mask': answer_mask,
+    }
+    return train_sample
+
+
+def reformat_prompt(query, neighbours, dataset_name, ft_neighbours, \
+    max_output_len, tokenizer, max_seq_length):
+
+    if ft_neighbours > 0:
+        # if shuffle_topn:
+        #     import random
+        #     random.seed(1234)
+        #     random_neighbours = neighbours[0:ft_neighbours]
+        #     random.shuffle(random_neighbours)
+        #     neighbours = random_neighbours + neighbours[ft_neighbours:]
+        # Truncate to `max_sequence_length` to fit in output tokens.
+        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
+        context_tokens = tokenizer.tokenize(context)
+        input_tokens = tokenizer.tokenize(query)
+        context_tokens = context_tokens[:max_seq_length - max_output_len - len(input_tokens)]
+        input_tokens = context_tokens + input_tokens
+
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
+    yes_no_without_context = ["BoolQ"]
+    prefix = ""
+    if dataset_name in short_span_with_context:
+        prefix = "Answer the following question with a short span.\n\n"
+    elif dataset_name in yes_no_without_context:
+        prefix = "Answer the following question with True or False.\n\n"
+    else:
+        prefix = "Please give a full and complete answer for the question.\n\n"
+    return prefix + query
+
+def build_normal_training_sample_v2(sample,
+                          max_seq_length,
+                          pad_id,
+                          eos_id,
+                          dataset_name,
+                          ft_neighbours=1,
+                          shuffle_topn=False):
+
+    # unpack tokens
+    query, answer, neighbours = sample
+    
+    
+    # tokenization
+    tokenizer = get_tokenizer()
+    output_tokens = tokenizer.tokenize(answer)
+
+    query = reformat_prompt(query, neighbours, dataset_name, ft_neighbours, len(output_tokens))
+    input_tokens = tokenizer.tokenize(query)
 
     # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)
     # Padding

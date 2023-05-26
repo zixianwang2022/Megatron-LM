@@ -30,7 +30,7 @@ from megatron.model import GPTModel
 from megatron.training import get_model
 from megatron.text_generation import generate_and_post_process, beam_search_and_post_process
 from finetune_gpt_with_pretrain import get_tasks_args
-from dataset import preprocess, pad_neighbours_for_query_only, reformat_query, reformat_query_v2
+from dataset import preprocess, pad_neighbours_for_query_only, reformat_query, reformat_query_v3
 import numpy as np
 import time
 # from tasks.prompt_learning.task_datasets import e2e_format_query, xsum_format_s
@@ -137,7 +137,7 @@ def generate_samples_conditional(model):
                 else:
                     raw_text = all_raw_text[input_pos]
                     # raw_text = reformat_query(raw_text, args.task)
-                    raw_text = reformat_query_v2(raw_text, args.task)
+                    raw_text = reformat_query_v3(raw_text, args.task)
                     neighbours = all_neighbours[input_pos]
                 input_pos += 1
                 if args.task.lower() == 'nq' or args.task.lower() == 'tqa' or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'ford' in args.task.lower() or 'att' in args.task.lower():
