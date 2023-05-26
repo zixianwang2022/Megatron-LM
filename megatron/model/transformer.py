@@ -1412,9 +1412,6 @@ class ParallelTransformer(MegatronModule):
             if model_type == ModelType.retro_encoder:
                 for layer in self.layers:
                     if layer.self_attention.use_flash_attn:
-                        # >>>
-                        raise Exception("test w/ flash attn.")
-                        # <<<
                         layer.self_attention.core_attention_flash.dropout_p = \
                             torch.nn.Dropout(args.retro_encoder_attention_dropout)
                     else:
@@ -1593,9 +1590,6 @@ class ParallelTransformer(MegatronModule):
                     forward_kwargs = {
                         'encoder_output': encoder_output,
                         'enc_dec_attn_mask': enc_dec_attn_mask,
-                        'retriever_input': retriever_input,
-                        'retriever_output': retriever_output,
-                        'retriever_attn_mask': retriever_attn_mask,
                         'inference_params': inference_params,
                     }
 
@@ -1604,6 +1598,9 @@ class ParallelTransformer(MegatronModule):
                         forward_kwargs['checkpoint_core_attention'] = self.checkpoint_core_attention
                     else:
                         forward_kwargs['rotary_pos_emb'] = rotary_pos_emb
+                        forward_kwargs['retriever_input'] = retriever_input
+                        forward_kwargs['retriever_output'] = retriever_output
+                        forward_kwargs['retriever_attn_mask'] = retriever_attn_mask
 
                     for index in range(self.num_layers):
                         layer = self._get_layer(index)
