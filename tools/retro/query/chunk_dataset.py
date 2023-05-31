@@ -4,6 +4,9 @@ import os
 import torch
 
 from megatron import get_retro_args, print_rank_0
+# >>>
+from megatron import get_args
+# <<<
 from megatron.data.gpt_dataset import build_train_valid_test_datasets
 from megatron.training import (
     build_train_valid_test_data_loaders,
@@ -84,12 +87,20 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     args = get_retro_args()
 
+    # >>>
+    # from lutil import pax
+    # pax({"split_constraint": get_args().split_constraint})
+    # <<<
+
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
         data_impl=args.data_impl,
         splits_string=args.split,
+        # >>>
+        split_constraint_strings=get_args().split_constraint,
+        # <<<
         train_valid_test_num_samples=train_val_test_num_samples,
         seq_length=args.retro_gpt_seq_length,
         seed=args.seed,

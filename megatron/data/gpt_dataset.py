@@ -17,6 +17,9 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
 
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
+                                    # >>>
+                                    split_constraint_strings,
+                                    # <<<
                                     train_valid_test_num_samples,
                                     seq_length, seed, skip_warmup,
                                     train_data_prefix=None,
@@ -52,6 +55,9 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         for i in range(len(prefixes)):
             train_ds, valid_ds, test_ds = _build_train_valid_test_datasets(
                 prefixes[i], data_impl, splits_string,
+                # >>>
+                split_constraint_strings,
+                # <<<
                 datasets_train_valid_test_num_samples[i],
                 seq_length, seed, skip_warmup,
                 return_doc_ids)
@@ -100,6 +106,9 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 
 
 def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
+                                     # >>>
+                                     split_constraint_strings,
+                                     # <<<
                                      train_valid_test_num_samples,
                                      seq_length, seed, skip_warmup,
                                      return_doc_ids=False):
@@ -112,6 +121,23 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 
     total_num_of_documents = indexed_dataset.sizes.shape[0]
     splits = get_train_valid_test_split_(splits_string, total_num_of_documents)
+    # >>>
+    split_constraints = [ get_train_valid_test_split_(s, total_num_of_documents)
+                          for s in split_constraint_strings ]
+    split_constraints.append(splits)
+    # <<<
+
+    # >>>
+    # if split_constraint_strings:
+    #     from lutil import pax
+    #     pax({
+    #         "splits_string" : splits_string,
+    #         "splits" : splits,
+    #         "split_constraint_strings" : split_constraint_strings,
+    #         "split_constraints" : split_constraints,
+    #         "total_num_of_documents" : total_num_of_documents,
+    #     })
+    # <<<
 
     # Print stats about the splits.
     print_rank_0(' > dataset split:')
@@ -128,8 +154,26 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     def build_dataset(index, name):
         dataset = None
         if splits[index + 1] > splits[index]:
-            documents = np.arange(start=splits[index], stop=splits[index + 1],
+            # >>>
+            # documents = np.arange(start=splits[index], stop=splits[index + 1],
+            #                       step=1, dtype=np.int32)
+            # +++
+            start_doc_idx = max(s[index] for s in split_constraints)
+            stop_doc_idx = min(s[index + 1] for s in split_constraints)
+            assert stop_doc_idx >= start_doc_idx
+            documents = np.arange(start=start_doc_idx, stop=stop_doc_idx,
                                   step=1, dtype=np.int32)
+            # <<<
+            # >>>
+            # if index >= 1:
+            #     from lutil import pax, np as _np
+            #     pax({
+            #         "split_constraints" : split_constraints,
+            #         "start_doc_idx" : start_doc_idx,
+            #         "stop_doc_idx" : stop_doc_idx,
+            #         "documents" : _np(documents),
+            #     })
+            # <<<
             dataset = GPTDataset(name, data_prefix,
                                  documents, indexed_dataset,
                                  train_valid_test_num_samples[index],

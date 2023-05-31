@@ -1011,6 +1011,15 @@ def _add_data_args(parser):
                        ' validation, and test split. For example the split '
                        '`90,5,5` will use 90%% of data for training, 5%% for '
                        'validation and 5%% for test.')
+    # >>>
+    group.add_argument('--split-constraint', nargs="*", action="extend",
+                       help='A split constraint intersects the document IDs '
+                       'between the primary \'--split\' and a secondary split '
+                       'to constrain which document IDs are available for each '
+                       'data group. The intersection is computed separately '
+                       'for the training, validation, and test datasets. Same '
+                       'format as \'--split\'.')
+    # <<<
     group.add_argument('--train-data-path', nargs='*', default=None,
                        help='Path to the training dataset. Accepted format:'
                        '1) a single data path, 2) multiple datasets in the'
