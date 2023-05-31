@@ -857,6 +857,9 @@ class ParallelTransformerLayer(MegatronModule):
             ns : Sequence length.
             bs : Batch size.
             d  : Hidden size.
+            l  : Number of chunks per sample (i.e., seq_length/chunk_length).
+            k  : Number of neighbors.
+            r  : Number of retrieved tokens (neighbors + continuation).
         """
 
         ns, bs, d = layernorm_output.shape # [r, bs * l * k, d]
@@ -928,6 +931,9 @@ class ParallelTransformerLayer(MegatronModule):
             bs : Batch size.
             d  : Hidden size.
             l  : Number of chunks per sample (i.e., seq_length/chunk_length).
+            m  : Number of tokens per chunk.
+            k  : Number of neighbors.
+            r  : Number of retrieved tokens (neighbors + continuation).
         """
 
         ns, bs, d = layernorm_output.shape
@@ -1264,6 +1270,7 @@ class ParallelTransformer(MegatronModule):
         self.input_tensor = None
         self.drop_path_rate = drop_path_rate
         self.transformer_impl = args.transformer_impl
+        self.retro_add_retriever = args.retro_add_retriever
 
         # Store activation checkpoiting flag.
         self.recompute_granularity = args.recompute_granularity
@@ -1275,9 +1282,19 @@ class ParallelTransformer(MegatronModule):
         self.sequence_parallel = args.sequence_parallel
 
         # Transformer Engine Init.
+        self.transformer_engine_rope_available = False
         if self.transformer_impl == 'transformer_engine':
             global transformer_engine
             import transformer_engine
+            from importlib.metadata import version
+            from pkg_resources import packaging
+
+            te_version = packaging.version.Version(version("transformer-engine"))
+            if te_version >= packaging.version.Version("0.10.0"):
+                self.transformer_engine_rope_available = True
+
+            del version, packaging
+
         self.use_fp8 = args.fp8_e4m3 or args.fp8_hybrid
         self.fp8_recipe = None
         self.fp8_group = None
@@ -1435,19 +1452,20 @@ class ParallelTransformer(MegatronModule):
                               encoder_output, enc_dec_attn_mask,
                               rotary_pos_emb, is_first_microbatch):
         """Forward method with activation checkpointing."""
-        def custom(start, end, is_transformer_engine=False):
+        def custom(start, end):
             def custom_forward(*args, **kwargs):
                 x_, *args = args
                 for index in range(start, end):
                     layer = self._get_layer(index)
                     x_ = layer(x_, *args, **kwargs)
                 return x_
-            def custom_forward_transformer_engine(*args, **kwargs):
-                return custom_forward(*args, is_first_microbatch=is_first_microbatch, **kwargs)
-            if not is_transformer_engine:
-                return custom_forward
-            else:
-                return custom_forward_transformer_engine
+            return custom_forward
+
+        te_forward_kwargs = {}
+        if self.transformer_impl == 'transformer_engine':
+            te_forward_kwargs['is_first_microbatch'] = is_first_microbatch
+            if self.transformer_engine_rope_available:
+                te_forward_kwargs['rotary_pos_emb'] = rotary_pos_emb
 
         if self.recompute_method == 'uniform':
             # Uniformly divide the total number of Transformer layers and
@@ -1457,12 +1475,12 @@ class ParallelTransformer(MegatronModule):
             while l < self.num_layers:
                 if self.transformer_impl == 'transformer_engine':
                     hidden_states = transformer_engine.pytorch.distributed.checkpoint(
-                        custom(l, l + self.recompute_num_layers, is_transformer_engine=True),
+                        custom(l, l + self.recompute_num_layers),
                         self.distribute_saved_activations,
                         tensor_parallel.get_cuda_rng_tracker,
                         mpu.get_tensor_model_parallel_group(),
                         hidden_states, attention_mask, encoder_output,
-                        enc_dec_attn_mask, rotary_pos_emb)
+                        enc_dec_attn_mask, **te_forward_kwargs)
                 else:
                     hidden_states = tensor_parallel.checkpoint(
                         custom(l, l + self.recompute_num_layers),
@@ -1480,12 +1498,12 @@ class ParallelTransformer(MegatronModule):
                 if l < self.recompute_num_layers:
                     if self.transformer_impl == 'transformer_engine':
                         hidden_states = transformer_engine.pytorch.distributed.checkpoint(
-                            custom(l, l + 1, is_transformer_engine=True),
+                            custom(l, l + 1),
                             self.distribute_saved_activations,
                             tensor_parallel.get_cuda_rng_tracker,
                             mpu.get_tensor_model_parallel_group(),
                             hidden_states, attention_mask, encoder_output,
-                            enc_dec_attn_mask, rotary_pos_emb)
+                            enc_dec_attn_mask, **te_forward_kwargs)
                     else:
                         hidden_states = tensor_parallel.checkpoint(
                             custom(l, l + 1),
@@ -1494,9 +1512,9 @@ class ParallelTransformer(MegatronModule):
                             enc_dec_attn_mask, rotary_pos_emb)
                 else:
                     if self.transformer_impl == 'transformer_engine':
-                        hidden_states = custom(l, l + 1, is_transformer_engine=True)(
+                        hidden_states = custom(l, l + 1)(
                             hidden_states, attention_mask, encoder_output,
-                            enc_dec_attn_mask, rotary_pos_emb)
+                            enc_dec_attn_mask, **te_forward_kwargs)
                     else:
                         hidden_states = custom(l, l + 1)(
                             hidden_states, attention_mask, encoder_output,
@@ -1596,6 +1614,8 @@ class ParallelTransformer(MegatronModule):
                     if self.transformer_impl == 'transformer_engine':
                         forward_kwargs['is_first_microbatch'] = is_first_microbatch
                         forward_kwargs['checkpoint_core_attention'] = self.checkpoint_core_attention
+                        if self.transformer_engine_rope_available:
+                            forward_kwargs['rotary_pos_emb'] = rotary_pos_emb
                     else:
                         forward_kwargs['rotary_pos_emb'] = rotary_pos_emb
                         forward_kwargs['retriever_input'] = retriever_input

@@ -334,7 +334,6 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
             separate_last_epoch = False
             print(' > only one epoch required, setting '
                   'separate_last_epoch to False', flush=True)
-
         else:
             # Get the number of samples for the last epoch
             num_samples_from_epochs_minus_one = (

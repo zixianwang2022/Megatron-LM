@@ -448,7 +448,6 @@ def merge_dbs(indexed_dataset_infos, db_type):
                     print(individual_doc_offsets)
                     print(train_doc_offset)
                     raise Exception("test me.")
-                # <<<
             else:
                 individual_chunk_db = \
                     individual_chunk_db[:ds_info[n_chunks_key]]

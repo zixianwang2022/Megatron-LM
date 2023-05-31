@@ -157,16 +157,19 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
 
 
 class BlockPathMap:
-    '''Maps indexes to the containing block path.
+    '''Map an index to its containing block path.
 
-    This class optimizing the mapping of a large number of indexes to the
-    path of its containing block. For example, with block_size 1M, this class
-    stores 1/1M as many (long) path strings, saving memory.
+    The common use for this class is to have a directory of files containing
+    blocks of processed data, of uniform block size (e.g., 100k samples per
+    file). Each file must follow a naming convention of 'startIdx-endIdx.[ext]',
+    where 'endIdx' minus 'startIdx' must equal the block size, with the possible
+    exception of the final block. Given an input index, this class maps the
+    index to the containing block file.
     '''
 
     @classmethod
     def from_dir(cls, _dir, block_size, ext="hdf5"):
-        '''Map contained indexes to block file path (on disk).'''
+        '''Get list of block files, and create map.'''
         assert os.path.isdir(_dir), f"directory not found, '{_dir}'."
         return cls(sorted(glob.glob(_dir + f"/*.{ext}")), block_size)
 
@@ -184,7 +187,7 @@ class BlockPathMap:
         return "%d paths" % len(self.block_path_map)
 
     def __getitem__(self, idx):
-        '''Get path from index.'''
+        '''Get block path from index.'''
         block_start_idx = self.block_size * (idx // self.block_size)
         block_path = self.block_path_map[block_start_idx]
         return block_path
