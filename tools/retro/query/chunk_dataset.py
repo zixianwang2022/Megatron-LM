@@ -87,11 +87,6 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     args = get_retro_args()
 
-    # >>>
-    # from lutil import pax
-    # pax({"split_constraint": get_args().split_constraint})
-    # <<<
-
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(

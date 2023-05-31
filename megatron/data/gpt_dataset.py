@@ -127,18 +127,6 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     split_constraints.append(splits)
     # <<<
 
-    # >>>
-    # if split_constraint_strings:
-    #     from lutil import pax
-    #     pax({
-    #         "splits_string" : splits_string,
-    #         "splits" : splits,
-    #         "split_constraint_strings" : split_constraint_strings,
-    #         "split_constraints" : split_constraints,
-    #         "total_num_of_documents" : total_num_of_documents,
-    #     })
-    # <<<
-
     # Print stats about the splits.
     print_rank_0(' > dataset split:')
 
@@ -163,16 +151,6 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             assert stop_doc_idx >= start_doc_idx
             documents = np.arange(start=start_doc_idx, stop=stop_doc_idx,
                                   step=1, dtype=np.int32)
-            # <<<
-            # >>>
-            # if index >= 1:
-            #     from lutil import pax, np as _np
-            #     pax({
-            #         "split_constraints" : split_constraints,
-            #         "start_doc_idx" : start_doc_idx,
-            #         "stop_doc_idx" : stop_doc_idx,
-            #         "documents" : _np(documents),
-            #     })
             # <<<
             dataset = GPTDataset(name, data_prefix,
                                  documents, indexed_dataset,
