@@ -71,16 +71,16 @@ FT_ARGS="--data-folder $DATA_FOLDER \
     --ft_neighbours ${ft_neighbours} \
     --task $TASK"
 
-if [[ $model_size == "43b" ]]; then
-    ARGS_43B="--overlap-p2p-communication "
-    if [[ $model_card == *-pp1* ]]; then
-        ARGS_43B=""
-    fi
-    # --num-layers-per-virtual-pipeline-stage 1 " not yet supported
-    # --use-container-fused-kernels \
-    # DOCKER=/lustre/fsw/adlr/adlr-nlp/images/adlr+megatron-lm+pytorch+22.12-py3-eval_with_fused_kernels.sqsh
-    GPT_ARGS=" ${GPT_ARGS} ${ARGS_43B}"
-fi
+#if [[ $model_size == "43b" ]]; then
+#    ARGS_43B="--overlap-p2p-communication "
+#    if [[ $model_card == *-pp1* ]]; then
+#        ARGS_43B=""
+#    fi
+#    # --num-layers-per-virtual-pipeline-stage 1 " not yet supported
+#    # --use-container-fused-kernels \
+#    # DOCKER=/lustre/fsw/adlr/adlr-nlp/images/adlr+megatron-lm+pytorch+22.12-py3-eval_with_fused_kernels.sqsh
+#    GPT_ARGS=" ${GPT_ARGS} ${ARGS_43B}"
+#fi
 
 DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
 #DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
