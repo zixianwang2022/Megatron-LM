@@ -136,7 +136,7 @@ def generate_samples_conditional(model):
                     raw_text = all_raw_text[input_pos]
                     neighbours = all_neighbours[input_pos]
                 input_pos += 1
-                if args.task.lower() == 'nq' or args.task.lower() == 'tqa' or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'ford' in args.task.lower() or 'att' in args.task.lower() or 'iternal' in args.task.lower():
+                if args.task.lower() == 'nq' or args.task.lower() == 'tqa' or 'carmanual' in args.task.lower() or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'ford' in args.task.lower() or 'att' in args.task.lower() or 'iternal' in args.task.lower():
                     max_target_len = args.out_seq_length
                     # disable it for GPT for now
                     # neighbours_array = pad_neighbours_for_query_only(args, [tokenizer.tokenize(neighbour) for neighbour in neighbours], tokenizer.eod, args.ft_neighbours)

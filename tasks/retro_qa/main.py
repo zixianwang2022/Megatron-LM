@@ -93,7 +93,7 @@ if __name__ == '__main__':
         exit()
 
     valid_tasks = ['nq', 'eli5', 'tqa', 'benz', 'benz_plus_landrover', 'nq_longform', 'iternal']
-    if args.task.lower() in valid_tasks or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'att' in args.task.lower() or 'iternal' in args.task.lower():
+    if args.task.lower() in valid_tasks or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'carmanual' in args.task.lower() or 'att' in args.task.lower() or 'iternal' in args.task.lower():
         from tasks.retro_qa.finetune_gpt import main
 
     else:

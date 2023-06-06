@@ -115,7 +115,7 @@ def eli5_preprocess(data_file):
 def get_processed_dataset(name, data_folder, processed=True, ratio=None, index=None, num_samples=None):
 
     if name.lower() == 'nq' or name.lower() == "tqa" or 'benz' in name.lower() or 'landrover' in  name.lower() \
-            or name.lower() == "nq_longform" or 'att' in name.lower() or 'iternal' in name.lower():
+            or name.lower() == "nq_longform" or 'att' in name.lower() or 'carmanual' in name.lower() or 'iternal' in name.lower():
         training_file = data_folder + "/train.json"
         validation_file = data_folder + "/dev.json"
         test_file = data_folder + "/test.json"
