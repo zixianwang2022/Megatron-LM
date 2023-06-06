@@ -357,6 +357,44 @@ def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
 
     return  input_tokens
 
+def reformat_prompt_v3(query, neighbours, dataset_name, ft_neighbours, \
+    max_output_len, tokenizer, max_seq_length):
+
+    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\nUse the following text as reference for the conversation.\n\n"
+
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
+    yes_no_without_context = ["BoolQ"]
+    multichoices = [""]
+    user_template = ""
+    if dataset_name in short_span_with_context:
+        user = "Answer the following question with a short span. {}".format(query)
+    elif dataset_name in yes_no_without_context:
+        user = "Answer the following question with True or False. {}".format(query)
+    else:
+        user = "Answer the following question with a long full one. {}".format(query)
+
+    dialogue_format="User: {}\n\nAssistant:"
+    dialogue_turn = dialogue_format.format(user)
+
+    if ft_neighbours > 0:
+        # if shuffle_topn:
+        #     import random
+        #     random.seed(1234)
+        #     random_neighbours = neighbours[0:ft_neighbours]
+        #     random.shuffle(random_neighbours)
+        #     neighbours = random_neighbours + neighbours[ft_neighbours:]
+        # Truncate to `max_sequence_length` to fit in output tokens.
+        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
+        context_tokens = tokenizer.tokenize(context)
+        dialogue_tokens = tokenizer.tokenize(dialogue_turn)
+        system_tokens = tokenizer.tokenize(system)
+        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
+        input_tokens = system_tokens + context_tokens + dialogue_tokens
+    else:
+        input_tokens = system_tokens + dialogue_tokens
+
+    return  input_tokens
+
 
 def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     max_output_len, tokenizer, max_seq_length):

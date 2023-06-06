@@ -288,7 +288,7 @@ def build_normal_training_sample(sample,
     query, answer, neighbours = sample
     
     # query = reformat_query(query, dataset_name)
-    query = reformat_query_v3(query, dataset_name)
+    query = reformat_query_v2(query, dataset_name)
     # tokenization
     tokenizer = get_tokenizer()
 

@@ -6,10 +6,11 @@ sampling=$3
 split=$4
 gen_start=$5
 num_gen=$6
+ckpt_step=$7
 ft_neighbours=$8
-use_retrieved_neighbours=$9
-model_card="unbiased_cuckoo_pp1"
-model_card="quiet_cockatoo_pp1"
+SAVENAME=$9
+model_card=$9
+use_retrieved_neighbours=${10}
 
 . ./examples/foundational_qa/common_args.sh
 . ./examples/foundational_qa/gen_input.sh
@@ -23,14 +24,9 @@ if [[ $sampling == "beam" ]]; then
     SAMPLE_ARGS="--beam-search"
 fi
 
-if [[ $model_card == *unbiased_cuckoo* ]]; then
-    CHECKPOINT_PATH=${unbiased_cuckoo}
-fi
-if [[ $model_card == *quiet_cockatoo* ]]; then
-    CHECKPOINT_PATH=${quiet_cockatoo}
-fi
+CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
+sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}.txt"
 
-sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}.txt"
 if [[ $use_retrieved_neighbours ]]; then
     sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_ret.txt"
 fi
@@ -40,6 +36,7 @@ DIR=`pwd`
 GEN_ARGS="$SAMPLE_ARGS \
           --gen-start-idx $gen_start \
           --num-gen $num_gen \
+          --ckpt-step ${ckpt_step} \
           --sample-input-file $sample_input_file \
           --sample-output-file $sample_output_file"
 
@@ -51,10 +48,10 @@ DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
 # COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/prompt_learning/text_generation.py \
 # COMMAND="python -u ${DIR}/tasks/retro_qa/text_generation.py \
 
-COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/foundational_QA/text_generation.py"
+COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/foundational_QA/text_generation_conv.py"
 
 if [[ $model_size == "43b" ]]; then
-   COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation.py"
+   COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
 fi
 
 COMMAND="$COMMAND \
@@ -65,7 +62,7 @@ COMMAND="$COMMAND \
        $FT_ARGS"
 
 if [[ $use_retrieved_neighbours ]]; then
-	COMMAND+=" --use-retrieved-neighbours "
+        COMMAND+=" --use-retrieved-neighbours "
 fi
 
 export SUBMIT_LOGS="${QA_HOME}/megatron-lm/logs"
@@ -76,6 +73,6 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_zeroshot_${model_size}_${TASK}" --duration 1
-echo $COMMAND
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 0.5
+# echo $COMMAND
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 

@@ -30,6 +30,9 @@ if [[ $model_size == "43b" ]]; then
     if [[ $model_card == *unbiased_cuckoo* ]]; then
         pip_par=1
     fi
+    if [[ $model_card == *quiet_cockatoo* ]]; then
+        pip_par=1
+    fi
 fi
 
 

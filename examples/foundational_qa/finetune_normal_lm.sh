@@ -58,9 +58,13 @@ options=" \
     $OUTPUT_ARGS \
     $FT_ARGS"
 
-if [[ $model_card == *unbias* ]]; then
+if [[ $model_card == *unbiased_cuckoo* ]]; then
     PRETRAINED_CHECKPOINT=$unbiased_cuckoo
 fi
+if [[ $model_card == *quiet_cockatoo* ]]; then
+    PRETRAINED_CHECKPOINT=$quiet_cockatoo
+fi
+
 
 if [[ -d "$CHECKPOINT_PATH" ]]; then
     options="$options \
