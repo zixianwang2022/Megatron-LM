@@ -89,7 +89,7 @@ if __name__ == "__main__":
     args = get_args()
     _, references = read_json_data(args.datapath)
     predictions = load_prediction(args.gen_test_file)
-    precision, recall, f1, rouge_results, bertscore_results, bertscore_results_avg = evaluate_all_metrics(predictions, references[:400])
+    precision, recall, f1, rouge_results, bertscore_results, bertscore_results_avg = evaluate_all_metrics(predictions, references)
 
     saved_metrics_names = ["filename", "f1", "rouge1", "rouge2", "rougeL", "rougeLsum", "bert_score_f1"]
     print(",".join(saved_metrics_names))
