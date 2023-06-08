@@ -4,9 +4,16 @@ import os
 import torch
 
 from megatron import get_retro_args, print_rank_0
-from megatron.data.gpt_dataset import build_train_valid_test_datasets
+# >>>
+# from megatron.data.gpt_dataset import build_train_valid_test_datasets
+from megatron.data.gpt_dataset import build_train_valid_test_datasets \
+    as build_gpt_train_valid_test_datasets
+# <<<
 from megatron.training import (
-    build_train_valid_test_data_loaders,
+    # >>>
+    # build_train_valid_test_data_loaders,
+    build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
+    # <<<
     update_train_iters,
 )
 from tools.retro.db.utils import get_indexed_dataset_infos
@@ -86,7 +93,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
-    train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
+    train_ds, valid_ds, test_ds = build_gpt_train_valid_test_datasets(
         data_prefix=args.data_path,
         data_impl=args.data_impl,
         splits_string=args.split,
@@ -100,6 +107,65 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
+# >>>
+# def get_chunk_dataset_map():
+#     '''Get train, valid, test chunk datasets.'''
+
+#     args = get_retro_args()
+
+#     # Update train iters.
+#     update_train_iters(args)
+
+#     args.iteration = 0
+#     args.consumed_train_samples = 0
+
+#     # Verify indexed dataset order.
+#     verify_indexed_dataset_order()
+
+#     # Datasets.
+#     print_rank_0(" > data loader.")
+#     train_data_loader, valid_data_loader, test_data_loader \
+#         = build_train_valid_test_data_loaders(
+#             train_valid_test_datasets_provider)
+
+#     data_loader_map = {
+#         "train" : train_data_loader,
+#         "valid" : valid_data_loader,
+#         "test" : test_data_loader,
+#     }
+
+#     # >>>
+#     # from lutil import pax
+#     # train_loader = data_loader_map["train"]
+#     # train_ds = train_loader.dataset
+#     # pax({
+#     #     "train_loader" : train_loader,
+#     #     "train_ds" : train_ds,
+#     #     "train_ds / datasets" : train_ds.datasets,
+#     #     "train_ds / datasets / 0" : train_ds.datasets[0],
+#     # })
+#     # <<<
+
+#     # Info dict.
+#     workdir = get_query_workdir()
+#     dataset_map = {
+#         key : {
+#             "neighbor_dir" : os.path.join(
+#                 workdir,
+#                 os.path.basename(loader.dataset.datasets[0].index_prefix),
+#             ),
+#             "data" : ChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
+#         }
+#         for key, loader in data_loader_map.items() if loader
+#     }
+
+#     # >>>
+#     from lutil import pax
+#     pax({"dataset_map": dataset_map})
+#     # <<<
+
+#     return dataset_map
+# +++
 def get_chunk_dataset_map():
     '''Get train, valid, test chunk datasets.'''
 
@@ -115,28 +181,44 @@ def get_chunk_dataset_map():
     verify_indexed_dataset_order()
 
     # Datasets.
-    print_rank_0(" > data loader.")
-    train_data_loader, valid_data_loader, test_data_loader \
-        = build_train_valid_test_data_loaders(
-            train_valid_test_datasets_provider)
+    print_rank_0(" > datasets.")
+    train_ds, valid_ds, test_ds = build_pretraining_train_valid_test_datasets(
+        train_valid_test_datasets_provider)
 
-    data_loader_map = {
-        "train" : train_data_loader,
-        "valid" : valid_data_loader,
-        "test" : test_data_loader,
+    # >>>
+    # from lutil import pax
+    # pax({
+    #     "train_ds / datasets" : train_ds.datasets,
+    #     "train_ds / datasets / 0" : train_ds.datasets[0],
+    #     "train_ds / len" : len(train_ds),
+    #     "valid_ds / len" : len(valid_ds),
+    #     "test_ds" : test_ds,
+    # })
+    # <<<
+
+    sample_dataset_map = {
+        "train" : train_ds,
+        "valid" : valid_ds,
+        "test" : test_ds,
     }
 
     # Info dict.
     workdir = get_query_workdir()
-    dataset_map = {
+    chunk_dataset_map = {
         key : {
             "neighbor_dir" : os.path.join(
                 workdir,
-                os.path.basename(loader.dataset.datasets[0].index_prefix),
+                os.path.basename(sample_ds.datasets[0].index_prefix),
             ),
-            "data" : ChunkDataset(loader.dataset, args.retro_gpt_chunk_length),
+            "data" : ChunkDataset(sample_ds, args.retro_gpt_chunk_length),
         }
-        for key, loader in data_loader_map.items() if loader
+        for key, sample_ds in sample_dataset_map.items() if sample_ds
     }
 
+    # >>>
+    from lutil import pax
+    pax({"chunk_dataset_map": chunk_dataset_map})
+    # <<<
+
     return dataset_map
+# <<<

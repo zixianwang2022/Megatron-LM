@@ -253,11 +253,14 @@ class GPTDataset(torch.utils.data.Dataset):
         assert np.max(documents) < indexed_dataset.sizes.shape[0]
 
         # Build index mappings.
-        self.doc_idx, self.sample_idx, self.shuffle_idx, self.desc = \
+        # >>>
+        # self.doc_idx, self.sample_idx, self.shuffle_idx, self.desc = \
+        self.doc_idx, self.sample_idx, self.shuffle_idx, self.desc, self.desc_hash = \
             _build_index_mappings(self.name, data_prefix,
                                   documents, self.indexed_dataset.sizes,
                                   num_samples, seq_length, seed,
                                   data_cache_path=data_cache_path)
+        # <<<
 
 
     def __len__(self):
@@ -303,9 +306,16 @@ class GPTDataset(torch.utils.data.Dataset):
             return {'text': np.array(sample, dtype=np.int64)}
 
 
+# >>>
+# def _build_index_mappings(name, data_prefix, documents, sizes,
+#                           num_samples, seq_length, seed, *,
+#                           data_cache_path):
 def _build_index_mappings(name, data_prefix, documents, sizes,
                           num_samples, seq_length, seed, *,
-                          data_cache_path):
+                          data_cache_path,
+                          # global_batch_size, eval_interval, eval_iters,
+):
+# <<<
     """Build doc-idx, sample-idx, and shuffle-idx.
     doc-idx: is an array (ordered) of documents to be used in training.
     sample-idx: is the start document index and document offset for each
@@ -326,7 +336,24 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
     desc += f"Number of samples {num_samples}\n"
     desc += f"Sequence length {seq_length}\n"
     desc += f"Random seed {seed}\n"
+    # >>>
+    # from lutil import pax
+    # pax({"name": name})
+    if name == "train":
+        pass
+    elif name in "valid", "test":
+        desc += f"Global batch size {global_batch_size}\n"
+        desc += f"Eval interval {eval_interval}\n"
+        desc += f"Eval iters {eval_iters}\n"
+        desc += f"Split {split_string}\n"
+    else:
+        raise Exception(f"specialize for '{name}' data.")
+    # <<<
     desc_hash = hashlib.md5(desc.encode('utf-8')).hexdigest()
+    # >>>
+    from lutil import pax
+    pax({"desc": desc.splitlines(), "desc_hash": desc_hash})
+    # <<<
     desc_filename = desc_hash + ".dsc"
     doc_idx_filename = desc_hash + '_doc_idx.npy'
     sample_idx_filename = desc_hash + '_sample_idx.npy'
@@ -473,7 +500,10 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
         sample_idx.shape[0]))
     print_rank_0('    total number of epochs: {}'.format(num_epochs))
 
-    return doc_idx, sample_idx, shuffle_idx, desc
+    # >>>
+    # return doc_idx, sample_idx, shuffle_idx, desc
+    return doc_idx, sample_idx, shuffle_idx, desc_hash
+    # <<<
 
 
 def _num_tokens(documents, sizes):
