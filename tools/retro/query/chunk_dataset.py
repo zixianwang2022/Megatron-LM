@@ -1,6 +1,5 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import hashlib
 import os
 import torch
 
@@ -20,7 +19,7 @@ from megatron.training import (
 from tools.retro.db.utils import get_indexed_dataset_infos
 from tools.retro.utils import get_num_chunks_per_sample
 
-from .utils import get_query_workdir
+from .utils import get_neighbor_dirname, get_query_workdir
 
 
 class ChunkDataset(torch.utils.data.Dataset):
@@ -215,33 +214,31 @@ def get_chunk_dataset_map():
         "test" : test_ds,
     }
 
-    # >>>
-    def get_dataset_hash(dataset):
-        hashes = ",".join([ d.desc_hash for d in dataset.datasets ])
-        return hashlib.md5(hashes.encode()).hexdigest()
-    # <<<
-
     # Info dict.
-    workdir = get_query_workdir()
+    # >>>
+    # workdir = get_query_workdir()
+    # <<<
     chunk_dataset_map = {
         key : {
-            "neighbor_dir" : os.path.join(
-                workdir,
-                # >>>
-                # os.path.basename(sample_ds.datasets[0].index_prefix),
-                os.path.basename(key + "_" + get_dataset_hash(sample_ds)),
-                # <<<
-            ),
+            # >>>
+            # "neighbor_dir" : os.path.join(
+            #     workdir,
+            #     # >>>
+            #     # os.path.basename(sample_ds.datasets[0].index_prefix),
+            #     os.path.basename(key + "_" + get_dataset_hash(sample_ds)),
+            #     # <<<
+            # ),
+            "neighbor_dir" : get_neighbor_dirname(key, sample_ds),
+            # <<<
             "data" : ChunkDataset(sample_ds, args.retro_gpt_chunk_length),
         }
         for key, sample_ds in sample_dataset_map.items() if sample_ds
     }
 
     # >>>
-    from lutil import pax
-    # pax({"chunk_dataset_map": chunk_dataset_map})
-    pax(chunk_dataset_map)
+    # from lutil import pax
+    # pax(chunk_dataset_map)
     # <<<
 
-    return dataset_map
+    return chunk_dataset_map
 # <<<

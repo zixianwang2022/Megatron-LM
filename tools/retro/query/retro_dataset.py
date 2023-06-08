@@ -10,6 +10,7 @@ from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
 from tools.retro.external_libs import h5py
 
 from .chunk_dataset import get_chunk_dataset_map
+from .utils import get_neighbor_dirname
 
 
 class RetroDataset(torch.utils.data.Dataset):
@@ -114,17 +115,29 @@ def get_retro_datasets(verify_sizes=True):
     retro_dataset_map = {}
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 
+        # >>>
+        # from lutil import pax
+        # pax({"chunk_ds_info": chunk_ds_info})
+        # <<<
+
         chunk_dataset = chunk_ds_info["data"]
         neighbor_dir = chunk_ds_info["neighbor_dir"]
         neighbor_path_map = BlockPathMap.from_dir(neighbor_dir,
                                                   retro_args.retro_block_size)
 
         # Verify dataset prefixes.
-        sample_prefix = chunk_dataset.sample_dataset.datasets[0].index_prefix
-        neighbor_prefix = os.path.basename(neighbor_dir)
-        assert sample_prefix == neighbor_prefix, \
+        # >>>
+        # sample_prefix = chunk_dataset.sample_dataset.datasets[0].index_prefix
+        expected_dir = get_neighbor_dirname(data_key, chunk_dataset.sample_dataset)
+        # <<<
+        # neighbor_prefix = os.path.basename(neighbor_dir)
+        # >>>
+        # from lutil import pax
+        # pax({"expected_dir": expected_dir, "neighbor_dir": neighbor_dir})
+        # <<<
+        assert expected_dir == neighbor_dir, \
             "inconsistent dataset source; '%s' vs. '%s'." % \
-            (sample_prefix, neighbor_prefix)
+            (expected_dir, neighbor_dir)
 
         # Verify num chunks.
         n_sample_chunks = len(chunk_dataset)
@@ -165,5 +178,10 @@ def get_retro_datasets(verify_sizes=True):
     train_ds = retro_dataset_map.get("train", None)
     valid_ds = retro_dataset_map.get("valid", None)
     test_ds = retro_dataset_map.get("test", None)
+
+    # >>>
+    # from lutil import pax
+    # pax({"train_ds": train_ds})
+    # <<<
 
     return train_ds, valid_ds, test_ds
