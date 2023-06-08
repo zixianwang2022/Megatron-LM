@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 """Pretrain GPT"""
 
@@ -102,9 +102,13 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seq_length=args.seq_length,
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup),
+        global_batch_size=args.global_batch_size,
+        eval_interval=args.eval_interval,
+        eval_iters=args.eval_iters,
         train_data_prefix=args.train_data_path,
         valid_data_prefix=args.valid_data_path,
-        test_data_prefix=args.test_data_path)
+        test_data_prefix=args.test_data_path,
+        data_cache_path=args.data_cache_path)
     print_rank_0("> finished creating GPT datasets ...")
 
     return train_ds, valid_ds, test_ds
