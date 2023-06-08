@@ -1,5 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+import hashlib
 import os
 import torch
 
@@ -94,15 +95,27 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
     train_ds, valid_ds, test_ds = build_gpt_train_valid_test_datasets(
-        data_prefix=args.data_path,
-        data_impl=args.data_impl,
-        splits_string=args.split,
+        data_prefix=args.retro_gpt_data_path,
+        data_impl=args.retro_gpt_data_impl,
+        splits_string=args.retro_gpt_split,
         train_valid_test_num_samples=train_val_test_num_samples,
         seq_length=args.retro_gpt_seq_length,
-        seed=args.seed,
-        skip_warmup=(not args.mmap_warmup),
+        seed=args.retro_gpt_seed,
+        skip_warmup=(not args.retro_gpt_mmap_warmup),
+        global_batch_size=args.retro_gpt_global_batch_size,
+        eval_interval=args.retro_gpt_eval_interval,
+        eval_iters=args.retro_gpt_eval_iters,
         return_doc_ids=args.retro_return_doc_ids)
     print_rank_0("> finished creating pretrained GPT datasets ...")
+
+    # >>>
+    # from lutil import pax
+    # pax({
+    #     "train_ds" : "%d, %s" % (len(train_ds), 0), # train_ds.desc_hash),
+    #     "valid_ds" : "%d, %s" % (len(valid_ds), 0), # valid_ds.desc_hash),
+    #     "test_ds" : test_ds,
+    # })
+    # <<<
 
     return train_ds, valid_ds, test_ds
 
@@ -202,13 +215,22 @@ def get_chunk_dataset_map():
         "test" : test_ds,
     }
 
+    # >>>
+    def get_dataset_hash(dataset):
+        hashes = ",".join([ d.desc_hash for d in dataset.datasets ])
+        return hashlib.md5(hashes.encode()).hexdigest()
+    # <<<
+
     # Info dict.
     workdir = get_query_workdir()
     chunk_dataset_map = {
         key : {
             "neighbor_dir" : os.path.join(
                 workdir,
-                os.path.basename(sample_ds.datasets[0].index_prefix),
+                # >>>
+                # os.path.basename(sample_ds.datasets[0].index_prefix),
+                os.path.basename(key + "_" + get_dataset_hash(sample_ds)),
+                # <<<
             ),
             "data" : ChunkDataset(sample_ds, args.retro_gpt_chunk_length),
         }
@@ -217,7 +239,8 @@ def get_chunk_dataset_map():
 
     # >>>
     from lutil import pax
-    pax({"chunk_dataset_map": chunk_dataset_map})
+    # pax({"chunk_dataset_map": chunk_dataset_map})
+    pax(chunk_dataset_map)
     # <<<
 
     return dataset_map
