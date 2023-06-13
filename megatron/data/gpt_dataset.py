@@ -20,7 +20,6 @@ from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
                                     seq_length, seed, skip_warmup,
-                                    global_batch_size, eval_interval, eval_iters,
                                     train_data_prefix=None,
                                     valid_data_prefix=None,
                                     test_data_prefix=None,
@@ -37,8 +36,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                                     data_impl, splits_string,
                                                     train_valid_test_num_samples,
                                                     seq_length, seed, skip_warmup,
-                                                    global_batch_size,
-                                                    eval_interval, eval_iters,
                                                     data_cache_path=data_cache_path)
 
         # Blending dataset.
@@ -60,7 +57,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                 prefixes[i], data_impl, splits_string,
                 datasets_train_valid_test_num_samples[i],
                 seq_length, seed, skip_warmup,
-                global_batch_size, eval_interval, eval_iters,
                 return_doc_ids,
                 data_cache_path=data_cache_path)
             if train_ds:
@@ -97,8 +93,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                           splits_string,
                                           train_valid_test_num_samples[0],
                                           seq_length, seed, skip_warmup,
-                                          global_batch_size,
-                                          eval_interval, eval_iters,
                                           data_cache_path=data_cache_path)
 
         if valid_data_prefix is not None:
@@ -106,8 +100,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                           splits_string,
                                           train_valid_test_num_samples[1],
                                           seq_length, seed, False,
-                                          global_batch_size,
-                                          eval_interval, eval_iters,
                                           data_cache_path=data_cache_path)
 
 
@@ -116,8 +108,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                          splits_string,
                                          train_valid_test_num_samples[2],
                                          seq_length, seed, False,
-                                         global_batch_size,
-                                         eval_interval, eval_iters,
                                          data_cache_path=data_cache_path)
 
         return (train_dataset, valid_dataset, test_dataset)
@@ -126,7 +116,6 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      train_valid_test_num_samples,
                                      seq_length, seed, skip_warmup,
-                                     global_batch_size, eval_interval, eval_iters,
                                      return_doc_ids=False, *,
                                      data_cache_path=None):
     """Build train, valid, and test datasets."""
@@ -160,7 +149,6 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                  splits_string,
                                  train_valid_test_num_samples[index],
                                  seq_length, seed,
-                                 global_batch_size, eval_interval, eval_iters,
                                  return_doc_ids,
                                  data_cache_path=data_cache_path)
         return dataset
@@ -175,7 +163,6 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 def build_dataset(dataset_name, data_prefix, data_impl,
                   splits_string, num_samples,
                   seq_length, seed, skip_warmup,
-                  global_batch_size, eval_interval, eval_iters,
                   *,
                   data_cache_path=None):
     dataset = None
@@ -183,7 +170,6 @@ def build_dataset(dataset_name, data_prefix, data_impl,
         dataset = _build_dataset(dataset_name, data_prefix[0], data_impl,
                                  splits_string, num_samples, seq_length,
                                  seed, skip_warmup,
-                                 global_batch_size, eval_interval, eval_iters,
                                  data_cache_path=data_cache_path)
     else:
         # Blending dataset.
@@ -198,7 +184,6 @@ def build_dataset(dataset_name, data_prefix, data_impl,
             ds = _build_dataset(dataset_name, prefixes[i], data_impl,
                                 splits_string, dataset_num_samples[i],
                                 seq_length, seed, skip_warmup,
-                                global_batch_size, eval_interval, eval_iters,
                                 data_cache_path=data_cache_path)
             if ds:
                 datasets.append(ds)
@@ -213,7 +198,6 @@ def build_dataset(dataset_name, data_prefix, data_impl,
 def _build_dataset(dataset_name, data_prefix, data_impl, splits_string,
                    num_samples, seq_length, seed, skip_warmup,
                    *,
-                   global_batch_size, eval_interval, eval_iters,
                    data_cache_path=None):
     """
     Build dataset. This method is called when individual
@@ -236,7 +220,6 @@ def _build_dataset(dataset_name, data_prefix, data_impl, splits_string,
 
     dataset = GPTDataset(dataset_name, data_prefix, documents, indexed_dataset,
                          splits_string, num_samples, seq_length, seed,
-                         global_batch_size, eval_interval, eval_iters,
                          data_cache_path=data_cache_path)
 
     return dataset
@@ -262,7 +245,6 @@ class GPTDataset(torch.utils.data.Dataset):
 
     def __init__(self, name, data_prefix, documents, indexed_dataset,
                  splits_string, num_samples, seq_length, seed,
-                 global_batch_size, eval_interval, eval_iters,
                  return_doc_ids=False, *,
                  data_cache_path=None):
 
@@ -279,7 +261,6 @@ class GPTDataset(torch.utils.data.Dataset):
             _build_index_mappings(self.name, data_prefix,
                                   documents, self.indexed_dataset.sizes,
                                   splits_string, num_samples, seq_length, seed,
-                                  global_batch_size, eval_interval, eval_iters,
                                   data_cache_path=data_cache_path)
 
 
@@ -328,7 +309,6 @@ class GPTDataset(torch.utils.data.Dataset):
 
 def _build_index_mappings(name, data_prefix, documents, sizes,
                           splits_string, num_samples, seq_length, seed,
-                          global_batch_size, eval_interval, eval_iters,
                           *,
                           data_cache_path):
     """Build doc-idx, sample-idx, and shuffle-idx.
@@ -351,15 +331,7 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
     desc += f"Number of samples {num_samples}\n"
     desc += f"Sequence length {seq_length}\n"
     desc += f"Random seed {seed}\n"
-    if name == "train":
-        pass
-    elif name in ("valid", "test"):
-        desc += f"Split {splits_string}\n"
-        desc += f"Global batch size {global_batch_size}\n"
-        desc += f"Eval interval {eval_interval}\n"
-        desc += f"Eval iters {eval_iters}\n"
-    else:
-        raise Exception(f"specialize for '{name}' data.")
+    desc += f"Split {splits_string}\n"
     desc_hash = hashlib.md5(desc.encode('utf-8')).hexdigest()
     desc_filename = desc_hash + ".dsc"
     doc_idx_filename = desc_hash + '_doc_idx.npy'

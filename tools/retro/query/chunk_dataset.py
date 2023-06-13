@@ -95,9 +95,6 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seq_length=args.retro_gpt_seq_length,
         seed=args.retro_gpt_seed,
         skip_warmup=(not args.retro_gpt_mmap_warmup),
-        global_batch_size=args.retro_gpt_global_batch_size,
-        eval_interval=args.retro_gpt_eval_interval,
-        eval_iters=args.retro_gpt_eval_iters,
         return_doc_ids=args.retro_return_doc_ids)
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
