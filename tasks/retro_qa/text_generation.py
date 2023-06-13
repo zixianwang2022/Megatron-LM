@@ -136,7 +136,9 @@ def generate_samples_conditional(model):
                     raw_text = all_raw_text[input_pos]
                     neighbours = all_neighbours[input_pos]
                 input_pos += 1
-                if args.task.lower() == 'nq' or args.task.lower() == 'tqa' or 'carmanual' in args.task.lower() or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'ford' in args.task.lower() or 'att' in args.task.lower() or 'iternal' in args.task.lower():
+                
+                valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'iternal', 'carmanual', 'nvit']
+                if args.task.lower() in valid_tasks or any([x in args.task.lower() for x in valid_tasks]):
                     max_target_len = args.out_seq_length
                     # disable it for GPT for now
                     # neighbours_array = pad_neighbours_for_query_only(args, [tokenizer.tokenize(neighbour) for neighbour in neighbours], tokenizer.eod, args.ft_neighbours)
@@ -144,9 +146,9 @@ def generate_samples_conditional(model):
                         if args.shuffle_topn:
                             import random
                             random.seed(1234)
-                            random_neighbours = neighbours[0:args:ft_neighbours]
+                            random_neighbours = neighbours[0:args.ft_neighbours]
                             random.shuffle(random_neighbours)
-                            neighbours = random_neighbours + neighbours[ft_neighbours:]
+                            neighbours = random_neighbours + neighbours[args.ft_neighbours:]
                         if args.add_retriever: ## should be reverse order or not
                             raw_text = "\n".join(neighbours[0:args.ft_neighbours][::-1]) + "\n" + raw_text
                             raw_text = tokenizer.detokenize(tokenizer.tokenize(raw_text)[-(args.seq_length - max_target_len):])
