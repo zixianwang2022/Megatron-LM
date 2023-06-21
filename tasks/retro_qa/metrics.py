@@ -65,8 +65,8 @@ class F1Metric:
     @staticmethod
     def compute_all_pairs(guesses: List[str], answers: List[str], n=1):
         # additional augment:
-        assert len(guesses) == len(answers)
         print("guess:", len(guesses), ", answers:", len(answers))
+        assert len(guesses) == len(answers)
 
         precision_list, recall_list, f1_list = [], [], []
         for guess, answer in zip(guesses, answers):

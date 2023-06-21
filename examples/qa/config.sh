@@ -1,4 +1,4 @@
-DATA_HOME="../../inform-retriever"
+DATA_HOME="../../inform-retriever-msmarco"
 
 sample_input_file="${DATA_HOME}/data/$TASK/${split}.json"
 DATA_FOLDER="${DATA_HOME}/data/$TASK"
@@ -16,6 +16,21 @@ fi
 if [[ $TASK == Iternal* ]]; then
     sample_input_file="${DATA_HOME}/data/Iternal/$TASK/${split}.json"
     DATA_FOLDER="${DATA_HOME}/data/Iternal/$TASK"
+fi
+
+if [[ $TASK == carmanual* ]]; then
+    sample_input_file="${DATA_HOME}/data/carmanual/$TASK/${split}.json"
+    DATA_FOLDER="${DATA_HOME}/data/carmanual/$TASK"
+fi
+
+if [[ $TASK == NVIT* ]]; then
+    sample_input_file="${DATA_HOME}/data/NVIT/$TASK/${split}.json"
+    DATA_FOLDER="${DATA_HOME}/data/NVIT/$TASK"
+fi
+
+if [[ $TASK == TCS* ]]; then
+    sample_input_file="${DATA_HOME}/data/TCS/$TASK/${split}.json"
+    DATA_FOLDER="${DATA_HOME}/data/TCS/$TASK"
 fi
 
 if [[ $TASK == att* ]]; then
