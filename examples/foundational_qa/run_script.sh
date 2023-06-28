@@ -35,3 +35,13 @@ bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv7 43b  64 3e-7 1 gp
 
 bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv8 43b  64 3e-7 1 gpt_1e-8_format_v2_quiet_cockatoo_pp1
 bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv9 43b  64 3e-7 1 gpt_1e-8_format_v2_quiet_cockatoo_pp1
+
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv10 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv11 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1
+
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv0 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1
+
+
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b  64 3e-7 1 gpt_1e-8_conv
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_newsqa

@@ -140,7 +140,8 @@ def generate_samples_conditional(model):
                     raw_text = reformat_query_v2(raw_text, args.task)
                     neighbours = all_neighbours[input_pos]
                 input_pos += 1
-                if args.task.lower() == 'nq' or args.task.lower() == 'tqa' or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'ford' in args.task.lower() or 'att' in args.task.lower():
+                # if args.task.lower() == 'nq' or args.task.lower() == 'tqa' or 'benz' in args.task.lower() or 'landrover' in args.task.lower() or 'ford' in args.task.lower() or 'att' in args.task.lower():
+                if True:
                     max_target_len = args.out_seq_length
                     # disable it for GPT for now
                     # neighbours_array = pad_neighbours_for_query_only(args, [tokenizer.tokenize(neighbour) for neighbour in neighbours], tokenizer.eod, args.ft_neighbours)
@@ -160,8 +161,8 @@ def generate_samples_conditional(model):
                             raw_text = trun_neighbours + "\n" + raw_text
                         ## to do: cut neighbours to max_len
                     print(raw_text)
-                else:
-                    raise ValueError("invalid arg for task")
+                # else:
+                #     raise ValueError("invalid arg for task")
                 sentences.append(raw_text)
                 # n_arrays.append(neighbours_array)
             # neighbours_array = np.array(n_arrays)

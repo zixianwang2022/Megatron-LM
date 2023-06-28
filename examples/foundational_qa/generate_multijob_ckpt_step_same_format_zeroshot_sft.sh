@@ -1,5 +1,5 @@
 #!/bin/bash
-
+exit ## retire
 TASK=$1
 model_size=$2
 sampling=$3
