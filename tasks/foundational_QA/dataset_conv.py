@@ -22,18 +22,6 @@ import numpy as np
 import glob
 from megatron import get_tokenizer, get_args
 
-def format_question(question):
-    args = get_args()
-
-    if args.chunk0:
-        return  " " * args.m + "question: {} \nanswer:".format(question)
-    if args.qa_space_pad:
-        tokenizer = get_tokenizer()
-        qa_pad_str = " " * args.m + "question: {} \nanswer:".format(question)
-        qa_str = tokenizer.detokenize(tokenizer.tokenize(qa_pad_str)[-args.m:])
-        return qa_str
-    return  "question: {} \nanswer:".format(question)
-
 def format_multichoice(multichoice_options):
 
     options_text = ["({}) {}".format(chr(ord('A')+i), option) for i, option in zip(range(len(multichoice_options)), multichoice_options)]
@@ -77,6 +65,8 @@ def preprocess(data_file, inference_only=False, retrieved_neighbours=False):
             else:
                 if "sub-paragraphs" in instance:
                     neighbours = ["title: , source: " + instance["sub-paragraphs"]]
+                elif "sub_paragraph" in instance:
+                    neighbours = ["title: , source: " + instance["sub_paragraph"]]
                 else:
                     neighbours = ["title: , source: "]
 
@@ -234,106 +224,26 @@ class FtDataset(torch.utils.data.Dataset):
                                 self.args.ft_neighbours,
                                 self.args.shuffle_topn)
 
-def reformat_query_v2(query, dataset_name):
-
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
-    yes_no_without_context = ["BoolQ"]
-    prefix = ""
-    if dataset_name in short_span_with_context:
-        prefix = "Answer the following question with a short span.\n"
-    elif dataset_name in yes_no_without_context:
-        prefix = "Answer the following question with True or False.\n"
-    else:
-        prefix = "Please give a full and complete answer for the question.\n"
-    return prefix + query
-
-def reformat_query_v3(query, dataset_name):
-
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
-    yes_no_without_context = ["BoolQ"]
-    prefix = ""
-    if dataset_name in short_span_with_context:
-        prefix = "[INSTRUCTION BEGIN] Answer the following question with a short span. [INSTRUCTION END]\n"
-    elif dataset_name in yes_no_without_context:
-        prefix = "[INSTRUCTION BEGIN] Answer the following question with True or False. [INSTRUCTION END]\n"
-    else:
-        prefix = "[INSTRUCTION BEGIN] Please give a full and complete answer for the question. [INSTRUCTION END]\n"
-    return prefix + query
-
-def reformat_query(query, dataset_name):
-
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
-    yes_no_without_context = ["BoolQ"]
-    prefix = ""
-    if dataset_name in short_span_with_context:
-        prefix = "Answer the following question with a short span.\n"
-    elif dataset_name in yes_no_without_context:
-        prefix = "Answer the following question with True or False.\n"
-    else:
-        prefix = "Answer the following question with a long complete answer.\n"
-    return prefix + query
-
-
-def build_normal_training_sample(sample,
-                          max_seq_length,
-                          pad_id,
-                          eos_id,
-                          dataset_name,
-                          ft_neighbours=1,
-                          shuffle_topn=False):
-
-    # unpack tokens
-    query, answer, neighbours = sample
-    
-    # query = reformat_query(query, dataset_name)
-    query = reformat_query_v3(query, dataset_name)
-    # tokenization
-    tokenizer = get_tokenizer()
-
-    input_tokens = tokenizer.tokenize(query)
-    output_tokens = tokenizer.tokenize(answer)
-
-    if ft_neighbours > 0:
-        if shuffle_topn:
-            import random
-            random.seed(1234)
-            random_neighbours = neighbours[0:ft_neighbours]
-            random.shuffle(random_neighbours)
-            neighbours = random_neighbours + neighbours[ft_neighbours:]
-        # Truncate to `max_sequence_length` to fit in output tokens.
-        context = "\n".join(neighbours[0:ft_neighbours]) + "\n"
-        context_tokens = tokenizer.tokenize(context)
-        context_tokens = context_tokens[:max_seq_length - len(output_tokens) - len(input_tokens)]
-        input_tokens = context_tokens + input_tokens
-
-    # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)
-    # Padding
-    tokens, answer_mask \
-        = pad_and_convert_to_numpy(input_tokens, output_tokens,
-                                   pad_id, max_seq_length, eos_id)
-
-    train_sample = {
-        'text': tokens,
-        'answer_mask': answer_mask,
-    }
-    return train_sample
-
-
 def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
     max_output_len, tokenizer, max_seq_length):
 
-    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\nUse the following text as reference for the conversation.\n\n"
+    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+
+    if dataset_name in ["oasst", "quiet_cockatoo"]:
+        input_tokens = tokenizer.tokenize(system + query)
+        # print(dataset_name, system + query)
+        return input_tokens
 
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
     user_template = ""
     if dataset_name in short_span_with_context:
-        user = "Answer the following question with a short span. {}".format(query)
+        user = "{} Answer the above question with a short phrase.".format(query)
     elif dataset_name in yes_no_without_context:
-        user = "Answer the following question with True or False. {}".format(query)
+        user = "{} Answer the above question with True or False.".format(query)
     else:
-        user = "Answer the following question. {}".format(query)
+        user = "{} Answer the above question with a long complete answer.".format(query)
 
     dialogue_format="User: {}\n\nAssistant:"
     dialogue_turn = dialogue_format.format(user)
@@ -351,56 +261,28 @@ def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
         dialogue_tokens = tokenizer.tokenize(dialogue_turn)
         system_tokens = tokenizer.tokenize(system)
         context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
-        input_tokens = system_tokens + context_tokens + dialogue_tokens
+        context = tokenizer.detokenize(context_tokens)
+
+        all_input = system + context + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
     else:
-        input_tokens = system_tokens + dialogue_tokens
+        all_input = system + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+
+    # print(dataset_name, all_input)
 
     return  input_tokens
-
-def reformat_prompt_v3(query, neighbours, dataset_name, ft_neighbours, \
-    max_output_len, tokenizer, max_seq_length):
-
-    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\nUse the following text as reference for the conversation.\n\n"
-
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
-    yes_no_without_context = ["BoolQ"]
-    multichoices = [""]
-    user_template = ""
-    if dataset_name in short_span_with_context:
-        user = "Answer the following question with a short span. {}".format(query)
-    elif dataset_name in yes_no_without_context:
-        user = "Answer the following question with True or False. {}".format(query)
-    else:
-        user = "Answer the following question with a long full one. {}".format(query)
-
-    dialogue_format="User: {}\n\nAssistant:"
-    dialogue_turn = dialogue_format.format(user)
-
-    if ft_neighbours > 0:
-        # if shuffle_topn:
-        #     import random
-        #     random.seed(1234)
-        #     random_neighbours = neighbours[0:ft_neighbours]
-        #     random.shuffle(random_neighbours)
-        #     neighbours = random_neighbours + neighbours[ft_neighbours:]
-        # Truncate to `max_sequence_length` to fit in output tokens.
-        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
-        context_tokens = tokenizer.tokenize(context)
-        dialogue_tokens = tokenizer.tokenize(dialogue_turn)
-        system_tokens = tokenizer.tokenize(system)
-        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
-        input_tokens = system_tokens + context_tokens + dialogue_tokens
-    else:
-        input_tokens = system_tokens + dialogue_tokens
-
-    return  input_tokens
-
 
 def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     max_output_len, tokenizer, max_seq_length):
 
-    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\nUse the following text as reference for the conversation.\n\n"
-    assert False
+    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+
+    if dataset_name in ["oasst", "quiet_cockatoo"]:
+        input_tokens = tokenizer.tokenize(system + query)
+        # print(dataset_name, system + query)
+        return input_tokens
+
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
@@ -408,11 +290,9 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     if dataset_name in short_span_with_context:
         user = "Answer the following question with a short span. {}".format(query)
     elif dataset_name in yes_no_without_context:
-        user = "Answer the following question with True or False. {}".format(query)
-    elif dataset_name in multichoices:
-        user_template = "Answer the following question. {}\n".format(query)
+        user = "Answer the above question with True or False. {}".format(query)
     else:
-        user_template = "Please give a full and complete answer for the question. {}\n".format(query)
+        user = "Please give a full and complete answer for the question. {}".format(query)
 
     dialogue_format="User: {}\n\nAssistant:"
     dialogue_turn = dialogue_format.format(user)
@@ -430,12 +310,17 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         dialogue_tokens = tokenizer.tokenize(dialogue_turn)
         system_tokens = tokenizer.tokenize(system)
         context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
-        input_tokens = system_tokens + context_tokens + dialogue_tokens
+        context = tokenizer.detokenize(context_tokens)
+
+        all_input = system + context + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
     else:
-        input_tokens = system_tokens + dialogue_tokens
+        all_input = system + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+
+    # print(dataset_name, all_input)
 
     return  input_tokens
-
 
 def build_normal_training_sample_v2(sample,
                           max_seq_length,
@@ -454,6 +339,7 @@ def build_normal_training_sample_v2(sample,
     output_tokens = tokenizer.tokenize(answer)
 
     input_tokens = reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
+    # print(answer)
     
     # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)
     # Padding
@@ -498,7 +384,7 @@ def build_retro_training_sample(sample,
             nb_tokens = [tokenizer.tokenize(neighbour) for neighbour in neighbours]
         if args.prefix:
             neighbours = ["Evidence {} ".format(i) + neighbour if i >= ft_neighbours else neighbour for i, neighbour in enumerate(neighbours)]
-            print(neighbours[0])
+            # print(neighbours[0])
             nb_tokens = [tokenizer.tokenize(neighbour) for neighbour in neighbours]
         else:
             nb_tokens = [tokenizer.tokenize(neighbour) for neighbour in neighbours]
