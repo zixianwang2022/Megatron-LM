@@ -138,8 +138,8 @@ def generate_samples_conditional(model):
                     query, _, neighbours = sample
                     tokenizer = get_tokenizer()
 
-                    # input_tokens = reformat_prompt_v2(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
-                    input_tokens = reformat_prompt_v1(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
+                    input_tokens = reformat_prompt_v2(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
+                    # input_tokens = reformat_prompt_v1(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
                     raw_text = tokenizer.detokenize(input_tokens)
                     print(raw_text)
                 else:
