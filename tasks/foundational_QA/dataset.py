@@ -32,6 +32,10 @@ def format_question(question):
         qa_pad_str = " " * args.m + "question: {} \nanswer:".format(question)
         qa_str = tokenizer.detokenize(tokenizer.tokenize(qa_pad_str)[-args.m:])
         return qa_str
+    if args.short_format:
+        if not question.endswith("?"):
+            question = question + "?"
+        return "Question: {} Answer: The answer is".format(question)
     return  "question: {} \nanswer:".format(question)
 
 def format_multichoice(multichoice_options):

@@ -95,6 +95,8 @@ def add_text_generate_args(parser):
                         help='project size for adapters')
     group.add_argument('--ckpt-step', type=int, default=None,
                         help='setting ckpt step manually')
+    group.add_argument("--short-format", action='store_true',
+                       help='Use short format QA')
     return parser
 
 def generate_samples_conditional(model):

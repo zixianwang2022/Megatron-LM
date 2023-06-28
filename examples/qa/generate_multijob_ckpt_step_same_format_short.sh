@@ -37,7 +37,9 @@ GEN_ARGS="$SAMPLE_ARGS \
           --num-gen $num_gen \
           --ckpt-step ${ckpt_step} \
           --sample-input-file $sample_input_file \
-          --sample-output-file $sample_output_file"
+          --sample-output-file $sample_output_file \
+          --short-format \
+          "
 
 DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
                   --nnodes ${pip_par} \
@@ -68,6 +70,6 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_${model_size}_${TASK}" --duration 0.5
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_${model_size}_${TASK}" --duration 1
 # $COMMAND
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 
