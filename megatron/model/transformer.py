@@ -880,6 +880,9 @@ class ParallelTransformerLayer(MegatronModule):
 
             # Attention.
             chunked_output = chunked_outputs[:,:,k].contiguous()
+            print("E", chunked_output.shape)
+
+
             attention_output, attention_bias = \
                 self.inter_attention(
                     chunked_output, # Q (neighbor embedding)
@@ -943,7 +946,7 @@ class ParallelTransformerLayer(MegatronModule):
         if self.layer_type == LayerType.retro_decoder_with_retriever:
             first_ns = ns % self.retro_chunk_length
             if first_ns > 0:
-                raise Exception("test this case.")
+                # raise Exception("test this case.")
                 first_chunk, rest_chunk = \
                     layernorm_output[:first_ns], layernorm_output[first_ns:]
                 first_chunk = torch.nn.functional.pad(
@@ -960,6 +963,9 @@ class ParallelTransformerLayer(MegatronModule):
                 .permute(1, 2, 0, 3) \
                 .reshape(self.retro_chunk_length, bs * l, d) \
                 .contiguous()
+
+            print("H", chunked_output.shape)     # [m, bs * l, d],  l = ns / m
+            print("retriever_input", retriever_input.shape)    # [bs * l * k, r, d]
 
             # Get Encoder Output
             retriever_output = self.retriever(

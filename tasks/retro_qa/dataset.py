@@ -19,7 +19,8 @@ from multiprocessing.sharedctypes import Value
 from os import sendfile
 import torch
 import numpy as np
-from megatron import get_tokenizer, get_args
+from megatron import get_tokenizer, get_args, get_retro_args
+
 
 def format_question(question):
     args = get_args()
@@ -34,7 +35,7 @@ def format_question(question):
     if args.short_format:
         if not question.endswith("?"):
             question = question + "?"
-        return "Question: {} Answer: The answer is".format(question)
+        return "Question: {} Answer: The answer is ".format(question)
     return  "question: {} \nanswer:".format(question)
 
 def format_answer(answer):
@@ -153,7 +154,7 @@ def count_stat(dataset, tokenizer):
     nb_lens = []
     for i, d in enumerate(dataset):
         query, answer, neighbours = d
-        nb_lens.extend([len(tokenizer.tokenize(neighbour)) for neighbour in neighbours[:args.k]])
+        nb_lens.extend([len(tokenizer.tokenize(neighbour)) for neighbour in neighbours[:args.retro_num_neighbors]])
 
     print("len of nb", len(nb_lens))
     print("max of len nb", max(nb_lens))
@@ -162,7 +163,7 @@ def count_stat(dataset, tokenizer):
 
 class RetroFtDataset(torch.utils.data.Dataset):
 
-    def __init__(self, name, indexed_dataset, max_seq_length, 
+    def __init__(self, name, indexed_dataset, max_seq_length,
                  max_seq_length_dec=0):
 
         # Params to store.
@@ -186,7 +187,7 @@ class RetroFtDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
 
         sample = self.indexed_dataset[idx]
-       
+
         if self.args.add_retriever:
             return build_retro_training_sample(sample,
                                 self.max_seq_length,  # needed for padding
@@ -259,7 +260,7 @@ def build_retro_training_sample(sample,
     # unpack tokens
     query, answer, neighbours = sample
     assert neighbours is not None
-    
+
     # tokenization
     tokenizer = get_tokenizer()
     input_tokens = tokenizer.tokenize(query)
@@ -310,16 +311,16 @@ def build_retro_training_sample(sample,
         neighbours_tokens = pad_neighbours_for_query_only(args, nb_tokens, pad_id, ft_neighbours)
     # elif dataset_name == 'nq' or dataset_name == 'tqa':
     # neighbours_tokens = []
-    # for nb_token in nb_tokens[:args.k]:
+    # for nb_token in nb_tokens[:args.retro_num_neighbors]:
     #     if len(nb_token) >= args.r:
     #         nb_token = nb_token[:args.r]
     #     else:
     #         nb_token =  nb_token + [pad_id] * (args.r - len(nb_token))
     #     neighbours_tokens.append(nb_token)
-    # if len(neighbours_tokens) < args.k:
+    # if len(neighbours_tokens) < args.retro_num_neighbors:
     #     assert ValueError("neighbours are not enough, to do: add empty ones and create mask for those empty ones")
-    # neighbours_tokens = np.array(neighbours_tokens).reshape(1, args.k, args.r).repeat(args.seq_length / args.m, axis=0) ## dim (l, k, r) 
-    
+    # neighbours_tokens = np.array(neighbours_tokens).reshape(1, args.retro_num_neighbors, args.r).repeat(args.seq_length / args.m, axis=0) ## dim (l, k, r)
+
     train_sample = {
         'text': tokens,
         'answer_mask': answer_mask,
@@ -341,36 +342,40 @@ def pad_neighbours_for_query_only(args, nb_tokens, pad_id, ft_neighbours):
 
     # take top k neighbours and padding
     neighbours_tokens = []
-    
+    retro_args = get_retro_args()
+    r = retro_args.retro_gpt_retrieved_length
+
     if args.reuse_top:
-        valid_nb_tokens = nb_tokens[:args.k]
+        valid_nb_tokens = nb_tokens[:args.retro_num_neighbors]
     else:
-        valid_nb_tokens = nb_tokens[ft_neighbours:args.k+ft_neighbours]
+        valid_nb_tokens = nb_tokens[ft_neighbours:args.retro_num_neighbors+ft_neighbours]
 
     for nb_token in valid_nb_tokens:
-        if len(nb_token) >= args.r: 
+        if len(nb_token) >= r:
             # print("max len is {}, and the current one is {}".format(args.r, len(nb_token)))
-            nb_token = nb_token[:args.r]
+            nb_token = nb_token[:r]
         else:
-            nb_token =  nb_token + [pad_id] * (args.r - len(nb_token))
+            nb_token =  nb_token + [pad_id] * (r - len(nb_token))
         neighbours_tokens.append(nb_token)
-    if len(neighbours_tokens) < args.k:
+    if len(neighbours_tokens) < args.retro_num_neighbors:
         assert ValueError("neighbours are not enough, to do: add empty ones and create mask for those empty ones")
-    neighbours_tokens = np.array(neighbours_tokens).reshape(1, args.k, args.r).repeat(args.seq_length / args.m, axis=0) ## dim (l, k, r)
+    neighbours_tokens = np.array(neighbours_tokens)
     return neighbours_tokens
 
 def pad_neighbours_for_q_and_a(args, nb_tokens, pad_id):
 
+    retro_args = get_retro_args()
+    r = retro_args.retro_gpt_retrieved_length
     # take top k neighbours and padding
     neighbours_tokens = []
     for nb_tokens_i in nb_tokens:
         neighbour_i_tokens = []
-        assert len(nb_tokens_i) == args.k ## top k retreived neighours
+        assert len(nb_tokens_i) == args.retro_num_neighbors ## top k retreived neighours
         for nb_token in nb_tokens_i:
-            if len(nb_token) >= args.r:
-                nb_token = nb_token[:args.r]
+            if len(nb_token) >= r:
+                nb_token = nb_token[:r]
             else:
-                nb_token =  nb_token + [pad_id] * (args.r - len(nb_token))
+                nb_token =  nb_token + [pad_id] * (r - len(nb_token))
             neighbour_i_tokens.append(nb_token)
         neighbours_tokens.append(neighbour_i_tokens)
     neighbours_tokens = np.array(neighbours_tokens)

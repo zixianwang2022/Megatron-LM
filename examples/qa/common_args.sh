@@ -10,6 +10,15 @@ if [[ $model_size == "843m" ]]; then
     pip_par=1
 fi
 
+if [[ $model_size == "2b" ]]; then
+    mod_par=1
+    layers=24
+    hid_dim=2048
+    heads=16
+    pip_par=1
+fi
+
+
 if [[ $model_size == "8b" ]]; then
     mod_par=4
     layers=32
