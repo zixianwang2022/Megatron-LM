@@ -45,3 +45,5 @@ bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv0 43b  64 3e-7 1 gp
 
 bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b  64 3e-7 1 gpt_1e-8_conv
 bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_newsqa
+
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv13 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1

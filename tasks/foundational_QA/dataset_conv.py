@@ -35,7 +35,7 @@ def format_answer(answer):
     return " {}".format(answer)
 
 """GPT ft dataset."""
-def preprocess(data_file, inference_only=False, retrieved_neighbours=False):
+def preprocess(data_file, inference_only=False, retrieved_neighbours=False, fix_newsqa=False):
 
     args = get_args()
     assert args.ft_neighbours > 0 
@@ -65,7 +65,7 @@ def preprocess(data_file, inference_only=False, retrieved_neighbours=False):
             else:
                 if "sub-paragraphs" in instance:
                     neighbours = ["title: , source: " + instance["sub-paragraphs"]]
-                elif "sub_paragraph" in instance:
+                elif fix_newsqa and "sub_paragraph" in instance:
                     neighbours = ["title: , source: " + instance["sub_paragraph"]]
                 else:
                     neighbours = ["title: , source: "]
