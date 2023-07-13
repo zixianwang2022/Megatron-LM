@@ -23,7 +23,7 @@ from megatron.core import mpu, tensor_parallel
 from megatron.core.utils import get_model_config
 from megatron import print_rank_0
 from megatron import print_rank_last
-from megatron.checkpointing import load_checkpoint
+from megatron.checkpointing import load_checkpoint, load_visual_checkpoint
 from megatron.checkpointing import save_checkpoint
 from megatron.model import Float16Module
 from megatron.model import GPTModel
@@ -33,6 +33,7 @@ from megatron.initialize import initialize_megatron
 from megatron.initialize import write_args_to_tensorboard
 from megatron.initialize import set_jit_fusion_options
 from megatron.optimizer_param_scheduler import OptimizerParamScheduler
+from megatron.model.transformer import ParallelGatedXattnFusedTransformerLayer
 from megatron.model import DistributedDataParallel as LocalDDP
 from megatron.utils import check_adlr_autoresume_termination
 from megatron.utils import unwrap_model
@@ -55,7 +56,7 @@ def pretrain(train_valid_test_dataset_provider,
              model_type,
              forward_step_func,
              process_non_loss_data_func=None,
-             extra_args_provider=None,
+             extra_args_provider=None, visual_model_provider=None,
              args_defaults={}):
     """Main training program.
 
@@ -109,8 +110,14 @@ def pretrain(train_valid_test_dataset_provider,
 
     # Model, optimizer, and learning rate.
     timers('model-and-optimizer-setup', log_level=0).start(barrier=True)
-    model, optimizer, opt_param_scheduler = setup_model_and_optimizer(
-        model_provider, model_type)
+    if args.visual_path:
+        model, visual_model, optimizer, opt_param_scheduler = setup_model_and_optimizer(model_provider,
+                                                               model_type, visual_model_provider=visual_model_provider)
+        visual_model = visual_model[0]
+    else:
+        model, optimizer, opt_param_scheduler = setup_model_and_optimizer(model_provider,
+                                                               model_type)
+        visual_model = None
     timers('model-and-optimizer-setup').stop()
     print_datetime('after model, optimizer, and learning rate '
                    'scheduler are built')
@@ -146,21 +153,21 @@ def pretrain(train_valid_test_dataset_provider,
     if not args.skip_train:
         print_rank_0('training ...')
 
-        if args.dataloader_type == 'cyclic' and args.retro_add_retriever:
-            args.train_iters = args.retro_cyclic_train_iters
-            print_rank_0("retro cyclic train iters : %d" % args.train_iters)
+        if args.dataloader_type == 'cyclic':
+            args.train_iters = args.cyclic_train_iters
+            print_rank_0("cyclic train iters : %d" % args.train_iters)
 
         iteration = 0
         if args.do_train and args.train_iters > 0:
             iteration = train(forward_step_func,
                               model, optimizer, opt_param_scheduler,
                               train_data_iterator, valid_data_iterator,
-                              process_non_loss_data_func, config)
+                              process_non_loss_data_func, config, visual_model=visual_model)
 
         print_datetime('after training is done')
 
         if args.save and iteration != 0:
-            save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
+            save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_model=visual_model)
     else:
         print_rank_0('skipping training (--skip-train is on) ...')
 
@@ -171,14 +178,16 @@ def pretrain(train_valid_test_dataset_provider,
         evaluate_and_print_results(prefix, forward_step_func,
                                    valid_data_iterator, model,
                                    iteration, process_non_loss_data_func, config,
-                                   verbose=True, write_to_tensorboard=not args.skip_train)
+                                   verbose=True, write_to_tensorboard=not args.skip_train,
+                                   visual_model=visual_model)
 
     if args.do_test:
         prefix = f'iteration {iteration} on test set'
         evaluate_and_print_results(prefix, forward_step_func,
                                    test_data_iterator, model,
                                    iteration, process_non_loss_data_func, config,
-                                   verbose=True, write_to_tensorboard=not args.skip_train)
+                                   verbose=True, write_to_tensorboard=not args.skip_train,
+                                   visual_model=visual_model)
 
 
 def update_train_iters(args):
@@ -213,6 +222,9 @@ def update_train_iters(args):
 
 def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap_with_ddp=True):
     """Build the model."""
+
+    if model_provider_func is None:
+        return None
     args = get_args()
     args.model_type = model_type
 
@@ -226,7 +238,7 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap
             mpu.set_virtual_pipeline_model_parallel_rank(i)
             # Set pre_process and post_process only after virtual rank is set.
             pre_process = mpu.is_pipeline_first_stage()
-            post_process = mpu.is_pipeline_last_stage()
+            post_process = False if visual_arch else mpu.is_pipeline_last_stage()
             this_model = model_provider_func(
                 pre_process=pre_process,
                 post_process=post_process
@@ -235,7 +247,7 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap
             model.append(this_model)
     else:
         pre_process = mpu.is_pipeline_first_stage()
-        post_process = mpu.is_pipeline_last_stage()
+        post_process = False if visual_arch else mpu.is_pipeline_last_stage()
         add_encoder = True
         add_decoder = True
         if model_type == ModelType.encoder_and_decoder:
@@ -256,10 +268,17 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, wrap
                 add_encoder=add_encoder,
                 add_decoder=add_decoder)
         else:
-            model = model_provider_func(
-                pre_process=pre_process,
-                post_process=post_process
-            )
+            if visual_arch:
+                model = model_provider_func(
+                    visual_arch,
+                    pre_process=pre_process,
+                    post_process=post_process
+                )
+            else:
+                model = model_provider_func(
+                    pre_process=pre_process,
+                    post_process=post_process
+                )
         model.model_type = model_type
 
     if not isinstance(model, list):
@@ -372,15 +391,25 @@ def setup_model_and_optimizer(model_provider_func,
                               model_type,
                               no_wd_decay_cond=None,
                               scale_lr_cond=None,
+                              visual_model_provider=None,
                               lr_mult=1.0):
     """Setup model and optimizer."""
     args = get_args()
 
     model = get_model(model_provider_func, model_type)
+    visual_model = get_model(visual_model_provider, model_type, visual_arch=args.visual_arch)
+
     unwrapped_model = unwrap_model(model,
                                    (torchDDP, LocalDDP, Float16Module))
+    
+    if visual_model:
+        unwrapped_visual_model = unwrap_model(visual_model,
+                                       (torchDDP, LocalDDP, Float16Module))
 
-    optimizer = get_megatron_optimizer(model, no_wd_decay_cond,
+    else:
+        unwrapped_visual_model = None
+
+    optimizer = get_megatron_optimizer(model, visual_model, no_wd_decay_cond,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
@@ -393,9 +422,18 @@ def setup_model_and_optimizer(model_provider_func,
     else:
         args.iteration = 0
 
+    if visual_model:
+        load_visual_checkpoint(visual_model[0])
+        print_rank_0("Loaded pretrained ViT model.")
+
     # We only support local DDP with multiple micro-batches.
     if len(model) > 1 or mpu.get_pipeline_model_parallel_world_size() > 1:
         assert args.DDP_impl == 'local'
+
+    for i in range(args.num_layers - 1):
+        cur_layer = unwrapped_model[0].language_model.encoder.layers[i + 1]
+        if isinstance(cur_layer, ParallelGatedXattnFusedTransformerLayer):
+            print('Xattn-Layer %d: Attn Gate:' % (i + 1), cur_layer.attn_gate.item(), '\t', 'FF Gate:', cur_layer.ff_gate.item())
 
     # get model without FP16 and/or TorchDDP wrappers
     if args.iteration == 0 and len(unwrapped_model) == 1 \
@@ -405,12 +443,14 @@ def setup_model_and_optimizer(model_provider_func,
         if args.fp16:
             optimizer.reload_model_params()
 
-    return model, optimizer, opt_param_scheduler
-
+    if visual_model_provider:
+        return model, visual_model, optimizer, opt_param_scheduler
+    else:
+        return model, optimizer, opt_param_scheduler
 
 
 def train_step(forward_step_func, data_iterator,
-               model, optimizer, opt_param_scheduler, config):
+               model, optimizer, opt_param_scheduler, config, visual_model=None):
     """Single training step."""
     args = get_args()
     timers = get_timers()
@@ -438,7 +478,7 @@ def train_step(forward_step_func, data_iterator,
         seq_length=args.seq_length,
         micro_batch_size=args.micro_batch_size,
         decoder_seq_length=args.decoder_seq_length,
-        forward_only=False)
+        forward_only=False, visual_model=visual_model)
 
     # reset timers if necessary
     if config.timers is None:
@@ -673,19 +713,19 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
     return report_memory_flag
 
 
-def save_checkpoint_and_time(iteration, model, optimizer, opt_param_scheduler):
+def save_checkpoint_and_time(iteration, model, optimizer, opt_param_scheduler, visual_model=None):
     timers = get_timers()
     # Extra barrier is added to make sure
     # all ranks report the max time.
     timers('save-checkpoint', log_level=0).start(barrier=True)
-    save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
+    save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_model=visual_model)
     timers('save-checkpoint').stop(barrier=True)
     timers.log(['save-checkpoint'])
 
 
 def train(forward_step_func, model, optimizer, opt_param_scheduler,
           train_data_iterator, valid_data_iterator,
-          process_non_loss_data_func, config):
+          process_non_loss_data_func, config, visual_model=None):
     """Train the model function."""
     args = get_args()
     timers = get_timers()
@@ -696,6 +736,9 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     # Turn on training mode which enables dropout.
     for model_module in model:
         model_module.train()
+    
+    if visual_model:
+        visual_model.train()  
 
     # Tracking loss.
     total_loss_dict = {}
@@ -725,12 +768,20 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                        model,
                        optimizer,
                        opt_param_scheduler,
-                       config)
+                       config, visual_model=visual_model)
         iteration += 1
         args.consumed_train_samples += mpu.get_data_parallel_world_size() * \
                                        args.micro_batch_size * \
                                        get_num_microbatches()
-
+        if iteration % args.print_freq == 0:
+            unwrapped_model = unwrap_model(model,
+                                   (torchDDP, LocalDDP, Float16Module))[0]
+            print_rank_0("Iteration %d: " % (iteration))
+            for i in range(args.num_layers):
+                cur_layer = unwrapped_model.language_model.encoder.layers[i]
+                if isinstance(cur_layer, ParallelGatedXattnFusedTransformerLayer):
+                    print_rank_0('Gated-Xattn-Layer [%d/%d] \t Attn Gate: %.9f \t FF Gate: %.9f' % (i + 1, args.num_layers, cur_layer.attn_gate.item(), cur_layer.ff_gate.item()))
+            print_rank_0("")
         # Logging.
         loss_scale = optimizer.get_loss_scale().item()
         params_norm = None
@@ -755,7 +806,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
             evaluate_and_print_results(prefix, forward_step_func,
                                        valid_data_iterator, model,
                                        iteration, process_non_loss_data_func,
-                                       config, False)
+                                       config, False, visual_model=visual_model)
 
         # Checkpointing
         saved_checkpoint = False
@@ -770,7 +821,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
         if args.save and args.save_interval and \
            iteration % args.save_interval == 0:
             save_checkpoint_and_time(iteration, model, optimizer,
-                                     opt_param_scheduler)
+                                     opt_param_scheduler, visual_model=visual_model)
             saved_checkpoint = True
 
         # Exiting based on duration
@@ -784,7 +835,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
             if done:
                 if not saved_checkpoint:
                     save_checkpoint_and_time(iteration, model, optimizer,
-                                             opt_param_scheduler)
+                                             opt_param_scheduler, visual_model=visual_model)
                 print_datetime('exiting program after {} minutes'.format(train_time))
                 sys.exit()
 
@@ -792,7 +843,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
         if args.exit_interval and iteration % args.exit_interval == 0:
             if args.save and not saved_checkpoint:
                 save_checkpoint_and_time(iteration, model, optimizer,
-                                         opt_param_scheduler)
+                                         opt_param_scheduler, visual_model=visual_model)
             torch.distributed.barrier()
             print_datetime('exiting program at iteration {}'.format(iteration))
             sys.exit()
@@ -810,7 +861,7 @@ def evaluate(forward_step_func,
              model,
              process_non_loss_data_func,
              config,
-             verbose=False):
+             verbose=False, visual_model=None):
     """Evaluation."""
     args = get_args()
 
@@ -820,6 +871,8 @@ def evaluate(forward_step_func,
     # Turn on evaluation mode which disables dropout.
     for model_module in model:
         model_module.eval()
+    if visual_model:
+        visual_model.eval()
 
     total_loss_dict = {}
 
@@ -848,7 +901,7 @@ def evaluate(forward_step_func,
                 seq_length=args.seq_length,
                 micro_batch_size=args.micro_batch_size,
                 decoder_seq_length=args.decoder_seq_length,
-                forward_only=True)
+                forward_only=True, visual_model=visual_model)
             config.timers = get_timers()
 
             # Empty unused memory
@@ -875,7 +928,7 @@ def evaluate(forward_step_func,
                 micro_batch_size=args.micro_batch_size,
                 decoder_seq_length=args.decoder_seq_length,
                 forward_only=True,
-                collect_non_loss_data=True)
+                collect_non_loss_data=True, visual_model=visual_model)
 
     # Move model back to the train mode.
     for model_module in model:
@@ -889,7 +942,7 @@ def evaluate(forward_step_func,
 def evaluate_and_print_results(prefix, forward_step_func,
                                data_iterator, model,
                                iteration, process_non_loss_data_func, config,
-                               verbose=False, write_to_tensorboard=True):
+                               verbose=False, write_to_tensorboard=True, visual_model=None):
     """Helper function to evaluate and dump results on screen."""
     args = get_args()
     if write_to_tensorboard:
@@ -899,7 +952,7 @@ def evaluate_and_print_results(prefix, forward_step_func,
 
     total_loss_dict, collected_non_loss_data = evaluate(
         forward_step_func, data_iterator, model,
-        process_non_loss_data_func, config, verbose)
+        process_non_loss_data_func, config, verbose, visual_model=visual_model)
     string = ' validation loss at {} | '.format(prefix)
     for key in total_loss_dict:
         string += '{} value: {:.6E} | '.format(key, total_loss_dict[key].item())

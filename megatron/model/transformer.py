@@ -67,6 +67,85 @@ class DropPath(MegatronModule):
         output = hidden_state.div(keep_prob) * random_tensor
         return output
 
+class ParallelAffineLayer(MegatronModule):
+    """Affine Layer.
+
+    AffineLayer will take the input with input_dim hidden state from visual encoder,
+    project it to output_dim dimension to match the language model hidden state, then perform nonlinear activation.
+    """
+
+    def __init__(self, init_method, output_layer_init_method, output_dim, input_dim):
+        super(ParallelAffineLayer, self).__init__()
+        args = get_args()
+
+        self.disable_bias_linear = args.disable_bias_linear
+        default_bias = True
+        if self.disable_bias_linear:
+            default_bias = False
+
+        # Project input_dim to output_dim.
+        self.dense = tensor_parallel.ColumnParallelLinear(
+            input_dim,
+            output_dim * 2 if args.swiglu else output_dim,
+            bias=default_bias,
+            gather_output=False,
+            init_method=init_method,
+            skip_bias_add=True,
+            async_tensor_model_parallel_allreduce=args.async_tensor_model_parallel_allreduce,
+            **_args_to_kwargs())
+
+        self.bias_gelu_fusion = args.bias_gelu_fusion
+        self.activation_func = F.gelu
+        self.swiglu = False
+
+        if args.openai_gelu:
+            self.activation_func = openai_gelu
+        elif args.onnx_safe:
+            self.activation_func = erf_gelu
+        elif args.swiglu:
+            self.activation_func = F.silu
+            self.swiglu = args.swiglu
+        elif args.squared_relu:
+            def squared_relu(x):
+                return torch.pow(F.relu(x), 2)
+            self.activation_func = squared_relu
+
+    def forward(self, hidden_states):
+
+        #[s, b, input_dim] -> [s, b, output_dim]
+        affine_parallel, bias_parallel = self.dense(hidden_states)
+
+        if self.swiglu:
+            # For swiglu, we split the intermediate_parallel into two parts along the last dimension
+            # and perform the activation function on the first part, and then multiply the second part
+            affine_parallel, affine_parallel_2 = \
+                torch.chunk(affine_parallel, 2, dim=-1)
+            if not self.disable_bias_linear:
+                bias_parallel, bias_parallel_2 = \
+                    torch.chunk(bias_parallel, 2, dim=-1)
+            # use SiLU or sigmoid liner unit same as swish,
+            # https://arxiv.org/pdf/2002.05202.pdf
+            if self.disable_bias_linear:
+                affine_parallel = self.activation_func( \
+                    affine_parallel) * affine_parallel_2
+            else:
+                affine_parallel = self.activation_func( \
+                    affine_parallel + bias_parallel) * \
+                    (affine_parallel_2 + bias_parallel_2)
+        elif self.bias_gelu_fusion:
+             affine_parallel = \
+                     bias_gelu_impl(affine_parallel, bias_parallel)
+        else:
+            # along with others, self.squared_relu will execute this
+            if self.disable_bias_linear:
+                affine_parallel = \
+                    self.activation_func(affine_parallel)
+            else:
+                affine_parallel = self.activation_func( \
+                    affine_parallel + bias_parallel)
+
+        return affine_parallel
+
 class ParallelMLP(MegatronModule):
     """MLP.
 
@@ -75,19 +154,26 @@ class ParallelMLP(MegatronModule):
     state back into h hidden dimension.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, is_vit=False):
         super(ParallelMLP, self).__init__()
         args = get_args()
 
-        self.add_bias = config.add_bias_linear
+        self.add_bias = config.add_bias_linear and (not is_vit)
+        self.is_vit = is_vit
 
         ffn_hidden_size = config.ffn_hidden_size
-        if config.gated_linear_unit:
-            ffn_hidden_size *= 2
+        if is_vit:
+            hidden_size = config.visual_hidden_size
+            ffn_hidden_size = config.visual_ffn_hidden_size
+        else:
+            hidden_size = config.hidden_size
+            ffn_hidden_size = config.ffn_hidden_size
 
+        if config.gated_linear_unit and (not is_vit):
+            ffn_hidden_size *= 2
         # Project to 4h. If using swiglu double the output width, see https://arxiv.org/pdf/2002.05202.pdf
         self.dense_h_to_4h = tensor_parallel.ColumnParallelLinear(
-            config.hidden_size,
+            hidden_size,
             ffn_hidden_size,
             config=config,
             init_method=config.init_method,
@@ -104,7 +190,7 @@ class ParallelMLP(MegatronModule):
             self.activation_func = openai_gelu
         elif args.onnx_safe:
             self.activation_func = erf_gelu
-        elif args.swiglu:
+        elif args.swiglu and (not is_vit):
             def swiglu(x):
                 x = torch.chunk(x, 2, dim=-1)
                 return F.silu(x[0]) * x[1]
@@ -119,8 +205,8 @@ class ParallelMLP(MegatronModule):
 
         # Project back to h.
         self.dense_4h_to_h = tensor_parallel.RowParallelLinear(
-            config.ffn_hidden_size,
-            config.hidden_size,
+            ffn_hidden_size,
+            hidden_size,
             config=config,
             init_method=config.output_layer_init_method,
             bias=self.add_bias,
@@ -202,13 +288,25 @@ class CoreAttention(MegatronModule):
         self.fp16 = config.fp16
         self.bf16 = config.bf16
 
-        self.apply_query_key_layer_scaling = config.apply_query_key_layer_scaling
+        self.apply_query_key_layer_scaling = config.apply_query_key_layer_scaling and (not is_vit)
         self.attention_softmax_in_fp32 = config.attention_softmax_in_fp32
         if self.apply_query_key_layer_scaling:
             self.attention_softmax_in_fp32 = True
         self.layer_number = max(1, layer_number)
         self.attn_mask_type = attn_mask_type
         self.sequence_parallel = config.sequence_parallel
+
+        if is_vit:
+            self.num_attention_heads = args.visual_num_attention_heads
+            projection_size = args.visual_hidden_size
+            if args.visual_arch.startswith("SAM"):
+                self.input_size = args.img_h // args.patch_dim if window_size == 0 else window_size
+            self.fp16 = False
+            self.params_dtype = torch.float
+            args.params_dtype = torch.float
+        else:
+            self.num_attention_heads = args.num_attention_heads
+            projection_size = args.kv_channels * self.num_attention_heads
 
         projection_size = config.kv_channels * config.num_attention_heads
 
@@ -240,6 +338,74 @@ class CoreAttention(MegatronModule):
         # on average it should not be partition dependent.
         self.attention_dropout = torch.nn.Dropout(config.attention_dropout)
 
+        if use_rel_pos:
+            self.rel_pos_h = torch.nn.Parameter(torch.zeros(2 * self.input_size - 1, self.hidden_size_per_attention_head))
+            self.rel_pos_w = torch.nn.Parameter(torch.zeros(2 * self.input_size - 1, self.hidden_size_per_attention_head))
+   
+    def get_rel_pos(self, q_size, k_size, rel_pos):
+        """
+        Get relative positional embeddings according to the relative positions of
+            query and key sizes.
+        Args:
+            q_size (int): size of query q.
+            k_size (int): size of key k.
+            rel_pos (Tensor): relative position embeddings (L, C).
+
+        Returns:
+            Extracted positional embeddings according to relative positions.
+        """
+        max_rel_dist = int(2 * max(q_size, k_size) - 1)
+        # Interpolate rel pos if needed.
+        if rel_pos.shape[0] != max_rel_dist:
+            # Interpolate rel pos.
+            rel_pos_resized = F.interpolate(
+                rel_pos.reshape(1, rel_pos.shape[0], -1).permute(0, 2, 1),
+                size=max_rel_dist,
+                mode="linear",
+            )
+            rel_pos_resized = rel_pos_resized.reshape(-1, max_rel_dist).permute(1, 0)
+        else:
+            rel_pos_resized = rel_pos
+
+        # Scale the coords with short length if shapes for q and k are different.
+        q_coords = torch.arange(q_size)[:, None] * max(k_size / q_size, 1.0)
+        k_coords = torch.arange(k_size)[None, :] * max(q_size / k_size, 1.0)
+        relative_coords = (q_coords - k_coords) + (k_size - 1) * max(q_size / k_size, 1.0)
+
+        return rel_pos_resized[relative_coords.long()]
+
+    def add_decomposed_rel_pos(self, attn, q, HW):
+        """
+        Calculate decomposed Relative Positional Embeddings from :paper:`mvisualv2`.
+        https://github.com/facebookresearch/mvisual/blob/19786631e330df9f3622e5402b4a419a263a2c80/mvisual/models/attention.py   # noqa B950
+        Args:
+            attn (Tensor): attention map.
+            q (Tensor): query q in the attention layer with shape (B, q_h * q_w, C).
+            rel_pos_h (Tensor): relative position embeddings (Lh, C) for height axis.
+            rel_pos_w (Tensor): relative position embeddings (Lw, C) for width axis.
+            q_size (Tuple): spatial sequence size of query q with (q_h, q_w).
+            k_size (Tuple): spatial sequence size of key k with (k_h, k_w).
+
+        Returns:
+            attn (Tensor): attention map with added relative positional embeddings.
+        """
+        q_h, q_w = (HW, HW)
+        k_h, k_w = (HW, HW)
+
+        Rh = self.get_rel_pos(q_h, k_h, self.rel_pos_h)
+        Rw = self.get_rel_pos(q_w, k_w, self.rel_pos_w)
+        _, B, dim = q.shape
+        r_q = q.permute(1, 0, 2).reshape(B, q_h, q_w, dim)
+        rel_h = torch.einsum("bhwc,hkc->bhwk", r_q, Rh)
+        rel_w = torch.einsum("bhwc,wkc->bhwk", r_q, Rw)
+
+        attn = (
+            attn.view(B, q_h, q_w, k_h, k_w) + rel_h[:, :, :, :, None] + rel_w[:, :, :, None, :]
+        ).view(attn.shape[0], attn.shape[1], q_h * q_w, k_h * k_w)
+
+        return attn
+
+
     def forward(self, query_layer, key_layer,
                 value_layer, attention_mask):
 
@@ -260,20 +426,26 @@ class CoreAttention(MegatronModule):
         key_layer = key_layer.view(output_size[3],
                                    output_size[0] * output_size[1], -1)
 
-        # preallocting input tensor: [b * np, sq, sk]
-        matmul_input_buffer = mpu.get_global_memory_buffer().get_tensor(
-            (output_size[0]*output_size[1], output_size[2], output_size[3]),
-            query_layer.dtype, "mpu")
-
-        # Raw attention scores. [b * np, sq, sk]
-        matmul_result = torch.baddbmm(
-            matmul_input_buffer,
-            query_layer.transpose(0, 1),   # [b * np, sq, hn]
-            key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
-            beta=0.0, alpha=(1.0/self.norm_factor))
+        if self.is_vit:
+            matmul_result = torch.bmm(query_layer.transpose(0, 1) / self.norm_factor,
+                                      key_layer.transpose(0, 1).transpose(1, 2))
+        else:
+            # preallocting input tensor: [b * np, sq, sk]
+            matmul_input_buffer = mpu.get_global_memory_buffer().get_tensor(
+                (output_size[0]*output_size[1], output_size[2], output_size[3]),
+                query_layer.dtype, "mpu")
+            # Raw attention scores. [b * np, sq, sk]
+            matmul_result = torch.baddbmm(
+                matmul_input_buffer,
+                query_layer.transpose(0, 1),   # [b * np, sq, hn]
+                key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
+                beta=0.0, alpha=(1.0/self.norm_factor))
 
         # change view to [b, np, sq, sk]
         attention_scores = matmul_result.view(*output_size)
+
+        if self.use_rel_pos:
+            attention_scores = self.add_decomposed_rel_pos(attention_scores, query_layer, self.input_size)
 
         # ===========================
         # Attention probs and dropout
@@ -400,7 +572,8 @@ class ParallelAttention(MegatronModule):
 
     def __init__(self, config, layer_number,
                  attention_type=AttnType.self_attn,
-                 attn_mask_type=AttnMaskType.padding):
+                 attn_mask_type=AttnMaskType.padding,
+                 is_vit=False, window_size=0, use_rel_pos=False):
         super(ParallelAttention, self).__init__()
         args = get_args()
         self.layer_number = max(1, layer_number)
@@ -408,10 +581,14 @@ class ParallelAttention(MegatronModule):
         self.attn_mask_type = attn_mask_type
         self.params_dtype = config.params_dtype
         self.sequence_parallel = config.sequence_parallel
+        self.is_vit = is_vit
+        self.use_rel_pos = use_rel_pos
+        self.window_size = window_size
 
         self.use_flash_attn = args.use_flash_attn \
             and attention_type == AttnType.self_attn \
-            and self.attn_mask_type == AttnMaskType.causal
+            and self.attn_mask_type == AttnMaskType.causal \
+            and (not is_vit) 
         if self.use_flash_attn:
             if flash_attn_unpadded_func is None:
                 raise ImportError('FlashAttention is not installed, please install with '
@@ -422,8 +599,20 @@ class ParallelAttention(MegatronModule):
                                                                 'supports causal mask for now')
             if rearrange is None:
                 raise ImportError('einops is not installed, please install with pip install einops')
-
-        projection_size = config.kv_channels * config.num_attention_heads
+        if is_vit:
+            self.hidden_size = args.visual_hidden_size
+            self.num_attention_heads = args.visual_num_attention_heads
+            projection_size = args.visual_hidden_size
+            if args.visual_arch.startswith("SAM"):
+                self.window_size = window_size
+                self.input_size = args.img_h // args.patch_dim if window_size == 0 else window_size
+            self.fp16 = False
+            self.params_dtype = torch.float
+            args.params_dtype = torch.float
+        else:
+            self.hidden_size = args.hidden_size
+            self.num_attention_heads = args.num_attention_heads
+            projection_size = args.kv_channels * self.num_attention_heads
 
         # Per attention head and per partition values.
         world_size = mpu.get_tensor_model_parallel_world_size()
@@ -460,8 +649,11 @@ class ParallelAttention(MegatronModule):
                 bias=config.add_bias_linear,
                 gather_output=False)
 
-        self.core_attention = CoreAttention(self.layer_number, config,
-                                            self.attn_mask_type)
+        self.core_attention = CoreAttention(self.layer_number,
+                                            self.attn_mask_type,
+                                            is_vit=self.is_vit, window_size=self.window_size,
+                                            use_rel_pos=self.use_rel_pos
+                                            )
         self.checkpoint_core_attention = config.recompute_granularity == 'selective'
 
         if self.use_flash_attn:
@@ -514,6 +706,8 @@ class ParallelAttention(MegatronModule):
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, inference_params=None,
                 rotary_pos_emb=None):
+        if self.is_vit:
+            rotary_pos_emb = None
         # hidden_states: [sq, b, h]
 
         # =================================================
@@ -664,37 +858,294 @@ class ParallelAttention(MegatronModule):
 
         return output, bias
 
-
-def bias_dropout_add(x, bias, residual, prob, training):
-    # type: (Tensor, Optional[Tensor], Tensor, float, bool) -> Tensor
-    if bias is not None:
-        x = x + bias
-    out = torch.nn.functional.dropout(x, p=prob, training=training)
+def bias_dropout_add(x, bias, residual, prob, training, gate=None):
+    # type: (Tensor, Tensor, Tensor, float, bool, Optional[Tensor]) -> Tensor
+    out = torch.nn.functional.dropout(x + bias, p=prob, training=training)
+    if gate is not None:
+        out = out * gate.tanh()
     out = residual + out
     return out
 
-
 def get_bias_dropout_add(training):
-    def _bias_dropout_add(x, bias, residual, prob):
-        return bias_dropout_add(x, bias, residual, prob, training)
+    def _bias_dropout_add(x, bias, residual, prob, gate=None):
+        return bias_dropout_add(x, bias, residual, prob, training, gate=gate)
     return _bias_dropout_add
-
 
 @torch.jit.script
 def bias_dropout_add_fused_train(x: torch.Tensor,
-                                 bias: Optional[torch.Tensor],
+                                 bias: torch.Tensor,
                                  residual: torch.Tensor,
-                                 prob: float) -> torch.Tensor:
-    return bias_dropout_add(x, bias, residual, prob, True)
+                                 prob: float,
+                                 gate: Optional[torch.Tensor] = None,
+                                 ) -> torch.Tensor:
+    return bias_dropout_add(x, bias, residual, prob, True, gate=gate)
 
 
 @torch.jit.script
 def bias_dropout_add_fused_inference(x: torch.Tensor,
-                                     bias: Optional[torch.Tensor],
+                                     bias: torch.Tensor,
                                      residual: torch.Tensor,
-                                     prob: float) -> torch.Tensor:
-    return bias_dropout_add(x, bias, residual, prob, False)
+                                     prob: float,
+                                     gate: Optional[torch.Tensor] = None) -> torch.Tensor:
+    return bias_dropout_add(x, bias, residual, prob, False, gate=gate)
 
+class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
+    """
+    Parallel Transformer Layer fused with Gated Cross-Attention Block. (replicate from Flamingo paper)
+
+    GatedXattnFused Transformer Layer takes input with size [b, s, h],
+    cross-attention with the visual extracted feature with size [b, latent_size, h] from PerceiverResampler followed by AffineLayer,
+    and applies self-attention, returns an output of the same size.
+    """
+    def __init__(self, init_method, output_layer_init_method,
+                 layer_number, layer_type=LayerType.encoder,
+                 self_attn_mask_type=AttnMaskType.padding,
+                 drop_path_rate=0.):
+
+        args = get_args()
+        super(ParallelGatedXattnFusedTransformerLayer, self).__init__()
+
+        self.layer_number = layer_number
+        self.layer_type = layer_type
+
+        self.apply_residual_connection_post_layernorm \
+            = args.apply_residual_connection_post_layernorm
+
+        self.bf16 = args.bf16
+        self.fp32_residual_connection = args.fp32_residual_connection
+
+        # Learnable gate parameter within Xattn and FFW layer, as mentioned in Flamingo paper
+        self.attn_gate = torch.nn.Parameter(torch.tensor([0.]))
+        self.ff_gate = torch.nn.Parameter(torch.tensor([0.]))
+
+        if args.apply_layernorm_1p:
+            from megatron.model import LayerNorm1P as LayerNorm
+        else:
+            from megatron.model import LayerNorm
+
+        # Layernorm on the input data.
+        self.input_layernorm = LayerNorm(
+            args.hidden_size,
+            eps=args.layernorm_epsilon,
+            no_persist_layer_norm=args.no_persist_layer_norm,
+            sequence_parallel=args.sequence_parallel)
+
+        self.xattn_layernorm = LayerNorm(
+            args.hidden_size,
+            eps=args.layernorm_epsilon,
+            no_persist_layer_norm=args.no_persist_layer_norm,
+            sequence_parallel=args.sequence_parallel)
+
+        # Self attention.
+        self.self_attention = ParallelAttention(
+            init_method,
+            output_layer_init_method,
+            layer_number,
+            attention_type=AttnType.self_attn,
+            attn_mask_type=self_attn_mask_type)
+
+        self.hidden_dropout = args.hidden_dropout
+        self.bias_dropout_fusion = args.bias_dropout_fusion
+        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
+        self.disable_bias_linear = args.disable_bias_linear
+
+        # Layernorm on the attention output
+        self.post_attention_layernorm = LayerNorm(
+            args.hidden_size,
+            eps=args.layernorm_epsilon,
+            no_persist_layer_norm=args.no_persist_layer_norm,
+            sequence_parallel=args.sequence_parallel)
+
+
+        self.inter_attention = ParallelAttention(
+            init_method,
+            output_layer_init_method,
+            layer_number,
+            attention_type=AttnType.cross_attn)
+            
+        # Layernorm on the attention output.
+        self.post_inter_attention_layernorm = LayerNorm(
+            args.hidden_size,
+            eps=args.layernorm_epsilon,
+            no_persist_layer_norm=args.no_persist_layer_norm,
+            sequence_parallel=args.sequence_parallel)
+
+        # MLP
+        self.mlp = ParallelMLP(init_method, output_layer_init_method)
+        self.xattn_mlp = ParallelMLP(init_method, output_layer_init_method)
+
+
+        # Set bias+dropout+add fusion grad_enable execution handler.
+        TORCH_MAJOR = int(torch.__version__.split('.')[0])
+        TORCH_MINOR = int(torch.__version__.split('.')[1])
+        use_nvfuser = TORCH_MAJOR > 1 or (TORCH_MAJOR == 1 and TORCH_MINOR >= 10)
+        self.bias_dropout_add_exec_handler = \
+                nullcontext if use_nvfuser else torch.enable_grad
+
+    def forward(self, hidden_states, attention_mask,
+                encoder_output=None, enc_dec_attn_mask=None,
+                inference_params=None, rotary_pos_emb=None, vision_inputs=None):
+        # hidden_states: [s, b, h]
+
+        # Layer norm at the beginning of the transformer layer.
+        layernorm_output = self.input_layernorm(hidden_states)
+
+        # Cross attention.
+        attention_output, attention_bias = \
+            self.inter_attention(layernorm_output,   # lm output (Q)
+                                 None, # media_mask
+                                 encoder_output=vision_inputs) # Vision input (KV)
+        # residual connection
+        if self.apply_residual_connection_post_layernorm:
+            residual = layernorm_output
+        else:
+            residual = hidden_states
+
+        # re-enable torch grad to enable fused optimization.
+        if self.drop_path is None:
+            # jit scripting for a nn.module (with dropout) is not
+            # trigerring the fusion kernel. For now, we use two
+            # different nn.functional routines to account for varying
+            # dropout semantics during training and inference phases.
+            if self.disable_bias_linear:
+                bias_dropout_add_func = get_dropout_ignore_bias(self.training)
+            elif self.training:
+                bias_dropout_add_func = bias_dropout_add_fused_train
+            else:
+                bias_dropout_add_func = bias_dropout_add_fused_inference
+            
+            with self.bias_dropout_add_exec_handler():
+                inter_layernorm_input = bias_dropout_add_func(
+                    attention_output,
+                    attention_bias if self.disable_bias_linear else \
+                    attention_bias.expand_as(residual),
+                    residual,
+                    self.hidden_dropout, gate=self.attn_gate) # attn_gate used here
+        else:
+            raise NotImplementedError
+            if self.disable_bias_linear:
+                out = torch.nn.functional.dropout(attention_output,
+                    p=self.hidden_dropout, training=self.training)
+            else:
+                out = torch.nn.functional.dropout(attention_output + \
+                    attention_bias, p=self.hidden_dropout,
+                    training=self.training)
+            layernorm_input = residual + self.drop_path(out)
+
+        # Layer norm post the cross attention
+        inter_layernorm_output = self.post_inter_attention_layernorm(inter_layernorm_input)
+
+        # MLP Layer (FFW) after cross attention
+        xattn_mlp_output, xattn_mlp_bias = self.xattn_mlp(inter_layernorm_output)
+
+        # Second residual connection.
+        if self.apply_residual_connection_post_layernorm:
+            residual = inter_layernorm_output
+        else:
+            residual = inter_layernorm_input
+        
+        with self.bias_dropout_add_exec_handler():
+            xattn_layernorm_input = bias_dropout_add_func(
+                xattn_mlp_output,
+                xattn_mlp_bias if self.disable_bias_linear else \
+                xattn_mlp_bias.expand_as(residual),
+                residual,
+                self.hidden_dropout, gate=self.ff_gate) # ff_gate used here
+
+        # Layer norm post the MLP
+        xattn_layernorm_output = self.xattn_layernorm(xattn_layernorm_input)
+
+        # Self attention.
+        self_attention_pos_emb = None
+        if rotary_pos_emb is not None:
+            self_attention_pos_emb = rotary_pos_emb
+        attention_output, attention_bias = \
+            self.self_attention(
+                xattn_layernorm_output,
+                attention_mask,
+                inference_params=inference_params,
+                rotary_pos_emb=self_attention_pos_emb)
+
+        # Residual connection.
+        if self.apply_residual_connection_post_layernorm:
+            residual = xattn_layernorm_output
+        else:
+            residual = xattn_layernorm_input
+
+        if self.drop_path is None:
+            # jit scripting for a nn.module (with dropout) is not
+            # trigerring the fusion kernel. For now, we use two
+            # different nn.functional routines to account for varying
+            # dropout semantics during training and inference phases.
+            if self.disable_bias_linear:
+                bias_dropout_add_func = get_dropout_ignore_bias(self.training)
+            elif self.bias_dropout_fusion:
+                if self.training:
+                    bias_dropout_add_func = bias_dropout_add_fused_train
+                else:
+                    bias_dropout_add_func = bias_dropout_add_fused_inference
+            else:
+                bias_dropout_add_func = get_bias_dropout_add(self.training)
+
+            with self.bias_dropout_add_exec_handler():
+                layernorm_input = bias_dropout_add_func(
+                    attention_output,
+                    attention_bias if self.disable_bias_linear else \
+                    attention_bias.expand_as(residual),
+                    residual,
+                    self.hidden_dropout)
+        else:
+            if self.disable_bias_linear:
+                out = torch.nn.functional.dropout(attention_output,
+                    p=self.hidden_dropout, training=self.training)
+            else:
+                out = torch.nn.functional.dropout(attention_output + \
+                    attention_bias, p=self.hidden_dropout,
+                    training=self.training)
+            layernorm_input = residual + self.drop_path(out)
+
+        # Layer norm post the self attention.
+        layernorm_output = self.post_attention_layernorm(layernorm_input)
+
+        # MLP.
+        mlp_output, mlp_bias = self.mlp(layernorm_output)
+
+        # Second residual connection.
+        if self.apply_residual_connection_post_layernorm:
+            residual = layernorm_output
+        else:
+            residual = layernorm_input
+
+        if self.drop_path is None:
+            with self.bias_dropout_add_exec_handler():
+                output = bias_dropout_add_func(
+                    mlp_output,
+                    mlp_bias if self.disable_bias_linear else \
+                    mlp_bias.expand_as(residual),
+                    residual,
+                    self.hidden_dropout)
+
+            # Jit compiled function creates 'view' tensor. This tensor
+            # potentially gets saved in the MPU checkpoint function context,
+            # which rejects view tensors. While making a viewless tensor here
+            # won't result in memory savings (like the data loader, or
+            # p2p_communication), it serves to document the origin of this
+            # 'view' tensor.
+            output = core.utils.make_viewless_tensor(inp = output,
+                                                     requires_grad = output.requires_grad,
+                                                     keep_graph = True)
+
+        else:
+            if self.disable_bias_linear:
+                out = torch.nn.functional.dropout(mlp_output,
+                    p=self.hidden_dropout, training=self.training)
+            else:
+                out = torch.nn.functional.dropout(mlp_output + mlp_bias,
+                                              p=self.hidden_dropout,
+                                              training=self.training)
+            output = residual + self.drop_path(out)
+
+        return output
 
 class ParallelTransformerLayer(MegatronModule):
     """A single transformer layer.
@@ -706,13 +1157,15 @@ class ParallelTransformerLayer(MegatronModule):
     def __init__(self, config,
                  layer_number, layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
-                 drop_path_rate=0.):
+                 drop_path_rate=0., is_vit=False, use_rel_pos=False,
+                 window_size=0):
                  # retriever=None):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
         self.layer_number = layer_number
         self.layer_type = layer_type
+        self.is_vit = is_vit
 
         self.apply_residual_connection_post_layernorm \
             = config.apply_residual_connection_post_layernorm
@@ -720,10 +1173,23 @@ class ParallelTransformerLayer(MegatronModule):
         self.bf16 = config.bf16
         self.fp32_residual_connection = config.fp32_residual_connection
 
+        hidden_size = config.hidden_size
+        layernorm_epsilon = config.layernorm_epsilon
+
+        if is_vit:
+            self.window_size = window_size
+            hidden_size = config.visual_hidden_size
+            if args.visual_arch.startswith("SAM"):
+                self.pad_h = config.img_h // config.visual_patch_dim
+                self.pad_w = config.img_w // config.visual_patch_dim
+                self.window_size = config.window_size
+                layernorm_epsilon = 1e-6 # hardcoded, from fbresearch mvit4 implementation.
+
+
         # Layernorm on the input data.
         self.input_layernorm = LayerNorm(
-            config.hidden_size,
-            eps=config.layernorm_epsilon,
+            hidden_size,
+            eps=layernorm_epsilon,
             no_persist_layer_norm=args.no_persist_layer_norm,
             sequence_parallel=config.sequence_parallel,
             apply_layernorm_1p=args.apply_layernorm_1p)
@@ -734,14 +1200,14 @@ class ParallelTransformerLayer(MegatronModule):
             layer_number,
             attention_type=AttnType.self_attn,
             attn_mask_type=self_attn_mask_type)
-        self.hidden_dropout = config.hidden_dropout
+        self.hidden_dropout = 0.0 if is_vit else config.hidden_dropout
         self.bias_dropout_fusion = config.bias_dropout_fusion
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
 
         # Layernorm on the attention output
         self.post_attention_layernorm = LayerNorm(
-            config.hidden_size,
-            eps=config.layernorm_epsilon,
+            hidden_size,
+            eps=layernorm_epsilon,
             no_persist_layer_norm=not config.persist_layer_norm,
             sequence_parallel=config.sequence_parallel,
             apply_layernorm_1p=args.apply_layernorm_1p)
@@ -767,7 +1233,7 @@ class ParallelTransformerLayer(MegatronModule):
         if args.num_experts is not None:
             self.mlp = SwitchMLP(config)
         else:
-            self.mlp = ParallelMLP(config)
+            self.mlp = ParallelMLP(config, is_vit=self.is_vit)
 
         # Set bias+dropout+add fusion grad_enable execution handler.
         TORCH_MAJOR = int(torch.__version__.split('.')[0])
@@ -1004,6 +1470,50 @@ class ParallelTransformerLayer(MegatronModule):
 
         return retriever_output, layernorm_input, layernorm_output
 
+    def window_partition(self, x, window_size):
+        """
+        Partition into non-overlapping windows with padding if needed.
+        Args:
+            x (tensor): input tokens with [B, H, W, C].
+            window_size (int): window size.
+
+        Returns:
+            windows: windows after partition with [B * num_windows, window_size, window_size, C].
+            (Hp, Wp): padded height and width before partition
+        """
+        B, H, W, C = x.shape
+        pad_h = (window_size - H % window_size) % window_size
+        pad_w = (window_size - W % window_size) % window_size
+        if pad_h > 0 or pad_w > 0:
+            x = F.pad(x, (0, 0, 0, pad_w, 0, pad_h))
+        Hp, Wp = H + pad_h, W + pad_w
+        x = x.view(B, Hp // window_size, window_size, Wp // window_size, window_size, C)
+        windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
+        return windows, (Hp, Wp)
+
+    def window_unpartition(self, windows, hw, pad_hw, window_size):
+        """
+        Window unpartition into original sequences and removing padding.
+        Args:
+            windows (tensor): input tokens with [B * num_windows, window_size, window_size, C].
+            window_size (int): window size.
+            pad_hw (Tuple): padded height and width (Hp, Wp).
+            hw (Tuple): original height and width (H, W) before padding.
+
+        Returns:
+            x: unpartitioned sequences with [B, H, W, C].
+        """
+        Hp, Wp = pad_hw
+        H, W = hw, hw
+        B = windows.shape[0] // (Hp * Wp // window_size // window_size)
+        x = windows.view(B, Hp // window_size, Wp // window_size, window_size, window_size, -1)
+        x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, Hp, Wp, -1)
+
+        if Hp > H or Wp > W:
+            x = x[:, :H, :W, :].contiguous()
+        return x
+
+
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,
                 retriever_input=None,
@@ -1014,7 +1524,16 @@ class ParallelTransformerLayer(MegatronModule):
         # hidden_states: [s, b, h]
 
         # Layer norm at the beginning of the transformer layer.
-        layernorm_output = self.input_layernorm(hidden_states)
+        layernorm_output = self.input_layernorm(hidden_states, vit_layer_norm=self.is_vit)
+        
+        if self.window_size > 0:
+            layernorm_output, pad_hw = self.window_partition(layernorm_output.reshape(self.pad_h, self.pad_w,
+                                                                                      hidden_states.shape[-2],
+                                                                                      hidden_states.shape[-1]).permute(2, 0, 1, 3),
+                                                             self.window_size)
+            layernorm_output = layernorm_output.reshape(layernorm_output.shape[0], -1, hidden_states.shape[-1]).permute(1, 0, 2)
+        else:
+            pad_hw = None
 
         # Self attention.
         attention_output, attention_bias = \
@@ -1030,7 +1549,12 @@ class ParallelTransformerLayer(MegatronModule):
         else:
             residual = hidden_states
 
-        if self.drop_path is None:
+        if self.window_size > 0:
+            layernorm_input = residual + self.window_unpartition((attention_output + attention_bias).reshape(
+                                                                  self.window_size, self.window_size,
+                                                                  attention_output.shape[-2], attention_output.shape[-1]).permute(2, 0, 1, 3),
+                                                                  self.pad_h, pad_hw, self.window_size).reshape(-1, residual.shape[0], residual.shape[-1]).permute(1, 0, 2)
+        elif self.drop_path is None:
             # jit scripting for a nn.module (with dropout) is not
             # trigerring the fusion kernel. For now, we use two
             # different nn.functional routines to account for varying

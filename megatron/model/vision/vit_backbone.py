@@ -1,4 +1,17 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# coding=utf-8
+# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Vision Transformer(VIT) model."""
 
@@ -8,6 +21,7 @@ import torch
 import apex
 import torch.nn.functional as F
 from megatron import get_args
+from megatron.model import LayerNorm
 from megatron.model.transformer import ParallelTransformer
 from megatron.model.utils import (
     get_linear_layer,
@@ -16,7 +30,13 @@ from megatron.model.utils import (
 )
 from megatron.model.module import MegatronModule
 
-CLASS_TOKEN_LENGTH = 8
+from megatron import print_rank_0
+import torchvision.utils as vutils
+from megatron import get_args
+import random
+import torchvision
+
+CLASS_TOKEN_LENGTH = 1
 
 class VitMlpHead(MegatronModule):
     """Pooler layer.
@@ -52,6 +72,19 @@ def isPerfectSquare(x):
         return (int(sr) * int(sr) == x)
     return False
 
+class LayerNorm2d(torch.nn.Module):
+    def __init__(self, num_channels: int, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.ones(num_channels))
+        self.bias = torch.nn.Parameter(torch.zeros(num_channels))
+        self.eps = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        u = x.mean(1, keepdim=True)
+        s = (x - u).pow(2).mean(1, keepdim=True)
+        x = (x - u) / torch.sqrt(s + self.eps)
+        x = self.weight[:, None, None] * x + self.bias[:, None, None]
+        return x
 
 def twod_interpolate_position_embeddings_hook(
     state_dict,
@@ -64,10 +97,10 @@ def twod_interpolate_position_embeddings_hook(
 ):
 
     args = get_args()
-    num_patches_per_dim_h = args.img_h // args.patch_dim
-    num_patches_per_dim_w = args.img_w // args.patch_dim
+    num_patches_per_dim_h = args.img_h // args.visual_patch_dim
+    num_patches_per_dim_w = args.img_w // args.visual_patch_dim
     num_patches = num_patches_per_dim_h * num_patches_per_dim_w
-    hidden_size = args.hidden_size
+    hidden_size = args.visual_hidden_size
 
     key = prefix + "weight"
 
@@ -126,28 +159,33 @@ def twod_interpolate_position_embeddings_hook(
         state_dict[key] = input_param
 
 
-class VitBackbone(MegatronModule):
+class CLIPVitBackbone(MegatronModule):
     """Vision Transformer Model."""
 
     def __init__(self,
-                 config,
                  pre_process=True,
                  post_process=True,
                  class_token=True,
                  single_token_output=False,
-                 post_layer_norm=True,
                  drop_path_rate=0.0):
-        super(VitBackbone, self).__init__(share_embeddings_and_output_weights=False)
+        super(CLIPVitBackbone, self).__init__(share_word_embeddings=False)
         args = get_args()
 
         self.fp16_lm_cross_entropy = args.fp16_lm_cross_entropy
+        if args.init_method_xavier_uniform:
+            self.init_method = torch.nn.init.xavier_uniform_
+            self.scaled_init_method = torch.nn.init.xavier_uniform_
+        else:
+            self.init_method = init_method_normal(args.init_method_std)
+            self.scaled_init_method = scaled_init_method_normal(
+                args.init_method_std, args.visual_num_layers
+            )
 
         self.pre_process = pre_process
         self.post_process = post_process
         self.class_token = class_token
-        self.post_layer_norm = post_layer_norm
-        self.hidden_size = args.hidden_size
-        self.patch_dim = args.patch_dim
+        self.hidden_size = args.visual_hidden_size
+        self.patch_dim = args.visual_patch_dim
         self.img_h = args.img_h
         self.img_w = args.img_w
         self.micro_batch_size = args.micro_batch_size
@@ -163,6 +201,7 @@ class VitBackbone(MegatronModule):
         self.flatten_dim = self.patch_dim * self.patch_dim * args.num_channels
         self.input_tensor = None
         self.position_ids = None
+        self.conv1 = torch.nn.Conv2d(in_channels=3, out_channels=self.hidden_size, kernel_size=self.patch_dim, stride=self.patch_dim, bias=False)
 
         if self.pre_process:
             # cls_token
@@ -172,11 +211,15 @@ class VitBackbone(MegatronModule):
                 )
                 torch.nn.init.zeros_(self.cls_token)
             self.position_ids = torch.arange(self.seq_length).expand(1, -1).cuda()
-            
+
+            self.pre_layernorm = LayerNorm(
+                self.hidden_size,
+                eps=args.layernorm_epsilon,
+                no_persist_layer_norm=args.no_persist_layer_norm)
             # Linear encoder
-            self.linear_encoder = torch.nn.Linear(
-                self.flatten_dim, self.hidden_size
-            )
+            #self.linear_encoder = torch.nn.Linear(
+            #    self.flatten_dim, self.hidden_size
+            #)
 
             # embedding
             self.position_embeddings = torch.nn.Embedding(
@@ -195,11 +238,12 @@ class VitBackbone(MegatronModule):
 
         # Transformer
         self.transformer = ParallelTransformer(
-            config,
+            self.init_method,
+            self.scaled_init_method,
             pre_process=self.pre_process,
             post_process=self.post_process,
-            post_layer_norm=self.post_layer_norm,
-            drop_path_rate=self.drop_path_rate
+            drop_path_rate=self.drop_path_rate,
+            is_vit=True
         )
 
     def set_input_tensor(self, input_tensor):
@@ -207,39 +251,163 @@ class VitBackbone(MegatronModule):
         self.transformer.set_input_tensor(input_tensor)
 
     def forward(self, input):
-
         if self.pre_process:
-            rearranged_input = einops.rearrange(
-                input,
-                "b c (h p1) (w p2) -> b (h w) (p1 p2 c)",
-                p1=self.patch_dim,
-                p2=self.patch_dim,
+
+            args = get_args()
+
+            if self.pre_process:
+
+                if args.v_jitter > 0:
+                    # if 0: vutils.save_image(input,'pre_jit.png', normalize=True, scale_each=True, nrow=int(10))
+                    input = torch.roll(input, shifts=(random.randint(-args.v_jitter, args.v_jitter), 0), dims=(2, 3))
+                    # if 0: vutils.save_image(input,'post_jit.png', normalize=True, scale_each=True, nrow=int(10))
+
+                if args.crop_middle:
+                    # if 0: vutils.save_image(input,'pre_crop.png', normalize=True, scale_each=True, nrow=int(10))
+                    input = torchvision.transforms.functional.resized_crop(input, top=60, left=0, height=105, width=224, size=[224, 224])
+                    # if 0: vutils.save_image(input,'post_crop.png', normalize=True, scale_each=True, nrow=int(10))
+
+            encoder_output = self.conv1(input)
+            encoder_output = einops.rearrange(
+                encoder_output,
+                "b w p1 p2 -> b (p1 p2) w",
+                p1=self.num_patches_per_dim_h,
+                p2=self.num_patches_per_dim_h,
             )
-
-            assert rearranged_input.dtype == torch.half
-            encoder_output = self.linear_encoder(rearranged_input)
-
-            concatenated_tokens = encoder_output
+            #assert rearranged_input.dtype == torch.half
+            #encoder_output = self.linear_encoder(rearranged_input)
+            #concatenated_tokens = encoder_output
             if self.class_token:
                 cls_tokens = self.cls_token.expand(encoder_output.shape[0], -1, -1)
                 concatenated_tokens = torch.cat((cls_tokens, encoder_output), dim=1)
 
             token_embeddings = concatenated_tokens + \
                     self.position_embeddings(self.position_ids[:, :concatenated_tokens.shape[1]])
-            # [b, s, h] => [s, b, h]
-            token_embeddings = token_embeddings.transpose(0, 1).contiguous()
-            hidden_states = self.embedding_dropout(token_embeddings)
+            hidden_states = token_embeddings #self.embedding_dropout(token_embeddings)
         else:
             hidden_states = input
 
+        hidden_states = self.pre_layernorm(hidden_states, visual_layer_norm=True)
+
         hidden_states = self.transformer(hidden_states, None)
 
-        if self.post_process:
-            # [s b h] => [b s h]
-            if self.single_token_output:
-                hidden_states = hidden_states[0]
-            else:
-                hidden_states = hidden_states.transpose(0, 1).contiguous()
+        if self.single_token_output:
+            hidden_states = hidden_states[:,0,:]
 
+        return hidden_states.transpose(0, 1).contiguous()
+
+class SAMViTBackbone(MegatronModule):
+    """Vision SAM Model."""
+
+    def __init__(self,
+                 pre_process=True,
+                 post_process=True,
+                 class_token=False,
+                 single_token_output=False,
+                 drop_path_rate=0.0, out_dim=256):
+        super(SAMViTBackbone, self).__init__(share_word_embeddings=False)
+        args = get_args()
+
+        self.fp16_lm_cross_entropy = args.fp16_lm_cross_entropy
+        if args.init_method_xavier_uniform:
+            self.init_method = torch.nn.init.xavier_uniform_
+            self.scaled_init_method = torch.nn.init.xavier_uniform_
+        else:
+            self.init_method = init_method_normal(args.init_method_std)
+            self.scaled_init_method = scaled_init_method_normal(
+                args.init_method_std, args.visual_num_layers
+            )
+
+        self.pre_process = pre_process
+        self.post_process = post_process
+        self.class_token = class_token
+        self.hidden_size = args.visual_hidden_size
+        self.patch_dim = args.visual_patch_dim
+        self.img_h = args.img_h
+        self.img_w = args.img_w
+        self.micro_batch_size = args.micro_batch_size
+        self.single_token_output = single_token_output
+        self.drop_path_rate = drop_path_rate
+
+        if args.visual_arch.startswith("SAM"):
+            self.window_size = args.window_size
+
+        assert self.img_h % self.patch_dim == 0
+        assert self.img_w % self.patch_dim == 0
+        self.num_patches_per_dim_h = self.img_h // self.patch_dim
+        self.num_patches_per_dim_w = self.img_w // self.patch_dim
+        self.num_patches = self.num_patches_per_dim_h * self.num_patches_per_dim_w
+        self.seq_length = self.num_patches + (CLASS_TOKEN_LENGTH if self.class_token else 0)
+        self.flatten_dim = self.patch_dim * self.patch_dim * args.num_channels
+        self.input_tensor = None
+        self.position_ids = None
+        self.conv1 = torch.nn.Conv2d(in_channels=3, out_channels=self.hidden_size, kernel_size=self.patch_dim, stride=self.patch_dim, bias=True)
+        if self.pre_process:
+            self.position_ids = torch.arange(self.seq_length).expand(1, -1).cuda()
+            self.position_embeddings = torch.nn.Embedding(
+                self.seq_length, self.hidden_size
+            )
+            init_method_normal(args.init_method_std)(
+                self.position_embeddings.weight
+            )
+
+        self.transformer = ParallelTransformer(
+            self.init_method,
+            self.scaled_init_method,
+            pre_process=self.pre_process,
+            post_process=self.post_process,
+            drop_path_rate=self.drop_path_rate,
+            is_vit=True,
+            use_rel_pos=True,
+            window_size=self.window_size
+        )
+
+        self.neck = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels=self.hidden_size,
+                out_channels=out_dim,
+                kernel_size=1,
+                bias=False,
+            ),
+            LayerNorm2d(out_dim),
+            torch.nn.Conv2d(
+                in_channels=out_dim,
+                out_channels=out_dim,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+            ),
+            LayerNorm2d(out_dim),
+        )
+    def preprocess_pad(self, x: torch.Tensor) -> torch.Tensor:
+        """Normalize pixel values and pad to a square input."""
+        # Pad
+        h, w = x.shape[-2:]
+        padh = self.img_h - h
+        padw = self.img_w - w
+        x = F.pad(x, (0, padw, 0, padh))
+        return x
+
+    def forward(self, input):
+
+        encoder_output = self.conv1(input)
+        encoder_output = einops.rearrange(
+            encoder_output,
+            "b w p1 p2 -> b (p1 p2) w",
+            p1=self.num_patches_per_dim_h,
+            p2=self.num_patches_per_dim_h,
+        )
+        token_embeddings = encoder_output + \
+            self.position_embeddings(self.position_ids[:, :encoder_output.shape[1]])
+        token_embeddings = token_embeddings.transpose(0, 1).contiguous()
+
+        hidden_states = self.transformer(token_embeddings, None)
+        hidden_states = einops.rearrange(
+            hidden_states,
+            "(p1 p2) b w -> b w p1 p2",
+            p1=self.num_patches_per_dim_h,
+            p2=self.num_patches_per_dim_h,
+        )
+        hidden_states = self.neck(hidden_states).flatten(2)
         return hidden_states
 

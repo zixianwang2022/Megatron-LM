@@ -212,7 +212,7 @@ def get_rng_state():
     return rng_state_list
 
 
-def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
+def save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_model=None):
     """Save a model checkpoint."""
     args = get_args()
 
@@ -222,11 +222,22 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
     print_rank_0('saving checkpoint at iteration {:7d} to {}'.format(
         iteration, args.save))
 
+    if visual_model:
+        visual_model = unwrap_model(visual_model)
+        print_rank_0('saving visual checkpoint at iteration {:7d} to {}'.format(
+            iteration, args.visual_save))
+
     # Collect rng state across data parallel ranks.
     rng_state = get_rng_state()
 
     # Checkpoint name.
     checkpoint_name = get_checkpoint_name(args.save, iteration)
+
+    if visual_model:
+        visual_checkpoint_name, visual_optim_checkpoint_name = get_checkpoint_names(args.visual_save, iteration)
+        visual_state_dict = {}
+    else:
+        visual_checkpoint_name = None
 
     # Save distributed optimizer's custom parameter state.
     if args.use_distributed_optimizer:
@@ -251,6 +262,11 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
                 mpu.set_virtual_pipeline_model_parallel_rank(i)
                 state_dict['model%d' % i] = \
                     model[i].state_dict_for_save_checkpoint()
+        if visual_model:
+            visual_state_dict['args'] = args
+            visual_state_dict['checkpoint_version'] = 3.0
+            visual_state_dict['iteration'] = iteration
+            visual_state_dict['model'] = visual_model.state_dict_for_save_checkpoint()
 
         # Optimizer stuff.
         if not args.no_save_optim:
@@ -263,10 +279,15 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
         # RNG states.
         if not args.no_save_rng:
             state_dict["rng_state"] = rng_state
+            if visual_model: 
+                visual_state_dict["rng_state"] = rng_state
 
         # Save.
         ensure_directory_exists(checkpoint_name)
         torch.save(state_dict, checkpoint_name)
+        if visual_model:
+            ensure_directory_exists(visual_checkpoint_name)
+            torch.save(visual_state_dict, visual_checkpoint_name)
 
     # Wait so everyone is done (necessary)
     if torch.distributed.is_initialized():
@@ -281,6 +302,10 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler):
         tracker_filename = get_checkpoint_tracker_filename(args.save)
         with open(tracker_filename, 'w') as f:
             f.write(str(iteration))
+        if visual_model:
+            tracker_filename = get_checkpoint_tracker_filename(args.visual_save)
+            with open(tracker_filename, 'w') as f:
+                f.write(str(iteration))
 
     # Wait so everyone is done (not necessary)
     if torch.distributed.is_initialized():
