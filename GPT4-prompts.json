@@ -1,0 +1,50 @@
+{
+    "Captioning": {
+        "raw": [
+            "Can you briefly explain what you see in the image?",
+            "Describe what's happening in this image in one short sentence.",
+            "Write a short caption that accurately represents the content of this image.",
+            "Please generate a descriptive caption for the image provided.",
+            "How would you summarize the scene depicted in the picture in short?"
+        ],
+        "tokenized": [
+            [1952, 376, 25011, 8723, 796, 376, 1101, 291, 276, 3679, 251597, 251490],
+            [120376, 796, 251523, 251498, 10028, 291, 472, 3679, 291, 623, 2455, 13416, 251511, 251490],
+            [26548, 261, 2455, 7938, 364, 28105, 11252, 276, 2749, 300, 472, 3679, 251511, 251490],
+            [4402, 10427, 261, 67509, 7938, 345, 276, 3679, 4261, 251511, 251490],
+            [1321, 703, 376, 75559, 276, 6558, 49461, 291, 276, 6645, 291, 2455, 251597, 251490]
+        ]
+    },
+    "OCR": {
+        "raw": [
+            "Can you read the text from image and output here?",
+            "Extract and document the text from the provided image.",
+            "Converting the text embedded in this image into a readable document.",
+            "Transcribe all the text you find.",
+            "Can you extract all visible text from the image here?"
+        ],
+        "tokenized": [
+            [1952, 376, 1353, 276, 2618, 467, 3679, 305, 5941, 1335, 251597, 251490],
+            [56887, 305, 3261, 276, 2618, 467, 276, 4261, 3679, 251511, 251490],
+            [168196, 276, 2618, 19838, 291, 472, 3679, 812, 261, 63151, 3261, 251511, 251490],
+            [4137, 5600, 517, 276, 2618, 376, 1212, 251511, 251490],
+            [1952, 376, 10846, 517, 12786, 2618, 467, 276, 3679, 1335, 251597, 251490]
+        ]
+    },
+    "VQA": {
+        "raw": [
+            "Given the image, answer the following question with few words.",
+            "Answer the following question: ",
+            "What is the answer to this question?",
+            "Write the answer: ",
+            "Please answer this question: "
+        ],
+        "tokenized": [
+            [15738, 276, 3679, 251514, 3933, 276, 2122, 2435, 386, 1693, 4553, 251511, 251490],
+            [34642, 276, 2122, 2435, 251541, 251490],
+            [1853, 339, 276, 3933, 296, 472, 2435, 251597, 251490],
+            [26548, 276, 3933, 251541, 251490],
+            [4402, 3933, 472, 2435, 251541, 251490]
+        ]
+    }
+}

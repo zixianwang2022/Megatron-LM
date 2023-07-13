@@ -1,0 +1,56 @@
+COCO_train:
+  category: Captioning
+  augmentation: True
+
+COCO_val:
+  category: Captioning
+  augmentation: False
+
+flickr30k_train:
+  category: Captioning
+  augmentation: True
+
+flickr30k_val:
+  category: Captioning
+  augmentation: False
+
+CCS_recaptioned:
+  category: Captioning
+  augmentation: True
+
+OCR_nvdata_train:
+  category: OCR
+  augmentation: False
+
+OCR_nvdata_val:
+  category: OCR
+  augmentation: False
+
+VQA2_train:
+  category: VQA
+  augmentation: True
+
+VQA2_val:
+  category: VQA
+  augmentation: False
+
+OKVQA_train:
+  category: VQA
+  augmentation: True
+
+OKVQA_val:
+  category: VQA
+  augmentation: False
+
+TextVQA_train:
+  category: VQA
+  augmentation: True
+
+TextVQA_val:
+  category: VQA
+  augmentation: False
+ 
+VQA_vg:
+  category: VQA
+  augmentation: True
+
