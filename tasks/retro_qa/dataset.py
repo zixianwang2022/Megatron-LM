@@ -35,7 +35,7 @@ def format_question(question):
     if args.short_format:
         if not question.endswith("?"):
             question = question + "?"
-        return "Question: {} Answer: The answer is ".format(question)
+        return "Question: {} Answer: The answer is".format(question)
     return  "question: {} \nanswer:".format(question)
 
 def format_answer(answer):

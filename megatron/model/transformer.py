@@ -880,7 +880,7 @@ class ParallelTransformerLayer(MegatronModule):
 
             # Attention.
             chunked_output = chunked_outputs[:,:,k].contiguous()
-            print("E", chunked_output.shape)
+            # print("E", chunked_output.shape)
 
 
             attention_output, attention_bias = \
@@ -964,8 +964,8 @@ class ParallelTransformerLayer(MegatronModule):
                 .reshape(self.retro_chunk_length, bs * l, d) \
                 .contiguous()
 
-            print("H", chunked_output.shape)     # [m, bs * l, d],  l = ns / m
-            print("retriever_input", retriever_input.shape)    # [bs * l * k, r, d]
+            # print("H", chunked_output.shape)     # [m, bs * l, d],  l = ns / m
+            # print("retriever_input", retriever_input.shape)    # [bs * l * k, r, d]
 
             # Get Encoder Output
             retriever_output = self.retriever(

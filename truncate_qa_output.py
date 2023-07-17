@@ -147,21 +147,92 @@ prediction_files = [prediction_file1,prediction_file2,prediction_file3,predictio
 
 prediction_file1 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-843m-multi-1.1t-gtc-llr/generate_843m_test_greedy_0_400_2835248.concat.txt"
 prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-gpt-fitting/generate_843m_test_greedy_0_400_194000.concat.txt"
-
-prediction_files = [prediction_file1,prediction_file2,]
-
-
-
-prediction_file1 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting/generate_843m_test_greedy_0_400_195312.concat.txt"
-prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro/gpt3-1.3b-pretraining-retro-K-2/generate_nq_1.3b_test_greedy_0_400_2_375000_1_short_format.concat.txt"
-prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/gpt3/gpt3-1.3b/generate_nq_1.3b_test_greedy_0_400_389532_short_format_1.concat.txt"
-
+prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting/generate_843m_test_greedy_0_400_195312.concat.txt"
 prediction_files = [prediction_file1,prediction_file2,prediction_file3]
 
 
+
+# prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro/gpt3-1.3b-pretraining-retro-K-2/generate_nq_1.3b_test_greedy_0_400_2_375000_1_short_format.concat.txt"
+# prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/gpt3/gpt3-1.3b/generate_nq_1.3b_test_greedy_0_400_389532_short_format_1.concat.txt"
+#
+# prediction_files = [prediction_file1,prediction_file2,prediction_file3]
+#
+prediction_file1 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-multi-1.1t-gtc/generate_2b_test_greedy_0_400_1417624.concat.txt"
+prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-gpt-fitting/generate_2b_test_greedy_0_400_97656.concat.txt"
+prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting/generate_2b_test_greedy_0_400_97656.concat.txt"
+prediction_files = [prediction_file1,prediction_file2,prediction_file3]
+
+prediction_file1 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-multi-1.1t-gtc/generate_8b_test_greedy_0_400_1417624.concat.txt"
+prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-gpt-fitting/generate_8b_test_greedy_0_400_97656.concat.txt"
+prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/generate_8b_test_greedy_0_400_97656.concat.txt"
+prediction_files = [prediction_file1,prediction_file2,prediction_file3]
+
+prediction_file1 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-multi-1.1t-gtc/generate_22b_test_greedy_0_400_708812.concat.txt"
+prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-gpt-fitting/generate_22b_test_greedy_0_400_48828.concat.txt"
+prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/generate_22b_test_greedy_0_400_48828.concat.txt"
+prediction_files = [prediction_file1,prediction_file2,prediction_file3]
+
+prediction_file1 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-multi-1.1t-gtc/tp8pp1/generate_43b_test_greedy_0_400_472541.concat.txt"
+prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-gpt-fitting-tp8pp1/generate_43b_test_greedy_0_400_32552.concat.txt"
+prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_43b_test_greedy_0_400_32552.concat.txt"
+prediction_files = [prediction_file1,prediction_file2,prediction_file3]
+
+prediction_file1 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_43b_test_greedy_0_400_27000.concat.txt"
+prediction_file2 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_43b_test_greedy_0_400_28000.concat.txt"
+prediction_file3 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_43b_test_greedy_0_400_29000.concat.txt"
+prediction_file4 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_43b_test_greedy_0_400_30000.concat.txt"
+prediction_file5 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_43b_test_greedy_0_400_31000.concat.txt"
+prediction_file6 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_43b_test_greedy_0_400_32000.concat.txt"
+prediction_file7 = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_nq_43b_test_greedy_0_400_32552.concat.txt"
+prediction_files = [prediction_file1,prediction_file2,prediction_file3,prediction_file4,prediction_file5,prediction_file6,prediction_file7]
+
+
+prediction_files = []
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-843m-multi-1.1t-gtc-llr/generate_tqa_843m_test_greedy_0_1100_2835248.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-gpt-fitting/generate_tqa_843m_test_greedy_0_1100_194000.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting/generate_tqa_843m_test_greedy_0_1100_195312.concat.txt")
+
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-multi-1.1t-gtc/generate_tqa_2b_test_greedy_0_1100_1417624.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-gpt-fitting/generate_tqa_2b_test_greedy_0_1100_97656.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting/generate_tqa_2b_test_greedy_0_1100_97656.concat.txt")
+
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-multi-1.1t-gtc/generate_tqa_8b_test_greedy_0_1100_1417624.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-gpt-fitting/generate_tqa_8b_test_greedy_0_1100_97656.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/generate_tqa_8b_test_greedy_0_1100_97656.concat.txt")
+
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-multi-1.1t-gtc/generate_tqa_22b_test_greedy_0_1100_708812.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-gpt-fitting/generate_tqa_22b_test_greedy_0_1100_48828.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/generate_tqa_22b_test_greedy_0_550_48828.concat.txt")
+
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-multi-1.1t-gtc/tp8pp1/generate_tqa_43b_test_greedy_0_550_472541.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-gpt-fitting-tp8pp1/generate_tqa_43b_test_greedy_0_550_32552.concat.txt")
+prediction_files.append("/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed/generate_tqa_43b_test_greedy_0_400_32000.concat.txt")
+
+prediction_files = []
+model_name = "gpt3-43b-multi-1.1t-gtc/tp8pp1"
+ckpt_path = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/{}/".format(model_name)
+prediction_files.append(ckpt_path + "/generate_inference_input_retriever_dragon_msmarcominilm_doc2dial_43b_test_greedy_0_250_472541.txt")
+prediction_files.append(ckpt_path + "generate_Iternal_dragon_retriever_msmarcominilm_reranker_chunkbysents300_retrieved_43b_test_greedy_0_250_472541.txt")
+prediction_files.append(ckpt_path + "/generate_NVIT_dragon_retriever_msmarcominilm_reranker_chunkbysents300_retrieved_43b_test_greedy_0_250_472541.txt")
+prediction_files.append(ckpt_path + "generate_nv_benefits_dragon_retriever300_retrieved_generic_43b_test_greedy_0_250_472541.txt")
+prediction_files.append(ckpt_path + "/generate_landrover_plus_benz_clean_plus_ford_tasb_ftmsmarcominilm_chunkbysents150_benzlandroverford_retrieved_43b_test_greedy_0_250_472541.txt")
+prediction_files.append(ckpt_path + "/generate_ford_tasb_ftmsmarcominilm_chunkbysents150_benzlandroverford_retrieved_43b_test_greedy_0_250_472541.txt")
+prediction_files.append(ckpt_path + "/generate_att_dragon_retriever_msmarcominilm_reranker_chunkbysents300_retrieved_43b_test_greedy_0_250_472541.txt")
+prediction_files.append(ckpt_path + "/generate_nq_43b_test_greedy_0_200_472541.txt")
 # In[7]:
 
-
+prediction_files = []
+model_name = "gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed"
+model_name = "gpt3-43b-pretraining-gpt-fitting-tp8pp1"
+ckpt_path = "/lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/{}/".format(model_name)
+prediction_files.append(ckpt_path + "/generate_inference_input_retriever_dragon_msmarcominilm_doc2dial_43b_test_greedy_0_250_32552.txt")
+prediction_files.append(ckpt_path + "generate_Iternal_dragon_retriever_msmarcominilm_reranker_chunkbysents300_retrieved_43b_test_greedy_0_250_32552.txt")
+prediction_files.append(ckpt_path + "/generate_NVIT_dragon_retriever_msmarcominilm_reranker_chunkbysents300_retrieved_43b_test_greedy_0_250_32552.txt")
+prediction_files.append(ckpt_path + "generate_nv_benefits_dragon_retriever300_retrieved_generic_43b_test_greedy_0_250_32552.txt")
+prediction_files.append(ckpt_path + "/generate_landrover_plus_benz_clean_plus_ford_tasb_ftmsmarcominilm_chunkbysents150_benzlandroverford_retrieved_43b_test_greedy_0_250_32552.txt")
+prediction_files.append(ckpt_path + "/generate_ford_tasb_ftmsmarcominilm_chunkbysents150_benzlandroverford_retrieved_43b_test_greedy_0_250_32552.txt")
+prediction_files.append(ckpt_path + "/generate_att_dragon_retriever_msmarcominilm_reranker_chunkbysents300_retrieved_43b_test_greedy_0_250_32552.txt")
+prediction_files.append(ckpt_path + "/generate_nq_43b_test_greedy_0_200_32552.txt")
 
 # In[15]:
 

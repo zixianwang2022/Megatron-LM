@@ -29,7 +29,7 @@ fi
 #SAVENAME="${TASK}_${model_card}_same_format_ctx${ft_neighbours}_${model_size}_${global_bsz}_${lr}"
 #CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
 CHECKPOINT_PATH=${ckpt}
-sample_output_file="${CHECKPOINT_PATH}/generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}.txt"
+sample_output_file="${CHECKPOINT_PATH}/generate_${TASK}_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}.txt"
 
 DIR=`pwd`
 

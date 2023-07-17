@@ -27,13 +27,21 @@ if [[ $model_size == "8b" ]]; then
     pip_par=1
 fi
 
+if [[ $model_size == "22b" ]]; then
+    mod_par=8
+    layers=40
+    hid_dim=6144
+    heads=48
+    pip_par=1
+fi
+
 if [[ $model_size == "43b" ]]; then
     mod_par=8
     layers=48
     hid_dim=8192
     heads=64
     pip_par=4
-    if [[ $model_card == *-pp1* ]]; then
+    if [[ $model_card == pp1 ]]; then
         pip_par=1
     fi
 fi
@@ -66,7 +74,8 @@ GPT_ARGS="--apply-layernorm-1p \
         --log-params-norm \
         --log-num-zeros-in-grad \
         --bf16 \
-        --DDP-impl local"
+        --DDP-impl local \
+"
         # --weight-decay 1.0e-1
         # --lr-decay-iters 10000 \
 
@@ -81,7 +90,8 @@ FT_ARGS="--data-folder $DATA_FOLDER \
     --task $TASK"
 
 #if [[ $model_size == "43b" ]]; then
-#    ARGS_43B="--overlap-p2p-communication "
+#    ARGS_43B="--num-layers-per-virtual-pipeline-stage 1 \
+#    "
 #    if [[ $model_card == *-pp1* ]]; then
 #        ARGS_43B=""
 #    fi

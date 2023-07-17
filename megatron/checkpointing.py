@@ -375,7 +375,14 @@ def _load_base_checkpoint(load_dir, rank0=False):
 
     # Otherwise, read the tracker file and either set the iteration or
     # mark it as a release checkpoint.
-    iteration, release = read_metadata(tracker_filename)
+    # Otherwise, read the tracker file and either set the iteration or
+    # mark it as a release checkpoint.
+    args = get_args()
+    if getattr(args, 'ckpt_step', None) is not None:
+        iteration = args.ckpt_step
+        release = False
+    else:
+        iteration, release = read_metadata(tracker_filename)
 
     # Checkpoint.
     if rank0:

@@ -141,7 +141,7 @@ def generate_samples_conditional(model):
                     neighbours = all_neighbours[input_pos]
                 input_pos += 1
                 
-                valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'iternal', 'carmanual', 'nvit', 'tcs']
+                valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'iternal', 'carmanual', 'nvit', 'tcs', 'doc2dial', 'benefits']
                 if args.task.lower() in valid_tasks or any([x in args.task.lower() for x in valid_tasks]):
                     max_target_len = args.out_seq_length
                     # disable it for GPT for now
@@ -213,9 +213,9 @@ def generate_samples_conditional(model):
                 terminate_runs = 1
         else:
             if args.beam_search:
-                beam_search_and_post_process(model)
+                retro_beam_search_and_post_process(model)
             else:
-                generate_and_post_process(model)
+                retro_generate_and_post_process(model)
 
         terminate_runs_tensor = torch.cuda.LongTensor([terminate_runs])
         torch.distributed.broadcast(terminate_runs_tensor, 0)

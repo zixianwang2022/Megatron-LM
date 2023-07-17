@@ -1,43 +1,61 @@
 #DATA_HOME="../../inform-retriever-msmarco"
 DATA_HOME="/lustre/fsw/adlr/adlr-nlp/pengx/retro"
 
-sample_input_file="${DATA_HOME}/data/$TASK/${split}.json"
-DATA_FOLDER="${DATA_HOME}/data/$TASK"
+sample_input_file="/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/$TASK/${split}.json"
+DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/$TASK"
 
 if [[ $TASK == "nq" ]]; then
-    sample_input_file="${DATA_HOME}/data/NQ/${split}.json"
-    DATA_FOLDER="${DATA_HOME}/data/NQ/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ/${split}.json"
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/NQ"
 fi
 
 if [[ $TASK == "tqa" ]]; then
-    sample_input_file="${DATA_HOME}/data/TQA/${split}.json"
-    DATA_FOLDER="${DATA_HOME}/data/TQA/$TASK"
-fi
-
-if [[ $TASK == Iternal* ]]; then
-    sample_input_file="${DATA_HOME}/data/Iternal/$TASK/${split}.json"
-    DATA_FOLDER="${DATA_HOME}/data/Iternal/$TASK"
-fi
-
-if [[ $TASK == carmanual* ]]; then
-    sample_input_file="${DATA_HOME}/data/carmanual/$TASK/${split}.json"
-    DATA_FOLDER="${DATA_HOME}/data/carmanual/$TASK"
-fi
-
-if [[ $TASK == NVIT* ]]; then
-    sample_input_file="${DATA_HOME}/data/NVIT/$TASK/${split}.json"
-    DATA_FOLDER="${DATA_HOME}/data/NVIT/$TASK"
-fi
-
-if [[ $TASK == TCS* ]]; then
-    sample_input_file="${DATA_HOME}/data/TCS/$TASK/${split}.json"
-    DATA_FOLDER="${DATA_HOME}/data/TCS/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/TQA/${split}.json"
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/pengx/retro/data/TQA"
 fi
 
 if [[ $TASK == att* ]]; then
-    sample_input_file="${DATA_HOME}/data/att/$TASK/${split}.json"
-    DATA_FOLDER="${DATA_HOME}/data/att/$TASK"
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/pengx//data/att/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/pengx/data/att/$TASK/${split}.json"
 fi
+
+#sample_input_file="${DATA_HOME}/data/$TASK/${split}.json"
+#DATA_FOLDER="${DATA_HOME}/data/$TASK"
+
+#if [[ $TASK == "nq" ]]; then
+#    sample_input_file="${DATA_HOME}/data/NQ/${split}.json"
+#    DATA_FOLDER="${DATA_HOME}/data/NQ/$TASK"
+#fi
+#
+#if [[ $TASK == "tqa" ]]; then
+#    sample_input_file="${DATA_HOME}/data/TQA/${split}.json"
+#    DATA_FOLDER="${DATA_HOME}/data/TQA/$TASK"
+#fi
+#
+#if [[ $TASK == Iternal* ]]; then
+#    sample_input_file="${DATA_HOME}/data/Iternal/$TASK/${split}.json"
+#    DATA_FOLDER="${DATA_HOME}/data/Iternal/$TASK"
+#fi
+#
+#if [[ $TASK == carmanual* ]]; then
+#    sample_input_file="${DATA_HOME}/data/carmanual/$TASK/${split}.json"
+#    DATA_FOLDER="${DATA_HOME}/data/carmanual/$TASK"
+#fi
+#
+#if [[ $TASK == NVIT* ]]; then
+#    sample_input_file="${DATA_HOME}/data/NVIT/$TASK/${split}.json"
+#    DATA_FOLDER="${DATA_HOME}/data/NVIT/$TASK"
+#fi
+#
+#if [[ $TASK == TCS* ]]; then
+#    sample_input_file="${DATA_HOME}/data/TCS/$TASK/${split}.json"
+#    DATA_FOLDER="${DATA_HOME}/data/TCS/$TASK"
+#fi
+#
+#if [[ $TASK == att* ]]; then
+#    sample_input_file="${DATA_HOME}/data/att/$TASK/${split}.json"
+#    DATA_FOLDER="${DATA_HOME}/data/att/$TASK"
+#fi
 
 QA_HOME="/lustre/fsw/adlr/adlr-nlp/boxinw/nvllm-qa"
 MOUNTS="/lustre/fsw/adlr/adlr-nlp/"
