@@ -98,6 +98,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         data_prefix=args.data_path,
         data_impl=args.data_impl,
         splits_string=args.split,
+        split_constraint_strings=args.split_constraint,
         train_valid_test_num_samples=train_val_test_num_samples,
         seq_length=args.seq_length,
         seed=args.seed,

@@ -1025,6 +1025,7 @@ def _add_data_args(parser):
                        'data group. The intersection is computed separately '
                        'for the training, validation, and test datasets. Same '
                        'format as \'--split\'.')
+    group.add_argument('--eval-ppl', action='store_true', default=False)
     # <<<
     group.add_argument('--train-data-path', nargs='*', default=None,
                        help='Path to the training dataset. Accepted format:'
@@ -1072,7 +1073,7 @@ def _add_data_args(parser):
                        help='Probability of producing a short sequence.')
     group.add_argument('--mmap-warmup', action='store_true',
                        help='Warm up mmap files.')
-    group.add_argument('--num-workers', type=int, default=2,
+    group.add_argument('--num-workers', type=int, default=32,
                        help="Dataloader number of workers.")
     group.add_argument('--tokenizer-type', type=str,
                        default=None,
@@ -1083,7 +1084,7 @@ def _add_data_args(parser):
                                 'GPTSentencePieceTokenizer',
                                 'NullTokenizer'],
                        help='What type of tokenizer to use.')
-    group.add_argument('--tokenizer-model', type=str, default=None,
+    group.add_argument('--tokenizer-model', type=str, default="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model",
                        help='Sentencepiece tokenizer model.')
     group.add_argument('--data-impl', type=str, default='infer',
                        choices=['lazy', 'cached', 'mmap', 'infer'],

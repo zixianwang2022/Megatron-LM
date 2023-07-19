@@ -42,6 +42,37 @@ def get_batch(data_iterator):
     else:
         data = None
 
+    # if mpu.get_tensor_model_parallel_rank() == 0:
+    #     print(data.keys())
+    #     print(data['dataset_idx'])
+    #     print("#####################")
+
+    # if args.local_rank == 0:
+    #     print(data.keys())
+    #     print(data)
+    #     tokens = data['text']
+    #     neighbor_tokens = data['neighbor_tokens']
+    #     # print(tokens.shape)
+    #     print(data['dataset_idx'])
+    #     # print(tokens)
+    #     # print(neighbor_tokens.shape)
+    #     # print(neighbor_tokens)
+    #     # print(neighbor_tokens[0][0][0])
+    #     # print(neighbor_tokens[0][1][0])
+    #     print("======================================= sample 0 ======================================= ")
+    #     print(tokenizer.detokenize(tokens[0].tolist()[:64]))
+    #     print(tokens[0])
+    #     print(tokenizer.detokenize(neighbor_tokens[0][0][0].tolist()[:64]))
+    #     print(neighbor_tokens[0][0][0])
+    #     print(tokenizer.detokenize(neighbor_tokens[0][0][1].tolist()[:64]))
+    #     print(neighbor_tokens[0][0][1])
+    #     # print("======================================= sample 1 ======================================= ")
+    #     # print(tokenizer.detokenize(tokens[1].tolist()[64:128]))
+    #     # print(tokens[1])
+    #     # print(tokenizer.detokenize(neighbor_tokens[1][1][0].tolist()[:64]))
+    #     # print(neighbor_tokens[1][1][0])
+    # exit(0)
+
     data_b = tensor_parallel.broadcast_data(keys, data, datatype)
 
     # Unpack.
