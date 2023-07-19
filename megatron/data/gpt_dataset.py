@@ -294,6 +294,7 @@ class GPTDataset(torch.utils.data.Dataset):
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         # ......... hacky mchackers [ until sub-epoch fix ] .........
         idx = idx % len(self)
+        # idx = idx
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         # Get the shuffled index.
         idx = self.shuffle_idx[idx]
