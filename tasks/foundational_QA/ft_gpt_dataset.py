@@ -99,7 +99,7 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      train_valid_test_num_samples,
                                      seq_length, seed, skip_warmup,
                                      return_doc_ids=False):
-    """Build train, valid, and test datasets using existing split"""
+    """Build train, valid, and xtest datasets using existing split"""
 
     args = get_args()
     # Indexed dataset.

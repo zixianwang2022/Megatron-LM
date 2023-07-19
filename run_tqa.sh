@@ -89,35 +89,35 @@
 #
 
 ## 43B Retro
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 0      400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 400    400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 800    400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 1200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 1600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 2000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 2400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 2800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 3200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 3600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 4000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 4400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 4800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 5200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 5600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 6000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 6400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 6800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 7200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 7600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 8000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 8400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 8800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 9200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 9600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 10000  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 10400  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 10800  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b greedy test 32 1e-6 11200  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 0      400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 400    400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 800    400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 1200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 1600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 2000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 2400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 2800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 3200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 3600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 4000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 4400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 4800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 5200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 5600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 6000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 6400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 6800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 7200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 7600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 8000   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 8400   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 8800   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 9200   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 9600   400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 10000  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 10400  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 10800  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 43b greedy test 32 1e-6 11200  400  32000 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-43b-pretraining-retro-fitting-noseqpar-pp1-distributed 2
 #
 #
 #cat    generate_tqa_43b_test_greedy_0_400_32000.txt \
@@ -261,27 +261,27 @@ bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b 
 #    generate_tqa_22b_test_greedy_11000_1100_48828.txt > generate_tqa_22b_test_greedy_0_1100_48828.concat.txt
 #
 ## 22B Retro
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 0     550      48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 550     550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 1100    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 1650    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 2200    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 2750    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 3300    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 3850    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 4400    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 4950    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 5500    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 6050    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 6600    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 7150    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 7700    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 8250    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 8800    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 9350    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 9900    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 10450    550   48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 22b greedy test 32 1e-6 11000    550   48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 0     550      48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 550     550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 1100    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 1650    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 2200    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 2750    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 3300    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 3850    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 4400    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 4950    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 5500    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 6050    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 6600    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 7150    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 7700    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 8250    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 8800    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 9350    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 9900    550    48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 10450    550   48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 22b greedy test 32 1e-6 11000    550   48828 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-22b-pretraining-retro-fitting-noseqpar/ 2
 
 #cat    generate_tqa_22b_test_greedy_0_550_48828.txt \
 #     generate_tqa_22b_test_greedy_550_550_48828.txt \
@@ -370,17 +370,17 @@ bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b 
 #
 #
 ## 8B Retro
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 0     1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 1100     1100     97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 2200    1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 3300    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 4400    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 5500    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 6600    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 7700    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 8800    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 9900    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 8b greedy test 32 1e-6 11000    1100   97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 0     1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 1100     1100     97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 2200    1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 3300    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 4400    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 5500    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 6600    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 7700    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 8800    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 9900    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 8b greedy test 32 1e-6 11000    1100   97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-8b-pretraining-retro-fitting-noseqpar/ 2
 ##
 ##
 #cat      generate_tqa_8b_test_greedy_0_1100_97656.txt \
@@ -462,17 +462,17 @@ bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b 
 #    generate_tqa_2b_test_greedy_11000_1100_97656.txt > generate_tqa_2b_test_greedy_0_1100_97656.concat.txt
 #
 ## 2B Retro
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 0     1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 1100     1100     97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 2200    1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 3300    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 4400    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 5500    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 6600    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 7700    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 8800    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 9900    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 2b greedy test 32 1e-6 11000    1100   97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 0     1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 1100     1100     97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 2200    1100      97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 3300    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 4400    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 5500    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 6600    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 7700    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 8800    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 9900    1100    97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 2b greedy test 32 1e-6 11000    1100   97656 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-2b-pretraining-retro-fitting 2
 ###
 ###
 #cat generate_tqa_2b_test_greedy_0_1100_97656.txt \
@@ -577,17 +577,17 @@ bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 43b 
 #done :-)
 
 # 800M Retro
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 0     1100     195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 1100     1100    195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 2200    1100     195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 3300    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 4400    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 5500    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 6600    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 7700    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 8800    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 9900    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
-#bash examples/qa/retro_generate_multijob_ckpt_step_same_format_short.sh tqa 843m greedy test 32 1e-6 11000    1100  195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 0     1100     195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 1100     1100    195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 2200    1100     195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 3300    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 4400    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 5500    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 6600    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 7700    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 8800    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 9900    1100   195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
+#bash examples/qa/retro_generate_multijob_ckpt_step_same_format.sh tqa 843m greedy test 32 1e-6 11000    1100  195312 1 pp1 /lustre/fsw/adlr/adlr-nlp/boxinw/checkpoints/retro-nvllm/gpt3-800m-pretraining-retro-fitting 2
 ###
 ###
 #cat generate_tqa_843m_test_greedy_0_1100_195312.txt \
