@@ -158,7 +158,6 @@ class CLIPVitBackbone(MegatronModule):
         super(CLIPVitBackbone, self).__init__(share_word_embeddings=False)
         args = get_args()
 
-        self.fp16_lm_cross_entropy = args.fp16_lm_cross_entropy
         if args.init_method_xavier_uniform:
             self.init_method = torch.nn.init.xavier_uniform_
             self.scaled_init_method = torch.nn.init.xavier_uniform_
@@ -286,24 +285,22 @@ class CLIPVitBackbone(MegatronModule):
 class SAMViTBackbone(MegatronModule):
     """Vision SAM Model."""
 
-    def __init__(self,
+    def __init__(self, config,
                  pre_process=True,
                  post_process=True,
                  class_token=False,
                  single_token_output=False,
                  drop_path_rate=0.0, out_dim=256):
-        super(SAMViTBackbone, self).__init__(share_word_embeddings=False)
-        args = get_args()
 
-        self.fp16_lm_cross_entropy = args.fp16_lm_cross_entropy
-        if args.init_method_xavier_uniform:
-            self.init_method = torch.nn.init.xavier_uniform_
-            self.scaled_init_method = torch.nn.init.xavier_uniform_
-        else:
-            self.init_method = init_method_normal(args.init_method_std)
-            self.scaled_init_method = scaled_init_method_normal(
-                args.init_method_std, args.visual_num_layers
-            )
+        args = get_args()
+        super().__init__(config=config, share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
+
+        if config.init_method is None:
+            config.init_method = init_method_normal(config.init_method_std)
+
+        if config.output_layer_init_method is None:
+            config.output_layer_init_method = scaled_init_method_normal(config.init_method_std,
+                                                                    config.num_layers)
 
         self.pre_process = pre_process
         self.post_process = post_process
@@ -339,8 +336,8 @@ class SAMViTBackbone(MegatronModule):
             )
 
         self.transformer = ParallelTransformer(
-            self.init_method,
-            self.scaled_init_method,
+            config,
+            model_type=args.model_type,
             pre_process=self.pre_process,
             post_process=self.post_process,
             drop_path_rate=self.drop_path_rate,
@@ -366,6 +363,8 @@ class SAMViTBackbone(MegatronModule):
             ),
             LayerNorm2d(out_dim),
         )
+        if not args.untie_embeddings_and_output_weights:
+            self.initialize_word_embeddings()
     def preprocess_pad(self, x: torch.Tensor) -> torch.Tensor:
         """Normalize pixel values and pad to a square input."""
         # Pad

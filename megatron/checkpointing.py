@@ -517,6 +517,57 @@ def load_args_from_checkpoint(args, load_arg='load'):
         _set_arg('num_layers_per_virtual_pipeline_stage')
     return args, checkpoint_args
 
+def load_visual_checkpoint(model, load_arg='load', strict=True):
+    """Load a visual model checkpoint and return the iteration.
+    strict (bool): whether to strictly enforce that the keys in
+        :attr:`state_dict` of the checkpoint match the names of
+        parameters and buffers in model.
+    """
+    args = get_args()
+    load_dir = args.visual_path
+    if args.visual_adaptor: strict = False
+
+    model = unwrap_model(model)
+
+    state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False)
+
+    # Checkpoint not loaded.
+    if state_dict is None:
+
+        # Conditionally exit at this point.
+        if args.exit_on_missing_checkpoint:
+            print_rank_0(">> '--exit-on-missing-checkpoint' set ... exiting. <<")
+            torch.distributed.barrier()
+            sys.exit()
+
+        # Iteration defaults to 0.
+        return 0
+
+    # set checkpoint version
+    set_checkpoint_version(state_dict.get('checkpoint_version', 0))
+
+    # Model.
+    try:
+        iteration = state_dict['iteration']
+    except KeyError:
+        try:  # Backward compatible with older checkpoints
+            iteration = state_dict['total_iters']
+        except KeyError:
+            print_rank_0('A metadata file exists but unable to load '
+                         'iteration from checkpoint {}, exiting'.format(
+                             checkpoint_name))
+            sys.exit()
+
+    model.load_state_dict(state_dict['model'], strict=strict)
+
+    # Some utilities want to load a checkpoint without distributed being initialized
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+
+    print_rank_0(f'  successfully loaded checkpoint from {args.load} '
+                 f'at iteration {iteration}')
+
+    return iteration
 
 def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', strict=True):
     """Load a model checkpoint and return the iteration.

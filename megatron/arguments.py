@@ -167,6 +167,69 @@ def validate_args(args, defaults={}):
                 print('accumulate and all-reduce gradients in fp32 for '
                       'bfloat16 data type.', flush=True)
 
+    if args.visual_path:
+        if args.visual_arch == "B_32":
+            args.visual_num_layers = 12
+            args.visual_patch_dim = 32
+            args.visual_hidden_size = 768
+            args.visual_ffn_hidden_size = 3072
+            args.visual_num_attention_heads = 12
+            args.visual_output_size = 768
+            args.quickgelu = True
+        elif args.visual_arch == "L_14":
+            args.visual_num_layers = 24
+            args.visual_patch_dim = 14
+            args.visual_hidden_size = 1024
+            args.visual_ffn_hidden_size = 4096
+            args.visual_num_attention_heads = 16
+            args.visual_output_size = 1024
+            if args.img_h == 336:
+                args.quickgelu = False
+            else:
+                args.quickgelu = True
+        elif args.visual_arch == "G_14":
+            args.visual_num_layers = 48
+            args.visual_patch_dim = 14
+            args.visual_hidden_size = 1664
+            args.visual_ffn_hidden_size = 8192
+            args.visual_num_attention_heads = 16
+            args.visual_output_size = 1664
+            args.quickgelu = False
+        elif args.visual_arch == "SAM_B":
+            args.visual_num_layers = 12
+            args.visual_patch_dim = 16
+            args.visual_hidden_size = 768
+            args.visual_ffn_hidden_size = 3072
+            args.visual_num_attention_heads = 12
+            args.visual_output_size = 3072
+            args.window_size = 14
+            args.quickgelu = False
+        elif args.visual_arch == "SAM_L":
+            args.visual_num_layers = 24 #6
+            args.visual_patch_dim = 16
+            args.visual_hidden_size = 1024
+            args.visual_ffn_hidden_size = 4096
+            args.visual_num_attention_heads = 16
+            args.visual_output_size = 4096
+            args.window_size = 14
+            args.quickgelu = False
+
+        if args.save:
+            args.visual_save = args.save + "/" + args.visual_type
+            if os.path.exists(args.visual_save):
+                args.visual_path = args.visual_save
+
+        if args.visual_output_size != args.hidden_size:
+            args.affine = True
+        else:
+            args.affine = False
+
+    if args.save:
+        if os.path.exists(args.save + "/latest_checkpointed_iteration.txt"):
+            args.load = args.save
+            args.no_load_optim = False
+            args.finetune = False
+
     if args.rank == 0:
         print('using {} for parameters ...'.format(args.params_dtype),
               flush=True)
@@ -538,6 +601,14 @@ def _add_network_size_args(parser):
     group.add_argument('--ffn-hidden-size', type=int, default=None,
                        help='Transformer Feed-Forward Network hidden size. '
                        'This is set to 4*hidden-size if not provided')
+    group.add_argument('--visual-path', type=str, default=None,
+                       help='Path for pretrained visual model.')
+    group.add_argument('--visual-arch', type=str, default=None,
+                       help='Visual model architecture. [B/32, L/14, G/14, SAM_B, SAM_L]')
+    group.add_argument('--visual-type', type=str, default=None,
+                       help='Visual model type. [vit, sam]')
+    group.add_argument('--visual-hidden_size', type=int, default=None,
+                       help='Output hidden size for visual model.')
     group.add_argument('--num-attention-heads', type=int, default=None,
                        help='Number of transformer attention heads.')
     group.add_argument('--kv-channels', type=int, default=None,
@@ -1100,6 +1171,8 @@ def _add_data_args(parser):
                             'They are used for span masking in the T5 model')
     group.add_argument('--seq-length', type=int, default=None,
                        help='Maximum sequence length to process.')
+    group.add_argument('--ds-seq-length', type=int, default=None,
+                       help='Sequence length used for preprocessing text data.')
     group.add_argument('--encoder-seq-length', type=int, default=None,
                        help='Maximum encoder sequence length to process.'
                        'This should be exclusive of --seq-length')
@@ -1140,7 +1213,14 @@ def _add_data_args(parser):
                        'end-of-document token.')
     group.add_argument('--eod-mask-loss', action='store_true',
                        help='Mask loss for the end of document tokens.')
-
+    group.add_argument('--add-gated-xattn', action='store_true')
+    group.add_argument('--add-BOS', action='store_true')
+    group.add_argument('--freeze-ViT', action='store_true')
+    group.add_argument('--freeze-LM', action='store_true')
+    group.add_argument('--num-perceiver-layers', type=int, default=None,
+                       help='Number of perceiver resampler layers.')
+    group.add_argument('--num-latents', type=int, default=None,
+                       help='Number of latent dims')
     return parser
 
 

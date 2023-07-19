@@ -12,7 +12,7 @@ from megatron.core.models.common.rotary_pos_embedding import RotaryEmbedding
 
 from .enums import AttnMaskType, LayerType
 from .module import MegatronModule
-from .transformer import ParallelTransformer
+from .transformer import ParallelTransformer, ParallelAffineLayer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
 
@@ -47,6 +47,18 @@ def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
 
     return tensor_parallel.gather_from_tensor_model_parallel_region(logits_parallel)
 
+def get_perceiver(config):
+    if config.init_method is None:
+        config.init_method = init_method_normal(config.init_method_std)
+
+    if config.output_layer_init_method is None:
+        config.output_layer_init_method = scaled_init_method_normal(config.init_method_std,
+                                                                    config.num_layers)
+    perceiver_model = PerceiverResampler(config)
+    # key used for checkpoints.
+    perceiver_model_key = 'perceiver'
+
+    return perceiver_model, perceiver_model_key
 
 def get_language_model(config, num_tokentypes, add_pooler,
                        encoder_attn_mask_type,
@@ -316,6 +328,36 @@ class Embedding(MegatronModule):
                 print('***WARNING*** expected tokentype embeddings in the '
                       'checkpoint but could not find it', flush=True)
 
+class PerceiverResampler(MegatronModule):
+
+    def __init__(self, config):
+                 
+        super(PerceiverResampler, self).__init__()
+        args = get_args()
+        super(PerceiverResampler, self).__init__(share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
+
+        self.init_method = config.init_method
+        self.output_layer_init_method = config.output_layer_init_method
+        
+        if args.perceiver_type == "self-attn":
+            self.encoder = ParallelOCRPerceiverResampler(
+                    config,
+                    self.init_method,
+                    self.output_layer_init_method,
+            )
+        elif args.perceiver_type == "cross-attn":
+            self.encoder = ParallelPerceiverResampler(
+                    config, 
+                    self.init_method,
+                    self.output_layer_init_method,
+            )
+        else:
+            if args.affine:
+                self.affine = ParallelAffineLayer(config) 
+            else:
+                self.affine = None
+            self.encoder = None
+        self._encoder_key = 'encoder'
 
 class TransformerLanguageModel(MegatronModule):
     """Transformer language model.

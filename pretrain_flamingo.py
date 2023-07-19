@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 """Pretrain Flamingo"""
 
@@ -9,19 +9,23 @@ from megatron import print_rank_0
 from megatron import get_timers
 from megatron import get_tokenizer
 from megatron.core import tensor_parallel, mpu
-from megatron.data.dataset_utils import build_train_valid_test_datasets, build_multiple_valid_datasets
-from megatron.model import FlamingoModel, ModelType
+from megatron.data.dataset_utils import build_train_valid_test_datasets
+from megatron.model import FlamingoModel
+from megatron.core.enums import ModelType
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from megatron.utils import average_losses_across_data_parallel_group
 from megatron.model.vision.vit_backbone import CLIPVitBackbone, SAMViTBackbone
 from megatron.data.blendable_dataset import BlendableDataset
+from megatron.arguments import core_transformer_config_from_args
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
     print_rank_0('building Flamingo model ...')
+    config = core_transformer_config_from_args(get_args())
     model = FlamingoModel(
+        config,
         num_tokentypes=0,
         parallel_output=True,
         pre_process=pre_process,
@@ -31,12 +35,13 @@ def model_provider(pre_process=True, post_process=True):
 
 def visual_model_provider(visual_arch, pre_process=True, post_process=False):
     """Build the visual model."""
-    
+    print_rank_0('building visual model ...')
+    config = core_transformer_config_from_args(get_args())
     if visual_arch.startswith("SAM"):
-        visual_model = SAMViTBackbone(pre_process=pre_process, 
+        visual_model = SAMViTBackbone(config, pre_process=pre_process, 
                                    post_process=post_process)
     else:
-        visual_model = CLIPViTBackbone(pre_process=pre_process, 
+        visual_model = CLIPViTBackbone(config, pre_process=pre_process, 
                                    post_process=post_process)
 
     print_rank_0('building visual model....')
@@ -63,7 +68,6 @@ def get_batch(data_iterator, visual_model, model_has_data_iter=True):
 
         data_text = tensor_parallel.broadcast_data(["text"], data, torch.int64)["text"]
         data_img = tensor_parallel.broadcast_data(["img"], data, torch.float32)
-        #weights = tensor_parallel.broadcast_data(["weights"], data, torch.float32)["weights"]
         prompt_len = tensor_parallel.broadcast_data(["prompt_len"], data, torch.int64)["prompt_len"]
 
         # Unpack.
@@ -124,7 +128,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     args = get_args()
 
     print_rank_0('> building train, validation, and test datasets '
-                 'for Flamingo ...')
+                 'for Multimodal training ...')
     train_ds1, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
         data_impl=args.data_impl,
@@ -134,65 +138,27 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup),
         dataset_type='multimodal')
-    print_rank_0("> finished creating Flamingo datasets ...")
-
-    if args.valid_path is not None:
-        _, valid_list, _ = build_multiple_valid_datasets(
-            data_prefix=args.valid_path,
-            data_impl="mmap",
-            splits_string="0,100,0",
-            train_valid_test_num_samples=train_val_test_num_samples,
-            max_seq_length=args.ds_seq_length,
-            seed=args.seed,
-            skip_warmup=(not args.mmap_warmup),
-            dataset_type='multimodal')
-        
-        valid_ds = []
-        for valid_set in valid_list:
-            valid_ds.append(BlendableDataset([valid_set], [args.weight]))
-        print("Customized Val set.....")
-    else:
-        valid_ds = [BlendableDataset([valid_ds], [args.weight])]
+    print_rank_0("> finished creating Multimodal datasets ...")
 
     train_ds = BlendableDataset([train_ds1], [args.weight])
     return train_ds, valid_ds, test_ds
 
 def add_validation_args(parser):
-    """Text generation arguments."""
+    """Extra arguments."""
     group = parser.add_argument_group(title='validation set')
     group.add_argument('--valid-path', nargs='*', default=None,
                        help='Path to the training dataset. Accepted format:'
                        '1) a single data path, 2) multiple datasets in the'
                        'form: dataset1-weight dataset1-path dataset2-weight '
                        'dataset2-path ...')
-    group.add_argument('--train-eval-path', nargs='*', default=None)
     group.add_argument('--prompt-path', type=str, default=None)
     group.add_argument('--dset-config', type=str, default=None)
     group.add_argument('--weight', type=float, default=1)
     group.add_argument('--adaptor', action='store_true', default=False)
     group.add_argument('--aug', action='store_true', default=False)
-    group.add_argument('--eval-ppl', action='store_true', default=False)
-    group.add_argument('--project-size', type=int, default=256)
     group.add_argument('--cyclic-train-iters', type=int, default=None)
-    group.add_argument('--stored_params', type=dict, default=dict())
     group.add_argument('--eval_ppl', action='store_true', default=False)
-    group.add_argument('--debug', action='store_true', default=False)
-    group.add_argument('--add_retriever', action='store_true', default=False)
-    group.add_argument('--return_doc_ids', action='store_true', default=False)
-    group.add_argument('--return_neighbor_ids', action='store_true', default=False)
-    group.add_argument('--add_offset_doc_ids', action='store_true', default=False)
-    group.add_argument('--offset_dict_path', type=str, default='')
-    group.add_argument('--neighbors_path', type=str, default='')
-    group.add_argument('--valid_neighbors_path', type=str, default='')
-    group.add_argument('--database_path', type=str, default='')
-    group.add_argument('--valid_database_path', type=str, default='')
-    group.add_argument('--encoder-layers', type=int, default=12)
-    group.add_argument('--encoder-hidden-dropout', type=float, default=0.1)
-    group.add_argument('--encoder-attention-dropout', type=float, default=0.1)
     group.add_argument('--perceiver-type', type=str, default='cross-attn')
-    group.add_argument('--k', type=int, default=2)
-    group.add_argument('--r', type=int, default=128)
-    group.add_argument('--m', type=int, default=64)
     group.add_argument('--print-freq', type=int, default=500)
 
     return parser

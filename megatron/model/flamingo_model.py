@@ -17,49 +17,44 @@ class FlamingoModel(MegatronModule):
     """Flamingo Vision Language model."""
 
     def __init__(self,
+                 config,
                  num_tokentypes=0,
                  parallel_output=True,
                  pre_process=True,
                  post_process=True):
 
-        super(FlamingoModel, self).__init__()
         args = get_args()
+        super().__init__(config=config, share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
 
         self.parallel_output = parallel_output
         self.pre_process = pre_process
         self.post_process = post_process
         self.fp16_lm_cross_entropy = args.fp16_lm_cross_entropy
-        self.use_auxilary_loss = args.use_auxilary_loss
         self.untie_embeddings_and_output_weights = args.untie_embeddings_and_output_weights
 
-        self.vision_model, self._vision_model_key = get_perceiver(
-            init_method=init_method_normal(args.init_method_std),
-            scaled_init_method=scaled_init_method_normal(args.init_method_std,
-                                                         args.num_layers))
+        self.perceiver_model, self._perceiver_model_key = get_perceiver(config=config)
         
         self.language_model, self._language_model_key = get_language_model(
+            config=config,
             num_tokentypes=num_tokentypes,
             add_pooler=False,
             encoder_attn_mask_type=AttnMaskType.causal,
-            init_method=init_method_normal(args.init_method_std),
-            scaled_init_method=scaled_init_method_normal(args.init_method_std,
-                                                         args.num_layers),
             pre_process=self.pre_process,
             post_process=self.post_process)
 
         if not args.untie_embeddings_and_output_weights:
-            self.initialize_word_embeddings(init_method_normal)
+            self.initialize_word_embeddings()
 
     def set_input_tensor(self, input_tensor):
         """See megatron.model.transformer.set_input_tensor()"""
         self.language_model.set_input_tensor(input_tensor)
-        self.vision_model.set_input_tensor([None])
+        self.perceiver_model.set_input_tensor([None])
 
     def forward(self, input_ids, img_tokens, position_ids, attention_mask, labels=None,
                 tokentype_ids=None, inference_params=None):
 
         import torch
-        perceiver_output = self.vision_model(img_tokens, inference_params=inference_params) 
+        perceiver_output = self.perceiver_model(img_tokens, inference_params=inference_params) 
 
         lm_output = self.language_model(
             input_ids,
