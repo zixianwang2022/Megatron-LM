@@ -1,3 +1,5 @@
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
+
 import argparse
 import importlib
 import torch.multiprocessing as mp
@@ -87,7 +89,7 @@ import sys
 # - "done"
 
 def load_plugin(plugin_type, name):
-    module_name = f"checkpoint_{plugin_type}_{name}"
+    module_name = f"{plugin_type}_{name}"
     try:
         plugin = importlib.import_module(module_name)
     except ModuleNotFoundError:
@@ -96,6 +98,11 @@ def load_plugin(plugin_type, name):
             plugin = importlib.import_module(module_name)
         except ModuleNotFoundError:
             sys.exit(f"Unable to load {plugin_type} plugin {name}. Exiting.")
+
+    # >>>
+    # from lutil import pax
+    # pax({"plugin": plugin})
+    # <<<
 
     if not hasattr(plugin, 'add_arguments'):
         sys.exit(f"{module_name} module is not a plugin. Exiting.")
@@ -133,6 +140,11 @@ def main():
     saver.add_arguments(parser)
 
     args = parser.parse_args()
+
+    # >>>
+    from lutil import pax
+    pax({"loader": loader, "saver": saver, "args": args})
+    # <<<
 
     queue = mp.Queue(maxsize=args.max_queue_size)
 

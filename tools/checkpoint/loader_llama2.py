@@ -3,12 +3,11 @@
 import json
 import os
 import sys
+import torch
 import types
 
-import torch
-
 def add_arguments(parser):
-    group = parser.add_argument_group(title='Megatron loader')
+    group = parser.add_argument_group(title='Llama-2 loader')
 
     group.add_argument('--true-vocab-size', type=int, default=None,
                        help='original size of vocab, if specified will trim padding from embedding table.')
