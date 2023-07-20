@@ -1,3 +1,5 @@
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
+
 import argparse
 from collections.abc import Mapping
 import concurrent.futures
