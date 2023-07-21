@@ -1,6 +1,5 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
-import glob
 import json
 import os
 import sys
@@ -19,6 +18,8 @@ def add_arguments(parser):
     group.add_argument('--vocab-file', type=str, default=None,
                        help='Path to the vocab file. If specified will use this to get vocab size and '
                        'trim padding from the embedding table.')
+    group.add_argument('--tokenizer-model', required=True,
+                       help='Sentencepiece tokenizer model.')
     group.add_argument('--megatron-path', type=str, default=None,
                        help='Base directory of deepspeed repository')
 
@@ -40,20 +41,21 @@ def load_args_from_checkpoint(args):
     args.num_layers = params["n_layers"]
     args.global_batch_size = 1024
     args.layernorm_epsilon = params["norm_eps"]
-    args.vocab_size = 32000
-
     args.iteration = 0
     args.add_position_embedding = False
     args.use_rotary_position_embeddings = True
-    args.rotary_percent = 0.5
+    # args.rotary_percent = 0.5
     args.swiglu = True
+    args.tokenizer_type = "Llama2"
+    # args.tokenizer_type = "SentencePieceTokenizer"
 
-    args.tokenizer_type = "llama2"
-    args.tokenizer_model = "/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
+    args.vocab_size = -1 # 32000 # ... set from tokenizer
+    args.padded_vocab_size = -1 # 32000 # ... set from tokenizer
+    # args.llama_num_kv_heads = params["n_kv_heads"]
+    # args.llama_ffn_dim_multiplier = params["ffm_dim_multiplier"]
+    # args.llama_multiple_of = params["multiple_of"]
+    args.llama = params
 
-    # >>>
-    # checkpoint_paths = glob.glob(args.load + "/*.pth")
-    # args.tensor_model_parallel_size = len(checkpoint_paths)
     model_name = os.path.basename(args.load).split("-")[-1]
     args.tensor_model_parallel_size = {
         "7b" : 1,
@@ -61,14 +63,14 @@ def load_args_from_checkpoint(args):
         "70b" : 8,
     }[model_name]
     args.pipeline_model_parallel_size = 1
-    # <<<
 
-    # pax({
-    #     "args" : args,
-    #     # "checkpoint_paths" : checkpoint_paths,
-    #     "params" : params,
-    #     "model_name" : model_name,
-    # })
+def load_vocab_size(args):
+
+    from megatron.tokenizer import build_tokenizer
+
+    tokenizer = build_tokenizer(args)
+
+    pax({"args": args, "tokenizer": tokenizer})
 
 def _load_checkpoint(queue, args):
 
@@ -110,7 +112,9 @@ def _load_checkpoint(queue, args):
                 ]
 
     margs = parse_args()
+    margs.tokenizer_model = args.tokenizer_model
     load_args_from_checkpoint(margs)
+    load_vocab_size(margs)
 
     # Arguments do sanity checks on the world size, but we don't care,
     # so trick it into thinking we are plenty of processes
@@ -150,55 +154,66 @@ def _load_checkpoint(queue, args):
     from pretrain_gpt import model_provider
     margs.model_type = ModelType.encoder_or_decoder
 
-    pax({"margs": margs})
+    # pax({"margs": margs})
 
     # suppress warning about torch.distributed not being initialized
     module.MegatronModule.embedding_warning_printed = True
 
-    consumed_train_samples = None
-    consumed_valid_samples = None
+    # consumed_train_samples = None
+    # consumed_valid_samples = None
     def get_models(count, dtype):
-        nonlocal consumed_train_samples
-        nonlocal consumed_valid_samples
-        model_array_len = margs.virtual_pipeline_model_parallel_size
-        if model_array_len is None:
-            model_array_len = 1
-        models = [[] for _ in range(model_array_len)]
-        pre_process = mpu.is_pipeline_first_stage()
-        post_process = mpu.is_pipeline_last_stage()
+        # raise Exception("hi.")
+        # nonlocal consumed_train_samples
+        # nonlocal consumed_valid_samples
+        # model_array_len = margs.virtual_pipeline_model_parallel_size
+        # if model_array_len is None:
+        #     model_array_len = 1
+        # models = [[] for _ in range(model_array_len)]
+        # pre_process = mpu.is_pipeline_first_stage()
+        # post_process = mpu.is_pipeline_last_stage()
+        # pax({"count": count})
         for rank in range(count):
             mpu.set_tensor_model_parallel_rank(rank)
-            if margs.virtual_pipeline_model_parallel_size is not None:
-                model_ = []
-                for i in range(margs.virtual_pipeline_model_parallel_size):
-                    mpu.set_virtual_pipeline_model_parallel_rank(i)
-                    # Set pre_process and post_process only after virtual rank is set.
-                    pre_process = mpu.is_pipeline_first_stage()
-                    post_process = mpu.is_pipeline_last_stage()
-                    this_model = model_provider(
-                        pre_process=pre_process,
-                        post_process=post_process
-                    ).to(dtype)
-                    model_.append(this_model)
-            else:
-                pre_process = mpu.is_pipeline_first_stage()
-                post_process = mpu.is_pipeline_last_stage()
-                model_rank = 0
-                model_ = [model_provider(pre_process, post_process).to(dtype)]
-            margs.consumed_train_samples = 0
-            margs.consumed_valid_samples = 0
+            # if margs.virtual_pipeline_model_parallel_size is not None:
+            #     model_ = []
+            #     for i in range(margs.virtual_pipeline_model_parallel_size):
+            #         mpu.set_virtual_pipeline_model_parallel_rank(i)
+            #         # Set pre_process and post_process only after virtual rank is set.
+            #         pre_process = mpu.is_pipeline_first_stage()
+            #         post_process = mpu.is_pipeline_last_stage()
+            #         this_model = model_provider(
+            #             pre_process=pre_process,
+            #             post_process=post_process
+            #         ).to(dtype)
+            #         model_.append(this_model)
+            # else:
+            #     pre_process = mpu.is_pipeline_first_stage()
+            #     post_process = mpu.is_pipeline_last_stage()
+            #     model_rank = 0
+            #     model_ = [model_provider(pre_process, post_process).to(dtype)]
+            # raise Exception("hi.")
+            model_ = [model_provider(True, True).to(dtype)]
+            # margs.consumed_train_samples = 0
+            # margs.consumed_valid_samples = 0
+
+            raise Exception("hi.")
+
             load_checkpoint(model_, None, None)
 
-            if consumed_train_samples is not None:
-                assert(margs.consumed_train_samples == consumed_train_samples)
-            else:
-                consumed_train_samples = margs.consumed_train_samples
-            if consumed_valid_samples is not None:
-                assert(margs.consumed_valid_samples == consumed_valid_samples)
-            else:
-                consumed_valid_samples = margs.consumed_valid_samples
+            raise Exception("hi.")
+
+            # if consumed_train_samples is not None:
+            #     assert(margs.consumed_train_samples == consumed_train_samples)
+            # else:
+            #     consumed_train_samples = margs.consumed_train_samples
+            # if consumed_valid_samples is not None:
+            #     assert(margs.consumed_valid_samples == consumed_valid_samples)
+            # else:
+            #     consumed_valid_samples = margs.consumed_valid_samples
+
             for vp_rank in range(model_array_len):
                 models[vp_rank].append(model_[vp_rank])
+
         return models
 
     set_global_variables(margs, build_tokenizer=False)
@@ -207,18 +222,20 @@ def _load_checkpoint(queue, args):
     mpu.set_virtual_pipeline_model_parallel_world_size(margs.virtual_pipeline_model_parallel_size)
     fused_kernels.load(margs)
 
-    # Get true (non-padded) vocab size
-    if args.true_vocab_size is not None:
-        true_vocab_size = args.true_vocab_size
-    elif args.vocab_file is not None:
-        vocab = json.load(open(args.vocab_file))
-        true_vocab_size = len(vocab)
-        if args.true_vocab_size is not None and true_vocab_size != args.true_vocab_size:
-            print("Both --true-vocab-size and --vocab-file specified and the vocab size does not match, aborting.")
-            queue.put("exit")
-            exit(1)
-    else:
-        true_vocab_size = None
+    # >>>
+    # # Get true (non-padded) vocab size
+    # if args.true_vocab_size is not None:
+    #     true_vocab_size = args.true_vocab_size
+    # elif args.vocab_file is not None:
+    #     vocab = json.load(open(args.vocab_file))
+    #     true_vocab_size = len(vocab)
+    #     if args.true_vocab_size is not None and true_vocab_size != args.true_vocab_size:
+    #         print("Both --true-vocab-size and --vocab-file specified and the vocab size does not match, aborting.")
+    #         queue.put("exit")
+    #         exit(1)
+    # else:
+    #     true_vocab_size = None
+    # <<<
 
     # short aliases
     tp_size = margs.tensor_model_parallel_size
@@ -245,17 +262,21 @@ def _load_checkpoint(queue, args):
     md.swiglu = margs.swiglu
     md.previous_tensor_parallel_size = margs.tensor_model_parallel_size
     md.previous_pipeline_parallel_size = margs.pipeline_model_parallel_size
-    md.true_vocab_size = true_vocab_size
-    md.make_vocab_size_divisible_by = margs.make_vocab_size_divisible_by
-    md.checkpoint_args = checkpoint_args
+    # md.true_vocab_size = true_vocab_size
+    # md.make_vocab_size_divisible_by = margs.make_vocab_size_divisible_by
+    # md.checkpoint_args = checkpoint_args
+
+    # pax({"margs": margs, "md": md, "tp_size": tp_size})
 
     # Get first pipe stage
     mpu.set_pipeline_model_parallel_rank(0)
     all_models = [get_models(tp_size, md.params_dtype)]
     models = all_models[0][0]
 
-    md.consumed_train_samples = consumed_train_samples
-    md.consumed_valid_samples = consumed_valid_samples
+    pax({"models": models})
+
+    md.consumed_train_samples = 0 # consumed_train_samples
+    md.consumed_valid_samples = 0 # consumed_valid_samples
     queue.put(md)
 
     def queue_put(name, msg):
