@@ -141,12 +141,14 @@ def main():
 
     args = parser.parse_args()
 
+    queue = mp.Queue(maxsize=args.max_queue_size)
+
     # >>>
+    loader._load_checkpoint(queue, args)
+
     from lutil import pax
     pax({"loader": loader, "saver": saver, "args": args})
     # <<<
-
-    queue = mp.Queue(maxsize=args.max_queue_size)
 
     print("Starting saver...")
     saver_proc = mp.Process(target=saver.save_checkpoint, args=(queue, args))

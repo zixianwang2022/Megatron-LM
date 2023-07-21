@@ -1,10 +1,15 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+import glob
 import json
 import os
 import sys
 import torch
 import types
+
+# >>>
+from lutil import pax, tp
+# <<<
 
 def add_arguments(parser):
     group = parser.add_argument_group(title='Llama-2 loader')
@@ -17,11 +22,60 @@ def add_arguments(parser):
     group.add_argument('--megatron-path', type=str, default=None,
                        help='Base directory of deepspeed repository')
 
+def load_args_from_checkpoint(args):
+
+    # Read Llama params.
+    params_path = os.path.join(args.load, "params.json")
+    with open(params_path) as f:
+        params = json.load(f)
+
+    # pt_path = os.path.join(args.load, "
+
+    # Update Megatron args.
+    args.seq_length = 4096
+    args.max_position_embeddings = 4096
+    args.hidden_size = params["dim"]
+    # args.make_vocab_size_divisible_by = params["multiple_of"]
+    args.num_attention_heads = params["n_heads"]
+    args.num_layers = params["n_layers"]
+    args.global_batch_size = 1024
+    args.layernorm_epsilon = params["norm_eps"]
+    args.vocab_size = 32000
+
+    args.iteration = 0
+    args.add_position_embedding = False
+    args.use_rotary_position_embeddings = True
+    args.rotary_percent = 0.5
+    args.swiglu = True
+
+    args.tokenizer_type = "llama2"
+    args.tokenizer_model = "/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
+
+    # >>>
+    # checkpoint_paths = glob.glob(args.load + "/*.pth")
+    # args.tensor_model_parallel_size = len(checkpoint_paths)
+    model_name = os.path.basename(args.load).split("-")[-1]
+    args.tensor_model_parallel_size = {
+        "7b" : 1,
+        "13b" : 2,
+        "70b" : 8,
+    }[model_name]
+    args.pipeline_model_parallel_size = 1
+    # <<<
+
+    # pax({
+    #     "args" : args,
+    #     # "checkpoint_paths" : checkpoint_paths,
+    #     "params" : params,
+    #     "model_name" : model_name,
+    # })
+
 def _load_checkpoint(queue, args):
 
     # Search in directory above this
     sys.path.append(os.path.abspath(
         os.path.join(os.path.dirname(__file__),
+                     os.path.pardir,
                      os.path.pardir)))
     if args.megatron_path is not None:
         sys.path.insert(0, args.megatron_path)
@@ -29,7 +83,7 @@ def _load_checkpoint(queue, args):
     try:
         from megatron.arguments import parse_args, validate_args
         from megatron.global_vars import set_args, set_global_variables
-        from megatron.checkpointing import load_args_from_checkpoint, load_checkpoint
+        # from megatron.checkpointing import load_args_from_checkpoint, load_checkpoint
         from megatron.model import module
         from megatron.core import mpu
         from megatron.core.enums import ModelType
@@ -56,13 +110,15 @@ def _load_checkpoint(queue, args):
                 ]
 
     margs = parse_args()
-    margs, checkpoint_args = load_args_from_checkpoint(margs)
+    load_args_from_checkpoint(margs)
 
     # Arguments do sanity checks on the world size, but we don't care,
     # so trick it into thinking we are plenty of processes
     margs.world_size = margs.tensor_model_parallel_size * margs.pipeline_model_parallel_size
 
     margs = validate_args(margs)
+
+    # pax({"margs": margs})
 
     def check_for_arg(arg_name, default=None):
         if getattr(margs, arg_name, None) is None:
@@ -90,16 +146,13 @@ def _load_checkpoint(queue, args):
     check_for_arg('swiglu', False)
 
     # Determine how to make our models
-    if args.model_type == 'GPT':
-        from pretrain_gpt import model_provider
-        margs.model_type = ModelType.encoder_or_decoder
-    elif args.model_type == 'BERT':
-        from pretrain_bert import model_provider
-        margs.model_type = ModelType.encoder_or_decoder
-    else:
-        raise Exception(f'unrecognized model type: {args.model_type}')
+    assert args.model_type == 'GPT', 'Llama-2 is a GPT model.'
+    from pretrain_gpt import model_provider
+    margs.model_type = ModelType.encoder_or_decoder
 
-    # supress warning about torch.distributed not being initialized
+    pax({"margs": margs})
+
+    # suppress warning about torch.distributed not being initialized
     module.MegatronModule.embedding_warning_printed = True
 
     consumed_train_samples = None
