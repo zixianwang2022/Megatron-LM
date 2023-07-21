@@ -65,12 +65,9 @@ def load_args_from_checkpoint(args):
     args.pipeline_model_parallel_size = 1
 
 def load_vocab_size(args):
-
     from megatron.tokenizer import build_tokenizer
-
     tokenizer = build_tokenizer(args)
-
-    pax({"args": args, "tokenizer": tokenizer})
+    args.vocab_size = tokenizer.vocab_size
 
 def _load_checkpoint(queue, args):
 
@@ -121,8 +118,6 @@ def _load_checkpoint(queue, args):
     margs.world_size = margs.tensor_model_parallel_size * margs.pipeline_model_parallel_size
 
     margs = validate_args(margs)
-
-    # pax({"margs": margs})
 
     def check_for_arg(arg_name, default=None):
         if getattr(margs, arg_name, None) is None:
@@ -196,7 +191,7 @@ def _load_checkpoint(queue, args):
             # margs.consumed_train_samples = 0
             # margs.consumed_valid_samples = 0
 
-            raise Exception("hi.")
+            pax({"model_": model_})
 
             load_checkpoint(model_, None, None)
 
