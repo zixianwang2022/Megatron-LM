@@ -26,6 +26,7 @@ def save_checkpoint(queue, args):
     # Search in directory above this
     sys.path.append(os.path.abspath(
         os.path.join(os.path.dirname(__file__),
+                     os.path.pardir,
                      os.path.pardir)))
     if args.megatron_path is not None:
         sys.path.insert(0, args.megatron_path)
