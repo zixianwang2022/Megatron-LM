@@ -12,7 +12,7 @@ from megatron import get_timers, get_args, get_retro_args, core, get_num_microba
 from .module import MegatronModule
 from megatron.core import mpu, tensor_parallel
 from megatron.core.enums import ModelType
-from megatron.model import LayerNorm
+from megatron.model import LayerNorm, RMSNorm
 from megatron.model.enums import AttnMaskType, LayerType, AttnType
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
@@ -764,13 +764,31 @@ class ParallelTransformerLayer(MegatronModule):
         self.bf16 = config.bf16
         self.fp32_residual_connection = config.fp32_residual_connection
 
+        # >>>
+        def get_norm():
+            if args.norm_type == "layer":
+                return LayerNorm(
+                    config.hidden_size,
+                    eps=config.layernorm_epsilon,
+                    no_persist_layer_norm=not config.persist_layer_norm,
+                    sequence_parallel=config.sequence_parallel,
+                    apply_layernorm_1p=args.apply_layernorm_1p)
+            elif args.norm_type == "rms":
+                return RMSNorm(args.hidden_size, args.rmsnorm_epsilon)
+            else:
+                raise Exception(f"unsupported norm type '{args.norm_type}'.")
+        # <<<
+
         # Layernorm on the input data.
-        self.input_layernorm = LayerNorm(
-            config.hidden_size,
-            eps=config.layernorm_epsilon,
-            no_persist_layer_norm=args.no_persist_layer_norm,
-            sequence_parallel=config.sequence_parallel,
-            apply_layernorm_1p=args.apply_layernorm_1p)
+        # >>>
+        # self.input_layernorm = LayerNorm(
+        #     config.hidden_size,
+        #     eps=config.layernorm_epsilon,
+        #     no_persist_layer_norm=args.no_persist_layer_norm,
+        #     sequence_parallel=config.sequence_parallel,
+        #     apply_layernorm_1p=args.apply_layernorm_1p)
+        self.input_layernorm = get_norm()
+        # <<<
 
         # Self attention.
         self.self_attention = ParallelAttention(
@@ -783,12 +801,15 @@ class ParallelTransformerLayer(MegatronModule):
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
 
         # Layernorm on the attention output
-        self.post_attention_layernorm = LayerNorm(
-            config.hidden_size,
-            eps=config.layernorm_epsilon,
-            no_persist_layer_norm=not config.persist_layer_norm,
-            sequence_parallel=config.sequence_parallel,
-            apply_layernorm_1p=args.apply_layernorm_1p)
+        # >>>
+        # self.post_attention_layernorm = LayerNorm(
+        #     config.hidden_size,
+        #     eps=config.layernorm_epsilon,
+        #     no_persist_layer_norm=not config.persist_layer_norm,
+        #     sequence_parallel=config.sequence_parallel,
+        #     apply_layernorm_1p=args.apply_layernorm_1p)
+        self.post_attention_layernorm = get_norm()
+        # <<<
 
         # Cross attention.
         if self.layer_type in (LayerType.decoder,
@@ -800,12 +821,15 @@ class ParallelTransformerLayer(MegatronModule):
                 layer_number,
                 attention_type=AttnType.cross_attn)
             # Layernorm on the attention output.
-            self.post_inter_attention_layernorm = LayerNorm(
-                config.hidden_size,
-                eps=config.layernorm_epsilon,
-                no_persist_layer_norm=not config.persist_layer_norm,
-                sequence_parallel=config.sequence_parallel,
-                apply_layernorm_1p=args.apply_layernorm_1p)
+            # >>>
+            # self.post_inter_attention_layernorm = LayerNorm(
+            #     config.hidden_size,
+            #     eps=config.layernorm_epsilon,
+            #     no_persist_layer_norm=not config.persist_layer_norm,
+            #     sequence_parallel=config.sequence_parallel,
+            #     apply_layernorm_1p=args.apply_layernorm_1p)
+            self.post_inter_attention_layernorm = get_norm()
+            # <<<
 
         # MLP
         if args.num_experts is not None:
