@@ -360,11 +360,11 @@ class TransformerLanguageModel(MegatronModule):
         self.untie_embeddings_and_output_weights = args.untie_embeddings_and_output_weights
 
         # >>>
-        from lutil import pax
-        pax({
-            "vocab_size" : args.vocab_size,
-            "padded_vocab_size" : args.padded_vocab_size,
-        })
+        # from lutil import pax
+        # pax({
+        #     "vocab_size" : args.vocab_size,
+        #     "padded_vocab_size" : args.padded_vocab_size,
+        # })
         # <<<
 
         # Embeddings.

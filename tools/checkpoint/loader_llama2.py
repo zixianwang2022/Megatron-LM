@@ -25,22 +25,22 @@ def add_arguments(parser):
 
 def load_args_from_checkpoint(args):
 
-    # Read Llama params.
-    params_path = os.path.join(args.load, "params.json")
-    with open(params_path) as f:
-        params = json.load(f)
+    # Read Llama args.
+    llama_args_path = os.path.join(args.load, "params.json")
+    with open(llama_args_path) as f:
+        llama_args = json.load(f)
 
     # pt_path = os.path.join(args.load, "
 
     # Update Megatron args.
     args.seq_length = 4096
     args.max_position_embeddings = 4096
-    args.hidden_size = params["dim"]
-    # args.make_vocab_size_divisible_by = params["multiple_of"]
-    args.num_attention_heads = params["n_heads"]
-    args.num_layers = params["n_layers"]
+    args.hidden_size = llama_args["dim"]
+    # args.make_vocab_size_divisible_by = llama_args["multiple_of"]
+    args.num_attention_heads = llama_args["n_heads"]
+    args.num_layers = llama_args["n_layers"]
     args.global_batch_size = 1024
-    args.layernorm_epsilon = params["norm_eps"]
+    args.layernorm_epsilon = llama_args["norm_eps"]
     args.iteration = 0
     args.add_position_embedding = False
     args.use_rotary_position_embeddings = True
@@ -51,10 +51,26 @@ def load_args_from_checkpoint(args):
 
     args.vocab_size = -1 # 32000 # ... set from tokenizer
     args.padded_vocab_size = -1 # 32000 # ... set from tokenizer
-    # args.llama_num_kv_heads = params["n_kv_heads"]
-    # args.llama_ffn_dim_multiplier = params["ffm_dim_multiplier"]
-    # args.llama_multiple_of = params["multiple_of"]
-    args.llama = params
+    # args.llama_num_kv_heads = llama_args["n_kv_heads"]
+    # args.llama_ffn_dim_multiplier = llama_args["ffm_dim_multiplier"]
+    # args.llama_multiple_of = llama_args["multiple_of"]
+    args.llama = llama_args
+
+    ffn_dim_multiplier = llama_args["ffn_dim_multiplier"]
+    ffn_multiple_of = llama_args["multiple_of"]
+    ffn_hidden_size = 4 * int(2 * args.hidden_size / 3)
+    if ffn_dim_multiplier is not None:
+        ffn_hidden_size = int(ffn_dim_multiplier * ffn_hidden_size)
+    ffn_hidden_size = ffn_multiple_of * ((ffn_hidden_size + ffn_multiple_of - 1) // ffn_multiple_of)
+    args.ffn_hidden_size = ffn_hidden_size
+
+    # >>>
+    # pax({
+    #     "ffn_dim_multiplier" : ffn_dim_multiplier,
+    #     "ffn_multiple_of" : ffn_multiple_of,
+    #     "ffn_hidden_size" : ffn_hidden_size,
+    # })
+    # <<<
 
     model_name = os.path.basename(args.load).split("-")[-1]
     args.tensor_model_parallel_size = {
@@ -64,10 +80,65 @@ def load_args_from_checkpoint(args):
     }[model_name]
     args.pipeline_model_parallel_size = 1
 
+    # >>>
+    # pax({"args": args})
+    # <<<
+
 def load_vocab_size(args):
     from megatron.tokenizer import build_tokenizer
     tokenizer = build_tokenizer(args)
     args.vocab_size = tokenizer.vocab_size
+
+def set_preprocess_state(model, state_dict):
+
+    param = state_dict["tok_embeddings.weight"]
+    model = model.language_model.embedding.word_embeddings
+
+    pax({
+        # "model" : model,
+        # "state_dict" : list(state_dict.keys()),
+        "model" : model,
+        "model / weight" : tp(model.weight.clone()),
+        "params" : tp(param),
+    })
+
+def set_layer_state(model, state_dict, layer_idx):
+
+    model = model.language_model.encoder.layers[layer_idx]
+
+    layer_state_dict = {".".join(k.split(".")[2:]):v
+                        for k,v in state_dict.items()
+                        if k.startswith(f"layers.{layer_idx}")}
+    layer_state_dict["rope.freqs"] = state_dict["rope.freqs"]
+
+    pax({
+        "model" : model,
+        "model / mlp" : model.mlp,
+        "model / mlp / h->4h" : tp(model.mlp.dense_h_to_4h.weight.clone()),
+        "model / mlp / 4h->h" : tp(model.mlp.dense_4h_to_h.weight.clone()),
+        "layer_state_dict" : {k:str(v.shape) for k,v in layer_state_dict.items()},
+    })
+
+def load_checkpoint_to_model(args, rank, model):
+
+    # Load state dict.
+    filename = os.path.join(args.load, f"consolidated.0{rank}.pth")
+    assert os.path.isfile(filename), f"missing checkpoint file '{filename}'."
+    state_dict = torch.load(filename)
+
+    # Set model state.
+    # ... set_preprocess_state(model, state_dict)
+    # ... set_postprocess_state(model, state_dict)
+    for layer_idx in range(args.num_layers):
+        set_layer_state(model, state_dict, layer_idx)
+
+    pax({
+        "args" : args,
+        "rank" : rank,
+        "model" : model,
+        "filename" : filename,
+        "state_dict" : list(state_dict.keys()),
+    })
 
 def _load_checkpoint(queue, args):
 
@@ -118,6 +189,7 @@ def _load_checkpoint(queue, args):
     margs.world_size = margs.tensor_model_parallel_size * margs.pipeline_model_parallel_size
 
     margs = validate_args(margs)
+    pax({"ffn_hidden_size": margs.ffn_hidden_size})
 
     def check_for_arg(arg_name, default=None):
         if getattr(margs, arg_name, None) is None:
@@ -149,66 +221,17 @@ def _load_checkpoint(queue, args):
     from pretrain_gpt import model_provider
     margs.model_type = ModelType.encoder_or_decoder
 
-    # pax({"margs": margs})
-
     # suppress warning about torch.distributed not being initialized
     module.MegatronModule.embedding_warning_printed = True
 
-    # consumed_train_samples = None
-    # consumed_valid_samples = None
     def get_models(count, dtype):
-        # raise Exception("hi.")
-        # nonlocal consumed_train_samples
-        # nonlocal consumed_valid_samples
-        # model_array_len = margs.virtual_pipeline_model_parallel_size
-        # if model_array_len is None:
-        #     model_array_len = 1
-        # models = [[] for _ in range(model_array_len)]
-        # pre_process = mpu.is_pipeline_first_stage()
-        # post_process = mpu.is_pipeline_last_stage()
-        # pax({"count": count})
+        models = []
         for rank in range(count):
             mpu.set_tensor_model_parallel_rank(rank)
-            # if margs.virtual_pipeline_model_parallel_size is not None:
-            #     model_ = []
-            #     for i in range(margs.virtual_pipeline_model_parallel_size):
-            #         mpu.set_virtual_pipeline_model_parallel_rank(i)
-            #         # Set pre_process and post_process only after virtual rank is set.
-            #         pre_process = mpu.is_pipeline_first_stage()
-            #         post_process = mpu.is_pipeline_last_stage()
-            #         this_model = model_provider(
-            #             pre_process=pre_process,
-            #             post_process=post_process
-            #         ).to(dtype)
-            #         model_.append(this_model)
-            # else:
-            #     pre_process = mpu.is_pipeline_first_stage()
-            #     post_process = mpu.is_pipeline_last_stage()
-            #     model_rank = 0
-            #     model_ = [model_provider(pre_process, post_process).to(dtype)]
-            # raise Exception("hi.")
-            model_ = [model_provider(True, True).to(dtype)]
-            # margs.consumed_train_samples = 0
-            # margs.consumed_valid_samples = 0
-
-            pax({"model_": model_})
-
-            load_checkpoint(model_, None, None)
-
-            raise Exception("hi.")
-
-            # if consumed_train_samples is not None:
-            #     assert(margs.consumed_train_samples == consumed_train_samples)
-            # else:
-            #     consumed_train_samples = margs.consumed_train_samples
-            # if consumed_valid_samples is not None:
-            #     assert(margs.consumed_valid_samples == consumed_valid_samples)
-            # else:
-            #     consumed_valid_samples = margs.consumed_valid_samples
-
-            for vp_rank in range(model_array_len):
-                models[vp_rank].append(model_[vp_rank])
-
+            model = model_provider(True, True).to(dtype)
+            load_checkpoint_to_model(margs, rank, model)
+            models.append(model)
+            pax({"model": model})
         return models
 
     set_global_variables(margs, build_tokenizer=False)
