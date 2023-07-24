@@ -13,12 +13,12 @@ DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 mkdir -p $DIR/logs
 
 FINETUNE_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/flamingo-checkpoints/${NAME}"
-CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/new-nvllm/${LOAD_NAME}"
+CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/checkpoints/${LOAD_NAME}"
 
 TENSORBOARD_DIR="$DIR/tensorboard/${NAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_TRAIN="1.0000 /lustre/fs2/portfolios/llmservice/projects/llmservice_nlp_fm/datasets/main_branch_debug/COCO_train_mmdata_512sl_256k_vocab"
+DATA_TRAIN="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_train_mmdata_512sl_256k_vocab"
 
 VISUAL_ARCH="SAM_L"
 VISUAL_TYPE="sam"
@@ -61,7 +61,7 @@ options=" \
     --eval-iters 10 \
     --eval-interval 1000 \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model /lustre/fsw/adlr/adlr-nlp/zhuoliny/new-nvllm/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
+    --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_TRAIN} \
     --prompt-path ${PROMPT_PATH} \
     --dset-config ${DATASET_CONFIG} \
