@@ -102,20 +102,37 @@ def set_preprocess_state(model, state_dict):
         "params" : tp(param),
     })
 
-def set_layer_state(model, state_dict, layer_idx):
+def set_attn_state(layer, layer_state_dict):
 
-    model = model.language_model.encoder.layers[layer_idx]
-
-    layer_state_dict = {".".join(k.split(".")[2:]):v
-                        for k,v in state_dict.items()
-                        if k.startswith(f"layers.{layer_idx}")}
-    layer_state_dict["rope.freqs"] = state_dict["rope.freqs"]
+    attn = layer.self_attention
+    attn_state_dict = {k:v for k,v in layer_state_dict.items() if k.startswith("attention.")}
 
     pax({
-        "model" : model,
-        "model / mlp" : model.mlp,
-        "model / mlp / h->4h" : tp(model.mlp.dense_h_to_4h.weight.clone()),
-        "model / mlp / 4h->h" : tp(model.mlp.dense_4h_to_h.weight.clone()),
+        "attn" : attn,
+        "query_key_value" : str(attn.query_key_value.weight.shape),
+        "dense" : str(attn.dense.weight.shape),
+        "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
+    })
+
+def set_layer_state(model, model_state_dict, layer_idx):
+
+    layer = model.language_model.encoder.layers[layer_idx]
+
+    layer_state_dict = {".".join(k.split(".")[2:]):v
+                        for k,v in model_state_dict.items()
+                        if k.startswith(f"layers.{layer_idx}")}
+    layer_state_dict["rope.freqs"] = model_state_dict["rope.freqs"]
+
+    set_attn_state(layer, layer_state_dict)
+    set_mlp_state(layer, layer_state_dict)
+    set_rmsnorm_state(layer.input_layernormm)
+    set_rmsnorm_state(layer.post_attention_layernormm)
+
+    pax({
+        "layer" : layer,
+        "layer / mlp" : layer.mlp,
+        "layer / mlp / h->4h" : tp(layer.mlp.dense_h_to_4h.weight.clone()),
+        "layer / mlp / 4h->h" : tp(layer.mlp.dense_4h_to_h.weight.clone()),
         "layer_state_dict" : {k:str(v.shape) for k,v in layer_state_dict.items()},
     })
 
@@ -189,7 +206,6 @@ def _load_checkpoint(queue, args):
     margs.world_size = margs.tensor_model_parallel_size * margs.pipeline_model_parallel_size
 
     margs = validate_args(margs)
-    pax({"ffn_hidden_size": margs.ffn_hidden_size})
 
     def check_for_arg(arg_name, default=None):
         if getattr(margs, arg_name, None) is None:
