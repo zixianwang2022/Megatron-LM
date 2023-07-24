@@ -98,6 +98,15 @@ class ParallelMLP(MegatronModule):
             skip_bias_add=True,
         )
 
+        # >>>
+        # from lutil import pax
+        # pax({
+        #     "hidden_size" : config.hidden_size,
+        #     "ffn_hidden_size" : ffn_hidden_size / mpu.get_tensor_model_parallel_world_size(),
+        #     "ffn_hidden_size [cfg]" : config.ffn_hidden_size / mpu.get_tensor_model_parallel_world_size(),
+        # })
+        # <<<
+
         self.bias_gelu_fusion = False
         self.activation_func = None
         self.swiglu = args.swiglu
