@@ -358,6 +358,69 @@ class PerceiverResampler(MegatronModule):
                 self.affine = None
             self.encoder = None
         self._encoder_key = 'encoder'
+    def set_input_tensor(self, input_tensor):
+        """ See megatron.model.transformer.set_input_tensor()"""
+
+        # This is usually handled in schedules.py but some inference code still
+        # gives us non-lists or None
+        if not isinstance(input_tensor, list):
+            input_tensor = [input_tensor]
+
+        assert len(input_tensor) == 1, \
+            'input_tensor should only be length 1 for stage with only encoder'
+        if self.encoder:
+            self.encoder.set_input_tensor(input_tensor[0])
+    
+    def state_dict_for_save_checkpoint(self, destination=None, prefix='',
+                                       keep_vars=False):
+        """For easy load."""
+        state_dict_ = {}
+
+        if self.encoder:
+            state_dict_[self._encoder_key] \
+                = self.encoder.state_dict_for_save_checkpoint(
+                    destination, prefix, keep_vars)
+        else:
+            if self.affine:
+                state_dict_["_affine"] = self.affine.state_dict(destination, prefix, keep_vars)
+
+        return state_dict_
+
+    def load_state_dict(self, state_dict, strict=True):
+        """Customized load."""
+        # Encoder.
+        
+        
+        if self.encoder:
+            if self._encoder_key in state_dict:
+                state_dict_ = state_dict[self._encoder_key]
+
+            state_dict_self_attention = {}
+            for key in state_dict_.keys():
+                if '.attention.' in key:
+                    state_dict_self_attention[key.replace(".attention.",
+                        ".self_attention.")] = state_dict_[key]
+                else:
+                    state_dict_self_attention[key] = state_dict_[key]
+            state_dict_ = state_dict_self_attention
+            self.encoder.load_state_dict(state_dict_, strict=strict)
+        else:
+            if self.affine:
+                if "_affine" in state_dict:
+                    self.affine.load_state_dict(state_dict["_affine"], strict=strict)
+
+    def forward(self, vision_inputs, inference_params=None):
+        # Run encoder.
+        if self.encoder:
+            encoder_output = self.encoder(vision_inputs,
+                inference_params=inference_params)
+        else:
+            if self.affine:
+                encoder_output = self.affine(vision_inputs)
+            else:
+                encoder_output = vision_inputs
+
+        return encoder_output
 
 class TransformerLanguageModel(MegatronModule):
     """Transformer language model.
@@ -508,7 +571,7 @@ class TransformerLanguageModel(MegatronModule):
                 enc_dec_attn_mask=None, tokentype_ids=None,
                 inference_params=None,
                 pooling_sequence_index=0,
-                enc_hidden_states=None, output_enc_hidden=False):
+                enc_hidden_states=None, output_enc_hidden=False, vision_inputs=None):
 
         # Encoder embedding.
         if self.pre_process:
@@ -543,7 +606,7 @@ class TransformerLanguageModel(MegatronModule):
                     retriever_input=retriever_input,
                     retriever_attn_mask=retriever_attn_mask,
                     inference_params=inference_params,
-                    rotary_pos_emb=rotary_pos_emb)
+                    rotary_pos_emb=rotary_pos_emb, vision_inputs=vision_inputs)
             else:
                 encoder_output = self.encoder_hidden_state
         else:

@@ -807,7 +807,6 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                                        valid_data_iterator, model,
                                        iteration, process_non_loss_data_func,
                                        config, False, visual_model=visual_model)
-
         # Checkpointing
         saved_checkpoint = False
         if args.exit_signal_handler:

@@ -47,7 +47,7 @@ def visual_model_provider(visual_arch, pre_process=True, post_process=False):
     print_rank_0('building visual model....')
     return visual_model
 
-def get_batch(data_iterator, visual_model, model_has_data_iter=True):
+def get_batch(data_iterator, visual_model):
     """Generate a batch"""
 
     args = get_args()
@@ -58,37 +58,33 @@ def get_batch(data_iterator, visual_model, model_has_data_iter=True):
     attention_mask = None
     position_ids = None
 
-    if model_has_data_iter:
-            
-        # Broadcast data.
-        if data_iterator is not None:
-            data = next(data_iterator)
-        else:
-            data = None
+    # Broadcast data.
+    if data_iterator is not None:
+        data = next(data_iterator)
+    else:
+        data = None
 
-        data_text = tensor_parallel.broadcast_data(["text"], data, torch.int64)["text"]
-        data_img = tensor_parallel.broadcast_data(["img"], data, torch.float32)
-        prompt_len = tensor_parallel.broadcast_data(["prompt_len"], data, torch.int64)["prompt_len"]
+    data_text = tensor_parallel.broadcast_data(["text"], data, torch.int64)["text"]
+    data_img = tensor_parallel.broadcast_data(["img"], data, torch.float32)
 
-        # Unpack.
-        tokens_ = data_text.long()
-        img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
+    # Unpack.
+    tokens_ = data_text.long()
+    img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
 
-        if img_raw is None:
-            img_tokens = None
-        else:
-            img_tokens = visual_model(img_raw).transpose(0, 1).contiguous()
+    if img_raw is None:
+        img_tokens = None
+    else:
+        img_tokens = visual_model(img_raw).transpose(0, 1).contiguous()
 
-        tokenizer = get_tokenizer()
-        tokens = tokens_[:, :args.seq_length].contiguous()
-        labels = tokens_[:, 1:args.seq_length+1].contiguous()
+    tokenizer = get_tokenizer()
+    tokens = tokens_[:, :args.seq_length].contiguous()
+    labels = tokens_[:, 1:args.seq_length+1].contiguous()
     
-        attention_mask, loss_mask, position_ids = \
-            get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
-                                            args.reset_position_ids,
-                                            args.reset_attention_mask,
-                                            args.eod_mask_loss,
-                                            question_length=prompt_len)
+    attention_mask, loss_mask, position_ids = \
+        get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
+                                        args.reset_position_ids,
+                                        args.reset_attention_mask,
+                                        args.eod_mask_loss)
 
     return tokens, labels, img_tokens, loss_mask, attention_mask, position_ids
 
@@ -114,7 +110,7 @@ def forward_step(data_iterator, model, visual_model):
     # Get the batch.
     timers('batch-generator', log_level=2).start()
     tokens, labels, img_tokens, loss_mask, attention_mask, position_ids = get_batch(
-        data_iterator, model_has_data_iter=model.has_data_iter, visual_model=visual_model)
+        data_iterator, visual_model=visual_model)
     timers('batch-generator').stop()
 
     output_tensor = model(tokens, img_tokens, position_ids, attention_mask,
@@ -138,9 +134,10 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
         seed=args.seed,
         skip_warmup=(not args.mmap_warmup),
         dataset_type='multimodal')
+
     print_rank_0("> finished creating Multimodal datasets ...")
 
-    train_ds = BlendableDataset([train_ds1], [args.weight])
+    train_ds = BlendableDataset([train_ds1], [args.weight], len(train_ds1)//2)
     return train_ds, valid_ds, test_ds
 
 def add_validation_args(parser):

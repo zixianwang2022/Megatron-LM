@@ -72,11 +72,12 @@ class MixedFusedLayerNorm(torch.nn.Module):
         init.ones_(self.weight)
         init.zeros_(self.bias)
 
-  def forward(self, input):
+  def forward(self, input, vit_layer_norm=False):
 
     weight = self.weight + 1 if self.apply_layernorm_1p else self.weight
-
-    if self.no_persist_layer_norm:
+    if vit_layer_norm:
+        return torch.nn.functional.layer_norm(input, self.normalized_shape, self.weight, self.bias, self.eps)
+    elif self.no_persist_layer_norm:
         return FusedLayerNormAffineFunction.apply(input, weight, self.bias, self.normalized_shape, self.eps)
     else:
         output = FastLayerNormFN.apply(input, weight, self.bias, self.eps)

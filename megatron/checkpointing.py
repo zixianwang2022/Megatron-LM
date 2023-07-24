@@ -234,7 +234,7 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_mod
     checkpoint_name = get_checkpoint_name(args.save, iteration)
 
     if visual_model:
-        visual_checkpoint_name, visual_optim_checkpoint_name = get_checkpoint_names(args.visual_save, iteration)
+        visual_checkpoint_name = get_checkpoint_name(args.visual_save, iteration)
         visual_state_dict = {}
     else:
         visual_checkpoint_name = None
@@ -525,7 +525,6 @@ def load_visual_checkpoint(model, load_arg='load', strict=True):
     """
     args = get_args()
     load_dir = args.visual_path
-    if args.visual_adaptor: strict = False
 
     model = unwrap_model(model)
 
@@ -628,7 +627,10 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
 
     # Model.
     if len(model) == 1:
-        model[0].load_state_dict(state_dict['model'], strict=strict)
+        if args.add_gated_xattn:
+            model[0].load_state_dict(state_dict['model'], strict=False)
+        else:
+            model[0].load_state_dict(state_dict['model'], strict=strict)
     else:
         for i in range(len(model)):
             mpu.set_virtual_pipeline_model_parallel_rank(i)

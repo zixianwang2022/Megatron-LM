@@ -67,8 +67,7 @@ class FlamingoModel(MegatronModule):
                 lm_output, labels,
                 self.language_model.output_layer.weight if self.untie_embeddings_and_output_weights else self.word_embeddings_weight(),
                 self.parallel_output,
-                self.fp16_lm_cross_entropy,
-                self.use_auxilary_loss)
+                self.fp16_lm_cross_entropy)
         else:
             return lm_output
 

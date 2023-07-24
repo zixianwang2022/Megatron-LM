@@ -3,14 +3,14 @@
 from apex.optimizers import FusedAdam as Adam
 from apex.optimizers import FusedSGD as SGD
 
-from megatron import get_args
+from megatron import get_args, print_rank_0
 
 from .distrib_optimizer import DistributedOptimizer
 from .grad_scaler import ConstantGradScaler, DynamicGradScaler
 from .optimizer import Float16OptimizerWithFloat16Params, FP32Optimizer
 
 
-def get_param_groups(modules,
+def get_param_groups(modules, visual_modules,
                      no_weight_decay_cond,
                      scale_lr_cond,
                      lr_mult):
@@ -23,7 +23,14 @@ def get_param_groups(modules,
     wd_scale_lr = []
     no_wd_no_scale_lr = []
     no_wd_scale_lr = []
-    for module in modules:
+    
+    args = get_args()
+    all_modules = modules
+
+    if visual_modules is not None:
+        all_modules = all_modules + visual_modules
+
+    for module in all_modules:
         for name, param in module.named_parameters():
             if not param.requires_grad:
                 continue
@@ -39,6 +46,32 @@ def get_param_groups(modules,
             else:
                 scale_lr = False
 
+            if "vision" in name or "affine" in name: # PerceiverResampler parameters
+                param_name = "pretraining"
+            elif "xattn" in name or "inter" in name: # GatedXattnLayer parameters
+                param_name = "pretraining"
+            elif "gate" in name: # Gate parameters:
+                param_name = "pretraining"
+            elif "language_model" in name:
+                param_name = "LM"
+            elif "neck" in name:
+                param_name = "sam_neck"
+            else:
+                param_name = "Visual"
+
+            if args.freeze_ViT and param_name == "Visual":
+                if 'adaptor' not in name:
+                    continue
+                elif not args.train_adaptor:
+                    continue
+                # print_rank_0('Adaptor is now being trained for {}'.format(name))
+
+            if args.freeze_LM and param_name == "LM":
+                if 'adaptor' not in name:
+                    continue
+                elif not args.train_adaptor:
+                    continue
+            
             if not no_wd and not scale_lr:
                 wd_no_scale_lr.append(param)
             elif not no_wd and scale_lr:
@@ -47,6 +80,15 @@ def get_param_groups(modules,
                 no_wd_no_scale_lr.append(param)
             else:
                 no_wd_scale_lr.append(param)
+
+    if not args.freeze_ViT and not args.freeze_LM:
+        print_rank_0(f"Optimizing the whole model:")
+    else:
+        if args.freeze_ViT:
+            print_rank_0(f"Visual Encoder is frozen.")
+        if args.freeze_LM:
+            print_rank_0(f"LM layers are frozen.")
+
 
     param_groups = []
     if len(wd_no_scale_lr):
@@ -60,14 +102,14 @@ def get_param_groups(modules,
 
     return param_groups
 
-def get_megatron_optimizer(model,
+def get_megatron_optimizer(model, visual_model=None,
                            no_weight_decay_cond=None,
                            scale_lr_cond=None,
                            lr_mult=1.0):
     args = get_args()
 
     # Base optimizer.
-    param_groups = get_param_groups(model,
+    param_groups = get_param_groups(model, visual_model,
                                     no_weight_decay_cond,
                                     scale_lr_cond,
                                     lr_mult)

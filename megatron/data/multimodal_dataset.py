@@ -34,6 +34,11 @@ class MultiModalDataset(torch.utils.data.Dataset):
         self.indexed_dataset = indexed_dataset
         self.doc_idx = indexed_dataset.get_doc_idx()
         self.visual_transform = _transform(img_h, img_w)
+        desc = "MultiModal Dataset\n\n"
+        desc += f"Data prefix {data_prefix}\n"
+        desc += f"Dataset name {name}\n"
+        desc += f"Number of samples {num_samples}\n"
+        self.desc = desc
 
     def __len__(self):
         return self.indexed_dataset.sizes.shape[0]

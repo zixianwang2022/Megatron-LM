@@ -137,7 +137,7 @@ class ParallelMLP(MegatronModule):
         super(ParallelMLP, self).__init__()
         args = get_args()
 
-        self.add_bias = config.add_bias_linear and (not is_vit)
+        self.add_bias = config.add_bias_linear or is_vit
         self.is_vit = is_vit
 
         ffn_hidden_size = config.ffn_hidden_size
@@ -182,6 +182,8 @@ class ParallelMLP(MegatronModule):
             self.bias_gelu_fusion = args.bias_gelu_fusion
             self.activation_func = F.gelu
 
+        if not is_vit:
+            ffn_hidden_size = config.ffn_hidden_size
         # Project back to h.
         self.dense_4h_to_h = tensor_parallel.RowParallelLinear(
             ffn_hidden_size,
@@ -377,7 +379,9 @@ class CoreAttention(MegatronModule):
         Rh = self.get_rel_pos(q_h, k_h, self.rel_pos_h)
         Rw = self.get_rel_pos(q_w, k_w, self.rel_pos_w)
         _, B, dim = q.shape
+        
         r_q = q.permute(1, 0, 2).reshape(B, q_h, q_w, dim)
+        
         rel_h = torch.einsum("bhwc,hkc->bhwk", r_q, Rh)
         rel_w = torch.einsum("bhwc,wkc->bhwk", r_q, Rw)
 
@@ -592,43 +596,43 @@ class ParallelAttention(MegatronModule):
             self.params_dtype = torch.float
             args.params_dtype = torch.float
         else:
-            self.hidden_size = args.hidden_size
-            self.num_attention_heads = args.num_attention_heads
-            projection_size = args.kv_channels * self.num_attention_heads
+            self.hidden_size = config.hidden_size
+            self.num_attention_heads = config.num_attention_heads
+            projection_size = config.kv_channels * self.num_attention_heads
 
         # Per attention head and per partition values.
         world_size = mpu.get_tensor_model_parallel_world_size()
         self.hidden_size_per_attention_head = core.utils.divide(
-            projection_size, config.num_attention_heads)
+            projection_size, self.num_attention_heads)
         self.num_attention_heads_per_partition = core.utils.divide(
-            config.num_attention_heads, world_size)
+            self.num_attention_heads, world_size)
 
         # Strided linear layer.
         if attention_type == AttnType.self_attn:
             self.query_key_value = tensor_parallel.ColumnParallelLinear(
-                config.hidden_size,
+                self.hidden_size,
                 3 * projection_size,
                 config=config,
                 init_method=config.init_method,
-                bias=args.add_bias_linear,
+                bias=args.add_bias_linear or is_vit,
                 gather_output=False)
         else:
             assert attention_type == AttnType.cross_attn
             self.query = tensor_parallel.ColumnParallelLinear(
-                config.hidden_size,
+                self.hidden_size,
                 projection_size,
                 config=config,
                 init_method=config.init_method,
-                bias=config.add_bias_linear,
+                bias=config.add_bias_linear or is_vit,
                 gather_output=False)
 
 
             self.key_value = tensor_parallel.ColumnParallelLinear(
-                config.hidden_size,
+                self.hidden_size,
                 2 * projection_size,
                 config=config,
                 init_method=config.init_method,
-                bias=config.add_bias_linear,
+                bias=config.add_bias_linear or is_vit,
                 gather_output=False)
 
         self.core_attention = CoreAttention(self.layer_number, config,
@@ -645,10 +649,10 @@ class ParallelAttention(MegatronModule):
         # Output.
         self.dense = tensor_parallel.RowParallelLinear(
             projection_size,
-            config.hidden_size,
+            self.hidden_size,
             config=config,
             init_method=config.output_layer_init_method,
-            bias=args.add_bias_linear,
+            bias=args.add_bias_linear or is_vit,
             input_is_parallel=True,
             skip_bias_add=True)
 
@@ -840,8 +844,10 @@ class ParallelAttention(MegatronModule):
         return output, bias
 
 def bias_dropout_add(x, bias, residual, prob, training, gate=None):
-    # type: (Tensor, Tensor, Tensor, float, bool, Optional[Tensor]) -> Tensor
-    out = torch.nn.functional.dropout(x + bias, p=prob, training=training)
+    # type: (Tensor, Optional[Tensor], Tensor, float, bool, Optional[Tensor]) -> Tensor
+    if bias is not None:
+        x = x + bias
+    out = torch.nn.functional.dropout(x, p=prob, training=training)
     if gate is not None:
         out = out * gate.tanh()
     out = residual + out
@@ -854,7 +860,7 @@ def get_bias_dropout_add(training):
 
 @torch.jit.script
 def bias_dropout_add_fused_train(x: torch.Tensor,
-                                 bias: torch.Tensor,
+                                 bias: Optional[torch.Tensor],
                                  residual: torch.Tensor,
                                  prob: float,
                                  gate: Optional[torch.Tensor] = None,
@@ -864,7 +870,7 @@ def bias_dropout_add_fused_train(x: torch.Tensor,
 
 @torch.jit.script
 def bias_dropout_add_fused_inference(x: torch.Tensor,
-                                     bias: torch.Tensor,
+                                     bias: Optional[torch.Tensor],
                                      residual: torch.Tensor,
                                      prob: float,
                                      gate: Optional[torch.Tensor] = None) -> torch.Tensor:
@@ -1142,7 +1148,6 @@ class ParallelTransformerLayer(MegatronModule):
             if args.visual_arch.startswith("SAM"):
                 self.pad_h = args.img_h // args.visual_patch_dim
                 self.pad_w = args.img_w // args.visual_patch_dim
-                self.window_size = args.window_size
                 layernorm_epsilon = 1e-6 # hardcoded, from fbresearch mvit4 implementation.
 
 
@@ -1159,7 +1164,10 @@ class ParallelTransformerLayer(MegatronModule):
             config,
             layer_number,
             attention_type=AttnType.self_attn,
-            attn_mask_type=self_attn_mask_type)
+            attn_mask_type=self_attn_mask_type, 
+            is_vit=is_vit, use_rel_pos=use_rel_pos, window_size=window_size)
+
+
         self.hidden_dropout = 0.0 if is_vit else config.hidden_dropout
         self.bias_dropout_fusion = config.bias_dropout_fusion
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
@@ -1589,6 +1597,13 @@ class ParallelTransformerLayer(MegatronModule):
         if self.drop_path is None:
             if mlp_bias is not None:
                 mlp_bias = mlp_bias.expand_as(residual)
+            if self.bias_dropout_fusion:
+                if self.training:
+                    bias_dropout_add_func = bias_dropout_add_fused_train
+                else:
+                    bias_dropout_add_func = bias_dropout_add_fused_inference
+            else:
+                bias_dropout_add_func = get_bias_dropout_add(self.training)
             with self.bias_dropout_add_exec_handler():
                 output = bias_dropout_add_func(
                     mlp_output,
@@ -2131,7 +2146,7 @@ class ParallelTransformer(MegatronModule):
                             hidden_states = layer(
                                 hidden_states,
                                 attention_mask, vision_inputs=vision_inputs,
-                                **forward_kwargs)
+                                rotary_pos_emb=rotary_pos_emb)
                         else:
                             hidden_states = layer(
                                 hidden_states,

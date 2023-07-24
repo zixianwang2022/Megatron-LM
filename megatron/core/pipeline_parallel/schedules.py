@@ -166,7 +166,7 @@ def forward_step(forward_step_func,
                  forward_data_store,
                  config,
                  collect_non_loss_data=False,
-                 checkpoint_activations_microbatch=None):
+                 checkpoint_activations_microbatch=None, visual_model=None):
     """Forward step for passed-in model.
 
     If first stage, input tensor is obtained from data_iterator, otherwise
@@ -190,9 +190,16 @@ def forward_step(forward_step_func,
         context_manager = contextlib.nullcontext()
     with context_manager:
         if checkpoint_activations_microbatch is None:
-            output_tensor, loss_func = forward_step_func(data_iterator, model)
+            if visual_model is None:
+                output_tensor, loss_func = forward_step_func(data_iterator, model)
+            else:
+                output_tensor, loss_func = forward_step_func(data_iterator, model, visual_model=visual_model)
         else:
-            output_tensor, loss_func = forward_step_func(data_iterator, model, checkpoint_activations_microbatch)
+            if visual_model is None:
+                output_tensor, loss_func = forward_step_func(data_iterator, model, checkpoint_activations_microbatch)
+            else:
+                output_tensor, loss_func = forward_step_func(data_iterator, model, checkpoint_activations_microbatch, visual_model=visual_model)
+
 
     if parallel_state.is_pipeline_last_stage():
         if not collect_non_loss_data:
@@ -294,6 +301,7 @@ def forward_backward_no_pipelining(*,
                                    decoder_seq_length: int = None, # unused
                                    forward_only: bool = False,
                                    collect_non_loss_data: bool = False,
+                                   visual_model: Optional[Union[torch.nn.Module, List[torch.nn.Module]]] = None
                                    ):
     """Run forward and backward passes with no pipeline parallelism
     (no inter-stage communication).
@@ -328,14 +336,14 @@ def forward_backward_no_pipelining(*,
     with no_sync_func():
         for i in range(num_microbatches - 1):
             output_tensor = forward_step(forward_step_func, data_iterator, model, num_microbatches,
-                                         input_tensor, forward_data_store, config, collect_non_loss_data)
+                                         input_tensor, forward_data_store, config, collect_non_loss_data, visual_model=visual_model)
             if not forward_only:
                 backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config)
 
     # Run computation for last microbatch out of context handler (want to
     # synchronize gradients).
     output_tensor = forward_step(forward_step_func, data_iterator, model, num_microbatches,
-                                 input_tensor, forward_data_store, config, collect_non_loss_data)
+                                 input_tensor, forward_data_store, config, collect_non_loss_data, visual_model=visual_model)
 
     if not forward_only:
         backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config)
