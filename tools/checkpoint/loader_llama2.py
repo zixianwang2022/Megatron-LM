@@ -48,6 +48,8 @@ def load_args_from_checkpoint(args):
     args.swiglu = True
     args.tokenizer_type = "Llama2"
     # args.tokenizer_type = "SentencePieceTokenizer"
+    args.bf16 = True
+    args.norm_type = "rms"
 
     args.vocab_size = -1 # 32000 # ... set from tokenizer
     args.padded_vocab_size = -1 # 32000 # ... set from tokenizer
@@ -56,13 +58,17 @@ def load_args_from_checkpoint(args):
     # args.llama_multiple_of = llama_args["multiple_of"]
     args.llama = llama_args
 
-    ffn_dim_multiplier = llama_args["ffn_dim_multiplier"]
+    ffn_dim_multiplier = llama_args.get("ffn_dim_multiplier", 1.)
     ffn_multiple_of = llama_args["multiple_of"]
     ffn_hidden_size = 4 * int(2 * args.hidden_size / 3)
     if ffn_dim_multiplier is not None:
         ffn_hidden_size = int(ffn_dim_multiplier * ffn_hidden_size)
     ffn_hidden_size = ffn_multiple_of * ((ffn_hidden_size + ffn_multiple_of - 1) // ffn_multiple_of)
     args.ffn_hidden_size = ffn_hidden_size
+
+    if "n_kv_heads" in llama_args:
+        args.group_query_attention = True
+        args.num_query_groups = llama_args["n_kv_heads"]
 
     # >>>
     # pax({
@@ -81,7 +87,11 @@ def load_args_from_checkpoint(args):
     args.pipeline_model_parallel_size = 1
 
     # >>>
-    # pax({"args": args})
+    # pax({
+    #     "args": args,
+    #     "num_attention_heads" : args.num_attention_heads,
+    #     "n_kv_heads" : llama_args["n_kv_heads"],
+    # })
     # <<<
 
 def load_vocab_size(args):
@@ -105,14 +115,43 @@ def set_preprocess_state(model, state_dict):
 def set_attn_state(layer, layer_state_dict):
 
     attn = layer.self_attention
-    attn_state_dict = {k:v for k,v in layer_state_dict.items() if k.startswith("attention.")}
+    attn_state_dict = {k.split(".")[1]:v for k,v in layer_state_dict.items() if k.startswith("attention.")}
 
-    pax({
-        "attn" : attn,
-        "query_key_value" : str(attn.query_key_value.weight.shape),
-        "dense" : str(attn.dense.weight.shape),
-        "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
-    })
+    attn.query_key_value.weight.data.copy_(torch.cat([
+        attn_state_dict["wq"],
+        attn_state_dict["wk"],
+        attn_state_dict["wv"],
+    ], dim=0))
+    attn.dense.weight.data.copy_(attn_state_dict["wo"])
+
+    # pax({
+    #     "attn" : attn,
+    #     "attn / query_key_value" : tp(attn.query_key_value.weight.clone()),
+    #     "attn / dense" : tp(attn.dense.weight.clone()),
+    #     "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
+    #     "query_key_value" : tp(query_key_value),
+    #     "dense" : tp(dense),
+    # })
+
+def set_mlp_state(layer, layer_state_dict):
+
+    mlp = layer.mlp
+    mlp_state_dict = {k.split(".")[1]:v for k,v in layer_state_dict.items() if k.startswith("feed_forward")}
+
+    mlp.dense_h_to_4h.weight.data.copy_(torch.cat([
+        mlp_state_dict["w1"],
+        mlp_state_dict["w3"],
+    ], dim=0))
+    mlp.dense_4h_to_h.weight.data.copy_(mlp_state_dict["w2"])
+
+    # pax({
+    #     "mlp" : mlp,
+    #     "mlp / dense_h_to_4h" : tp(mlp.dense_h_to_4h.weight.clone()),
+    #     "mlp / dense_4h_to_h" : tp(mlp.dense_4h_to_h.weight.clone()),
+    #     "mlp_state_dict" : {k:str(v.shape) for k,v in mlp_state_dict.items()},
+    #     "h_to_4h" : tp(h_to_4h),
+    #     "4h_to_h" : tp(_4h_to_h),
+    # })
 
 def set_layer_state(model, model_state_dict, layer_idx):
 

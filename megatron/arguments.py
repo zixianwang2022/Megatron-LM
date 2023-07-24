@@ -580,8 +580,13 @@ def _add_network_size_args(parser):
     group.add_argument('--make-vocab-size-divisible-by', type=int, default=128,
                        help='Pad the vocab size to be divisible by this value.'
                        'This is added for computational efficieny reasons.')
+    group.add_argument('--norm-type', choices=['layer', 'rms'], default='layer',
+                       help='Normalization to use within transformer layer. '
+                       "Options are 'layer' (layernorm) or 'rms' (RMS norm).")
     group.add_argument('--layernorm-epsilon', type=float, default=1e-5,
                        help='Layer norm epsilon.')
+    group.add_argument('--rmsnorm-epsilon', type=float, default=1e-5,
+                       help='RMS norm epsilon.')
     group.add_argument('--apply-layernorm-1p', action='store_true',
                        help='Adjust LayerNorm weights such that they are centered '
                        'around zero. This improves numerical stability.')
