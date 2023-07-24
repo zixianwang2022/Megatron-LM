@@ -76,6 +76,7 @@ if __name__ == "__main__":
         model_name = "qa_blendv0_gpt_1e-8_conv_quiet_cockatoo_pp1_same_format_ctx1_43b_64_3e-7"
         model_name = "qa_blendv12_gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_newsqa_same_format_ctx1_43b_64_3e-7"
         model_name = "qa_blendv13_gpt_1e-8_conv_quiet_cockatoo_pp1_same_format_ctx1_43b_64_3e-7"
+        model_name = "qa_blendv12_gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_doc2dial_same_format_ctx1_43b_64_3e-7"
         ckpt_path="/lustre/fsw/adlr/adlr-nlp/pengx/sft_43b_qa/checkpoints/applications/{}/".format(model_name)
         n_ctx=5
         prediction_file = ckpt_path + "/inference_input_retriever_dragon_msmarcominilm_doc2dial_{}_generate_43b_test_greedy_0_250_4500_ret.txt.v2".format(n_ctx)
