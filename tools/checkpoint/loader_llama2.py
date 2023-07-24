@@ -102,6 +102,10 @@ def load_vocab_size(args):
 
 def concatenate_embeddings(args):
 
+    # >>>
+    return None
+    # <<<
+
     # Load & concatenate embeddings.
     embedding_shards = []
     for rank in tqdm(range(args.tensor_model_parallel_size), "embedding shards"):
@@ -118,18 +122,33 @@ def concatenate_embeddings(args):
 
     return embeddings
 
-def set_preprocess_state(model, state_dict, embeddings):
+def set_preprocess_state(model, state_dict, args, rank, embeddings):
 
-    param = state_dict["tok_embeddings.weight"]
-    model = model.language_model.embedding.word_embeddings
+    # >>>
+    rotary_pos_emb = model.language_model.rotary_pos_emb
+    pax({"rotary_pos_emb": rotary_pos_emb})
+    # <<<
 
-    pax({
-        # "model" : model,
-        "state_dict" : list(state_dict.keys()),
-        # "model" : model,
-        # "model / weight" : tp(model.weight.clone()),
-        # "params" : tp(param),
-    })
+    padded_vocab_size = args.padded_vocab_size
+    world_size = args.tensor_model_parallel_size
+    assert padded_vocab_size % world_size == 0
+    shard_size = args.padded_vocab_size // world_size
+    start_idx = rank * shard_size
+    end_idx = min(embeddings.shape[0], start_idx + shard_size)
+
+    model.language_model.embedding.word_embeddings.weight[0:(end_idx-start_idx)].data.copy_(embeddings[start_idx:end_idx])
+    
+    if rank == 7:
+        pax({
+            "word_embeddings" : tp(model.language_model.embedding.word_embeddings.weight.clone()),
+            "embeddings" : tp(embeddings),
+            "padded_vocab_size" : args.padded_vocab_size,
+            "rank" : rank,
+            "world_size" : world_size,
+            "shard_size" : shard_size,
+            "start_idx" : start_idx,
+            "end_idx" : end_idx,
+        })
 
 def set_attn_state(layer, layer_state_dict):
 
@@ -211,7 +230,7 @@ def load_checkpoint_to_model(args, rank, model, embeddings):
     state_dict = torch.load(filename)
 
     # Set model state.
-    set_preprocess_state(model, state_dict, embeddings)
+    set_preprocess_state(model, state_dict, args, rank, embeddings)
     set_postprocess_state(model, state_dict)
     for layer_idx in range(args.num_layers):
         set_layer_state(model, state_dict, layer_idx)
