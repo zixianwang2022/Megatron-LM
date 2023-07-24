@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import torch
+from tqdm import tqdm
 import types
 
 # >>>
@@ -99,17 +100,35 @@ def load_vocab_size(args):
     tokenizer = build_tokenizer(args)
     args.vocab_size = tokenizer.vocab_size
 
-def set_preprocess_state(model, state_dict):
+def concatenate_embeddings(args):
+
+    # Load & concatenate embeddings.
+    embedding_shards = []
+    for rank in tqdm(range(args.tensor_model_parallel_size), "embedding shards"):
+        filename = os.path.join(args.load, f"consolidated.0{rank}.pth")
+        assert os.path.isfile(filename), f"missing checkpoint file '{filename}'."
+        state_dict = torch.load(filename)
+        embedding_shards.append(state_dict["tok_embeddings.weight"])
+    embeddings = torch.cat(embedding_shards, dim=1)
+
+    # pax({
+    #     "embedding_shards" : [ str(t.shape) for t in embedding_shards ],
+    #     "embeddings" : tp(embeddings),
+    # })
+
+    return embeddings
+
+def set_preprocess_state(model, state_dict, embeddings):
 
     param = state_dict["tok_embeddings.weight"]
     model = model.language_model.embedding.word_embeddings
 
     pax({
         # "model" : model,
-        # "state_dict" : list(state_dict.keys()),
-        "model" : model,
-        "model / weight" : tp(model.weight.clone()),
-        "params" : tp(param),
+        "state_dict" : list(state_dict.keys()),
+        # "model" : model,
+        # "model / weight" : tp(model.weight.clone()),
+        # "params" : tp(param),
     })
 
 def set_attn_state(layer, layer_state_dict):
@@ -153,6 +172,13 @@ def set_mlp_state(layer, layer_state_dict):
     #     "4h_to_h" : tp(_4h_to_h),
     # })
 
+def set_rmsnorm_state(rmsnorm, tensor):
+    rmsnorm.weight.data.copy_(tensor)
+    # pax({
+    #     "rmsnorm" : tp(rmsnorm.weight.clone()),
+    #     "tensor" : tp(tensor),
+    # })
+
 def set_layer_state(model, model_state_dict, layer_idx):
 
     layer = model.language_model.encoder.layers[layer_idx]
@@ -160,22 +186,24 @@ def set_layer_state(model, model_state_dict, layer_idx):
     layer_state_dict = {".".join(k.split(".")[2:]):v
                         for k,v in model_state_dict.items()
                         if k.startswith(f"layers.{layer_idx}")}
-    layer_state_dict["rope.freqs"] = model_state_dict["rope.freqs"]
+    # layer_state_dict["rope.freqs"] = model_state_dict["rope.freqs"]
 
     set_attn_state(layer, layer_state_dict)
     set_mlp_state(layer, layer_state_dict)
-    set_rmsnorm_state(layer.input_layernormm)
-    set_rmsnorm_state(layer.post_attention_layernormm)
+    set_rmsnorm_state(layer.input_layernorm,
+                      layer_state_dict["attention_norm.weight"])
+    set_rmsnorm_state(layer.post_attention_layernorm,
+                      layer_state_dict["ffn_norm.weight"])
 
-    pax({
-        "layer" : layer,
-        "layer / mlp" : layer.mlp,
-        "layer / mlp / h->4h" : tp(layer.mlp.dense_h_to_4h.weight.clone()),
-        "layer / mlp / 4h->h" : tp(layer.mlp.dense_4h_to_h.weight.clone()),
-        "layer_state_dict" : {k:str(v.shape) for k,v in layer_state_dict.items()},
-    })
+    # pax({
+    #     "layer" : layer,
+    #     "layer / mlp" : layer.mlp,
+    #     "layer / mlp / h->4h" : tp(layer.mlp.dense_h_to_4h.weight.clone()),
+    #     "layer / mlp / 4h->h" : tp(layer.mlp.dense_4h_to_h.weight.clone()),
+    #     "layer_state_dict" : {k:str(v.shape) for k,v in layer_state_dict.items()},
+    # })
 
-def load_checkpoint_to_model(args, rank, model):
+def load_checkpoint_to_model(args, rank, model, embeddings):
 
     # Load state dict.
     filename = os.path.join(args.load, f"consolidated.0{rank}.pth")
@@ -183,8 +211,8 @@ def load_checkpoint_to_model(args, rank, model):
     state_dict = torch.load(filename)
 
     # Set model state.
-    # ... set_preprocess_state(model, state_dict)
-    # ... set_postprocess_state(model, state_dict)
+    set_preprocess_state(model, state_dict, embeddings)
+    set_postprocess_state(model, state_dict)
     for layer_idx in range(args.num_layers):
         set_layer_state(model, state_dict, layer_idx)
 
@@ -279,12 +307,15 @@ def _load_checkpoint(queue, args):
     # suppress warning about torch.distributed not being initialized
     module.MegatronModule.embedding_warning_printed = True
 
+    # Concatenate word embeddings. (Llama uses different sharding than Megatron.)
+    embeddings = concatenate_embeddings(margs)
+
     def get_models(count, dtype):
         models = []
         for rank in range(count):
             mpu.set_tensor_model_parallel_rank(rank)
             model = model_provider(True, True).to(dtype)
-            load_checkpoint_to_model(margs, rank, model)
+            load_checkpoint_to_model(margs, rank, model, embeddings)
             models.append(model)
             pax({"model": model})
         return models
