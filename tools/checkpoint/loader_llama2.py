@@ -8,6 +8,8 @@ from tqdm import tqdm
 import types
 
 # >>>
+sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
+
 from lutil import pax, tp
 # <<<
 
@@ -52,6 +54,7 @@ def load_args_from_checkpoint(args):
     args.bf16 = True
     args.norm_type = "rms"
 
+    args.untie_embeddings_and_output_weights = True # to get 'output_layer'
     args.vocab_size = -1 # 32000 # ... set from tokenizer
     args.padded_vocab_size = -1 # 32000 # ... set from tokenizer
     # args.llama_num_kv_heads = llama_args["n_kv_heads"]
@@ -99,11 +102,19 @@ def load_vocab_size(args):
     from megatron.tokenizer import build_tokenizer
     tokenizer = build_tokenizer(args)
     args.vocab_size = tokenizer.vocab_size
+    args.padded_vocab_size = args.vocab_size # llama doesn't pad
+
+    # >>>
+    # pax({
+    #     "args / vocab_size": args.vocab_size,
+    #     "args / padded_vocab_size": args.padded_vocab_size,
+    # })
+    # <<<
 
 def concatenate_embeddings(args):
 
     # >>>
-    return None
+    # return None
     # <<<
 
     # Load & concatenate embeddings.
@@ -122,11 +133,128 @@ def concatenate_embeddings(args):
 
     return embeddings
 
+# >>>
+# def get_megatron_rotary_freqs(args):
+
+#     from torch import einsum, nn
+
+#     class RotaryEmbedding(nn.Module):
+#         def __init__(self, dim):
+#             super().__init__()
+#             inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
+#             # inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2)[:(dim//2)].float() / dim))
+#             # >>>
+#             # pax({"dim": dim, "inv_freq": tp(inv_freq)})
+#             # <<<
+#             self.register_buffer('inv_freq', inv_freq)
+
+#         def forward(self, max_seq_len, offset=0):
+#             seq = torch.arange(max_seq_len, device=self.inv_freq.device) + offset
+#             freqs = einsum('i , j -> i j', seq.type_as(self.inv_freq), self.inv_freq)
+#             # >>>
+#             # pax({"inv_freq": tp(self.inv_freq)})
+#             # return self.inv_freq
+#             # return freqs
+#             # <<<
+#             # first part even vector components, second part odd vector components,
+#             #  2 * dim in dimension size
+#             emb = torch.cat((freqs, freqs), dim=-1)
+#             # emb [seq_length, .., dim]
+#             return emb[:, None, None, :]
+
+#     rotary_dim = args.hidden_size // args.num_attention_heads \
+#         if args.kv_channels is None else args.kv_channels
+#     return RotaryEmbedding(rotary_dim)(args.seq_length)
+
+#     # def _rotate_half(x):
+#     #     """
+#     #     change sign so the last dimension becomes [-odd, +even]
+#     #     """
+#     #     x1, x2 = torch.chunk(x, 2, dim=-1)
+#     #     return torch.cat((-x2, x1), dim=-1)
+
+#     # def apply_rotary_pos_emb(t, freqs):
+#     #     """
+#     #     input tensor t is of shape [seq_length, ..., dim]
+#     #     rotary positional embeding tensor freqs is of shape [seq_length, ..., dim]
+#     #     check https://kexue.fm/archives/8265 for detailed formulas
+#     #     """
+#     #     rot_dim = freqs.shape[-1]
+#     #     # ideally t_pass is empty so rotary pos embedding is applied to all tensor t
+#     #     t, t_pass = t[..., :rot_dim], t[..., rot_dim:]
+
+#     #     # first part is cosine component
+#     #     # second part is sine component, need to change signs with _rotate_half method
+#     #     t = (t * freqs.cos()) + (_rotate_half(t) * freqs.sin())
+#     #     return torch.cat((t, t_pass), dim=-1)
+
+# def get_llama_rotary_freqs(args):
+
+#     # from llama.model import precompute_freqs_cis
+#     def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
+#         freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
+#         # pax({"dim": dim, "freqs": tp(freqs)})
+#         t = torch.arange(end, device=freqs.device)  # type: ignore
+#         # >>>
+#         # return freqs
+#         # <<<
+#         freqs = torch.outer(t, freqs).float()  # type: ignore
+#         # >>>
+#         # return freqs
+#         # <<<
+#         freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
+#         return freqs_cis
+
+#     # def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
+#     #     ndim = x.ndim
+#     #     assert 0 <= 1 < ndim
+#     #     assert freqs_cis.shape == (x.shape[1], x.shape[-1])
+#     #     shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
+#     #     return freqs_cis.view(*shape)
+
+#     # def apply_rotary_emb(
+#     #     xq: torch.Tensor,
+#     #     xk: torch.Tensor,
+#     #     freqs_cis: torch.Tensor,
+#     # ) -> Tuple[torch.Tensor, torch.Tensor]:
+#     #     xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
+#     #     xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
+#     #     freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
+#     #     xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
+#     #     xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+#     #     return xq_out.type_as(xq), xk_out.type_as(xk)
+
+#     freqs_cis = precompute_freqs_cis(
+#         args.hidden_size // args.num_attention_heads, args.seq_length * 2)
+
+#     # pax({
+#     #     "freqs_cis" : tp(freqs_cis),
+#     # })
+
+#     return freqs_cis
+# <<<
+
+def set_rmsnorm_state(rmsnorm, tensor):
+    rmsnorm.weight.data.copy_(tensor)
+    # pax({
+    #     "rmsnorm" : tp(rmsnorm.weight.clone()),
+    #     "tensor" : tp(tensor),
+    # })
+
 def set_preprocess_state(model, state_dict, args, rank, embeddings):
 
     # >>>
-    rotary_pos_emb = model.language_model.rotary_pos_emb
-    pax({"rotary_pos_emb": rotary_pos_emb})
+    # from megatron.core.models.common.rotary_pos_embedding import RotaryEmbedding
+    # megatron_freqs = get_megatron_rotary_freqs(args)
+    # llama_freqs = get_llama_rotary_freqs(args)
+
+    # rotary_pos_emb = model.language_model.rotary_pos_emb
+    # pax({
+    #     "rotary_pos_emb" : rotary_pos_emb,
+    #     "rope.freqs" : tp(state_dict["rope.freqs"]),
+    #     "megatron_freqs" : tp(megatron_freqs),
+    #     "llama_freqs" : tp(llama_freqs),
+    # })
     # <<<
 
     padded_vocab_size = args.padded_vocab_size
@@ -149,6 +277,22 @@ def set_preprocess_state(model, state_dict, args, rank, embeddings):
             "start_idx" : start_idx,
             "end_idx" : end_idx,
         })
+
+def set_postprocess_state(model, state_dict):
+
+    model_norm = model.language_model.encoder.final_layernorm
+    model_output = model.language_model.output_layer
+    model_norm.weight.data.copy_(state_dict["norm.weight"])
+    model_output.weight.data.copy_(state_dict["output.weight"])
+
+    # set_rmsnorm_state(model.language_model.encoder.final_layernormm, state_dict["norm.weight"])
+    
+    # pax({
+    #     "model_norm" : tp(model_norm.weight.clone()),
+    #     "model_output" : tp(model_output.weight.clone()),
+    #     "norm.weight" : tp(state_dict["norm.weight"]),
+    #     "output.weight" : tp(state_dict["output.weight"]),
+    # })
 
 def set_attn_state(layer, layer_state_dict):
 
@@ -189,13 +333,6 @@ def set_mlp_state(layer, layer_state_dict):
     #     "mlp_state_dict" : {k:str(v.shape) for k,v in mlp_state_dict.items()},
     #     "h_to_4h" : tp(h_to_4h),
     #     "4h_to_h" : tp(_4h_to_h),
-    # })
-
-def set_rmsnorm_state(rmsnorm, tensor):
-    rmsnorm.weight.data.copy_(tensor)
-    # pax({
-    #     "rmsnorm" : tp(rmsnorm.weight.clone()),
-    #     "tensor" : tp(tensor),
     # })
 
 def set_layer_state(model, model_state_dict, layer_idx):
@@ -334,6 +471,12 @@ def _load_checkpoint(queue, args):
         for rank in range(count):
             mpu.set_tensor_model_parallel_rank(rank)
             model = model_provider(True, True).to(dtype)
+            # >>>
+            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            # print(model)
+            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            # exit()
+            # <<<
             load_checkpoint_to_model(margs, rank, model, embeddings)
             models.append(model)
             pax({"model": model})
