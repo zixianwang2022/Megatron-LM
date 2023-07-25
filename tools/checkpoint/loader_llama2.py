@@ -114,7 +114,7 @@ def load_vocab_size(args):
 def concatenate_embeddings(args):
 
     # >>>
-    # return None
+    return None
     # <<<
 
     # Load & concatenate embeddings.
@@ -241,7 +241,8 @@ def set_rmsnorm_state(rmsnorm, tensor):
     #     "tensor" : tp(tensor),
     # })
 
-def set_preprocess_state(model, state_dict, args, rank, embeddings):
+# def set_preprocess_state(model, state_dict, args, rank, embeddings):
+def set_preprocess_state(args, rank, model, embeddings, state_dict):
 
     # >>>
     # from megatron.core.models.common.rotary_pos_embedding import RotaryEmbedding
@@ -278,7 +279,8 @@ def set_preprocess_state(model, state_dict, args, rank, embeddings):
             "end_idx" : end_idx,
         })
 
-def set_postprocess_state(model, state_dict):
+# def set_postprocess_state(model, state_dict):
+def set_postprocess_state(args, model, state_dict):
 
     model_norm = model.language_model.encoder.final_layernorm
     model_output = model.language_model.output_layer
@@ -294,7 +296,7 @@ def set_postprocess_state(model, state_dict):
     #     "output.weight" : tp(state_dict["output.weight"]),
     # })
 
-def set_attn_state(layer, layer_state_dict):
+def set_attn_state(layer, layer_state_dict, args):
 
     attn = layer.self_attention
     attn_state_dict = {k.split(".")[1]:v for k,v in layer_state_dict.items() if k.startswith("attention.")}
@@ -306,14 +308,13 @@ def set_attn_state(layer, layer_state_dict):
     ], dim=0))
     attn.dense.weight.data.copy_(attn_state_dict["wo"])
 
-    # pax({
-    #     "attn" : attn,
-    #     "attn / query_key_value" : tp(attn.query_key_value.weight.clone()),
-    #     "attn / dense" : tp(attn.dense.weight.clone()),
-    #     "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
-    #     "query_key_value" : tp(query_key_value),
-    #     "dense" : tp(dense),
-    # })
+    pax({
+        "attn" : attn,
+        "attn / query_key_value" : tp(attn.query_key_value.weight.clone()),
+        "attn / dense" : tp(attn.dense.weight.clone()),
+        "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
+        "kv_channels" : args.kv_channels,
+    })
 
 def set_mlp_state(layer, layer_state_dict):
 
@@ -335,7 +336,8 @@ def set_mlp_state(layer, layer_state_dict):
     #     "4h_to_h" : tp(_4h_to_h),
     # })
 
-def set_layer_state(model, model_state_dict, layer_idx):
+# def set_layer_state(model, model_state_dict, layer_idx):
+def set_layer_state(args, model, model, state_dict, layer_idx):
 
     layer = model.language_model.encoder.layers[layer_idx]
 
@@ -367,18 +369,18 @@ def load_checkpoint_to_model(args, rank, model, embeddings):
     state_dict = torch.load(filename)
 
     # Set model state.
-    set_preprocess_state(model, state_dict, args, rank, embeddings)
-    set_postprocess_state(model, state_dict)
-    for layer_idx in range(args.num_layers):
-        set_layer_state(model, state_dict, layer_idx)
+    # set_preprocess_state(args, rank, model, embeddings, state_dict)
+    set_postprocess_state(args, model, state_dict)
+    for layer_idx in tqdm(range(args.num_layers), "set layer states"):
+        set_layer_state(args, model, state_dict, layer_idx)
 
-    pax({
-        "args" : args,
-        "rank" : rank,
-        "model" : model,
-        "filename" : filename,
-        "state_dict" : list(state_dict.keys()),
-    })
+    # pax({
+    #     "args" : args,
+    #     "rank" : rank,
+    #     "model" : model,
+    #     "filename" : filename,
+    #     "state_dict" : list(state_dict.keys()),
+    # })
 
 def _load_checkpoint(queue, args):
 
@@ -469,6 +471,7 @@ def _load_checkpoint(queue, args):
     def get_models(count, dtype):
         models = []
         for rank in range(count):
+            print("loading rank %d / %d." % (rank, count))
             mpu.set_tensor_model_parallel_rank(rank)
             model = model_provider(True, True).to(dtype)
             # >>>
@@ -479,7 +482,7 @@ def _load_checkpoint(queue, args):
             # <<<
             load_checkpoint_to_model(margs, rank, model, embeddings)
             models.append(model)
-            pax({"model": model})
+            # pax({"model": model})
         return models
 
     set_global_variables(margs, build_tokenizer=False)
