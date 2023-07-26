@@ -12,12 +12,11 @@ from megatron import get_timers, get_args, get_retro_args, core, get_num_microba
 from .module import MegatronModule
 from megatron.core import mpu, tensor_parallel
 from megatron.core.enums import ModelType
-from megatron.model import LayerNorm, RMSNorm
 from megatron.model.enums import AttnMaskType, LayerType, AttnType
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_emb
-from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu
+from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, get_norm
 
 try:
     from einops import rearrange
@@ -97,15 +96,6 @@ class ParallelMLP(MegatronModule):
             gather_output=False,
             skip_bias_add=True,
         )
-
-        # >>>
-        # from lutil import pax
-        # pax({
-        #     "hidden_size" : config.hidden_size,
-        #     "ffn_hidden_size" : ffn_hidden_size / mpu.get_tensor_model_parallel_world_size(),
-        #     "ffn_hidden_size [cfg]" : config.ffn_hidden_size / mpu.get_tensor_model_parallel_world_size(),
-        # })
-        # <<<
 
         self.bias_gelu_fusion = False
         self.activation_func = None
@@ -740,23 +730,6 @@ def bias_dropout_add_fused_inference(x: torch.Tensor,
     return bias_dropout_add(x, bias, residual, prob, False)
 
 
-# >>>
-def get_norm(config):
-    args = get_args()
-    if args.norm_type == "layer":
-        return LayerNorm(
-            config.hidden_size,
-            eps=config.norm_epsilon,
-            no_persist_layer_norm=not config.persist_layer_norm,
-            sequence_parallel=config.sequence_parallel,
-            apply_layernorm_1p=args.apply_layernorm_1p)
-    elif args.norm_type == "rms":
-        return RMSNorm(args.hidden_size, args.norm_epsilon)
-    else:
-        raise Exception(f"unsupported norm type '{args.norm_type}'.")
-# <<<
-
-
 class ParallelTransformerLayer(MegatronModule):
     """A single transformer layer.
 
@@ -776,7 +749,7 @@ class ParallelTransformerLayer(MegatronModule):
         self.layer_type = layer_type
 
         self.apply_residual_connection_post_norm \
-            = config.apply_residual_connection_post_norm
+            = config.apply_residual_connection_post_layernorm
 
         self.bf16 = config.bf16
         self.fp32_residual_connection = config.fp32_residual_connection
@@ -1406,7 +1379,7 @@ class ParallelTransformer(MegatronModule):
                     micro_batch_size=args.micro_batch_size,
                     sequence_parallel=config.sequence_parallel,
                     params_dtype=config.params_dtype,
-                    apply_residual_connection_post_norm=config.apply_residual_connection_post_norm,
+                    apply_residual_connection_post_norm=config.apply_residual_connection_post_layernorm,
                     output_norm=False,
                     layer_type="encoder",
                     drop_path_rate=self.drop_path_rates[layer_number - 1],
