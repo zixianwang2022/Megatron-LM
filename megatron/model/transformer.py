@@ -746,12 +746,12 @@ def get_norm(config):
     if args.norm_type == "layer":
         return LayerNorm(
             config.hidden_size,
-            eps=config.layernorm_epsilon,
+            eps=config.norm_epsilon,
             no_persist_layer_norm=not config.persist_layer_norm,
             sequence_parallel=config.sequence_parallel,
             apply_layernorm_1p=args.apply_layernorm_1p)
     elif args.norm_type == "rms":
-        return RMSNorm(args.hidden_size, args.rmsnorm_epsilon)
+        return RMSNorm(args.hidden_size, args.norm_epsilon)
     else:
         raise Exception(f"unsupported norm type '{args.norm_type}'.")
 # <<<
