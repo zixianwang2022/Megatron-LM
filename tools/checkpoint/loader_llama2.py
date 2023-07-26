@@ -514,7 +514,7 @@ def _load_checkpoint(queue, args):
             load_checkpoint_to_model(margs, rank, model, embeddings)
             models.append(model)
             # pax({"model": model})
-        return models
+        return [ [m] for m in models ] # wrap as if from virtual pp stages
 
     set_global_variables(margs, build_tokenizer=False)
     mpu.set_tensor_model_parallel_world_size(margs.tensor_model_parallel_size)
@@ -562,9 +562,9 @@ def _load_checkpoint(queue, args):
     md.swiglu = margs.swiglu
     md.previous_tensor_parallel_size = margs.tensor_model_parallel_size
     md.previous_pipeline_parallel_size = margs.pipeline_model_parallel_size
-    # md.true_vocab_size = true_vocab_size
-    # md.make_vocab_size_divisible_by = margs.make_vocab_size_divisible_by
-    # md.checkpoint_args = checkpoint_args
+    md.true_vocab_size = margs.vocab_size
+    md.make_vocab_size_divisible_by = None
+    md.checkpoint_args = margs
 
     # pax({"margs": margs, "md": md, "tp_size": tp_size})
 
@@ -573,7 +573,9 @@ def _load_checkpoint(queue, args):
     all_models = [get_models(tp_size, md.params_dtype)]
     models = all_models[0][0]
 
-    pax({"models": models})
+    # >>>
+    # pax({"models": models})
+    # <<<
 
     md.consumed_train_samples = 0 # consumed_train_samples
     md.consumed_valid_samples = 0 # consumed_valid_samples
@@ -612,9 +614,9 @@ def _load_checkpoint(queue, args):
                 # Get non-parallel tensors from tp_rank 0
                 layer = models[0].language_model.encoder.layers[layer_num]
                 message["input layernorm weight"] = layer.input_layernorm.weight.data
-                message["input layernorm bias"] = layer.input_layernorm.bias.data
+                # message["input layernorm bias"] = layer.input_layernorm.bias.data
                 message["post layernorm weight"] = layer.post_attention_layernorm.weight.data
-                message["post layernorm bias"] = layer.post_attention_layernorm.bias.data
+                # message["post layernorm bias"] = layer.post_attention_layernorm.bias.data
                 if md.linear_bias:
                     message["dense bias"] = layer.self_attention.dense.bias.data
                     message["mlp l1 bias"] = layer.mlp.dense_4h_to_h.bias.data
