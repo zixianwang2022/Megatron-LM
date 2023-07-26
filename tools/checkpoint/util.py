@@ -144,10 +144,10 @@ def main():
     queue = mp.Queue(maxsize=args.max_queue_size)
 
     # >>>
-    loader._load_checkpoint(queue, args)
+    # loader._load_checkpoint(queue, args)
 
-    from lutil import pax
-    pax({"loader": loader, "saver": saver, "args": args})
+    # from lutil import pax
+    # pax({"loader": loader, "saver": saver, "args": args})
     # <<<
 
     print("Starting saver...")
