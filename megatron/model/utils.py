@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 """Utilities for models."""
 
@@ -7,6 +7,7 @@ import math
 import torch
 
 from megatron import get_args
+from megatron.model import LayerNorm, RMSNorm
 
 def init_method_normal(sigma):
     """Init method based on N(0, sigma)."""
@@ -52,3 +53,18 @@ def openai_gelu(x):
 @torch.jit.script
 def erf_gelu(x):
     return x * 0.5 * (torch.erf(x / 1.41421).to(dtype=x.dtype)+torch.ones_like(x).to(dtype=x.dtype))
+
+
+def get_norm(config):
+    args = get_args()
+    if args.norm_type == "layer":
+        return LayerNorm(
+            config.hidden_size,
+            eps=config.norm_epsilon,
+            no_persist_layer_norm=not config.persist_layer_norm,
+            sequence_parallel=config.sequence_parallel,
+            apply_layernorm_1p=args.apply_layernorm_1p)
+    elif args.norm_type == "rms":
+        return RMSNorm(args.hidden_size, args.norm_epsilon)
+    else:
+        raise Exception(f"unsupported norm type '{args.norm_type}'.")

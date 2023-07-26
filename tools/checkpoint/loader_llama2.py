@@ -43,7 +43,7 @@ def load_args_from_checkpoint(args):
     args.num_attention_heads = llama_args["n_heads"]
     args.num_layers = llama_args["n_layers"]
     args.global_batch_size = 1024
-    args.layernorm_epsilon = llama_args["norm_eps"]
+    args.norm_epsilon = llama_args["norm_eps"]
     args.iteration = 0
     args.add_position_embedding = False
     args.use_rotary_position_embeddings = True
@@ -282,12 +282,12 @@ def set_preprocess_state(args, rank, model, embeddings, state_dict):
 # def set_postprocess_state(model, state_dict):
 def set_postprocess_state(args, model, state_dict):
 
-    model_norm = model.language_model.encoder.final_layernorm
+    model_norm = model.language_model.encoder.final_norm
     model_output = model.language_model.output_layer
     model_norm.weight.data.copy_(state_dict["norm.weight"])
     model_output.weight.data.copy_(state_dict["output.weight"])
 
-    # set_rmsnorm_state(model.language_model.encoder.final_layernormm, state_dict["norm.weight"])
+    # set_rmsnorm_state(model.language_model.encoder.final_normm, state_dict["norm.weight"])
     
     # pax({
     #     "model_norm" : _tp(model_norm.weight.clone()),
@@ -379,9 +379,9 @@ def set_layer_state(args, model, model_state_dict, layer_idx):
 
     set_attn_state(args, layer, layer_state_dict)
     set_mlp_state(args, layer, layer_state_dict)
-    set_rmsnorm_state(layer.input_layernorm,
+    set_rmsnorm_state(layer.input_norm,
                       layer_state_dict["attention_norm.weight"])
-    set_rmsnorm_state(layer.post_attention_layernorm,
+    set_rmsnorm_state(layer.post_attention_norm,
                       layer_state_dict["ffn_norm.weight"])
 
     # pax({
@@ -613,10 +613,8 @@ def _load_checkpoint(queue, args):
 
                 # Get non-parallel tensors from tp_rank 0
                 layer = models[0].language_model.encoder.layers[layer_num]
-                message["input layernorm weight"] = layer.input_layernorm.weight.data
-                # message["input layernorm bias"] = layer.input_layernorm.bias.data
-                message["post layernorm weight"] = layer.post_attention_layernorm.weight.data
-                # message["post layernorm bias"] = layer.post_attention_layernorm.bias.data
+                message["input norm weight"] = layer.input_norm.weight.data
+                message["post norm weight"] = layer.post_attention_norm.weight.data
                 if md.linear_bias:
                     message["dense bias"] = layer.self_attention.dense.bias.data
                     message["mlp l1 bias"] = layer.mlp.dense_4h_to_h.bias.data
@@ -666,12 +664,11 @@ def _load_checkpoint(queue, args):
 
                 total_layer_num = total_layer_num + 1
 
-    # Send final layernorm from tp_rank 0
+    # Send final norm from tp_rank 0
     message = {
-        "weight": models[0].language_model.encoder.final_layernorm.weight.data,
-        "bias": models[0].language_model.encoder.final_layernorm.bias.data
+        "weight": models[0].language_model.encoder.final_norm.weight.data,
     }
-    queue_put("final layernorm", message)
+    queue_put("final norm", message)
 
     if md.output_layer:
         message = {
@@ -681,29 +678,6 @@ def _load_checkpoint(queue, args):
         }
         queue_put("output layer", message)
 
-
-    # Send BERT lm head and binary head if it exists
-    if md.model_type == 'BERT':
-        message = {
-            "weight": models[0].language_model.pooler.dense.weight.data,
-            "bias": models[0].language_model.pooler.dense.bias.data
-        }
-        queue_put("pooler", message)
-
-        message = {
-            "dense weight": models[0].lm_head.dense.weight.data,
-            "dense bias": models[0].lm_head.dense.bias.data,
-            "layernorm weight": models[0].lm_head.layernorm.weight.data,
-            "layernorm bias": models[0].lm_head.layernorm.bias.data
-        }
-        queue_put("lm head", message)
-
-        if md.bert_binary_head:
-            message = {
-                "weight": models[0].binary_head.weight.data,
-                "bias": models[0].binary_head.bias.data
-            }
-            queue_put("binary head", message)
     queue.put("done")
 
 def load_checkpoint(queue, args):
