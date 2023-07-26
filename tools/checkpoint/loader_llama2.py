@@ -10,7 +10,7 @@ import types
 # >>>
 sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
 
-from lutil import pax, tp
+from lutil import pax, tp as _tp
 # <<<
 
 def add_arguments(parser):
@@ -128,7 +128,7 @@ def concatenate_embeddings(args):
 
     # pax({
     #     "embedding_shards" : [ str(t.shape) for t in embedding_shards ],
-    #     "embeddings" : tp(embeddings),
+    #     "embeddings" : _tp(embeddings),
     # })
 
     return embeddings
@@ -144,7 +144,7 @@ def concatenate_embeddings(args):
 #             inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
 #             # inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2)[:(dim//2)].float() / dim))
 #             # >>>
-#             # pax({"dim": dim, "inv_freq": tp(inv_freq)})
+#             # pax({"dim": dim, "inv_freq": _tp(inv_freq)})
 #             # <<<
 #             self.register_buffer('inv_freq', inv_freq)
 
@@ -152,7 +152,7 @@ def concatenate_embeddings(args):
 #             seq = torch.arange(max_seq_len, device=self.inv_freq.device) + offset
 #             freqs = einsum('i , j -> i j', seq.type_as(self.inv_freq), self.inv_freq)
 #             # >>>
-#             # pax({"inv_freq": tp(self.inv_freq)})
+#             # pax({"inv_freq": _tp(self.inv_freq)})
 #             # return self.inv_freq
 #             # return freqs
 #             # <<<
@@ -193,7 +193,7 @@ def concatenate_embeddings(args):
 #     # from llama.model import precompute_freqs_cis
 #     def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
 #         freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
-#         # pax({"dim": dim, "freqs": tp(freqs)})
+#         # pax({"dim": dim, "freqs": _tp(freqs)})
 #         t = torch.arange(end, device=freqs.device)  # type: ignore
 #         # >>>
 #         # return freqs
@@ -228,7 +228,7 @@ def concatenate_embeddings(args):
 #         args.hidden_size // args.num_attention_heads, args.seq_length * 2)
 
 #     # pax({
-#     #     "freqs_cis" : tp(freqs_cis),
+#     #     "freqs_cis" : _tp(freqs_cis),
 #     # })
 
 #     return freqs_cis
@@ -237,8 +237,8 @@ def concatenate_embeddings(args):
 def set_rmsnorm_state(rmsnorm, tensor):
     rmsnorm.weight.data.copy_(tensor)
     # pax({
-    #     "rmsnorm" : tp(rmsnorm.weight.clone()),
-    #     "tensor" : tp(tensor),
+    #     "rmsnorm" : _tp(rmsnorm.weight.clone()),
+    #     "tensor" : _tp(tensor),
     # })
 
 # def set_preprocess_state(model, state_dict, args, rank, embeddings):
@@ -252,9 +252,9 @@ def set_preprocess_state(args, rank, model, embeddings, state_dict):
     # rotary_pos_emb = model.language_model.rotary_pos_emb
     # pax({
     #     "rotary_pos_emb" : rotary_pos_emb,
-    #     "rope.freqs" : tp(state_dict["rope.freqs"]),
-    #     "megatron_freqs" : tp(megatron_freqs),
-    #     "llama_freqs" : tp(llama_freqs),
+    #     "rope.freqs" : _tp(state_dict["rope.freqs"]),
+    #     "megatron_freqs" : _tp(megatron_freqs),
+    #     "llama_freqs" : _tp(llama_freqs),
     # })
     # <<<
 
@@ -269,8 +269,8 @@ def set_preprocess_state(args, rank, model, embeddings, state_dict):
     
     if rank == 7:
         pax({
-            "word_embeddings" : tp(model.language_model.embedding.word_embeddings.weight.clone()),
-            "embeddings" : tp(embeddings),
+            "word_embeddings" : _tp(model.language_model.embedding.word_embeddings.weight.clone()),
+            "embeddings" : _tp(embeddings),
             "padded_vocab_size" : args.padded_vocab_size,
             "rank" : rank,
             "world_size" : world_size,
@@ -290,33 +290,64 @@ def set_postprocess_state(args, model, state_dict):
     # set_rmsnorm_state(model.language_model.encoder.final_layernormm, state_dict["norm.weight"])
     
     # pax({
-    #     "model_norm" : tp(model_norm.weight.clone()),
-    #     "model_output" : tp(model_output.weight.clone()),
-    #     "norm.weight" : tp(state_dict["norm.weight"]),
-    #     "output.weight" : tp(state_dict["output.weight"]),
+    #     "model_norm" : _tp(model_norm.weight.clone()),
+    #     "model_output" : _tp(model_output.weight.clone()),
+    #     "norm.weight" : _tp(state_dict["norm.weight"]),
+    #     "output.weight" : _tp(state_dict["output.weight"]),
     # })
 
-def set_attn_state(layer, layer_state_dict, args):
+def set_attn_state(args, layer, layer_state_dict):
 
+    # Get attention layer & state.
     attn = layer.self_attention
-    attn_state_dict = {k.split(".")[1]:v for k,v in layer_state_dict.items() if k.startswith("attention.")}
+    attn_state_dict = {k.split(".")[1]:v for k,v in layer_state_dict.items()
+                       if k.startswith("attention.")}
 
-    attn.query_key_value.weight.data.copy_(torch.cat([
-        attn_state_dict["wq"],
-        attn_state_dict["wk"],
-        attn_state_dict["wv"],
-    ], dim=0))
+    # Reshape loaded weights.
+    tp = args.tensor_model_parallel_size
+    nh = args.num_attention_heads // tp
+    ng = (args.num_query_groups if args.group_query_attention \
+        else args.num_attention_heads) // tp
+    dim = args.kv_channels
+    assert nh % ng == 0
+
+    # Copy weights.
+    # attn.query_key_value.weight.data.copy_(torch.cat([
+    #     attn_state_dict["wq"],
+    #     attn_state_dict["wk"],
+    #     attn_state_dict["wv"],
+    # ], dim=0))
+    attn.query_key_value.weight.data.copy_(torch.cat([ 
+        attn_state_dict["wq"].reshape((ng, dim*nh//ng, -1)),
+        attn_state_dict["wk"].reshape((ng, dim, -1)),
+        attn_state_dict["wv"].reshape((ng, dim, -1)),
+    ], dim=1).reshape((-1, args.hidden_size)))
     attn.dense.weight.data.copy_(attn_state_dict["wo"])
 
-    pax({
-        "attn" : attn,
-        "attn / query_key_value" : tp(attn.query_key_value.weight.clone()),
-        "attn / dense" : tp(attn.dense.weight.clone()),
-        "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
-        "kv_channels" : args.kv_channels,
-    })
+    # pax({
+    #     "num_attention_heads" : args.num_attention_heads,
+    #     "num_query_groups" : args.num_query_groups,
+    #     "kv_channels" : args.kv_channels,
+    #     # "attn" : attn,
+    #     "attn / query_key_value" : _tp(attn.query_key_value.weight.clone()),
+    #     "attn / dense" : _tp(attn.dense.weight.clone()),
+    #     "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
+    #     "kv_channels" : args.kv_channels,
+    # })
+    # pax({
+    #     "tp" : tp,
+    #     "nh" : nh,
+    #     "ng" : ng,
+    #     "dim" : dim,
+    #     # "wq" : _tp(wq),
+    #     # "wk" : _tp(wk),
+    #     # "wv" : _tp(wv),
+    #     "naive" : _tp(torch.cat([attn_state_dict[k]
+    #                              for k in ("wq", "wk", "wv")], dim=0)),
+    #     "query_key_value" : _tp(query_key_value),
+    # })
 
-def set_mlp_state(layer, layer_state_dict):
+def set_mlp_state(args, layer, layer_state_dict):
 
     mlp = layer.mlp
     mlp_state_dict = {k.split(".")[1]:v for k,v in layer_state_dict.items() if k.startswith("feed_forward")}
@@ -329,15 +360,15 @@ def set_mlp_state(layer, layer_state_dict):
 
     # pax({
     #     "mlp" : mlp,
-    #     "mlp / dense_h_to_4h" : tp(mlp.dense_h_to_4h.weight.clone()),
-    #     "mlp / dense_4h_to_h" : tp(mlp.dense_4h_to_h.weight.clone()),
+    #     "mlp / dense_h_to_4h" : _tp(mlp.dense_h_to_4h.weight.clone()),
+    #     "mlp / dense_4h_to_h" : _tp(mlp.dense_4h_to_h.weight.clone()),
     #     "mlp_state_dict" : {k:str(v.shape) for k,v in mlp_state_dict.items()},
-    #     "h_to_4h" : tp(h_to_4h),
-    #     "4h_to_h" : tp(_4h_to_h),
+    #     "h_to_4h" : _tp(h_to_4h),
+    #     "4h_to_h" : _tp(_4h_to_h),
     # })
 
 # def set_layer_state(model, model_state_dict, layer_idx):
-def set_layer_state(args, model, model, state_dict, layer_idx):
+def set_layer_state(args, model, model_state_dict, layer_idx):
 
     layer = model.language_model.encoder.layers[layer_idx]
 
@@ -346,8 +377,8 @@ def set_layer_state(args, model, model, state_dict, layer_idx):
                         if k.startswith(f"layers.{layer_idx}")}
     # layer_state_dict["rope.freqs"] = model_state_dict["rope.freqs"]
 
-    set_attn_state(layer, layer_state_dict)
-    set_mlp_state(layer, layer_state_dict)
+    set_attn_state(args, layer, layer_state_dict)
+    set_mlp_state(args, layer, layer_state_dict)
     set_rmsnorm_state(layer.input_layernorm,
                       layer_state_dict["attention_norm.weight"])
     set_rmsnorm_state(layer.post_attention_layernorm,
@@ -356,8 +387,8 @@ def set_layer_state(args, model, model, state_dict, layer_idx):
     # pax({
     #     "layer" : layer,
     #     "layer / mlp" : layer.mlp,
-    #     "layer / mlp / h->4h" : tp(layer.mlp.dense_h_to_4h.weight.clone()),
-    #     "layer / mlp / 4h->h" : tp(layer.mlp.dense_4h_to_h.weight.clone()),
+    #     "layer / mlp / h->4h" : _tp(layer.mlp.dense_h_to_4h.weight.clone()),
+    #     "layer / mlp / 4h->h" : _tp(layer.mlp.dense_4h_to_h.weight.clone()),
     #     "layer_state_dict" : {k:str(v.shape) for k,v in layer_state_dict.items()},
     # })
 
