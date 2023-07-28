@@ -531,7 +531,7 @@ class _Llama2Tokenizer(_SentencePieceTokenizer):
         return t
 
     def detokenize(self, ids):
-        return self.tokenizer.decode(t)
+        return self.tokenizer.decode_ids(ids)
 
     @property
     def cls(self):
@@ -547,7 +547,7 @@ class _Llama2Tokenizer(_SentencePieceTokenizer):
 
     @property
     def eod(self):
-        return self._eos_id
+        return self.eos_id
 
     @property
     def additional_special_tokens_ids(self):

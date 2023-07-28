@@ -5,7 +5,8 @@ set -u
 ######## Arguments. ########
 
 # . args.sh
-. /home/lmcafee/src/megatrons/megatron-lm-main/scripts/args.sh
+# . /home/lmcafee/src/megatrons/megatron-lm-main/scripts/args.sh
+. args_gen.sh
 
 ######## Command. ########
 
