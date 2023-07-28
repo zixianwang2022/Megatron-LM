@@ -8,7 +8,7 @@ from typing import List, Literal, Optional, Tuple, TypedDict
 
 import sys
 sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
-from llama.generation import sample_top_p
+from llama.generation import Llama, sample_top_p
 
 from megatron import get_args, get_tokenizer
 from megatron.checkpointing import load_checkpoint
@@ -27,13 +27,71 @@ from lutil import pax, tp
 
 class Lab(abc.ABC):
 
-    @abc.abstractmethod
-    def tokenize(self, text):
-        pass
+    def __init__(self, model, tokenizer, pad_id):
+        self.model = model
+        self.tokenizer = tokenizer
+        self.pad_id = pad_id
+
+    def get_ntokens(self, tokens):
+        assert tokens.shape
+        # return torch.sum((tokens != self.tokenizer.eod).view(-1)).item()
+        return torch.sum((tokens != self.pad_id).view(-1)).item()
 
     @abc.abstractmethod
-    def detokenize(self, tokens):
+    def _tokenize(self, text):
         pass
+
+    def tokenize(self, text):
+
+        args = get_args()
+
+        tokens = torch.tensor(
+            self._tokenize(text),
+            dtype=torch.long,
+            device=torch.cuda.current_device())
+        tokens = torch.cat([
+            tokens,
+            torch.full(
+                (args.seq_length - tokens.numel(),),
+                self.pad_id, # self.tokenizer.eod,
+                dtype=torch.long,
+                device=torch.cuda.current_device(),
+            ),
+        ], dim=0)
+        # tokens = tokens.reshape((1, -1)) # (args.micro_batch_size, -1))
+
+        # pax({
+        #     "text" : text,
+        #     "tokens" : tp(tokens),
+        #     "n_tokens" : self.get_ntokens(tokens),
+        # })
+
+        return tokens
+
+    @abc.abstractmethod
+    def _detokenize(self, tokens):
+        pass
+
+    def detokenize(self, tokens):
+
+        args = get_args()
+
+        assert tokens.shape == (args.seq_length,)
+
+        n_tokens = self.get_ntokens(tokens)
+
+        text = self._detokenize(tokens[:n_tokens].tolist())
+
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print(text)
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        pax({
+            "n_tokens" : n_tokens,
+            "tokens" : tp(tokens),
+            "text" : text,
+        })
+
+        return text
 
     @abc.abstractmethod
     def forward(self, tokens):
@@ -64,46 +122,11 @@ class MegatronLab(Lab):
         # self.config = get_model_config(self.model)
         # self.seq_length = self.model.config.seq_length
 
-    def get_ntokens(self, tokens):
-        assert tokens.shape
-        return torch.sum((tokens != self.tokenizer.eod).view(-1)).item()
+    def _tokenize(self, text):
+        return self.tokenizer.tokenize(text, bos=True, eos=False)
 
-    def tokenize(self, text):
-
-        args = get_args()
-
-        tokens = torch.tensor(
-            self.tokenizer.tokenize(text, bos=True, eos=False),
-            dtype=torch.long,
-            device=torch.cuda.current_device())
-        tokens = torch.cat([
-            tokens,
-            torch.full(
-                (args.seq_length - tokens.numel(),),
-                self.tokenizer.eod,
-                dtype=torch.long,
-                device=torch.cuda.current_device(),
-            ),
-        ], dim=0)
-        # tokens = tokens.reshape((1, -1)) # (args.micro_batch_size, -1))
-
-        return tokens
-
-    def detokenize(self, tokens):
-
-        args = get_args()
-
-        assert tokens.shape == (args.seq_length,)
-
-        n_tokens = self.get_ntokens(tokens)
-
-        text = self.tokenizer.detokenize(tokens.tolist())
-
-        # pax({
-        #     "n_tokens" : n_tokens,
-        #     "tokens" : tp(tokens),
-        #     "text" : text,
-        # })
+    def _detokenize(self, tokens):
+        return self.tokenizer.detokenize(tokens)
 
     def forward(self, tokens):
 
@@ -116,7 +139,7 @@ class MegatronLab(Lab):
 
         attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
             tokens,
-            self.tokenizer.eod,
+            self.pad_id, # self.tokenizer.eod,
             args.reset_position_ids,
             args.reset_attention_mask,
             args.eod_mask_loss)
@@ -125,6 +148,54 @@ class MegatronLab(Lab):
         with torch.no_grad():
             logits = self.model(tokens, position_ids, attention_mask)
 
+        logits = logits[0]
+
+        # pax({
+        #     "tokens" : tp(tokens),
+        #     "logits" : tp(logits),
+        # })
+
+        return logits
+
+class LlamaLab(Lab):
+
+    def __init__(self):
+
+        args = get_args()
+        # args.seq_length = 128
+
+        generator = Llama.build(
+            ckpt_dir="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-7b",
+            tokenizer_path="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model",
+            max_seq_len=args.seq_length,
+            max_batch_size=1,
+            model_parallel_size=None,
+        )
+
+        super().__init__(
+            generator.model,
+            generator.tokenizer,
+            generator.tokenizer.pad_id,
+        )
+
+        # pax({"generator": generator})
+
+    def _tokenize(self, text):
+        return self.tokenizer.encode(text, bos=True, eos=False)
+
+    def _detokenize(self, tokens):
+        return self.tokenizer.decode(tokens)
+
+    def forward(self, tokens):
+
+        args = get_args()
+
+        assert tokens.shape == (args.seq_length,)
+
+        n_tokens = self.get_ntokens(tokens)
+
+        tokens = tokens.reshape((1, -1))
+        logits = self.model.forward(tokens[:, :n_tokens], 0)
         logits = logits[0]
 
         # pax({
@@ -155,7 +226,7 @@ def generate(
     # })
     
     # tokens = tokens.reshape((1, -1))
-    for i in tqdm(range(n_tokens, n_tokens + 10), "gen tokens"):
+    for i in tqdm(range(n_tokens, n_tokens + 200), "gen tokens"):
 
         logits = lab.forward(tokens)
 
@@ -180,6 +251,9 @@ def generate(
 
     output_text = lab.detokenize(tokens)
 
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print(output_text)
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     pax({
         "input_text" : input_text,
         "output_text" : output_text,
@@ -211,10 +285,11 @@ if __name__ == "__main__":
     set_jit_fusion_options()
 
     # Model, tokenizer.
-    lab = MegatronLab()
-    # lab = LlamaLab()
+    # lab = MegatronLab()
+    lab = LlamaLab()
 
-    input_text = "lawrence is the fastest cyclist since "
+    # input_text = "lawrence is the fastest cyclist since "
+    input_text = "the three most important inventions are "
     max_output_len = 64
 
     # Generate.
