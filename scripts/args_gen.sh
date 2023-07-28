@@ -4,6 +4,7 @@
 
 set -u
 
+# export CUDA_LAUNCH_BLOCKING=1 # llama
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NCCL_IB_QPS_PER_CONNECTION=4
 export NCCL_SOCKET_IFNAME=^vlan,lo
