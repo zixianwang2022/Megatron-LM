@@ -2,6 +2,11 @@
 
 ######## setup. ########
 
+if [ "$#" != "1" ]; then
+    echo "expected 1 arg, found $#."
+    exit 1
+fi
+
 set -u
 
 # export CUDA_LAUNCH_BLOCKING=1 # llama
@@ -64,6 +69,8 @@ ARGS=" \
     --no-position-embedding \
     --use-rotary-position-embeddings \
     --swiglu \
+    \
+    --gen-model $1 \
 "
 
 # eof.
