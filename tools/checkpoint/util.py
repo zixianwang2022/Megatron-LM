@@ -99,11 +99,6 @@ def load_plugin(plugin_type, name):
         except ModuleNotFoundError:
             sys.exit(f"Unable to load {plugin_type} plugin {name}. Exiting.")
 
-    # >>>
-    # from lutil import pax
-    # pax({"plugin": plugin})
-    # <<<
-
     if not hasattr(plugin, 'add_arguments'):
         sys.exit(f"{module_name} module is not a plugin. Exiting.")
 
@@ -142,13 +137,6 @@ def main():
     args = parser.parse_args()
 
     queue = mp.Queue(maxsize=args.max_queue_size)
-
-    # >>>
-    # loader._load_checkpoint(queue, args)
-
-    # from lutil import pax
-    # pax({"loader": loader, "saver": saver, "args": args})
-    # <<<
 
     print("Starting saver...")
     saver_proc = mp.Process(target=saver.save_checkpoint, args=(queue, args))
