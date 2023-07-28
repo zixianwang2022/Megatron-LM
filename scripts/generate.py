@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
-# import numpy as np
+import abc
 import torch
 from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 from tqdm import tqdm
@@ -17,7 +17,6 @@ from megatron.core.enums import ModelType
 from megatron.core.utils import get_model_config
 from megatron.initialize import initialize_megatron, set_jit_fusion_options
 from megatron.model import DistributedDataParallel as LocalDDP, Float16Module
-# from megatron.training import setup_model_and_optimizer
 from megatron.training import get_model as _get_model
 from megatron.utils import get_ltor_masks_and_position_ids, unwrap_model
 from pretrain_gpt import model_provider
@@ -26,87 +25,118 @@ from pretrain_gpt import model_provider
 from lutil import pax, tp
 # <<<
 
-def get_model(no_wd_decay_cond=None,
-              scale_lr_cond=None,
-              lr_mult=1.0):
-    """Setup model and optimizer."""
-    args = get_args()
+class Lab(abc.ABC):
 
-    models = _get_model(model_provider, ModelType.encoder_or_decoder)
-    unwrapped_model = unwrap_model(models, (torchDDP, LocalDDP, Float16Module))
-    args.iteration = load_checkpoint(models, None, None)
+    @abc.abstractmethod
+    def tokenize(self, text):
+        pass
 
-    # pax({"models": models})
+    @abc.abstractmethod
+    def detokenize(self, tokens):
+        pass
 
-    return models[0]
+    @abc.abstractmethod
+    def forward(self, tokens):
+        pass
 
-def get_tokens(tokenizer, text):
+class MegatronLab(Lab):
 
-    args = get_args()
+    @classmethod
+    def get_model(cls, no_wd_decay_cond=None, scale_lr_cond=None, lr_mult=1.0):
+        """Setup model and optimizer."""
+        args = get_args()
 
-    tokens = torch.tensor(
-        tokenizer.tokenize(text, bos=True, eos=False),
-        dtype=torch.long,
-        device=torch.cuda.current_device())
-    tokens = torch.cat([
-        tokens,
-        torch.full(
-            (args.seq_length - tokens.numel(),),
-            tokenizer.eod,
+        models = _get_model(model_provider, ModelType.encoder_or_decoder)
+        unwrapped_model = unwrap_model(models, (torchDDP, LocalDDP, Float16Module))
+        args.iteration = load_checkpoint(models, None, None)
+
+        # pax({"models": models})
+
+        return models[0]
+
+    def __init__(self):
+
+        super().__init__()
+
+        self.model = self.get_model()
+        self.tokenizer = get_tokenizer()
+
+        # self.config = get_model_config(self.model)
+        # self.seq_length = self.model.config.seq_length
+
+    def get_ntokens(self, tokens):
+        assert tokens.shape
+        return torch.sum((tokens != self.tokenizer.eod).view(-1)).item()
+
+    def tokenize(self, text):
+
+        args = get_args()
+
+        tokens = torch.tensor(
+            self.tokenizer.tokenize(text, bos=True, eos=False),
             dtype=torch.long,
-            device=torch.cuda.current_device(),
-        ),
-    ], dim=0)
-    tokens = tokens.reshape((1, -1)) # (args.micro_batch_size, -1))
+            device=torch.cuda.current_device())
+        tokens = torch.cat([
+            tokens,
+            torch.full(
+                (args.seq_length - tokens.numel(),),
+                self.tokenizer.eod,
+                dtype=torch.long,
+                device=torch.cuda.current_device(),
+            ),
+        ], dim=0)
+        # tokens = tokens.reshape((1, -1)) # (args.micro_batch_size, -1))
 
-    return tokens
+        return tokens
 
-def get_ntokens(tokens):
-    return torch.sum((tokens != tokenizer.eod).view(-1)).item()
+    def detokenize(self, tokens):
 
-def get_text(tokenizer, tokens):
+        args = get_args()
 
-    assert tokens.shape == (args.seq_length,)
+        assert tokens.shape == (args.seq_length,)
 
-    n_tokens = get_ntokens(tokens)
+        n_tokens = self.get_ntokens(tokens)
 
-    text = tokenizer.detokenize(tokens.tolist())
+        text = self.tokenizer.detokenize(tokens.tolist())
 
-    pax({
-        "tokens" : tp(tokens),
-        "n_tokens" : get_ntokens(tokens),
-        "text" : text,
-    })
+        # pax({
+        #     "n_tokens" : n_tokens,
+        #     "tokens" : tp(tokens),
+        #     "text" : text,
+        # })
 
-# def get_input_args(tokenizer, text):
+    def forward(self, tokens):
 
-#     # Get the masks and postition ids.
-#     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
-#         tokens,
-#         tokenizer.eod,
-#         args.reset_position_ids,
-#         args.reset_attention_mask,
-#         args.eod_mask_loss)
+        args = get_args()
 
-#     # Input args.
-#     args = {
-#         "text" : text,
-#         "tokens" : tokens,
-#         "attention_mask" : attention_mask,
-#         "loss_mask" : loss_mask,
-#         "position_ids" : position_ids,
-#     }
+        # assert tokens.shape == (1, args.seq_length)
+        assert tokens.shape == (args.seq_length,)
 
-#     # >>>
-#     # pax({"args": args})
-#     # <<<
+        tokens = tokens.reshape((1, -1))
 
-#     return args
+        attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
+            tokens,
+            self.tokenizer.eod,
+            args.reset_position_ids,
+            args.reset_attention_mask,
+            args.eod_mask_loss)
+        
+        self.model.eval()
+        with torch.no_grad():
+            logits = self.model(tokens, position_ids, attention_mask)
+
+        logits = logits[0]
+
+        # pax({
+        #     "tokens" : tp(tokens),
+        #     "logits" : tp(logits),
+        # })
+
+        return logits
 
 @torch.inference_mode()
 def generate(
-        model,
-        tokenizer,
+        lab: Lab,
         input_text: str,
         max_output_len: int,
         temperature: float = 0.6,
@@ -115,45 +145,40 @@ def generate(
         echo: bool = False,
 ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
 
-    tokens = get_tokens(tokenizer, input_text)
-    n_tokens = get_ntokens(tokens)
+    tokens = lab.tokenize(input_text)
+    n_tokens = lab.get_ntokens(tokens)
 
     # pax({
     #     "input_text" : input_text,
     #     "tokens" : tp(tokens),
     #     "n_tokens" : n_tokens,
     # })
-
+    
+    # tokens = tokens.reshape((1, -1))
     for i in tqdm(range(n_tokens, n_tokens + 10), "gen tokens"):
 
-        attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
-            tokens,
-            tokenizer.eod,
-            args.reset_position_ids,
-            args.reset_attention_mask,
-            args.eod_mask_loss)
-        
-        model.eval()
-        with torch.no_grad():
-            logits = model(tokens, position_ids, attention_mask)
+        logits = lab.forward(tokens)
 
         if temperature > 0:
-            probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
+            # probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
+            probs = torch.softmax(logits[-1] / temperature, dim=-1)
             next_token = sample_top_p(probs, top_p)
         else:
-            next_token = torch.argmax(logits[:, -1], dim=-1)
+            # next_token = torch.argmax(logits[:, -1], dim=-1)
+            next_token = torch.argmax(logits[-1], dim=-1)
 
         next_token = next_token.reshape(-1)
-        tokens[0, i] = next_token
+        tokens[i] = next_token
 
         # pax({
         #     "tokens" : tp(tokens),
         #     "logits" : tp(logits),
         #     "next_token" : next_token.item(),
-        #     "n_tokens" : get_ntokens(tokens),
+        #     "n_tokens" : lab.get_ntokens(tokens),
         # })
+    # tokens = tokens.reshape(-1)
 
-    output_text = get_text(tokenizer, tokens[0])
+    output_text = lab.detokenize(tokens)
 
     pax({
         "input_text" : input_text,
@@ -181,28 +206,19 @@ if __name__ == "__main__":
 
     # {"dim": 4096, "multiple_of": 256, "n_heads": 32, "n_layers": 32, "norm_eps": 1e-05, "vocab_size": -1}
 
-    # Initalize Megatron & JIT.
+    # Initalize.
     initialize_megatron()
     set_jit_fusion_options()
 
-    args = get_args()
-    # pax({"args": args})
+    # Model, tokenizer.
+    lab = MegatronLab()
+    # lab = LlamaLab()
 
-    # Model, optimizer, and learning rate.
-    # model, optimizer, opt_param_scheduler = setup_model_and_optimizer(
-    # models, _, _ = setup_model_and_optimizer(
-    #     model_provider, ModelType.encoder_or_decoder)
-    # model = models[0]
-
-    model = get_model()
-    config = get_model_config(model)
-    # pax({"model": model, "config" : config})
-
-    tokenizer = get_tokenizer()
     input_text = "lawrence is the fastest cyclist since "
     max_output_len = 64
 
-    output_text = generate(model, tokenizer, input_text, max_output_len)
+    # Generate.
+    output_text = generate(lab, input_text, max_output_len)
 
     pax({
         "tokenizer" : tokenizer,
