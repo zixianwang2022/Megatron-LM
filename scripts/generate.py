@@ -117,7 +117,7 @@ class MegatronLab(Lab):
 
     def __init__(self):
 
-        if 0:
+        if 1:
             tokenizer = get_tokenizer()
             super().__init__(self.get_model(), tokenizer, tokenizer.eod)
         else:
@@ -133,15 +133,15 @@ class MegatronLab(Lab):
         # self.config = get_model_config(self.model)
         # self.seq_length = self.model.config.seq_length
 
-    # def _tokenize(self, text):
-    #     return self.tokenizer.tokenize(text, bos=True, eos=False)
-    # def _detokenize(self, tokens):
-    #     return self.tokenizer.detokenize(tokens)
-
     def _tokenize(self, text):
-        return self.tokenizer.encode(text, bos=True, eos=False)
+        return self.tokenizer.tokenize(text, bos=True, eos=False)
     def _detokenize(self, tokens):
-        return self.tokenizer.decode(tokens)
+        return self.tokenizer.detokenize(tokens)
+
+    # def _tokenize(self, text):
+    #     return self.tokenizer.encode(text, bos=True, eos=False)
+    # def _detokenize(self, tokens):
+    #     return self.tokenizer.decode(tokens)
 
     def forward(self, tokens):
 
@@ -238,14 +238,14 @@ def generate(
     tokens = lab.tokenize(input_text)
     n_tokens = lab.get_ntokens(tokens)
 
-    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    # print(tokens[:n_tokens].tolist())
-    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    # pax({
-    #     "input_text" : input_text,
-    #     "tokens" : tp(tokens),
-    #     "n_tokens" : n_tokens,
-    # })
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print(tokens[:n_tokens].tolist())
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    pax({
+        "input_text" : input_text,
+        "tokens" : tp(tokens),
+        "n_tokens" : n_tokens,
+    })
     
     # tokens = tokens.reshape((1, -1))
     for i in tqdm(range(n_tokens, n_tokens + 50), "gen tokens"):
