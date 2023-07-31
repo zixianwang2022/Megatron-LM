@@ -15,7 +15,20 @@ export NCCL_IB_QPS_PER_CONNECTION=4
 export NCCL_SOCKET_IFNAME=^vlan,lo
 unset NCCL_DEBUG
 
-REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
+# >>>
+# MEGATRON_REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
+# LLAMA_REPO_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama"
+# TOKENIZER_PATH="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
+# MEGATRON_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-70b-megatron"
+# LLAMA_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-7b"
+# +++
+MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/src/megatrons/megatron-lm-llama2-loader"
+LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
+# TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model"
+TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/tokenizer_hf/tokenizer.model"
+MEGATRON_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/llama-2-7b-megatron"
+LLAMA_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/llama-2-7b"
+# <<<
 
 ######## args. ########
 
@@ -52,8 +65,9 @@ ARGS=" \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
     --tokenizer-type Llama2 \
-    --tokenizer-model /lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model \
-    --load /lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-70b-megatron \
+    --tokenizer-model ${TOKENIZER_PATH} \
+    --load ${MEGATRON_CHECKPOINT_DIR} \
+    --load-llama ${LLAMA_CHECKPOINT_DIR} \
     --no-load-optim \
     --finetune \
     \
