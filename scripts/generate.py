@@ -183,8 +183,8 @@ class LlamaLab(Lab):
         # args.seq_length = 128
 
         generator = Llama.build(
-            ckpt_dir=load_llama,
-            tokenizer_path=tokenizer_path,
+            ckpt_dir=args.load_llama,
+            tokenizer_path=args.tokenizer_model, # path,
             max_seq_len=args.seq_length,
             max_batch_size=1,
             model_parallel_size=None,
@@ -216,10 +216,10 @@ class LlamaLab(Lab):
         logits = self.model.forward(tokens[:, :n_tokens], 0)
         logits = logits[0]
 
-        pax({
-            "tokens" : tp(tokens),
-            "logits" : tp(logits),
-        })
+        # pax({
+        #     "tokens" : tp(tokens),
+        #     "logits" : tp(logits),
+        # })
 
         return logits
 
@@ -227,9 +227,10 @@ class LlamaLab(Lab):
 def generate(
         lab: Lab,
         input_text: str,
-        # max_output_len: int,
+        max_output_len: int,
         # temperature: float = 0.6,
-        temperature: float = 0.,
+        # temperature: float = 0.,
+        temperature: float = 0.99,
         top_p: float = 0.9,
         # logprobs: bool = False,
         # echo: bool = False,
@@ -238,17 +239,17 @@ def generate(
     tokens = lab.tokenize(input_text)
     n_tokens = lab.get_ntokens(tokens)
 
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print(tokens[:n_tokens].tolist())
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    pax({
-        "input_text" : input_text,
-        "tokens" : tp(tokens),
-        "n_tokens" : n_tokens,
-    })
+    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    # print(tokens[:n_tokens].tolist())
+    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    # pax({
+    #     "input_text" : input_text,
+    #     "tokens" : tp(tokens),
+    #     "n_tokens" : n_tokens,
+    # })
     
     # tokens = tokens.reshape((1, -1))
-    for i in tqdm(range(n_tokens, n_tokens + 50), "gen tokens"):
+    for i in tqdm(range(n_tokens, n_tokens + max_output_len), "gen tokens"):
 
         logits = lab.forward(tokens)
 
@@ -284,6 +285,7 @@ def generate(
 def add_textgen_args(parser):
     group = parser.add_argument_group(title="Text generation.")
     group.add_argument("--gen-model", choices=["megatron","llama"], required=True)
+    group.add_argument("--load-llama", required=True)
     return parser
 
 if __name__ == "__main__":
@@ -303,15 +305,23 @@ if __name__ == "__main__":
     else:
         raise Exception("specialize for '%s'." % args.gen_model)
 
-    input_text = "lawrence is the fastest cyclist since "
+    # input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
-    # input_text = "the funniest knock knock joke i ever heard was "
-    # max_output_len = 64
+    input_text = "the funniest knock knock joke i ever heard was "
+    # input_text = "the craziest thing i've ever heard was "
+    # input_text = "i'm not the kind of person to "
+    # input_text = "the best year in history was "
+    # input_text = "the best year in history was 1984 because "
 
     # Generate.
-    output_text = generate(lab, input_text) # , max_output_len)
+    output_text = generate(
+        lab,
+        input_text,
+        max_output_len=300,
+        temperature=0.8,
+    )
 
     pax({
         "tokenizer" : tokenizer,
