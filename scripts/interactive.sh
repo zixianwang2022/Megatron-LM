@@ -12,8 +12,8 @@ set -u
 
 NPROCS=1 # 8
 CMD="\
-    cd ${REPO_DIR} && \
-    export PYTHONPATH=$PYTHONPATH:${REPO_DIR}:/home/lmcafee/src && \
+    cd ${MEGATRON_REPO_DIR} && \
+    export PYTHONPATH=$PYTHONPATH:${MEGATRON_REPO_DIR}:${LLAMA_REPO_DIR}:/home/lmcafee/src && \
     python -m torch.distributed.run \
     --nproc_per_node ${NPROCS} \
     --nnodes 1 \

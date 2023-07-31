@@ -6,8 +6,8 @@ from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 from tqdm import tqdm
 from typing import List, Literal, Optional, Tuple, TypedDict
 
-import sys
-sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
+# import sys
+# sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
 from llama.generation import Llama, sample_top_p
 from llama.tokenizer import Tokenizer as OriginalLlamaTokenizer
 
@@ -26,7 +26,7 @@ from pretrain_gpt import model_provider
 from lutil import pax, tp
 # <<<
 
-tokenizer_path = "/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
+# tokenizer_path = "/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
 
 class Lab(abc.ABC):
 
@@ -183,7 +183,7 @@ class LlamaLab(Lab):
         # args.seq_length = 128
 
         generator = Llama.build(
-            ckpt_dir="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-7b",
+            ckpt_dir=load_llama,
             tokenizer_path=tokenizer_path,
             max_seq_len=args.seq_length,
             max_batch_size=1,
