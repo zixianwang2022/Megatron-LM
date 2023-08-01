@@ -201,6 +201,7 @@ class MegatronLab(Lab):
 
         acts = {}
         lm = self.model.module.module.language_model
+        pax({"weight": lm.embedding.word_embeddings.weight.clone()})
         acts["embeddings"] = lm.embedding(input_ids, position_ids, # [s, b, h]
                                           tokentype_ids=None)
         acts["rope_freqs"] = lm.rotary_pos_emb(args.seq_length)
@@ -330,19 +331,30 @@ class LlamaLab(Lab):
         return logits
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    def forward_debug_preprocess(self, input_ids, position_ids):
+    def forward_debug_preprocess(self, input_ids, start_pos=0):
 
         acts = {}
-        lm = self.model.module.module.language_model
-        acts["embeddings"] = lm.embedding(input_ids, position_ids, # [s, b, h]
-                                          tokentype_ids=None)
-        acts["rope_freqs"] = lm.rotary_pos_emb(args.seq_length)
-        # pax({"acts": acts})
+
+        acts["hidden_states"] = self.model.tok_embeddings(input_ids)
+        freqs_cis = self.model.freqs_cis.to(input_ids.device)
+        freqs_cis = freqs_cis[start_pos : start_pos + args.seq_length]
+        acts["freqs_cis"] = freqs_cis
+
+        # _bsz, seqlen = input_ids.shape
+        mask = torch.full((1, 1, args.seq_length, args.seq_length),
+                          float("-inf"),
+                          device=input_ids.device)
+        mask = torch.triu(mask, diagonal=start_pos+1).type_as(acts["hidden_states"])
+        acts["attn_mask"] = mask
+
+        # pax({"input_ids": input_ids, **acts})
+        pax({"tok_embeddings": self.model.tok_embeddings.weight.clone()})
+
         return acts
 
-    def forward_debug_layer(self, hidden_states, attn_mask, rope_freqs):
+    def forward_debug_layer(self, hidden_states, attn_mask, freqs_cis):
 
-        layer = self.model.module.module.language_model.encoder.layers[0]
+        layer = self.model.layers[0]
 
         # pax({"layer": layer})
 
@@ -353,9 +365,10 @@ class LlamaLab(Lab):
         #                          attn_mask,
         #                          rotary_pos_emb=rope_freqs)
         # acts["mlp_norm"] = layer.post_attention_norm(
-        acts["output"] = layer(hidden_states=hidden_states,
-                               attention_mask=attn_mask,
-                               rotary_pos_emb=rope_freqs)
+        acts["output"] = layer(x=hidden_states,
+                               start_pos=0,
+                               freqs_cis=freqs_cis,
+                               mask=attn_mask)
 
         # pax({
         #     "hidden_states" : hidden_states,
@@ -363,13 +376,21 @@ class LlamaLab(Lab):
         #     "rope_freqs" : rope_freqs,
         #     "acts" : acts,
         # })
+        # pax(acts)
 
         return acts
 
-    def forward_debug_model(self, input_ids, position_ids, attention_mask):
+    def forward_debug_model(self, input_ids):
+
+        # args = get_args()
+
         acts = {}
         acts["preprocess"] = self.forward_debug_preprocess(input_ids)
-        acts["layer"] = self.forward_debug_layer(acts["preprocess"]["embeddings"])
+        acts["layer"] = self.forward_debug_layer(
+            acts["preprocess"]["hidden_states"],
+            acts["preprocess"]["attn_mask"],
+            acts["preprocess"]["freqs_cis"])
+
         pax(acts)
 
     # def forward_debug(self, tokens):

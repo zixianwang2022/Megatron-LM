@@ -114,7 +114,7 @@ def load_vocab_size(args):
 def concatenate_embeddings(args):
 
     # >>>
-    return None
+    # return None
     # <<<
 
     # Load & concatenate embeddings.
@@ -266,6 +266,8 @@ def set_preprocess_state(args, rank, model, embeddings, state_dict):
     end_idx = min(embeddings.shape[0], start_idx + shard_size)
 
     model.language_model.embedding.word_embeddings.weight[0:(end_idx-start_idx)].data.copy_(embeddings[start_idx:end_idx])
+
+    # pax({"embeddings": embeddings})
     
     if rank == 7:
         pax({
@@ -400,7 +402,7 @@ def load_checkpoint_to_model(args, rank, model, embeddings):
     state_dict = torch.load(filename)
 
     # Set model state.
-    # set_preprocess_state(args, rank, model, embeddings, state_dict)
+    set_preprocess_state(args, rank, model, embeddings, state_dict)
     set_postprocess_state(args, model, state_dict)
     for layer_idx in tqdm(range(args.num_layers), "set layer states"):
         set_layer_state(args, model, state_dict, layer_idx)
