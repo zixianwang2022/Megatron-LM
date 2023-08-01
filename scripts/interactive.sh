@@ -4,9 +4,11 @@ set -u
 
 ######## Arguments. ########
 
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 # . args.sh
 # . /home/lmcafee/src/megatrons/megatron-lm-main/scripts/args.sh
-. args_gen.sh "$@"
+. $DIR/args_gen.sh "$@"
 
 ######## Command. ########
 
