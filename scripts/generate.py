@@ -19,7 +19,7 @@ from megatron.core.utils import get_model_config
 from megatron.initialize import initialize_megatron, set_jit_fusion_options
 from megatron.model import DistributedDataParallel as LocalDDP, Float16Module
 from megatron.training import get_model as _get_model
-from megatron.utils import get_ltor_masks_and_position_ids, unwrap_model
+from megatron.utils import get_ltor_masks_and_position_ids # , unwrap_model
 from pretrain_gpt import model_provider
 
 # >>>
@@ -127,10 +127,13 @@ class MegatronLab(Lab):
         args = get_args()
 
         models = _get_model(model_provider, ModelType.encoder_or_decoder)
-        unwrapped_model = unwrap_model(models, (torchDDP, LocalDDP, Float16Module))
+        # unwrapped_model = unwrap_model(models, (torchDDP, LocalDDP, Float16Module))
         args.iteration = load_checkpoint(models, None, None)
 
-        # pax({"models": models})
+        # pax({
+        #     "models" : models,
+        #     "models / 0" : models[0].module.module.language_model.embedding.word_embeddings.weight,
+        # })
 
         return models[0]
 
@@ -201,11 +204,16 @@ class MegatronLab(Lab):
 
         acts = {}
         lm = self.model.module.module.language_model
-        pax({"weight": lm.embedding.word_embeddings.weight.clone()})
-        acts["embeddings"] = lm.embedding(input_ids, position_ids, # [s, b, h]
-                                          tokentype_ids=None)
+        acts["hidden_states"] = lm.embedding(input_ids, position_ids, # [s, b, h]
+                                             tokentype_ids=None)
         acts["rope_freqs"] = lm.rotary_pos_emb(args.seq_length)
-        # pax({"acts": acts})
+
+        # pax({
+        #     "input_ids" : input_ids,
+        #     "weight" : lm.embedding.word_embeddings.weight,
+        #     **acts,
+        # })
+
         return acts
 
     def forward_debug_layer(self, hidden_states, attn_mask, rope_freqs):
@@ -225,21 +233,22 @@ class MegatronLab(Lab):
                                attention_mask=attn_mask,
                                rotary_pos_emb=rope_freqs)
 
-        # pax({
-        #     "hidden_states" : hidden_states,
-        #     "attn_mask" : attn_mask,
-        #     "rope_freqs" : rope_freqs,
-        #     "acts" : acts,
-        # })
+        pax({
+            "hidden_states" : hidden_states,
+            "attn_mask" : attn_mask,
+            "rope_freqs" : rope_freqs,
+            **acts,
+        })
 
         return acts
 
     def forward_debug_model(self, input_ids, position_ids, attention_mask):
         acts = {}
         acts["preprocess"] = self.forward_debug_preprocess(input_ids,position_ids)
-        acts["layer"] = self.forward_debug_layer(acts["preprocess"]["embeddings"],
-                                                 attention_mask,
-                                                 acts["preprocess"]["rope_freqs"])
+        acts["layer"] = self.forward_debug_layer(
+            acts["preprocess"]["hidden_states"],
+            attention_mask,
+            acts["preprocess"]["rope_freqs"])
         pax(acts)
 
     # def forward_debug(self, tokens):
@@ -347,8 +356,11 @@ class LlamaLab(Lab):
         mask = torch.triu(mask, diagonal=start_pos+1).type_as(acts["hidden_states"])
         acts["attn_mask"] = mask
 
-        # pax({"input_ids": input_ids, **acts})
-        pax({"tok_embeddings": self.model.tok_embeddings.weight.clone()})
+        # pax({
+        #     "input_ids" : input_ids,
+        #     "tok_embeddings" : self.model.tok_embeddings.weight,
+        #     **acts,
+        # })
 
         return acts
 
@@ -429,8 +441,9 @@ def debug(lab):
 
     # >>>
     # input_text = "i am the kind of text that you want to tokenize for all your needs. thank you, it's time that you learn how to debug a llm. they are mean and far from lean, and you're a machine."
-    # input_tokens = lab.tokenize(input_text)
+    # input_ids = lab.tokenize(input_text)
     # input_ntokens = lab.get_ntokens(input_tokens)
+    torch.cuda.manual_seed(0)
     input_ids = torch.randint(low=0,
                               high=args.padded_vocab_size,
                               size=(args.seq_length,),

@@ -617,6 +617,10 @@ class TransformerLanguageModel(MegatronModule):
                     state_dict_self_attention[key] = state_dict_[key]
             state_dict_ = state_dict_self_attention
 
+            # >>>
+            # from lutil import pax
+            # pax({"state_dict_": list(state_dict_.keys())})
+            # <<<
             self.encoder.load_state_dict(state_dict_, strict=strict)
 
         # Pooler.
