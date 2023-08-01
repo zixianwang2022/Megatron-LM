@@ -23,7 +23,14 @@ from megatron.utils import get_ltor_masks_and_position_ids, unwrap_model
 from pretrain_gpt import model_provider
 
 # >>>
-from lutil import pax, tp
+from lutil import pax as _pax, tp
+def pax(a):
+    args = get_args()
+    return _pax({
+        "gen_model" : args.gen_model,
+        "~~" : "~~",
+        **{k:tp(v) for k,v in a.items()},
+    })
 # <<<
 
 # tokenizer_path = "/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
@@ -100,6 +107,18 @@ class Lab(abc.ABC):
     def forward(self, tokens):
         pass
 
+    # @abc.abstractmethod
+    # def forward_preprocess(self, inp):
+    #     pass
+    # @abc.abstractmethod
+    # def forward_layer(self, inp):
+    #     pass
+    # def get_word_emb(self, tokens):
+    #     return self.forward_word_emb(tokens)
+    @abc.abstractmethod
+    def forward_debug(self, tokens):
+        pass
+
 class MegatronLab(Lab):
 
     @classmethod
@@ -117,11 +136,13 @@ class MegatronLab(Lab):
 
     def __init__(self):
 
-        if 1:
+        args = get_args()
+
+        if 0:
             tokenizer = get_tokenizer()
             super().__init__(self.get_model(), tokenizer, tokenizer.eod)
         else:
-            tokenizer = OriginalLlamaTokenizer(model_path=tokenizer_path)
+            tokenizer = OriginalLlamaTokenizer(model_path=args.tokenizer_model)
             # pax({
             #     "tokenizer" : tokenizer,
             #     "n_words" : tokenizer.n_words,
@@ -133,15 +154,15 @@ class MegatronLab(Lab):
         # self.config = get_model_config(self.model)
         # self.seq_length = self.model.config.seq_length
 
-    def _tokenize(self, text):
-        return self.tokenizer.tokenize(text, bos=True, eos=False)
-    def _detokenize(self, tokens):
-        return self.tokenizer.detokenize(tokens)
-
     # def _tokenize(self, text):
-    #     return self.tokenizer.encode(text, bos=True, eos=False)
+    #     return self.tokenizer.tokenize(text, bos=True, eos=False)
     # def _detokenize(self, tokens):
-    #     return self.tokenizer.decode(tokens)
+    #     return self.tokenizer.detokenize(tokens)
+
+    def _tokenize(self, text):
+        return self.tokenizer.encode(text, bos=True, eos=False)
+    def _detokenize(self, tokens):
+        return self.tokenizer.decode(tokens)
 
     def forward(self, tokens):
 
@@ -174,6 +195,91 @@ class MegatronLab(Lab):
         })
 
         return logits
+
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    def forward_debug_preprocess(self, input_ids, position_ids):
+
+        acts = {}
+        lm = self.model.module.module.language_model
+        acts["embeddings"] = lm.embedding(input_ids, position_ids, # [s, b, h]
+                                          tokentype_ids=None)
+        acts["rope_freqs"] = lm.rotary_pos_emb(args.seq_length)
+        # pax({"acts": acts})
+        return acts
+
+    def forward_debug_layer(self, hidden_states, attn_mask, rope_freqs):
+
+        layer = self.model.module.module.language_model.encoder.layers[0]
+
+        # pax({"layer": layer})
+
+        acts = {}
+        # acts["attn_norm"] = layer.input_norm(hidden_states)
+        # acts["attn_output"], acts["attn_bias"] = \
+        #     layer.self_attention(acts["attn_norm"],
+        #                          attn_mask,
+        #                          rotary_pos_emb=rope_freqs)
+        # acts["mlp_norm"] = layer.post_attention_norm(
+        acts["output"] = layer(hidden_states=hidden_states,
+                               attention_mask=attn_mask,
+                               rotary_pos_emb=rope_freqs)
+
+        # pax({
+        #     "hidden_states" : hidden_states,
+        #     "attn_mask" : attn_mask,
+        #     "rope_freqs" : rope_freqs,
+        #     "acts" : acts,
+        # })
+
+        return acts
+
+    def forward_debug_model(self, input_ids, position_ids, attention_mask):
+        acts = {}
+        acts["preprocess"] = self.forward_debug_preprocess(input_ids,position_ids)
+        acts["layer"] = self.forward_debug_layer(acts["preprocess"]["embeddings"],
+                                                 attention_mask,
+                                                 acts["preprocess"]["rope_freqs"])
+        pax(acts)
+
+    # def forward_debug(self, tokens):
+    def forward_debug(self, input_ids):
+
+        args = get_args()
+
+        assert input_ids.shape == (args.seq_length,)
+        input_ids = input_ids.reshape((1, -1))
+
+        attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
+            input_ids,
+            self.pad_id, # self.tokenizer.eod,
+            args.reset_position_ids,
+            args.reset_attention_mask,
+            args.eod_mask_loss)
+        
+        # pax({
+        #     "padded_vocab_size" : args.padded_vocab_size,
+        #     "input_ids" : input_ids,
+        #     "attention_mask" : attention_mask,
+        #     "loss_mask" : loss_mask,
+        #     "position_ids" : position_ids,
+        # })
+
+        self.model.eval()
+        with torch.no_grad():
+            activation_map = self.forward_debug_model(input_ids,
+                                                      position_ids,
+                                                      attention_mask)
+            pax({"activation_map": activation_map})
+
+        logits = logits[0]
+
+        pax({
+            "tokens" : tp(tokens),
+            "logits" : tp(logits),
+        })
+
+        return logits
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 class LlamaLab(Lab):
 
@@ -222,6 +328,105 @@ class LlamaLab(Lab):
         # })
 
         return logits
+
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    def forward_debug_preprocess(self, input_ids, position_ids):
+
+        acts = {}
+        lm = self.model.module.module.language_model
+        acts["embeddings"] = lm.embedding(input_ids, position_ids, # [s, b, h]
+                                          tokentype_ids=None)
+        acts["rope_freqs"] = lm.rotary_pos_emb(args.seq_length)
+        # pax({"acts": acts})
+        return acts
+
+    def forward_debug_layer(self, hidden_states, attn_mask, rope_freqs):
+
+        layer = self.model.module.module.language_model.encoder.layers[0]
+
+        # pax({"layer": layer})
+
+        acts = {}
+        # acts["attn_norm"] = layer.input_norm(hidden_states)
+        # acts["attn_output"], acts["attn_bias"] = \
+        #     layer.self_attention(acts["attn_norm"],
+        #                          attn_mask,
+        #                          rotary_pos_emb=rope_freqs)
+        # acts["mlp_norm"] = layer.post_attention_norm(
+        acts["output"] = layer(hidden_states=hidden_states,
+                               attention_mask=attn_mask,
+                               rotary_pos_emb=rope_freqs)
+
+        # pax({
+        #     "hidden_states" : hidden_states,
+        #     "attn_mask" : attn_mask,
+        #     "rope_freqs" : rope_freqs,
+        #     "acts" : acts,
+        # })
+
+        return acts
+
+    def forward_debug_model(self, input_ids, position_ids, attention_mask):
+        acts = {}
+        acts["preprocess"] = self.forward_debug_preprocess(input_ids)
+        acts["layer"] = self.forward_debug_layer(acts["preprocess"]["embeddings"])
+        pax(acts)
+
+    # def forward_debug(self, tokens):
+    def forward_debug(self, input_ids):
+
+        args = get_args()
+
+        assert input_ids.shape == (args.seq_length,)
+        input_ids = input_ids.reshape((1, -1))
+
+        acts = self.forward_debug_model(input_ids)
+
+        pax(acts)
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+# def debug_preprocess(lab):
+
+#     input_text = "i am the kind of text that you want to tokenize for all your needs. thank you, it's time that you learn how to debug a llm. they are mean and far from lean, and you're a machine."
+#     input_tokens = lab.tokenize(input_text)
+#     input_ntokens = lab.get_ntokens(input_tokens)
+
+#     word_emb = lab.forward_word_emb(input_tokens)
+#     pos_emb = lab.forward_pos_emb(word_emb)
+
+#     # >>>
+#     print(lab.model)
+#     pax({
+#         "input_tokens" : input_tokens,
+#         "input_ntokens" : input_ntokens,
+#         "word_emb" : word_emb,
+#         "pos_emb" : pos_emb,
+#     })
+#     # <<<
+
+def debug(lab):
+
+    # >>>
+    # input_text = "i am the kind of text that you want to tokenize for all your needs. thank you, it's time that you learn how to debug a llm. they are mean and far from lean, and you're a machine."
+    # input_tokens = lab.tokenize(input_text)
+    # input_ntokens = lab.get_ntokens(input_tokens)
+    input_ids = torch.randint(low=0,
+                              high=args.padded_vocab_size,
+                              size=(args.seq_length,),
+                              dtype=torch.long,
+                              device="cuda")
+    # pax({"input_ids": input_ids, "n_tokens": lab.get_ntokens(input_ids)})
+
+    activation_map = lab.forward_debug(input_ids) # input_tokens)
+
+    pax({"activation_map": activation_map})
+    # <<<
+
+    debug_preprocess(lab)
+    debug_layer(lab)
+    debug_postprocess(lab)
+
+    pax({"lab": lab})
 
 @torch.inference_mode()
 def generate(
@@ -305,15 +510,21 @@ if __name__ == "__main__":
     else:
         raise Exception("specialize for '%s'." % args.gen_model)
 
+    # >>>
+    debug(lab)
+    raise Exception("hi.")
+    # <<<
+
     # input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
-    input_text = "the funniest knock knock joke i ever heard was "
+    # input_text = "the funniest knock knock joke i ever heard was "
     # input_text = "the craziest thing i've ever heard was "
-    # input_text = "i'm not the kind of person to "
+    input_text = "i'm not the kind of person to " # 300, 0.8
     # input_text = "the best year in history was "
     # input_text = "the best year in history was 1984 because "
+    # input_text = "world war 3 will be caused by "
 
     # Generate.
     output_text = generate(
