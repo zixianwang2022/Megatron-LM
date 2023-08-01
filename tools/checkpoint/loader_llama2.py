@@ -8,9 +8,9 @@ from tqdm import tqdm
 import types
 
 # >>>
-sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
+# sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
 
-from lutil import pax, tp as _tp
+from lutil import pax # , tp as _tp
 # <<<
 
 def add_arguments(parser):
@@ -44,7 +44,7 @@ def load_args_from_checkpoint(args):
     args.num_layers = llama_args["n_layers"]
     args.global_batch_size = 1024
     args.norm_epsilon = llama_args["norm_eps"]
-    args.iteration = 0
+    args.iteration = 1 # 0 # "release"
     args.add_position_embedding = False
     args.use_rotary_position_embeddings = True
     # args.rotary_percent = 0.5
@@ -53,6 +53,7 @@ def load_args_from_checkpoint(args):
     # args.tokenizer_type = "SentencePieceTokenizer"
     args.bf16 = True
     args.norm_type = "rms"
+    args.add_bias_linear = False
 
     args.untie_embeddings_and_output_weights = True # to get 'output_layer'
     args.vocab_size = -1 # 32000 # ... set from tokenizer
@@ -68,6 +69,10 @@ def load_args_from_checkpoint(args):
     if ffn_dim_multiplier is not None:
         ffn_hidden_size = int(ffn_dim_multiplier * ffn_hidden_size)
     ffn_hidden_size = ffn_multiple_of * ((ffn_hidden_size + ffn_multiple_of - 1) // ffn_multiple_of)
+    # pax({
+    #     "ffn_hidden_size / megatron" : args.ffn_hidden_size,
+    #     "ffn_hidden_size / llama" : ffn_hidden_size,
+    # })
     args.ffn_hidden_size = ffn_hidden_size
 
     if "n_kv_heads" in llama_args:
@@ -127,8 +132,10 @@ def concatenate_embeddings(args):
     embeddings = torch.cat(embedding_shards, dim=1)
 
     # pax({
-    #     "embedding_shards" : [ str(t.shape) for t in embedding_shards ],
-    #     "embeddings" : _tp(embeddings),
+    #     "state_dict" : {k:v for k,v in state_dict.items() if not k.startswith("layer")},
+    #     # "embedding_shards" : [ str(t.shape) for t in embedding_shards ],
+    #     "embedding_shards" : embedding_shards,
+    #     "embeddings" : embeddings,
     # })
 
     return embeddings
@@ -336,18 +343,18 @@ def set_attn_state(args, layer, layer_state_dict):
     #     "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
     #     "kv_channels" : args.kv_channels,
     # })
-    # pax({
-    #     "tp" : tp,
-    #     "nh" : nh,
-    #     "ng" : ng,
-    #     "dim" : dim,
-    #     # "wq" : _tp(wq),
-    #     # "wk" : _tp(wk),
-    #     # "wv" : _tp(wv),
-    #     "naive" : _tp(torch.cat([attn_state_dict[k]
-    #                              for k in ("wq", "wk", "wv")], dim=0)),
-    #     "query_key_value" : _tp(query_key_value),
-    # })
+    pax({
+        "tp" : tp,
+        "nh" : nh,
+        "ng" : ng,
+        "dim" : dim,
+        # "wq" : wq,
+        # "wk" : wk,
+        # "wv" : wv,
+        "naive" : torch.cat([attn_state_dict[k] for k in ("wq","wk","wv")],dim=0),
+        "query_key_value" : attn.query_key_value,
+        "dense" : attn.dense,
+    })
 
 def set_mlp_state(args, layer, layer_state_dict):
 

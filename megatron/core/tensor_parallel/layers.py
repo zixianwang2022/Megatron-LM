@@ -490,6 +490,11 @@ class ColumnParallelLinear(torch.nn.Module):
         else:
             self.weight = None
 
+        # >>>
+        from lutil import pax
+        pax({"bias": bias})
+        # <<<
+
         if bias:
             if config.use_cpu_initialization:
                 self.bias = Parameter(torch.empty(
@@ -591,6 +596,19 @@ class ColumnParallelLinear(torch.nn.Module):
         else:
             output = output_parallel
         output_bias = self.bias if self.skip_bias_add else None
+        # >>>
+        from lutil import pax
+        pax({
+            "weight" : weight,
+            "self / bias" : self.bias,
+            "bias" : bias,
+            "input_parallel" : input_parallel,
+            "output_parallel" : output_parallel,
+            "output" : output,
+            # "output / isnan" : torch.isnan(output).sum(),
+            # "output_bias" : output_bias,
+        })
+        # <<<
         return output, output_bias
 
 

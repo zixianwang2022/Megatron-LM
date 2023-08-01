@@ -18,6 +18,10 @@ from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_emb
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, get_norm
 
+# >>>
+from lutil import pax
+# <<<
+
 try:
     from einops import rearrange
 except ImportError:
@@ -565,6 +569,13 @@ class ParallelAttention(MegatronModule):
         if self.attention_type == AttnType.self_attn:
             # Attention heads [sq, b, h] --> [sq, b, ng * (np/ng + 2) * hn)]
             mixed_x_layer, _ = self.query_key_value(hidden_states)
+            # >>>
+            pax({
+                "hidden_states" : hidden_states,
+                "query_key_value" : self.query_key_value.weight,
+                "mixed_x_layer" : mixed_x_layer,
+            })
+            # <<<
 
             # [sq, b, hp] --> [sq, b, ng, (np/ng + 2) * hn]
             new_tensor_shape = mixed_x_layer.size()[:-1] + (
@@ -680,6 +691,15 @@ class ParallelAttention(MegatronModule):
             else:
                 context_layer = self.core_attention(
                     query_layer, key_layer, value_layer, attention_mask)
+                # >>>
+                pax({
+                    "query_layer" : query_layer,
+                    "key_layer" : key_layer,
+                    "value_layer" : value_layer,
+                    "attention_mask" : attention_mask,
+                    "context_layer" : context_layer,
+                })
+                # <<<
         else:
             q, k, v = [rearrange(x, 's b ... -> b s ...').contiguous()
                        for x in (query_layer, key_layer, value_layer)]
@@ -695,6 +715,16 @@ class ParallelAttention(MegatronModule):
         # =================
 
         output, bias = self.dense(context_layer)
+
+        # >>>
+        pax({
+            "use_flash_attn" : self.use_flash_attn,
+            "checkpoint_core_attention" : self.checkpoint_core_attention,
+            "context_layer" : context_layer,
+            "output" : output,
+            "bias" : bias,
+        })
+        # <<<
 
         return output, bias
 
@@ -1038,6 +1068,16 @@ class ParallelTransformerLayer(MegatronModule):
                 attention_mask,
                 inference_params=inference_params,
                 rotary_pos_emb=rotary_pos_emb)
+
+        # >>>
+        pax({
+            "norm_output" : norm_output,
+            "attention_mask" : attention_mask,
+            "inference_params" : inference_params,
+            "rotary_pos_emb" : rotary_pos_emb,
+            "attention_output" : attention_output,
+        })
+        # <<<
 
         # Residual connection.
         if self.apply_residual_connection_post_norm:
