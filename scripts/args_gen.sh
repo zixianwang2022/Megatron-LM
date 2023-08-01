@@ -16,18 +16,18 @@ export NCCL_SOCKET_IFNAME=^vlan,lo
 unset NCCL_DEBUG
 
 # >>>
-# MEGATRON_REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
-# LLAMA_REPO_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama"
-# TOKENIZER_PATH="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
-# MEGATRON_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-70b-megatron"
-# LLAMA_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-7b"
+MEGATRON_REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
+LLAMA_REPO_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama"
+TOKENIZER_PATH="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
+MEGATRON_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-70b-megatron"
+LLAMA_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-7b"
 # +++
-MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/src/megatrons/megatron-lm-llama2-loader"
-LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
-# TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model"
-TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/tokenizer_hf/tokenizer.model"
-MEGATRON_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/llama-2-7b-megatron"
-LLAMA_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/llama-2-7b"
+# MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/src/megatrons/megatron-lm-llama2-loader"
+# LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
+# # TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model"
+# TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/tokenizer_hf/tokenizer.model"
+# MEGATRON_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/llama-2-7b-megatron"
+# LLAMA_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/llama-2-7b"
 # <<<
 
 ######## args. ########
