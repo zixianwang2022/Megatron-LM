@@ -12,6 +12,8 @@ from megatron.initialize import initialize_megatron, set_jit_fusion_options
 
 from lab import Lab, LlamaLab, MegatronLab
 
+from lutil import pax
+
 # def debug_preprocess(lab):
 
 #     input_text = "i am the kind of text that you want to tokenize for all your needs. thank you, it's time that you learn how to debug a llm. they are mean and far from lean, and you're a machine."
@@ -82,20 +84,27 @@ def generate(
     # })
     
     # tokens = tokens.reshape((1, -1))
-    for i in tqdm(range(n_tokens, n_tokens + max_output_len), "gen tokens"):
+    for token_idx in tqdm(range(n_tokens, n_tokens + max_output_len),
+                          "gen tokens"):
 
         logits = lab.forward(tokens)
 
         if temperature > 0:
             # probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
             probs = torch.softmax(logits[-1] / temperature, dim=-1)
-            next_token = sample_top_p(probs, top_p)
+            try:
+                next_token = sample_top_p(probs, top_p)
+            except Exception as e:
+                print("~~~~~~~~~~~~~~~~~~~~~~")
+                print(lab.detokenize(tokens))
+                print("~~~~~~~~~~~~~~~~~~~~~~")
+                pax({"token_idx": token_idx, "probs": probs, "e": e})
         else:
             # next_token = torch.argmax(logits[:, -1], dim=-1)
             next_token = torch.argmax(logits[-1], dim=-1)
 
         next_token = next_token.reshape(-1)
-        tokens[i] = next_token
+        tokens[token_idx] = next_token
 
         # pax({
         #     "tokens" : tp(tokens),
