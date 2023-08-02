@@ -53,6 +53,7 @@ SCRIPT=scripts/generate.py
 #     --apply-layernorm-1p \
 #     --disable-bias-linear \
 #     --rotary-percent 0.5 \
+# --finetune \ ... doesn't load args from checkpoint
 ARGS=" \
     --no-masked-softmax-fusion \
     --tensor-model-parallel-size 1 \
@@ -69,7 +70,7 @@ ARGS=" \
     --load ${MEGATRON_CHECKPOINT_DIR} \
     --load-llama ${LLAMA_CHECKPOINT_DIR} \
     --no-load-optim \
-    --finetune \
+    --no-load-rng \
     \
     --exit-duration-in-mins 230 \
     --fp16 \

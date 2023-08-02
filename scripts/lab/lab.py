@@ -64,14 +64,14 @@ class Lab(abc.ABC):
 
         text = self._detokenize(tokens[:n_tokens].tolist())
 
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print(text)
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        pax({
-            "n_tokens" : n_tokens,
-            "tokens" : tp(tokens),
-            "text" : text,
-        })
+        # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # print(text)
+        # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # pax({
+        #     "n_tokens" : n_tokens,
+        #     "tokens" : tokens,
+        #     "text" : text,
+        # })
 
         return text
 
