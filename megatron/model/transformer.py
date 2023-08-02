@@ -1043,16 +1043,6 @@ class ParallelTransformerLayer(MegatronModule):
                 inference_params=inference_params,
                 rotary_pos_emb=rotary_pos_emb)
 
-        # >>>
-        # pax({
-        #     "norm_output" : norm_output,
-        #     "attention_mask" : attention_mask,
-        #     "inference_params" : inference_params,
-        #     "rotary_pos_emb" : rotary_pos_emb,
-        #     "attention_output" : attention_output,
-        # })
-        # <<<
-
         # Residual connection.
         if self.apply_residual_connection_post_norm:
             residual = norm_output

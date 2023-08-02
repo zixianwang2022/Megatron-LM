@@ -359,14 +359,6 @@ class TransformerLanguageModel(MegatronModule):
         self.add_retriever = args.retro_add_retriever
         self.untie_embeddings_and_output_weights = args.untie_embeddings_and_output_weights
 
-        # >>>
-        # from lutil import pax
-        # pax({
-        #     "vocab_size" : args.vocab_size,
-        #     "padded_vocab_size" : args.padded_vocab_size,
-        # })
-        # <<<
-
         # Embeddings.
         if self.pre_process:
             self.embedding = Embedding(self.hidden_size,
@@ -617,10 +609,6 @@ class TransformerLanguageModel(MegatronModule):
                     state_dict_self_attention[key] = state_dict_[key]
             state_dict_ = state_dict_self_attention
 
-            # >>>
-            # from lutil import pax
-            # pax({"state_dict_": list(state_dict_.keys())})
-            # <<<
             self.encoder.load_state_dict(state_dict_, strict=strict)
 
         # Pooler.

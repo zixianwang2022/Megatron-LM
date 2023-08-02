@@ -1,26 +1,16 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
-# import abc
-# import torch
-# from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
-# from tqdm import tqdm
+import torch
+from tqdm import tqdm
 # from typing import List, Literal, Optional, Tuple, TypedDict
+from typing import List, Optional, Tuple
 
-# import sys
-# sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
-# from llama.generation import Llama, sample_top_p
-# from llama.tokenizer import Tokenizer as OriginalLlamaTokenizer
+from llama.generation import sample_top_p
 
-# from megatron import get_args, get_tokenizer
-# from megatron.checkpointing import load_checkpoint
-# from megatron.core import parallel_state
-# from megatron.core.enums import ModelType
-# from megatron.core.utils import get_model_config
-# from megatron.initialize import initialize_megatron, set_jit_fusion_options
-# from megatron.model import DistributedDataParallel as LocalDDP, Float16Module
-# from megatron.training import get_model as _get_model
-# from megatron.utils import get_ltor_masks_and_position_ids # , unwrap_model
-# from pretrain_gpt import model_provider
+from megatron import get_args
+from megatron.initialize import initialize_megatron, set_jit_fusion_options
+
+from lab import Lab, LlamaLab, MegatronLab
 
 # def debug_preprocess(lab):
 
@@ -149,8 +139,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    debug(lab)
-    raise Exception("hi.")
+    # debug(lab)
+    # raise Exception("hi.")
     # <<<
 
     input_text = "lawrence is the fastest cyclist since "

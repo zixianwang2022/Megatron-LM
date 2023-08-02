@@ -51,7 +51,8 @@ def load_args_from_checkpoint(args):
     args.swiglu = True
     args.tokenizer_type = "Llama2"
     # args.tokenizer_type = "SentencePieceTokenizer"
-    args.bf16 = True
+    # args.bf16 = True
+    args.fp16 = True
     args.norm_type = "rms"
     args.add_bias_linear = False
 

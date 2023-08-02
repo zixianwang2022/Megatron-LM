@@ -19,8 +19,8 @@ unset NCCL_DEBUG
 MEGATRON_REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
 LLAMA_REPO_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama"
 TOKENIZER_PATH="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
-MEGATRON_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-7b-megatron"
-LLAMA_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/llama-2-7b"
+MEGATRON_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/checkpoints/megatron/7b"
+LLAMA_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/checkpoints/llama/llama-2-7b"
 # +++
 # MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/src/megatrons/megatron-lm-llama2-loader"
 # LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
@@ -72,7 +72,7 @@ ARGS=" \
     --finetune \
     \
     --exit-duration-in-mins 230 \
-    --bf16 \
+    --fp16 \
     --DDP-impl local \
     --train-samples 1 \
     --min-lr 3.0e-5 \

@@ -1,5 +1,14 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+import torch
+
+from llama.generation import Llama
+
+from megatron import get_args
+from scripts import pax
+
+from .lab import Lab
+
 
 class LlamaLab(Lab):
 
@@ -37,20 +46,23 @@ class LlamaLab(Lab):
         assert tokens.shape == (args.seq_length,)
 
         n_tokens = self.get_ntokens(tokens)
-
+        tokens = tokens[:n_tokens]
         tokens = tokens.reshape((1, -1))
-        logits = self.model.forward(tokens[:, :n_tokens], 0)
+
+        logits = self.model.forward(tokens, 0)
         logits = logits[0]
 
         # pax({
-        #     "tokens" : tp(tokens),
-        #     "logits" : tp(logits),
+        #     "tokens" : tokens,
+        #     "logits" : logits,
         # })
 
         return logits
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     def forward_debug_preprocess(self, input_ids, start_pos=0):
+
+        args = get_args()
 
         acts = {}
 
@@ -74,28 +86,29 @@ class LlamaLab(Lab):
 
         return acts
 
-    def forward_debug_layer(self, hidden_states, attn_mask, freqs_cis):
+    def forward_debug_layer(self, hidden_states, attn_mask, freqs_cis,
+                            start_pos=0):
 
         layer = self.model.layers[0]
 
         # pax({"layer": layer})
 
         acts = {}
-        # acts["attn_norm"] = layer.input_norm(hidden_states)
-        # acts["attn_output"], acts["attn_bias"] = \
-        #     layer.self_attention(acts["attn_norm"],
-        #                          attn_mask,
-        #                          rotary_pos_emb=rope_freqs)
-        # acts["mlp_norm"] = layer.post_attention_norm(
-        acts["output"] = layer(x=hidden_states,
-                               start_pos=0,
-                               freqs_cis=freqs_cis,
-                               mask=attn_mask)
+        acts["attn_norm"] = layer.attention_norm(hidden_states)
+        acts["attn_output"] = layer.attention.forward(
+            acts["attn_norm"], start_pos, freqs_cis, attn_mask)
+        # acts["attn_residual"] = hidden_states + acts["attn_output"]
+
+        # acts["output"] = layer(x=hidden_states,
+        #                        start_pos=0,
+        #                        freqs_cis=freqs_cis,
+        #                        mask=attn_mask)
 
         pax({
             "hidden_states" : hidden_states,
             "attn_mask" : attn_mask,
             "freqs_cis" : freqs_cis,
+            "--" : "--",
             **acts,
         })
 
