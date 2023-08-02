@@ -8,10 +8,9 @@ from tqdm import tqdm
 import types
 
 # >>>
-# sys.path.append("/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama")
-
-from lutil import pax # , tp as _tp
+from lutil import pax
 # <<<
+
 
 def add_arguments(parser):
     group = parser.add_argument_group(title='Llama-2 loader')
@@ -26,14 +25,13 @@ def add_arguments(parser):
     group.add_argument('--megatron-path', type=str, default=None,
                        help='Base directory of deepspeed repository')
 
+
 def load_args_from_checkpoint(args):
 
     # Read Llama args.
     llama_args_path = os.path.join(args.load, "params.json")
     with open(llama_args_path) as f:
         llama_args = json.load(f)
-
-    # pt_path = os.path.join(args.load, "
 
     # Update Megatron args.
     args.seq_length = 4096
@@ -70,23 +68,11 @@ def load_args_from_checkpoint(args):
     if ffn_dim_multiplier is not None:
         ffn_hidden_size = int(ffn_dim_multiplier * ffn_hidden_size)
     ffn_hidden_size = ffn_multiple_of * ((ffn_hidden_size + ffn_multiple_of - 1) // ffn_multiple_of)
-    # pax({
-    #     "ffn_hidden_size / megatron" : args.ffn_hidden_size,
-    #     "ffn_hidden_size / llama" : ffn_hidden_size,
-    # })
     args.ffn_hidden_size = ffn_hidden_size
 
     if "n_kv_heads" in llama_args:
         args.group_query_attention = True
         args.num_query_groups = llama_args["n_kv_heads"]
-
-    # >>>
-    # pax({
-    #     "ffn_dim_multiplier" : ffn_dim_multiplier,
-    #     "ffn_multiple_of" : ffn_multiple_of,
-    #     "ffn_hidden_size" : ffn_hidden_size,
-    # })
-    # <<<
 
     model_name = os.path.basename(args.load).split("-")[-1]
     args.tensor_model_parallel_size = {
@@ -96,13 +82,6 @@ def load_args_from_checkpoint(args):
     }[model_name]
     args.pipeline_model_parallel_size = 1
 
-    # >>>
-    # pax({
-    #     "args": args,
-    #     "num_attention_heads" : args.num_attention_heads,
-    #     "n_kv_heads" : llama_args["n_kv_heads"],
-    # })
-    # <<<
 
 def load_vocab_size(args):
     from megatron.tokenizer import build_tokenizer
@@ -110,18 +89,8 @@ def load_vocab_size(args):
     args.vocab_size = tokenizer.vocab_size
     args.padded_vocab_size = args.vocab_size # llama doesn't pad
 
-    # >>>
-    # pax({
-    #     "args / vocab_size": args.vocab_size,
-    #     "args / padded_vocab_size": args.padded_vocab_size,
-    # })
-    # <<<
 
 def concatenate_embeddings(args):
-
-    # >>>
-    # return None
-    # <<<
 
     # Load & concatenate embeddings.
     embedding_shards = []
@@ -132,139 +101,14 @@ def concatenate_embeddings(args):
         embedding_shards.append(state_dict["tok_embeddings.weight"])
     embeddings = torch.cat(embedding_shards, dim=1)
 
-    # pax({
-    #     "state_dict" : {k:v for k,v in state_dict.items() if not k.startswith("layer")},
-    #     # "embedding_shards" : [ str(t.shape) for t in embedding_shards ],
-    #     "embedding_shards" : embedding_shards,
-    #     "embeddings" : embeddings,
-    # })
-
     return embeddings
 
-# >>>
-# def get_megatron_rotary_freqs(args):
 
-#     from torch import einsum, nn
+# def set_rmsnorm_state(rmsnorm, tensor):
+#     rmsnorm.weight.data.copy_(tensor)
 
-#     class RotaryEmbedding(nn.Module):
-#         def __init__(self, dim):
-#             super().__init__()
-#             inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
-#             # inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2)[:(dim//2)].float() / dim))
-#             # >>>
-#             # pax({"dim": dim, "inv_freq": _tp(inv_freq)})
-#             # <<<
-#             self.register_buffer('inv_freq', inv_freq)
 
-#         def forward(self, max_seq_len, offset=0):
-#             seq = torch.arange(max_seq_len, device=self.inv_freq.device) + offset
-#             freqs = einsum('i , j -> i j', seq.type_as(self.inv_freq), self.inv_freq)
-#             # >>>
-#             # pax({"inv_freq": _tp(self.inv_freq)})
-#             # return self.inv_freq
-#             # return freqs
-#             # <<<
-#             # first part even vector components, second part odd vector components,
-#             #  2 * dim in dimension size
-#             emb = torch.cat((freqs, freqs), dim=-1)
-#             # emb [seq_length, .., dim]
-#             return emb[:, None, None, :]
-
-#     rotary_dim = args.hidden_size // args.num_attention_heads \
-#         if args.kv_channels is None else args.kv_channels
-#     return RotaryEmbedding(rotary_dim)(args.seq_length)
-
-#     # def _rotate_half(x):
-#     #     """
-#     #     change sign so the last dimension becomes [-odd, +even]
-#     #     """
-#     #     x1, x2 = torch.chunk(x, 2, dim=-1)
-#     #     return torch.cat((-x2, x1), dim=-1)
-
-#     # def apply_rotary_pos_emb(t, freqs):
-#     #     """
-#     #     input tensor t is of shape [seq_length, ..., dim]
-#     #     rotary positional embeding tensor freqs is of shape [seq_length, ..., dim]
-#     #     check https://kexue.fm/archives/8265 for detailed formulas
-#     #     """
-#     #     rot_dim = freqs.shape[-1]
-#     #     # ideally t_pass is empty so rotary pos embedding is applied to all tensor t
-#     #     t, t_pass = t[..., :rot_dim], t[..., rot_dim:]
-
-#     #     # first part is cosine component
-#     #     # second part is sine component, need to change signs with _rotate_half method
-#     #     t = (t * freqs.cos()) + (_rotate_half(t) * freqs.sin())
-#     #     return torch.cat((t, t_pass), dim=-1)
-
-# def get_llama_rotary_freqs(args):
-
-#     # from llama.model import precompute_freqs_cis
-#     def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0):
-#         freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
-#         # pax({"dim": dim, "freqs": _tp(freqs)})
-#         t = torch.arange(end, device=freqs.device)  # type: ignore
-#         # >>>
-#         # return freqs
-#         # <<<
-#         freqs = torch.outer(t, freqs).float()  # type: ignore
-#         # >>>
-#         # return freqs
-#         # <<<
-#         freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
-#         return freqs_cis
-
-#     # def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
-#     #     ndim = x.ndim
-#     #     assert 0 <= 1 < ndim
-#     #     assert freqs_cis.shape == (x.shape[1], x.shape[-1])
-#     #     shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
-#     #     return freqs_cis.view(*shape)
-
-#     # def apply_rotary_emb(
-#     #     xq: torch.Tensor,
-#     #     xk: torch.Tensor,
-#     #     freqs_cis: torch.Tensor,
-#     # ) -> Tuple[torch.Tensor, torch.Tensor]:
-#     #     xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-#     #     xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
-#     #     freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
-#     #     xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
-#     #     xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
-#     #     return xq_out.type_as(xq), xk_out.type_as(xk)
-
-#     freqs_cis = precompute_freqs_cis(
-#         args.hidden_size // args.num_attention_heads, args.seq_length * 2)
-
-#     # pax({
-#     #     "freqs_cis" : _tp(freqs_cis),
-#     # })
-
-#     return freqs_cis
-# <<<
-
-def set_rmsnorm_state(rmsnorm, tensor):
-    rmsnorm.weight.data.copy_(tensor)
-    # pax({
-    #     "rmsnorm" : _tp(rmsnorm.weight.clone()),
-    #     "tensor" : _tp(tensor),
-    # })
-
-# def set_preprocess_state(model, state_dict, args, rank, embeddings):
 def set_preprocess_state(args, rank, model, embeddings, state_dict):
-
-    # >>>
-    # from megatron.core.models.common.rotary_pos_embedding import RotaryEmbedding
-    # megatron_freqs = get_megatron_rotary_freqs(args)
-    # llama_freqs = get_llama_rotary_freqs(args)
-
-    # rotary_pos_emb = model.language_model.rotary_pos_emb
-    # pax({
-    #     "rotary_pos_emb" : rotary_pos_emb,
-    #     "rope.freqs" : _tp(state_dict["rope.freqs"]),
-    #     "megatron_freqs" : _tp(megatron_freqs),
-    #     "llama_freqs" : _tp(llama_freqs),
-    # })
-    # <<<
 
     padded_vocab_size = args.padded_vocab_size
     world_size = args.tensor_model_parallel_size
@@ -275,21 +119,21 @@ def set_preprocess_state(args, rank, model, embeddings, state_dict):
 
     model.language_model.embedding.word_embeddings.weight[0:(end_idx-start_idx)].data.copy_(embeddings[start_idx:end_idx])
 
-    # pax({"embeddings": embeddings})
-    
-    if rank == 7:
-        pax({
-            "word_embeddings" : _tp(model.language_model.embedding.word_embeddings.weight.clone()),
-            "embeddings" : _tp(embeddings),
-            "padded_vocab_size" : args.padded_vocab_size,
-            "rank" : rank,
-            "world_size" : world_size,
-            "shard_size" : shard_size,
-            "start_idx" : start_idx,
-            "end_idx" : end_idx,
-        })
+    # >>>
+    # if rank == 7:
+    #     pax({
+    #         "word_embeddings" : _tp(model.language_model.embedding.word_embeddings.weight.clone()),
+    #         "embeddings" : _tp(embeddings),
+    #         "padded_vocab_size" : args.padded_vocab_size,
+    #         "rank" : rank,
+    #         "world_size" : world_size,
+    #         "shard_size" : shard_size,
+    #         "start_idx" : start_idx,
+    #         "end_idx" : end_idx,
+    #     })
+    # <<<
 
-# def set_postprocess_state(model, state_dict):
+
 def set_postprocess_state(args, model, state_dict):
 
     model_norm = model.language_model.encoder.final_norm
@@ -297,14 +141,6 @@ def set_postprocess_state(args, model, state_dict):
     model_norm.weight.data.copy_(state_dict["norm.weight"])
     model_output.weight.data.copy_(state_dict["output.weight"])
 
-    # set_rmsnorm_state(model.language_model.encoder.final_normm, state_dict["norm.weight"])
-    
-    # pax({
-    #     "model_norm" : _tp(model_norm.weight.clone()),
-    #     "model_output" : _tp(model_output.weight.clone()),
-    #     "norm.weight" : _tp(state_dict["norm.weight"]),
-    #     "output.weight" : _tp(state_dict["output.weight"]),
-    # })
 
 def set_attn_state(args, layer, layer_state_dict):
 
@@ -334,28 +170,6 @@ def set_attn_state(args, layer, layer_state_dict):
     ], dim=1).reshape((-1, args.hidden_size)))
     attn.dense.weight.data.copy_(attn_state_dict["wo"])
 
-    # pax({
-    #     "num_attention_heads" : args.num_attention_heads,
-    #     "num_query_groups" : args.num_query_groups,
-    #     "kv_channels" : args.kv_channels,
-    #     # "attn" : attn,
-    #     "attn / query_key_value" : _tp(attn.query_key_value.weight.clone()),
-    #     "attn / dense" : _tp(attn.dense.weight.clone()),
-    #     "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
-    #     "kv_channels" : args.kv_channels,
-    # })
-    # pax({
-    #     "tp" : tp,
-    #     "nh" : nh,
-    #     "ng" : ng,
-    #     "dim" : dim,
-    #     # "wq" : wq,
-    #     # "wk" : wk,
-    #     # "wv" : wv,
-    #     "naive" : torch.cat([attn_state_dict[k] for k in ("wq","wk","wv")],dim=0),
-    #     "query_key_value" : attn.query_key_value,
-    #     "dense" : attn.dense,
-    # })
 
 def set_mlp_state(args, layer, layer_state_dict):
 
@@ -368,16 +182,7 @@ def set_mlp_state(args, layer, layer_state_dict):
     ], dim=0))
     mlp.dense_4h_to_h.weight.data.copy_(mlp_state_dict["w2"])
 
-    # pax({
-    #     "mlp" : mlp,
-    #     "mlp / dense_h_to_4h" : _tp(mlp.dense_h_to_4h.weight.clone()),
-    #     "mlp / dense_4h_to_h" : _tp(mlp.dense_4h_to_h.weight.clone()),
-    #     "mlp_state_dict" : {k:str(v.shape) for k,v in mlp_state_dict.items()},
-    #     "h_to_4h" : _tp(h_to_4h),
-    #     "4h_to_h" : _tp(_4h_to_h),
-    # })
 
-# def set_layer_state(model, model_state_dict, layer_idx):
 def set_layer_state(args, model, model_state_dict, layer_idx):
 
     layer = model.language_model.encoder.layers[layer_idx]
@@ -389,18 +194,13 @@ def set_layer_state(args, model, model_state_dict, layer_idx):
 
     set_attn_state(args, layer, layer_state_dict)
     set_mlp_state(args, layer, layer_state_dict)
-    set_rmsnorm_state(layer.input_norm,
-                      layer_state_dict["attention_norm.weight"])
-    set_rmsnorm_state(layer.post_attention_norm,
-                      layer_state_dict["ffn_norm.weight"])
+    # set_rmsnorm_state(layer.input_norm,
+    #                   layer_state_dict["attention_norm.weight"])
+    # set_rmsnorm_state(layer.post_attention_norm,
+    #                   layer_state_dict["ffn_norm.weight"])
+    layer.input_norm.weight.data.copy_(layer_state_dict["attention_norm.weight"]))
+    layer.post_attention_norm.weight.data.copy_(layer_state_dict["ffn_norm.weight"])
 
-    # pax({
-    #     "layer" : layer,
-    #     "layer / mlp" : layer.mlp,
-    #     "layer / mlp / h->4h" : _tp(layer.mlp.dense_h_to_4h.weight.clone()),
-    #     "layer / mlp / 4h->h" : _tp(layer.mlp.dense_4h_to_h.weight.clone()),
-    #     "layer_state_dict" : {k:str(v.shape) for k,v in layer_state_dict.items()},
-    # })
 
 def load_checkpoint_to_model(args, rank, model, embeddings):
 
@@ -415,13 +215,6 @@ def load_checkpoint_to_model(args, rank, model, embeddings):
     for layer_idx in tqdm(range(args.num_layers), "set layer states"):
         set_layer_state(args, model, state_dict, layer_idx)
 
-    # pax({
-    #     "args" : args,
-    #     "rank" : rank,
-    #     "model" : model,
-    #     "filename" : filename,
-    #     "state_dict" : list(state_dict.keys()),
-    # })
 
 def _load_checkpoint(queue, args):
 
@@ -515,15 +308,8 @@ def _load_checkpoint(queue, args):
             print("loading rank %d / %d." % (rank, count))
             mpu.set_tensor_model_parallel_rank(rank)
             model = model_provider(True, True).to(dtype)
-            # >>>
-            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            # print(model)
-            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            # exit()
-            # <<<
             load_checkpoint_to_model(margs, rank, model, embeddings)
             models.append(model)
-            # pax({"model": model})
         return [ [m] for m in models ] # wrap as if from virtual pp stages
 
     set_global_variables(margs, build_tokenizer=False)
@@ -576,16 +362,10 @@ def _load_checkpoint(queue, args):
     md.make_vocab_size_divisible_by = None
     md.checkpoint_args = margs
 
-    # pax({"margs": margs, "md": md, "tp_size": tp_size})
-
     # Get first pipe stage
     mpu.set_pipeline_model_parallel_rank(0)
     all_models = [get_models(tp_size, md.params_dtype)]
     models = all_models[0][0]
-
-    # >>>
-    # pax({"models": models})
-    # <<<
 
     md.consumed_train_samples = 0 # consumed_train_samples
     md.consumed_valid_samples = 0 # consumed_valid_samples
@@ -689,6 +469,7 @@ def _load_checkpoint(queue, args):
         queue_put("output layer", message)
 
     queue.put("done")
+
 
 def load_checkpoint(queue, args):
     try:

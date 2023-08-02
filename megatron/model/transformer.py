@@ -584,6 +584,18 @@ class ParallelAttention(MegatronModule):
                                                        self.hidden_size_per_attention_head,
                                                        self.hidden_size_per_attention_head], 
                                                        dim=3)
+            # >>> [ good ]
+            # pax({
+            #     "hidden_states" : hidden_states.transpose(0, 1),
+            #     "num_attention_heads" : self.num_attention_heads_per_partition,
+            #     "hidden_size" : self.hidden_size_per_attention_head,
+            #     "new_tensor_shape" : str(new_tensor_shape),
+            #     "mixed_x_layer" : mixed_x_layer,
+            #     "query_layer" : query_layer.reshape(11, 1, -1).transpose(0, 1),
+            #     "key_layer" : key_layer.reshape(11, 1, -1).transpose(0, 1),
+            #     "value_layer" : value_layer.reshape(11, 1, -1).transpose(0, 1),
+            # })
+            # <<<
             # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn] -
             query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head) 
         else:
@@ -670,8 +682,20 @@ class ParallelAttention(MegatronModule):
         # apply relative positional encoding (rotary embedding)
         if rotary_pos_emb is not None:
             q_pos_emb, k_pos_emb = rotary_pos_emb
+            # >>>
+            pax({
+                "query_layer" : query_layer.transpose(0, 1),
+                "key_layer" : key_layer.transpose(0, 1),
+            })
+            # <<<
             query_layer = apply_rotary_pos_emb(query_layer, q_pos_emb)
             key_layer = apply_rotary_pos_emb(key_layer, k_pos_emb)
+            # >>> [ bad ]
+            pax({
+                "query_layer" : query_layer.transpose(0, 1),
+                "key_layer" : key_layer.transpose(0, 1),
+            })
+            # <<<
             # TODO, can apply positional embedding to value_layer so it has
             # absolute positional embedding.
             # otherwise, only relative positional embedding takes effect
