@@ -343,18 +343,18 @@ def set_attn_state(args, layer, layer_state_dict):
     #     "attn_state_dict": {k:str(v.shape) for k,v in attn_state_dict.items()},
     #     "kv_channels" : args.kv_channels,
     # })
-    pax({
-        "tp" : tp,
-        "nh" : nh,
-        "ng" : ng,
-        "dim" : dim,
-        # "wq" : wq,
-        # "wk" : wk,
-        # "wv" : wv,
-        "naive" : torch.cat([attn_state_dict[k] for k in ("wq","wk","wv")],dim=0),
-        "query_key_value" : attn.query_key_value,
-        "dense" : attn.dense,
-    })
+    # pax({
+    #     "tp" : tp,
+    #     "nh" : nh,
+    #     "ng" : ng,
+    #     "dim" : dim,
+    #     # "wq" : wq,
+    #     # "wk" : wk,
+    #     # "wv" : wv,
+    #     "naive" : torch.cat([attn_state_dict[k] for k in ("wq","wk","wv")],dim=0),
+    #     "query_key_value" : attn.query_key_value,
+    #     "dense" : attn.dense,
+    # })
 
 def set_mlp_state(args, layer, layer_state_dict):
 
