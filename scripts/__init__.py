@@ -1,6 +1,10 @@
 # lawrence mcafee
 
+from megatron import get_args
+
 from lutil import pax as _pax, tp
+
+
 def pax(a):
     args = get_args()
     return _pax({

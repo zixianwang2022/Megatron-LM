@@ -1,5 +1,24 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+import torch
+# from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
+
+from llama.tokenizer import Tokenizer as OriginalLlamaTokenizer
+
+from megatron import get_args, get_tokenizer
+from megatron.checkpointing import load_checkpoint
+# from megatron.core import parallel_state
+from megatron.core.enums import ModelType
+# from megatron.core.utils import get_model_config
+# from megatron.model import DistributedDataParallel as LocalDDP, Float16Module
+from megatron.text_generation.forward_step import InferenceParams
+from megatron.training import get_model as _get_model
+from megatron.utils import get_ltor_masks_and_position_ids # , unwrap_model
+from pretrain_gpt import model_provider
+from scripts import pax
+
+from .lab import Lab
+
 
 class MegatronLab(Lab):
 
@@ -31,7 +50,8 @@ class MegatronLab(Lab):
             # pax({
             #     "tokenizer" : tokenizer,
             #     "n_words" : tokenizer.n_words,
-            #     # "eod_id" : tokenizer.eod_id,
+            #     "bos_id" : tokenizer.bos_id,
+            #     "eos_id" : tokenizer.eos_id,
             #     "pad_id" : tokenizer.pad_id,
             # })
             super().__init__(self.get_model(), tokenizer, tokenizer.pad_id)
@@ -51,13 +71,20 @@ class MegatronLab(Lab):
 
     def forward(self, tokens):
 
+        # >>>
+        # from megatron.text_generation import generate_and_post_process
+        # result = generate_and_post_process(self.model.module, ["lawrence is a greatest cyclist since "], 100)
+        # pax({"result": result})
+        # <<<
+
         args = get_args()
 
         # assert tokens.shape == (1, args.seq_length)
         assert tokens.shape == (args.seq_length,)
 
         # >>>
-        # tokens = tokens[:self.get_ntokens(tokens)]
+        n_tokens = self.get_ntokens(tokens)
+        tokens = tokens[:n_tokens]
         # <<<
         tokens = tokens.reshape((1, -1))
 
@@ -68,24 +95,31 @@ class MegatronLab(Lab):
             args.reset_attention_mask,
             args.eod_mask_loss)
         
+        inference_params = InferenceParams(1, n_tokens)
+        # pax({"inference_params": inference_params})
+
         self.model.eval()
         with torch.no_grad():
-            logits = self.model(tokens, position_ids, attention_mask)
+            logits = self.model(tokens, position_ids, attention_mask,
+                                inference_params=inference_params)
 
         logits = logits[0]
 
-        pax({
-            "tokens" : tp(tokens),
-            "logits" : tp(logits),
-        })
+        # pax({
+        #     "tokens" : tokens,
+        #     "logits" : logits,
+        # })
 
         return logits
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     def forward_debug_preprocess(self, input_ids, position_ids):
 
-        acts = {}
+        args = get_args()
+
         lm = self.model.module.module.language_model
+
+        acts = {}
         acts["hidden_states"] = lm.embedding(input_ids, position_ids, # [s, b, h]
                                              tokentype_ids=None)
         acts["rope_freqs"] = lm.rotary_pos_emb(args.seq_length)
@@ -94,6 +128,7 @@ class MegatronLab(Lab):
         #     "input_ids" : input_ids,
         #     "weight" : lm.embedding.word_embeddings.weight,
         #     **acts,
+        #     "hidden_states" : torch.transpose(acts["hidden_states"], 0, 1),
         # })
 
         return acts
@@ -105,21 +140,25 @@ class MegatronLab(Lab):
         # pax({"layer": layer})
 
         acts = {}
-        # acts["attn_norm"] = layer.input_norm(hidden_states)
-        # acts["attn_output"], acts["attn_bias"] = \
-        #     layer.self_attention(acts["attn_norm"],
-        #                          attn_mask,
-        #                          rotary_pos_emb=rope_freqs)
+        acts["attn_norm"] = layer.input_norm(hidden_states)
+        acts["attn_output"], acts["attn_bias"] = \
+            layer.self_attention(acts["attn_norm"],
+                                 attn_mask,
+                                 rotary_pos_emb=rope_freqs)
         # acts["mlp_norm"] = layer.post_attention_norm(
-        acts["output"] = layer(hidden_states=hidden_states,
-                               attention_mask=attn_mask,
-                               rotary_pos_emb=rope_freqs)
+        # acts["output"] = layer(hidden_states=hidden_states,
+        #                        attention_mask=attn_mask,
+        #                        rotary_pos_emb=rope_freqs)
 
         pax({
             "hidden_states" : hidden_states,
             "attn_mask" : attn_mask,
             "rope_freqs" : rope_freqs,
+            "--" : "--",
             **acts,
+            "attn_norm" : torch.transpose(acts["attn_norm"], 0, 1),
+            "attn_output" : torch.transpose(acts["attn_output"], 0, 1),
+            # "output" : torch.transpose(acts["output"], 0, 1),
         })
 
         return acts
