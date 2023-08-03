@@ -189,8 +189,13 @@ def set_layer_state(args, model, model_state_dict, layer_idx):
 
     layer_state_dict = {".".join(k.split(".")[2:]):v
                         for k,v in model_state_dict.items()
-                        if k.startswith(f"layers.{layer_idx}")}
+                        if k.startswith(f"layers.{layer_idx}.")}
     # layer_state_dict["rope.freqs"] = model_state_dict["rope.freqs"]
+
+    # >>>
+    # if layer_idx == 1:
+    #     pax({"layer_state_dict": layer_state_dict})
+    # <<<
 
     set_attn_state(args, layer, layer_state_dict)
     set_mlp_state(args, layer, layer_state_dict)
@@ -198,8 +203,16 @@ def set_layer_state(args, model, model_state_dict, layer_idx):
     #                   layer_state_dict["attention_norm.weight"])
     # set_rmsnorm_state(layer.post_attention_norm,
     #                   layer_state_dict["ffn_norm.weight"])
-    layer.input_norm.weight.data.copy_(layer_state_dict["attention_norm.weight"]))
+    layer.input_norm.weight.data.copy_(layer_state_dict["attention_norm.weight"])
     layer.post_attention_norm.weight.data.copy_(layer_state_dict["ffn_norm.weight"])
+
+    # >>>
+    # if layer_idx == 1:
+    #     pax({
+    #         "attn_norm / llama" : layer_state_dict["attention_norm.weight"].to(dtype=torch.float16, device="cuda"),
+    #         "attn_norm / megatron" : layer.input_norm.weight.to(dtype=torch.float16, device="cuda"),
+    #     })
+    # <<<
 
 
 def load_checkpoint_to_model(args, rank, model, embeddings):
@@ -209,10 +222,18 @@ def load_checkpoint_to_model(args, rank, model, embeddings):
     assert os.path.isfile(filename), f"missing checkpoint file '{filename}'."
     state_dict = torch.load(filename)
 
+    # >>>
+    # pax({"attn_norms" : [ state_dict[f"layers.{i}.attention_norm.weight"].to(dtype=torch.float16, device="cuda") for i in range(args.num_layers) ]})
+    # <<<
+
     # Set model state.
     set_preprocess_state(args, rank, model, embeddings, state_dict)
     set_postprocess_state(args, model, state_dict)
     for layer_idx in tqdm(range(args.num_layers), "set layer states"):
+        # >>>
+        # if layer_idx == 1:
+        #     pax({"attn_norm": state_dict[f"layers.{layer_idx}.attention_norm.weight"].to(dtype=torch.float16, device="cuda")})
+        # <<<
         set_layer_state(args, model, state_dict, layer_idx)
 
 
