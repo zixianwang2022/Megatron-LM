@@ -31,20 +31,20 @@ class Lab(abc.ABC):
             self._tokenize(text),
             dtype=torch.long,
             device=torch.cuda.current_device())
-        tokens = torch.cat([
-            tokens,
-            torch.full(
-                (args.seq_length - tokens.numel(),),
-                self.pad_id, # self.tokenizer.eod,
-                dtype=torch.long,
-                device=torch.cuda.current_device(),
-            ),
-        ], dim=0)
+        # tokens = torch.cat([
+        #     tokens,
+        #     torch.full(
+        #         (args.seq_length - tokens.numel(),),
+        #         self.pad_id, # self.tokenizer.eod,
+        #         dtype=torch.long,
+        #         device=torch.cuda.current_device(),
+        #     ),
+        # ], dim=0)
         # tokens = tokens.reshape((1, -1)) # (args.micro_batch_size, -1))
 
         # pax({
         #     "text" : text,
-        #     "tokens" : tp(tokens),
+        #     "tokens" : tokens,
         #     "n_tokens" : self.get_ntokens(tokens),
         # })
 

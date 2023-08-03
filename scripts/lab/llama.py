@@ -62,17 +62,20 @@ class LlamaLab(Lab):
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     def forward_debug_preprocess(self, input_ids, start_pos=0):
 
-        args = get_args()
+        # args = get_args()
+        # seq_length = args.seq_length
+        seq_length = input_ids.shape[1]
 
         acts = {}
 
         acts["hidden_states"] = self.model.tok_embeddings(input_ids)
+
         freqs_cis = self.model.freqs_cis.to(input_ids.device)
-        freqs_cis = freqs_cis[start_pos : start_pos + args.seq_length]
+        freqs_cis = freqs_cis[start_pos:(start_pos + seq_length)]
         acts["freqs_cis"] = freqs_cis
 
         # _bsz, seqlen = input_ids.shape
-        mask = torch.full((1, 1, args.seq_length, args.seq_length),
+        mask = torch.full((1, 1, seq_length, seq_length),
                           float("-inf"),
                           device=input_ids.device)
         mask = torch.triu(mask, diagonal=start_pos+1).type_as(acts["hidden_states"])
@@ -91,7 +94,12 @@ class LlamaLab(Lab):
 
         layer = self.model.layers[0]
 
-        # pax({"layer": layer})
+        # pax({
+        #     "layer" : layer,
+        #     "hidden_states" : hidden_states,
+        #     "attn_mask" : attn_mask,
+        #     "freqs_cis" : freqs_cis,
+        # })
 
         acts = {}
         acts["attn_norm"] = layer.attention_norm(hidden_states)
@@ -132,7 +140,8 @@ class LlamaLab(Lab):
 
         args = get_args()
 
-        assert input_ids.shape == (args.seq_length,)
+        # assert input_ids.shape == (args.seq_length,)
+        assert len(input_ids.shape) == 1
         input_ids = input_ids.reshape((1, -1))
 
         acts = self.forward_debug_model(input_ids)
