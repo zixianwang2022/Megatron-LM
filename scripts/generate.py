@@ -106,7 +106,12 @@ def generate(
             next_token = torch.argmax(logits[-1], dim=-1)
 
         next_token = next_token.reshape(-1)
-        tokens[token_idx] = next_token
+        # tokens[token_idx] = next_token
+        tokens = torch.cat([tokens, next_token])
+        # pax({
+        #     "tokens" : tokens,
+        #     "tokens'" : torch.cat([tokens, next_token]), # .reshape(1, -1)]),
+        # })
 
         # pax({
         #     "tokens" : tp(tokens),
@@ -118,7 +123,8 @@ def generate(
 
     output_text = lab.detokenize(tokens)
 
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    args = get_args()
+    print("~~~~~~~~ [ %s ] ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" % args.gen_model)
     print(output_text)
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     pax({
@@ -154,8 +160,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    debug(lab)
-    raise Exception("hi.")
+    # debug(lab)
+    # raise Exception("hi.")
     # <<<
 
     input_text = "lawrence is the fastest cyclist since "
