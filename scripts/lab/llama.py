@@ -105,12 +105,14 @@ class LlamaLab(Lab):
         acts["attn_norm"] = layer.attention_norm(hidden_states)
         acts["attn_output"] = layer.attention.forward(
             acts["attn_norm"], start_pos, freqs_cis, attn_mask)
-        # acts["attn_residual"] = hidden_states + acts["attn_output"]
-
-        # acts["output"] = layer(x=hidden_states,
-        #                        start_pos=0,
-        #                        freqs_cis=freqs_cis,
-        #                        mask=attn_mask)
+        acts["hidden"] = hidden_states + acts["attn_output"]
+        acts["mlp_norm"] = layer.ffn_norm(acts["hidden"])
+        acts["mlp_output"] = layer.feed_forward.forward(acts["mlp_norm"])
+        acts["output"] = acts["hidden"] + acts["mlp_output"]
+        acts["output [gold]"] = layer(x=hidden_states,
+                                      start_pos=0,
+                                      freqs_cis=freqs_cis,
+                                      mask=attn_mask)
 
         pax({
             "hidden_states" : hidden_states,

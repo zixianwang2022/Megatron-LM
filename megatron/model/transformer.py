@@ -23,10 +23,10 @@ from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, get
 def pax(a):
     from scripts import pax as _pax
     _pax(a)
-def hasnan(t):
-    num_nans = torch.isnan(t).sum().item()
-    if num_nans > 0:
-        pax({"t": t, "num_nans": num_nans})
+# def hasnan(t):
+#     num_nans = torch.isnan(t).sum().item()
+#     if num_nans > 0:
+#         pax({"t": t, "num_nans": num_nans})
 # <<<
 
 try:
@@ -119,6 +119,15 @@ class ParallelMLP(MegatronModule):
         elif args.swiglu:
             def swiglu(x):
                 x = torch.chunk(x, 2, dim=-1)
+                # >>>
+                w = torch.chunk(self.dense_h_to_4h.weight, 2, dim=0)
+                pax({
+                    "w / 0" : w[0],
+                    "w / 1" : w[1],
+                    "x / 0" : x[0].transpose(0, 1),
+                    "x / 1" : x[1].transpose(0, 1),
+                })
+                # <<<
                 return F.silu(x[0]) * x[1]
             self.activation_func = swiglu
         elif args.squared_relu:
@@ -139,23 +148,71 @@ class ParallelMLP(MegatronModule):
             input_is_parallel=True
         )
 
-    def forward(self, hidden_states):
+    # >>>
+    # def forward(self, hidden_states):
 
-        # [s, b, 4hp]
-        intermediate_parallel, bias_parallel = self.dense_h_to_4h(hidden_states)
+    #     # [s, b, 4hp]
+    #     intermediate_parallel, bias_parallel = self.dense_h_to_4h(hidden_states)
 
-        if self.bias_gelu_fusion:
-            assert self.add_bias is True
-            assert self.activation_func == F.gelu
-            intermediate_parallel = bias_gelu_impl(intermediate_parallel, bias_parallel)
-        else:
-            if bias_parallel is not None:
-                intermediate_parallel = intermediate_parallel + bias_parallel
-            intermediate_parallel = self.activation_func(intermediate_parallel)
+    #     # >>>
+    #     # import torch.nn.functional as F
+    #     ws = torch.chunk(self.dense_h_to_4h.weight, 2, dim=0)
+    #     pax({
+    #         # "bias_gelu_fusion" : self.bias_gelu_fusion,
+    #         "hidden_states" : hidden_states.transpose(0, 1),
+    #         "ws" : ws,
+    #         # "xs / linear" : [ F.linear(hidden_states, w).transpose(0, 1)
+    #         #                   for w in ws ],
+    #         "xs / matmul" : [ torch.matmul(hidden_states, w.T).transpose(0, 1)
+    #                           for w in ws ],
+    #         "matmul / xs" : [ t.transpose(0, 1) for t in torch.chunk(torch.matmul(hidden_states, self.dense_h_to_4h.weight.T), 2, dim=-1) ],
+    #         # "interm" : intermediate_parallel.transpose(0, 1),
+    #         "interms" : list(map(
+    #             lambda t : t.transpose(0, 1),
+    #             torch.chunk(intermediate_parallel, 2, dim=-1))),
+    #         # "bias_parallel" : bias_parallel,
+    #     })
+    #     # <<<
 
-        # [s, b, h]
-        output, output_bias = self.dense_4h_to_h(intermediate_parallel)
-        return output, output_bias
+    #     if self.bias_gelu_fusion:
+    #         assert self.add_bias is True
+    #         assert self.activation_func == F.gelu
+    #         intermediate_parallel = bias_gelu_impl(intermediate_parallel, bias_parallel)
+    #     else:
+    #         if bias_parallel is not None:
+    #             intermediate_parallel = intermediate_parallel + bias_parallel
+    #         intermediate_parallel = self.activation_func(intermediate_parallel)
+
+    #     # >>>
+    #     pax({
+    #         "hidden_states" : hidden_states.transpose(0, 1),
+    #         "intermediate_parallel" : intermediate_parallel.transpose(0, 1),
+    #     })
+    #     # <<<
+
+    #     # [s, b, h]
+    #     output, output_bias = self.dense_4h_to_h(intermediate_parallel)
+    #     return output, output_bias
+    # +++
+    def forward(self, x):
+        from megatron.core.tensor_parallel.layers import linear_with_grad_accumulation_and_async_allreduce
+        w1, w3 = torch.chunk(self.dense_h_to_4h.weight, 2, dim=0)
+        x1 = linear_with_grad_accumulation_and_async_allreduce(x, w1, None, False, False, False)
+        x3 = linear_with_grad_accumulation_and_async_allreduce(x, w3, None, False, False, False)
+        out = linear_with_grad_accumulation_and_async_allreduce(
+            F.silu(x1) * x3, self.dense_4h_to_h.weight, None, False, False, False)
+        # >>>
+        # pax({
+        #     "x" : x,
+        #     "w1" : w1,
+        #     "w3" : w3,
+        #     "x1" : x1.transpose(0, 1),
+        #     "x3" : x3.transpose(0, 1),
+        #     "out" : out.transpose(0, 1),
+        # })
+        # <<<
+        return out, None
+    # <<<
 
 class SwitchMLP(MegatronModule):
     """
@@ -277,15 +334,30 @@ class CoreAttention(MegatronModule):
             (output_size[0]*output_size[1], output_size[2], output_size[3]),
             query_layer.dtype, "mpu")
 
+        # >>>
+        # pax({
+        #     "query_layer" : query_layer.transpose(0, 1).reshape(1, 32, 11, 128),
+        #     "key_layer" : key_layer.transpose(0, 1).reshape(1, 32, 11, 128),
+        # })
+        # <<<
+
         # Raw attention scores. [b * np, sq, sk]
-        matmul_result = torch.baddbmm(
-            matmul_input_buffer,
-            query_layer.transpose(0, 1),   # [b * np, sq, hn]
-            key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
-            beta=0.0, alpha=(1.0/self.norm_factor))
+        # >>>
+        # matmul_result = torch.baddbmm(
+        #     matmul_input_buffer,
+        #     query_layer.transpose(0, 1),   # [b * np, sq, hn]
+        #     key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
+        #     beta=0.0, alpha=(1.0/self.norm_factor))
+        # +++
+        matmul_result = torch.matmul(query_layer.transpose(0, 1), key_layer.transpose(0, 1).transpose(1, 2)) / self.norm_factor
+        # <<<
 
         # change view to [b, np, sq, sk]
         attention_scores = matmul_result.view(*output_size)
+
+        # >>>
+        # pax({"attention_scores": attention_scores})
+        # <<<
 
         # ===========================
         # Attention probs and dropout
@@ -327,6 +399,14 @@ class CoreAttention(MegatronModule):
         # matmul: [b * np, sq, hn]
         context_layer = torch.bmm(attention_probs, value_layer.transpose(0, 1))
 
+        # >>>
+        # pax({
+        #     "attention_probs" : attention_probs.reshape(1, 32, 11, 11),
+        #     "value_layer" : value_layer.transpose(0, 1).reshape(1, 32, 11, 128),
+        #     "context_layer" : context_layer.reshape(1, 32, 11, 128),
+        # })
+        # <<<
+
         # change view [b, np, sq, hn]
         context_layer = context_layer.view(*output_size)
 
@@ -337,6 +417,10 @@ class CoreAttention(MegatronModule):
         new_context_layer_shape = context_layer.size()[:-2] + \
             (self.hidden_size_per_partition,)
         context_layer = context_layer.view(*new_context_layer_shape)
+
+        # >>>
+        # pax({"context_layer": context_layer})
+        # <<<
 
         return context_layer
 
@@ -715,6 +799,7 @@ class ParallelAttention(MegatronModule):
             # pax({
             #     "query_layer" : query_layer.transpose(0, 1),
             #     "key_layer" : key_layer.transpose(0, 1),
+            #     "value_layer" : value_layer.transpose(0, 1),
             # })
             # <<<
             # TODO, can apply positional embedding to value_layer so it has
@@ -744,6 +829,13 @@ class ParallelAttention(MegatronModule):
         # =================
 
         output, bias = self.dense(context_layer)
+
+        # >>>
+        # pax({
+        #     "output" : output,
+        #     "bias" : bias,
+        # })
+        # <<<
 
         return output, bias
 
@@ -1122,8 +1214,8 @@ class ParallelTransformerLayer(MegatronModule):
             norm_input = residual + self.drop_path(out)
 
         # >>>
-        # pax({"norm_input": norm_input})
-        hasnan(norm_input)
+        # pax({"norm_input": norm_input.transpose(0, 1)})
+        # hasnan(norm_input)
         # <<<
 
         # Layer norm post the self attention.
