@@ -44,7 +44,7 @@ class LlamaLab(Lab):
 
         args = get_args()
 
-        assert tokens.shape == (args.seq_length,)
+        # assert tokens.shape == (args.seq_length,)
 
         n_tokens = self.get_ntokens(tokens)
         tokens = tokens[:n_tokens]
@@ -109,7 +109,7 @@ class LlamaLab(Lab):
                                       mask=attn_mask)
 
         # >>>
-        if layer_idx == 0:
+        if layer_idx == 2:
             pax({
                 "layer_idx" : layer_idx,
                 "hidden_states" : hidden_states,
@@ -127,8 +127,8 @@ class LlamaLab(Lab):
                             start_pos=0):
 
         # >>>
-        pax({"attn_norms / w": [ layer.attention_norm.weight
-                                 for layer in self.model.layers ]})
+        # pax({"attn_norms / w": [ layer.attention_norm.weight
+        #                          for layer in self.model.layers ]})
         # <<<
 
         outs = []

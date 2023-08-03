@@ -58,7 +58,7 @@ class Lab(abc.ABC):
 
         args = get_args()
 
-        assert tokens.shape == (args.seq_length,)
+        # assert tokens.shape == (args.seq_length,)
 
         n_tokens = self.get_ntokens(tokens)
 

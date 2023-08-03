@@ -81,7 +81,7 @@ class MegatronLab(Lab):
         args = get_args()
 
         # assert tokens.shape == (1, args.seq_length)
-        assert tokens.shape == (args.seq_length,)
+        # assert tokens.shape == (args.seq_length,)
 
         # >>>
         n_tokens = self.get_ntokens(tokens)
@@ -159,7 +159,7 @@ class MegatronLab(Lab):
                                       rotary_pos_emb=rope_freqs)
 
         # >>>
-        if layer_idx == 0:
+        if layer_idx == 2:
             pax({
                 "layer_idx" : layer_idx,
                 "hidden_states" : hidden_states.transpose(0, 1),
@@ -176,9 +176,9 @@ class MegatronLab(Lab):
     def forward_debug_layers(self, hidden_states, attn_mask, rope_freqs):
 
         # >>>
-        pax({"attn_norms / w": [
-            layer.input_norm.weight
-            for layer in self.model.module.module.language_model.encoder.layers]})
+        # pax({"attn_norms / w": [
+        #     layer.input_norm.weight
+        #     for layer in self.model.module.module.language_model.encoder.layers]})
         # <<<
 
         layers = self.model.module.module.language_model.encoder.layers
