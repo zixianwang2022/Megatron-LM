@@ -144,24 +144,31 @@ class MegatronLab(Lab):
 
         acts = {}
         acts["attn_norm"] = layer.input_norm(hidden_states)
-        acts["attn_output"], acts["attn_bias"] = \
+        # acts["attn_output"], acts["attn_bias"] = \
+        acts["attn_output"], _ = \
             layer.self_attention(acts["attn_norm"],
                                  attn_mask,
                                  inference_params=inference_params,
                                  rotary_pos_emb=rope_freqs)
-        # acts["mlp_norm"] = layer.post_attention_norm(
-        # acts["output"] = layer(hidden_states=hidden_states,
-        #                        attention_mask=attn_mask,
-        #                        rotary_pos_emb=rope_freqs)
+        acts["hidden"] = hidden_states + acts["attn_output"]
+        acts["mlp_norm"] = layer.post_attention_norm(acts["hidden"])
+        acts["mlp_output"], _ = layer.mlp(acts["mlp_norm"])
+        acts["output"] = acts["hidden"] + acts["mlp_output"]
+        acts["output [gold]"] = layer(hidden_states=hidden_states,
+                                      attention_mask=attn_mask,
+                                      inference_params=inference_params,
+                                      rotary_pos_emb=rope_freqs)
 
         pax({
             "hidden_states" : hidden_states,
             "attn_mask" : attn_mask,
             "rope_freqs" : rope_freqs,
             "--" : "--",
-            **acts,
-            "attn_norm" : torch.transpose(acts["attn_norm"], 0, 1),
-            "attn_output" : torch.transpose(acts["attn_output"], 0, 1),
+            **{k:t.transpose(0, 1) for k,t in acts.items()},
+            # "attn_norm" : torch.transpose(acts["attn_norm"], 0, 1),
+            # "attn_output" : torch.transpose(acts["attn_output"], 0, 1),
+            # "hidden" : torch.transpose(acts["hidden"], 0, 1),
+            # "mlp_norm" : torch.transpose(acts["mlp_norm"], 0, 1),
             # "output" : torch.transpose(acts["output"], 0, 1),
         })
 
@@ -192,13 +199,13 @@ class MegatronLab(Lab):
             args.reset_attention_mask,
             args.eod_mask_loss)
         
-        pax({
-            "padded_vocab_size" : args.padded_vocab_size,
-            "input_ids" : input_ids,
-            "attention_mask" : attention_mask,
-            "loss_mask" : loss_mask,
-            "position_ids" : position_ids,
-        })
+        # pax({
+        #     "padded_vocab_size" : args.padded_vocab_size,
+        #     "input_ids" : input_ids,
+        #     "attention_mask" : attention_mask,
+        #     "loss_mask" : loss_mask,
+        #     "position_ids" : position_ids,
+        # })
 
         self.model.eval()
         with torch.no_grad():
