@@ -1,6 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 import torch
+from tqdm import tqdm
 
 from llama.generation import Llama
 
@@ -90,16 +91,9 @@ class LlamaLab(Lab):
         return acts
 
     def forward_debug_layer(self, hidden_states, attn_mask, freqs_cis,
-                            start_pos=0):
+                            layer_idx, start_pos=0):
 
-        layer = self.model.layers[0]
-
-        # pax({
-        #     "layer" : layer,
-        #     "hidden_states" : hidden_states,
-        #     "attn_mask" : attn_mask,
-        #     "freqs_cis" : freqs_cis,
-        # })
+        layer = self.model.layers[layer_idx]
 
         acts = {}
         acts["attn_norm"] = layer.attention_norm(hidden_states)
@@ -114,12 +108,62 @@ class LlamaLab(Lab):
                                       freqs_cis=freqs_cis,
                                       mask=attn_mask)
 
+        # >>>
+        if layer_idx == 0:
+            pax({
+                "layer_idx" : layer_idx,
+                "hidden_states" : hidden_states,
+                "attn_mask" : attn_mask,
+                "freqs_cis" : freqs_cis,
+                "--" : "--",
+                "attn_norm / w" : layer.attention_norm.weight,
+                **acts,
+            })
+        # <<<
+
+        return acts
+
+    def forward_debug_layers(self, hidden_states, attn_mask, freqs_cis,
+                            start_pos=0):
+
+        # >>>
+        pax({"attn_norms / w": [ layer.attention_norm.weight
+                                 for layer in self.model.layers ]})
+        # <<<
+
+        outs = []
+        for layer_idx, layer in enumerate(tqdm(self.model.layers, "layers")):
+            # >>>
+            # inp = hidden_states
+            # <<<
+            # hidden_states = layer(x=hidden_states,
+            #                       start_pos=0,
+            #                       freqs_cis=freqs_cis,
+            #                       mask=attn_mask,
+            #                       debug=layer_idx==1)
+            acts = self.forward_debug_layer(
+                hidden_states,
+                attn_mask,
+                freqs_cis,
+                layer_idx,
+            )
+            hidden_states = acts["output [gold]"]
+            # >>>
+            # out = hidden_states
+            # if layer_idx == 1:
+            #     pax({
+            #         "inp" : inp,
+            #         "out" : out,
+            #     })
+            # <<<
+            outs.append(hidden_states)
+
         pax({
             "hidden_states" : hidden_states,
             "attn_mask" : attn_mask,
             "freqs_cis" : freqs_cis,
             "--" : "--",
-            **acts,
+            "outs" : outs,
         })
 
         return acts
@@ -130,7 +174,11 @@ class LlamaLab(Lab):
 
         acts = {}
         acts["preprocess"] = self.forward_debug_preprocess(input_ids)
-        acts["layer"] = self.forward_debug_layer(
+        # acts["layer"] = self.forward_debug_layer(
+        #     acts["preprocess"]["hidden_states"],
+        #     acts["preprocess"]["attn_mask"],
+        #     acts["preprocess"]["freqs_cis"])
+        acts["layers"] = self.forward_debug_layers(
             acts["preprocess"]["hidden_states"],
             acts["preprocess"]["attn_mask"],
             acts["preprocess"]["freqs_cis"])

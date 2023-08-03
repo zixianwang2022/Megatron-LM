@@ -2,6 +2,7 @@
 
 import torch
 # from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
+from tqdm import tqdm
 
 from llama.tokenizer import Tokenizer as OriginalLlamaTokenizer
 
@@ -134,13 +135,11 @@ class MegatronLab(Lab):
 
         return acts
 
-    def forward_debug_layer(self, hidden_states, attn_mask, rope_freqs):
+    def forward_debug_layer(self, hidden_states, attn_mask, rope_freqs,
+                            layer_idx):
 
-        layer = self.model.module.module.language_model.encoder.layers[0]
+        layer = self.model.module.module.language_model.encoder.layers[layer_idx]
         inference_params = InferenceParams(1, hidden_states.shape[0]) # matches llama.build
-        # pax({"inference_params": inference_params})
-
-        # pax({"layer": layer})
 
         acts = {}
         acts["attn_norm"] = layer.input_norm(hidden_states)
@@ -159,17 +158,66 @@ class MegatronLab(Lab):
                                       inference_params=inference_params,
                                       rotary_pos_emb=rope_freqs)
 
+        # >>>
+        if layer_idx == 0:
+            pax({
+                "layer_idx" : layer_idx,
+                "hidden_states" : hidden_states.transpose(0, 1),
+                "attn_mask" : attn_mask,
+                "rope_freqs" : rope_freqs,
+                "--" : "--",
+                "attn_norm / w" : layer.input_norm.weight,
+                **{k:t.transpose(0, 1) for k,t in acts.items()},
+            })
+        # <<<
+
+        return acts
+
+    def forward_debug_layers(self, hidden_states, attn_mask, rope_freqs):
+
+        # >>>
+        pax({"attn_norms / w": [
+            layer.input_norm.weight
+            for layer in self.model.module.module.language_model.encoder.layers]})
+        # <<<
+
+        layers = self.model.module.module.language_model.encoder.layers
+        inference_params = InferenceParams(1, hidden_states.shape[0])
+
+        hidden_states = hidden_states
+        outs = []
+        for layer_idx, layer in enumerate(tqdm(layers, "layers")):
+            # >>>
+            # inp = hidden_states
+            # <<<
+            # hidden_states = layer(hidden_states=hidden_states,
+            #                       attention_mask=attn_mask,
+            #                       inference_params=inference_params,
+            #                       rotary_pos_emb=rope_freqs,
+            #                       debug=layer_idx==1)
+            acts = self.forward_debug_layer(
+                hidden_states,
+                attn_mask,
+                rope_freqs,
+                layer_idx,
+            )
+            hidden_states = acts["output [gold]"]
+            # >>>
+            # out = hidden_states
+            # if layer_idx == 1:
+            #     pax({
+            #         "inp" : inp.transpose(0, 1),
+            #         "out" : out.transpose(0, 1),
+            #     })
+            # <<<
+            outs.append(hidden_states)
+
         pax({
             "hidden_states" : hidden_states,
             "attn_mask" : attn_mask,
             "rope_freqs" : rope_freqs,
             "--" : "--",
-            **{k:t.transpose(0, 1) for k,t in acts.items()},
-            # "attn_norm" : torch.transpose(acts["attn_norm"], 0, 1),
-            # "attn_output" : torch.transpose(acts["attn_output"], 0, 1),
-            # "hidden" : torch.transpose(acts["hidden"], 0, 1),
-            # "mlp_norm" : torch.transpose(acts["mlp_norm"], 0, 1),
-            # "output" : torch.transpose(acts["output"], 0, 1),
+            "outs" : [ t.transpose(0, 1) for t in outs ],
         })
 
         return acts
@@ -177,7 +225,11 @@ class MegatronLab(Lab):
     def forward_debug_model(self, input_ids, position_ids, attention_mask):
         acts = {}
         acts["preprocess"] = self.forward_debug_preprocess(input_ids,position_ids)
-        acts["layer"] = self.forward_debug_layer(
+        # acts["layer"] = self.forward_debug_layer(
+        #     acts["preprocess"]["hidden_states"],
+        #     attention_mask,
+        #     acts["preprocess"]["rope_freqs"])
+        acts["layers"] = self.forward_debug_layers(
             acts["preprocess"]["hidden_states"],
             attention_mask,
             acts["preprocess"]["rope_freqs"])
