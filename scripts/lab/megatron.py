@@ -95,7 +95,8 @@ class MegatronLab(Lab):
             args.reset_attention_mask,
             args.eod_mask_loss)
         
-        inference_params = InferenceParams(1, n_tokens)
+        # inference_params = InferenceParams(1, n_tokens)
+        inference_params = InferenceParams(1, args.seq_length) # matches llama.build
         # pax({"inference_params": inference_params})
 
         self.model.eval()
@@ -136,6 +137,8 @@ class MegatronLab(Lab):
     def forward_debug_layer(self, hidden_states, attn_mask, rope_freqs):
 
         layer = self.model.module.module.language_model.encoder.layers[0]
+        inference_params = InferenceParams(1, hidden_states.shape[0]) # matches llama.build
+        # pax({"inference_params": inference_params})
 
         # pax({"layer": layer})
 
@@ -144,6 +147,7 @@ class MegatronLab(Lab):
         acts["attn_output"], acts["attn_bias"] = \
             layer.self_attention(acts["attn_norm"],
                                  attn_mask,
+                                 inference_params=inference_params,
                                  rotary_pos_emb=rope_freqs)
         # acts["mlp_norm"] = layer.post_attention_norm(
         # acts["output"] = layer(hidden_states=hidden_states,
@@ -177,7 +181,8 @@ class MegatronLab(Lab):
 
         args = get_args()
 
-        assert input_ids.shape == (args.seq_length,)
+        # assert input_ids.shape == (args.seq_length,)
+        assert len(input_ids.shape) == 1
         input_ids = input_ids.reshape((1, -1))
 
         attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
@@ -187,13 +192,13 @@ class MegatronLab(Lab):
             args.reset_attention_mask,
             args.eod_mask_loss)
         
-        # pax({
-        #     "padded_vocab_size" : args.padded_vocab_size,
-        #     "input_ids" : input_ids,
-        #     "attention_mask" : attention_mask,
-        #     "loss_mask" : loss_mask,
-        #     "position_ids" : position_ids,
-        # })
+        pax({
+            "padded_vocab_size" : args.padded_vocab_size,
+            "input_ids" : input_ids,
+            "attention_mask" : attention_mask,
+            "loss_mask" : loss_mask,
+            "position_ids" : position_ids,
+        })
 
         self.model.eval()
         with torch.no_grad():

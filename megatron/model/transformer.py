@@ -19,7 +19,14 @@ from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_em
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, get_norm
 
 # >>>
-from lutil import pax
+# from lutil import pax
+def pax(a):
+    from scripts import pax as _pax
+    _pax(a)
+def hasnan(t):
+    num_nans = torch.isnan(t).sum().item()
+    if num_nans > 0:
+        pax({"t": t, "num_nans": num_nans})
 # <<<
 
 try:
@@ -682,19 +689,33 @@ class ParallelAttention(MegatronModule):
         # apply relative positional encoding (rotary embedding)
         if rotary_pos_emb is not None:
             q_pos_emb, k_pos_emb = rotary_pos_emb
-            # >>>
-            pax({
-                "query_layer" : query_layer.transpose(0, 1),
-                "key_layer" : key_layer.transpose(0, 1),
-            })
+            # >>> [ good ]
+            # pax({
+            #     "query_layer" : query_layer.transpose(0, 1),
+            #     "key_layer" : key_layer.transpose(0, 1),
+            # })
             # <<<
-            query_layer = apply_rotary_pos_emb(query_layer, q_pos_emb)
-            key_layer = apply_rotary_pos_emb(key_layer, k_pos_emb)
-            # >>> [ bad ]
-            pax({
-                "query_layer" : query_layer.transpose(0, 1),
-                "key_layer" : key_layer.transpose(0, 1),
-            })
+            if 0:
+                query_layer = apply_rotary_pos_emb(query_layer, q_pos_emb)
+                key_layer = apply_rotary_pos_emb(key_layer, k_pos_emb)
+            else:
+                from llama.model import precompute_freqs_cis, apply_rotary_emb_single
+                freqs_cis = precompute_freqs_cis(
+                    self.hidden_size_per_attention_head,
+                    inference_params.max_sequence_len * 2)
+                freqs_cis = freqs_cis[:query_layer.shape[0]].to("cuda")
+                # pax({
+                #     "head size" : self.hidden_size_per_attention_head,
+                #     "inference_params" : inference_params,
+                #     "freqs_cis" : freqs_cis,
+                # })
+                query_layer = apply_rotary_emb_single(query_layer, freqs_cis)
+                key_layer = apply_rotary_emb_single(key_layer, freqs_cis)
+            # >>> [ bad; soln = llama rotary + torch.set_default_dtype(torch.cuda.HalfTensor) ]
+            # pax({
+            #     "query_layer" : query_layer.transpose(0, 1),
+            #     "key_layer" : key_layer.transpose(0, 1),
+            # })
             # <<<
             # TODO, can apply positional embedding to value_layer so it has
             # absolute positional embedding.
@@ -1099,6 +1120,11 @@ class ParallelTransformerLayer(MegatronModule):
                                               p=self.hidden_dropout,
                                               training=self.training)
             norm_input = residual + self.drop_path(out)
+
+        # >>>
+        # pax({"norm_input": norm_input})
+        hasnan(norm_input)
+        # <<<
 
         # Layer norm post the self attention.
         norm_output = self.post_attention_norm(norm_input)

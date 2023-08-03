@@ -14,6 +14,7 @@ from lab import Lab, LlamaLab, MegatronLab
 
 from lutil import pax
 
+
 # def debug_preprocess(lab):
 
 #     input_text = "i am the kind of text that you want to tokenize for all your needs. thank you, it's time that you learn how to debug a llm. they are mean and far from lean, and you're a machine."
@@ -37,14 +38,15 @@ def debug(lab):
 
     # >>>
     # input_text = "i am the kind of text that you want to tokenize for all your needs. thank you, it's time that you learn how to debug a llm. they are mean and far from lean, and you're a machine."
-    # input_ids = lab.tokenize(input_text)
+    input_text = "lawrence is the fastest cyclist since "
+    input_ids = lab.tokenize(input_text)
     # input_ntokens = lab.get_ntokens(input_tokens)
-    torch.cuda.manual_seed(0)
-    input_ids = torch.randint(low=0,
-                              high=args.padded_vocab_size,
-                              size=(args.seq_length,),
-                              dtype=torch.long,
-                              device="cuda")
+    # torch.cuda.manual_seed(0)
+    # input_ids = torch.randint(low=0,
+    #                           high=args.padded_vocab_size,
+    #                           size=(args.seq_length,),
+    #                           dtype=torch.long,
+    #                           device="cuda")
     # pax({"input_ids": input_ids, "n_tokens": lab.get_ntokens(input_ids)})
 
     acts = lab.forward_debug(input_ids) # input_tokens)
@@ -138,6 +140,10 @@ if __name__ == "__main__":
     initialize_megatron(extra_args_provider=add_textgen_args)
     set_jit_fusion_options()
 
+    # >>> [llama]
+    torch.set_default_tensor_type(torch.cuda.HalfTensor)
+    # <<<
+
     # Model, tokenizer.
     args = get_args()
     if args.gen_model == "megatron":
@@ -148,8 +154,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    # debug(lab)
-    # raise Exception("hi.")
+    debug(lab)
+    raise Exception("hi.")
     # <<<
 
     input_text = "lawrence is the fastest cyclist since "
