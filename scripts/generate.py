@@ -124,9 +124,10 @@ def generate(
     output_text = lab.detokenize(tokens)
 
     args = get_args()
-    print("~~~~~~~~ [ %s ] ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" % args.gen_model)
+    divider = ("~" * 10) + f" [ {args.gen_model} ] " + ("~" * 10)
+    print(divider)
     print(output_text)
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("~" * len(divider))
     pax({
         "input_text" : input_text,
         "output_text" : output_text,
@@ -164,12 +165,12 @@ if __name__ == "__main__":
     # raise Exception("hi.")
     # <<<
 
-    input_text = "lawrence is the fastest cyclist since "
+    # input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
     # input_text = "the funniest knock knock joke i ever heard was "
-    # input_text = "the craziest thing i've ever heard was "
+    input_text = "the craziest thing i've ever heard was "
     # input_text = "i'm not the kind of person to " # 300, 0.8
     # input_text = "the best year in history was "
     # input_text = "the best year in history was 1984 because "
