@@ -148,8 +148,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    # debug(lab)
-    # raise Exception("hi.")
+    debug(lab)
+    raise Exception("hi.")
     # <<<
 
     # input_text = "lawrence is the fastest cyclist since "
