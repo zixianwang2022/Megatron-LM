@@ -720,17 +720,64 @@ class ParallelAttention(MegatronModule):
             # #     self.num_query_groups_per_partition,
             # #     self.hidden_size_per_attention_head,
             # # )
-            # pax({
-            #     "hidden_states" : hidden_states,
-            #     "query_key_value" : self.query_key_value.weight,
-            #     "wqkv" : wqkv,
-            #     "wq" : wq,
-            #     "wk" : wk,
-            #     "wv" : wv,
-            #     "query_layer" : query_layer.transpose(0, 1),
-            #     "key_layer" : key_layer.transpose(0, 1),
-            #     "value_layer" : value_layer.transpose(0, 1),
-            # })
+            # # pax({
+            # #     "hidden_states" : hidden_states,
+            # #     "query_key_value" : self.query_key_value.weight,
+            # # })
+            # +++
+            wqkv = self.query_key_value.weight.reshape(
+                self.num_query_groups_per_partition,
+                (int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) + 2) * self.hidden_size_per_attention_head, 
+                -1,
+            )
+            wq, wk, wv = torch.split(wqkv, [
+                int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) * self.hidden_size_per_attention_head, 
+                self.hidden_size_per_attention_head,
+                self.hidden_size_per_attention_head,
+            ], dim=1)
+            wq = wq.reshape(-1, wq.shape[-1])
+            wk = wk.reshape(-1, wk.shape[-1])
+            wv = wv.reshape(-1, wv.shape[-1])
+            query_layer = torch.matmul(hidden_states, wq.T)
+            key_layer = torch.matmul(hidden_states, wk.T)
+            value_layer = torch.matmul(hidden_states, wv.T)
+            pax({
+                "hidden_states" : hidden_states,
+                "query_key_value" : self.query_key_value.weight,
+                "wqkv" : wqkv,
+                "wq" : wq,
+                "wk" : wk,
+                "wv" : wv,
+                "query_layer" : query_layer.transpose(0, 1),
+                "key_layer" : key_layer.transpose(0, 1),
+                "value_layer" : value_layer.transpose(0, 1),
+            })
+            # query_layer = query_layer.reshape(
+            #     *query_layer.shape[:2],
+            #     self.num_query_groups_per_partition,
+            #     int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) * self.hidden_size_per_attention_head,
+            # )
+            # key_layer = key_layer.reshape(
+            #     *key_layer.shape[:2],
+            #     self.num_query_groups_per_partition,
+            #     self.hidden_size_per_attention_head,
+            # )
+            # value_layer = value_layer.reshape(
+            #     *value_layer.shape[:2],
+            #     self.num_query_groups_per_partition,
+            #     self.hidden_size_per_attention_head,
+            # )
+            pax({
+                "hidden_states" : hidden_states,
+                "query_key_value" : self.query_key_value.weight,
+                "wqkv" : wqkv,
+                "wq" : wq,
+                "wk" : wk,
+                "wv" : wv,
+                "query_layer" : query_layer.transpose(0, 1),
+                "key_layer" : key_layer.transpose(0, 1),
+                "value_layer" : value_layer.transpose(0, 1),
+            })
             # <<<
 
             # [sq, b, hp] --> [sq, b, ng, (np/ng + 2) * hn]
