@@ -160,13 +160,25 @@ class LlamaLab(Lab):
             # <<<
             outs.append(hidden_states)
 
-        pax({
-            "hidden_states" : hidden_states,
-            "attn_mask" : attn_mask,
-            "freqs_cis" : freqs_cis,
-            "--" : "--",
-            "outs" : outs,
-        })
+        acts = {"hidden_states": outs[-1]}
+
+        # pax({
+        #     "hidden_states" : hidden_states,
+        #     "attn_mask" : attn_mask,
+        #     "freqs_cis" : freqs_cis,
+        #     "--" : "--",
+        #     "outs" : outs,
+        # })
+
+        return acts
+
+    def forward_debug_postprocess(self, hidden_states):
+
+        acts = {}
+        acts["norm"] = self.model.norm(hidden_states)
+        acts["output"] = self.model.output(acts["norm"]).float()
+
+        # pax(acts)
 
         return acts
 
@@ -185,6 +197,11 @@ class LlamaLab(Lab):
             acts["preprocess"]["attn_mask"],
             acts["preprocess"]["freqs_cis"],
             debug_layer_idx)
+        acts["postprocess"] = self.forward_debug_postprocess(
+            acts["layers"]["hidden_states"])
+
+        # acts["output [gold]"] = self.model(input_ids, 0)
+        acts["output [gold]"] = self.forward(input_ids)
 
         pax(acts)
 
