@@ -362,8 +362,8 @@ class CoreAttention(MegatronModule):
         # >>>
         if debug:
             pax({
-                "query_layer" : query_layer.transpose(0, 1).reshape(1, 32, 11, 128),
-                "key_layer" : key_layer.transpose(0, 1).reshape(1, 32, 11, 128),
+                "query_layer" : query_layer.transpose(0, 1).reshape(1, 32, query_layer.shape[0], 128),
+                "key_layer" : key_layer.transpose(0, 1).reshape(1, 32, key_layer.shape[0], 128),
                 "attention_scores" : attention_scores,
                 "norm_factor" : self.norm_factor,
                 "head dim" : self.hidden_size_per_attention_head,
@@ -566,6 +566,13 @@ class ParallelAttention(MegatronModule):
                 init_method=config.init_method,
                 bias=args.add_bias_linear,
                 gather_output=False)
+            # >>>
+            # pax({
+            #     "hidden_size" : config.hidden_size,
+            #     "other dim" : projection_size + 2 * key_projection_size,
+            #     "query_key_value" : self.query_key_value.weight,
+            # })
+            # <<<
         else:
             assert attention_type == AttnType.cross_attn
 
@@ -675,7 +682,56 @@ class ParallelAttention(MegatronModule):
         # =====================
         if self.attention_type == AttnType.self_attn:
             # Attention heads [sq, b, h] --> [sq, b, ng * (np/ng + 2) * hn)]
+            # >>>
             mixed_x_layer, _ = self.query_key_value(hidden_states)
+            # +++
+            # # pax({
+            # #     "hidden_states" : hidden_states,
+            # #     "query_key_value" : self.query_key_value.weight,
+            # # })
+            # wqkv = self.query_key_value.weight.reshape(
+            #     -1,
+            #     self.num_query_groups_per_partition,
+            #     (int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) + 2) * self.hidden_size_per_attention_head, 
+            # )
+            # wq, wk, wv = torch.split(wqkv, [
+            #     int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) * self.hidden_size_per_attention_head, 
+            #     self.hidden_size_per_attention_head,
+            #     self.hidden_size_per_attention_head,
+            # ], dim=2)
+            # wq = wq.reshape(wq.shape[0], -1)
+            # wk = wk.reshape(wk.shape[0], -1)
+            # wv = wv.reshape(wv.shape[0], -1)
+            # query_layer = torch.matmul(hidden_states, wq.T)
+            # key_layer = torch.matmul(hidden_states, wk.T)
+            # value_layer = torch.matmul(hidden_states, wv.T)
+            # # query_layer = query_layer.reshape(
+            # #     *query_layer.shape[:2],
+            # #     self.num_query_groups_per_partition,
+            # #     int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) * self.hidden_size_per_attention_head,
+            # # )
+            # # key_layer = key_layer.reshape(
+            # #     *key_layer.shape[:2],
+            # #     self.num_query_groups_per_partition,
+            # #     self.hidden_size_per_attention_head,
+            # # )
+            # # value_layer = value_layer.reshape(
+            # #     *value_layer.shape[:2],
+            # #     self.num_query_groups_per_partition,
+            # #     self.hidden_size_per_attention_head,
+            # # )
+            # pax({
+            #     "hidden_states" : hidden_states,
+            #     "query_key_value" : self.query_key_value.weight,
+            #     "wqkv" : wqkv,
+            #     "wq" : wq,
+            #     "wk" : wk,
+            #     "wv" : wv,
+            #     "query_layer" : query_layer.transpose(0, 1),
+            #     "key_layer" : key_layer.transpose(0, 1),
+            #     "value_layer" : value_layer.transpose(0, 1),
+            # })
+            # <<<
 
             # [sq, b, hp] --> [sq, b, ng, (np/ng + 2) * hn]
             new_tensor_shape = mixed_x_layer.size()[:-1] + (
@@ -692,17 +748,17 @@ class ParallelAttention(MegatronModule):
                                                        self.hidden_size_per_attention_head], 
                                                        dim=3)
             # >>> [ good ]
-            # if debug:
-            #     pax({
-            #         "hidden_states" : hidden_states.transpose(0, 1),
-            #         "num_attention_heads" : self.num_attention_heads_per_partition,
-            #         "hidden_size" : self.hidden_size_per_attention_head,
-            #         "new_tensor_shape" : str(new_tensor_shape),
-            #         "mixed_x_layer" : mixed_x_layer,
-            #         "query_layer" : query_layer.reshape(11, 1, -1).transpose(0, 1),
-            #         "key_layer" : key_layer.reshape(11, 1, -1).transpose(0, 1),
-            #         "value_layer" : value_layer.reshape(11, 1, -1).transpose(0, 1),
-            #     })
+            if debug:
+                pax({
+                    "hidden_states" : hidden_states.transpose(0, 1),
+                    "num_attention_heads" : self.num_attention_heads_per_partition,
+                    "hidden_size" : self.hidden_size_per_attention_head,
+                    "new_tensor_shape" : str(new_tensor_shape),
+                    "mixed_x_layer" : mixed_x_layer,
+                    "query_layer" : query_layer.reshape(query_layer.shape[0], 1, -1).transpose(0, 1),
+                    "key_layer" : key_layer.reshape(key_layer.shape[0], 1, -1).transpose(0, 1),
+                    "value_layer" : value_layer.reshape(value_layer.shape[0], 1, -1).transpose(0, 1),
+                })
             # <<<
             # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn] -
             query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head) 
