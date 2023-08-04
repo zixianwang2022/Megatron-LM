@@ -217,13 +217,14 @@ class MegatronLab(Lab):
 
         acts = {"hidden_states": outs[-1]}
 
-        # pax({
-        #     "hidden_states" : hidden_states,
-        #     "attn_mask" : attn_mask,
-        #     "rope_freqs" : rope_freqs,
-        #     "--" : "--",
-        #     "outs" : [ t.transpose(0, 1) for t in outs ],
-        # })
+        pax({
+            "hidden_states" : hidden_states,
+            "attn_mask" : attn_mask,
+            "rope_freqs" : rope_freqs,
+            "--" : "--",
+            "outs" : [ t.transpose(0, 1) for t in outs ],
+        })
+        # pax({"outs / -1": outs[-1].transpose(0, 1)})
 
         return acts
 
