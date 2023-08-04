@@ -56,7 +56,7 @@ def debug(lab):
     #                           device="cuda")
     # pax({"input_ids": input_ids, "n_tokens": lab.get_ntokens(input_ids)})
 
-    acts = lab.forward_debug(input_ids, debug_layer_idx=0)
+    acts = lab.forward_debug(input_ids, debug_layer_idx=None) # 0)
 
     pax(acts)
     # <<<
