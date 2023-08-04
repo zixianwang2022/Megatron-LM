@@ -49,16 +49,14 @@ def debug(lab):
     #                           device="cuda")
     # pax({"input_ids": input_ids, "n_tokens": lab.get_ntokens(input_ids)})
 
-    acts = lab.forward_debug(input_ids) # input_tokens)
+    acts = lab.forward_debug(input_ids, debug_layer_idx=None) # input_tokens)
 
     pax(acts)
     # <<<
 
-    debug_preprocess(lab)
-    debug_layer(lab)
-    debug_postprocess(lab)
-
-    pax({"lab": lab})
+    # debug_preprocess(lab)
+    # debug_layer(lab)
+    # debug_postprocess(lab)
 
 @torch.inference_mode()
 def generate(
@@ -161,8 +159,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    # debug(lab)
-    # raise Exception("hi.")
+    debug(lab)
+    raise Exception("hi.")
     # <<<
 
     # input_text = "lawrence is the fastest cyclist since "

@@ -91,14 +91,15 @@ class LlamaLab(Lab):
         return acts
 
     def forward_debug_layer(self, hidden_states, attn_mask, freqs_cis,
-                            layer_idx, start_pos=0):
+                            layer_idx, debug, start_pos=0):
 
         layer = self.model.layers[layer_idx]
 
         acts = {}
         acts["attn_norm"] = layer.attention_norm(hidden_states)
         acts["attn_output"] = layer.attention.forward(
-            acts["attn_norm"], start_pos, freqs_cis, attn_mask)
+            acts["attn_norm"], start_pos, freqs_cis, attn_mask,
+            debug=debug)
         acts["hidden"] = hidden_states + acts["attn_output"]
         acts["mlp_norm"] = layer.ffn_norm(acts["hidden"])
         acts["mlp_output"] = layer.feed_forward.forward(acts["mlp_norm"])
@@ -109,14 +110,14 @@ class LlamaLab(Lab):
                                       mask=attn_mask)
 
         # >>>
-        if layer_idx == 2:
+        if debug:
             pax({
                 "layer_idx" : layer_idx,
                 "hidden_states" : hidden_states,
                 "attn_mask" : attn_mask,
                 "freqs_cis" : freqs_cis,
                 "--" : "--",
-                "attn_norm / w" : layer.attention_norm.weight,
+                # "attn_norm / w" : layer.attention_norm.weight,
                 **acts,
             })
         # <<<
@@ -124,7 +125,7 @@ class LlamaLab(Lab):
         return acts
 
     def forward_debug_layers(self, hidden_states, attn_mask, freqs_cis,
-                            start_pos=0):
+                             debug_layer_idx, start_pos=0):
 
         # >>>
         # pax({"attn_norms / w": [ layer.attention_norm.weight
@@ -146,6 +147,7 @@ class LlamaLab(Lab):
                 attn_mask,
                 freqs_cis,
                 layer_idx,
+                layer_idx == debug_layer_idx,
             )
             hidden_states = acts["output [gold]"]
             # >>>
@@ -168,7 +170,7 @@ class LlamaLab(Lab):
 
         return acts
 
-    def forward_debug_model(self, input_ids):
+    def forward_debug_model(self, input_ids, debug_layer_idx):
 
         # args = get_args()
 
@@ -181,12 +183,13 @@ class LlamaLab(Lab):
         acts["layers"] = self.forward_debug_layers(
             acts["preprocess"]["hidden_states"],
             acts["preprocess"]["attn_mask"],
-            acts["preprocess"]["freqs_cis"])
+            acts["preprocess"]["freqs_cis"],
+            debug_layer_idx)
 
         pax(acts)
 
     # def forward_debug(self, tokens):
-    def forward_debug(self, input_ids):
+    def forward_debug(self, input_ids, debug_layer_idx):
 
         args = get_args()
 
@@ -194,7 +197,7 @@ class LlamaLab(Lab):
         assert len(input_ids.shape) == 1
         input_ids = input_ids.reshape((1, -1))
 
-        acts = self.forward_debug_model(input_ids)
+        acts = self.forward_debug_model(input_ids, debug_layer_idx)
 
         pax(acts)
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
