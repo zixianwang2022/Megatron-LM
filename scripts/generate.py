@@ -12,7 +12,9 @@ from megatron.initialize import initialize_megatron, set_jit_fusion_options
 
 from lab import Lab, LlamaLab, MegatronLab
 
-from lutil import pax
+def pax(a):
+    from scripts import pax as _pax
+    _pax(a)
 
 
 # def debug_preprocess(lab):
@@ -69,6 +71,7 @@ def generate(
         top_p: float = 0.9,
         # logprobs: bool = False,
         # echo: bool = False,
+        seed: int = 0,
 ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
 
     tokens = lab.tokenize(input_text)
@@ -84,51 +87,29 @@ def generate(
     # })
     
     # tokens = tokens.reshape((1, -1))
+    torch.cuda.manual_seed(seed)
     for token_idx in tqdm(range(n_tokens, n_tokens + max_output_len),
                           "gen tokens"):
 
         logits = lab.forward(tokens)
 
         if temperature > 0:
-            # probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
             probs = torch.softmax(logits[-1] / temperature, dim=-1)
-            # >>>
-            
-            # <<<
-            try:
-                next_token = sample_top_p(probs, top_p)
-            except Exception as e:
-                print("~~~~~~~~~~~~~~~~~~~~~~")
-                print(lab.detokenize(tokens))
-                print("~~~~~~~~~~~~~~~~~~~~~~")
-                pax({"token_idx": token_idx, "probs": probs, "e": e})
+            next_token = sample_top_p(probs, top_p)
         else:
-            # next_token = torch.argmax(logits[:, -1], dim=-1)
             next_token = torch.argmax(logits[-1], dim=-1)
 
         next_token = next_token.reshape(-1)
-        # tokens[token_idx] = next_token
         tokens = torch.cat([tokens, next_token])
-        # pax({
-        #     "tokens" : tokens,
-        #     "tokens'" : torch.cat([tokens, next_token]), # .reshape(1, -1)]),
-        # })
-
-        # pax({
-        #     "tokens" : tp(tokens),
-        #     "logits" : tp(logits),
-        #     "next_token" : next_token.item(),
-        #     "n_tokens" : lab.get_ntokens(tokens),
-        # })
-    # tokens = tokens.reshape(-1)
 
     output_text = lab.detokenize(tokens)
 
     args = get_args()
-    divider = ("~" * 10) + f" [ {args.gen_model} ] " + ("~" * 10)
-    print(divider)
-    print(output_text)
-    print("~" * len(divider))
+    # divider = ("~" * 10) + f" [ {args.gen_model} ] " + ("~" * 10)
+    # print(divider)
+    # print(output_text)
+    # print("~" * len(divider))
+    print(f"[{args.gen_model.upper()}, seed {seed}] {input_text} ...... {' || '.join(output_text.replace(input_text, '').splitlines())}")
     pax({
         "input_text" : input_text,
         "output_text" : output_text,
@@ -162,8 +143,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    # debug(lab)
-    # raise Exception("hi.")
+    debug(lab)
+    raise Exception("hi.")
     # <<<
 
     # input_text = "lawrence is the fastest cyclist since "
@@ -183,6 +164,7 @@ if __name__ == "__main__":
         input_text,
         max_output_len=300,
         temperature=0.8,
+        seed=2,
     )
 
     pax({
