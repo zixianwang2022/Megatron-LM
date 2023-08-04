@@ -92,6 +92,9 @@ def generate(
         if temperature > 0:
             # probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
             probs = torch.softmax(logits[-1] / temperature, dim=-1)
+            # >>>
+            
+            # <<<
             try:
                 next_token = sample_top_p(probs, top_p)
             except Exception as e:
@@ -159,8 +162,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    debug(lab)
-    raise Exception("hi.")
+    # debug(lab)
+    # raise Exception("hi.")
     # <<<
 
     # input_text = "lawrence is the fastest cyclist since "

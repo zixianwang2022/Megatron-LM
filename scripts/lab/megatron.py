@@ -215,13 +215,27 @@ class MegatronLab(Lab):
             # <<<
             outs.append(hidden_states)
 
-        pax({
-            "hidden_states" : hidden_states,
-            "attn_mask" : attn_mask,
-            "rope_freqs" : rope_freqs,
-            "--" : "--",
-            "outs" : [ t.transpose(0, 1) for t in outs ],
-        })
+        acts = {"hidden_states": outs[-1]}
+
+        # pax({
+        #     "hidden_states" : hidden_states,
+        #     "attn_mask" : attn_mask,
+        #     "rope_freqs" : rope_freqs,
+        #     "--" : "--",
+        #     "outs" : [ t.transpose(0, 1) for t in outs ],
+        # })
+
+        return acts
+
+    def forward_debug_postprocess(self, hidden_states):
+
+        lm = self.model.module.module.language_model
+
+        acts = {}
+        acts["norm"] = lm.encoder.final_norm(hidden_states)
+        acts["output"], _ = lm.output_layer(acts["norm"])
+
+        # pax({k:t.transpose(0, 1) for k,t in acts.items()})
 
         return acts
 
@@ -239,6 +253,10 @@ class MegatronLab(Lab):
             attention_mask,
             acts["preprocess"]["rope_freqs"],
             debug_layer_idx)
+        acts["postprocess"] = self.forward_debug_postprocess(
+            acts["layers"]["hidden_states"])
+
+        acts["output [gold]"] = self.forward(input_ids)
 
         pax(acts)
 
@@ -268,10 +286,10 @@ class MegatronLab(Lab):
 
         self.model.eval()
         with torch.no_grad():
-            activation_map = self.forward_debug_model(input_ids,
-                                                      position_ids,
-                                                      attention_mask,
-                                                      debug_layer_idx)
+            acts = self.forward_debug_model(input_ids,
+                                            position_ids,
+                                            attention_mask,
+                                            debug_layer_idx)
             pax({"activation_map": activation_map})
 
         logits = logits[0]
