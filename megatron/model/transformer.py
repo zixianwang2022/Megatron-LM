@@ -310,7 +310,11 @@ class CoreAttention(MegatronModule):
         self.attention_dropout = torch.nn.Dropout(config.attention_dropout)
 
     def forward(self, query_layer, key_layer,
-                value_layer, attention_mask):
+                value_layer, attention_mask,
+                # >>>
+                debug=False,
+                # <<<
+    ):
 
         # ===================================
         # Raw attention scores. [b, np, s, s]
@@ -356,7 +360,15 @@ class CoreAttention(MegatronModule):
         attention_scores = matmul_result.view(*output_size)
 
         # >>>
-        # pax({"attention_scores": attention_scores})
+        if debug:
+            pax({
+                "query_layer" : query_layer.transpose(0, 1).reshape(1, 32, 11, 128),
+                "key_layer" : key_layer.transpose(0, 1).reshape(1, 32, 11, 128),
+                "attention_scores" : attention_scores,
+                "norm_factor" : self.norm_factor,
+                "head dim" : self.hidden_size_per_attention_head,
+                "sq(head dim)" : math.sqrt(self.hidden_size_per_attention_head)
+            })
         # <<<
 
         # ===========================
@@ -629,7 +641,11 @@ class ParallelAttention(MegatronModule):
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, inference_params=None,
-                rotary_pos_emb=None):
+                rotary_pos_emb=None,
+                # >>>
+                debug=False,
+                # <<<
+    ):
         # hidden_states: [sq, b, h]
 
         # =================================================
@@ -676,16 +692,17 @@ class ParallelAttention(MegatronModule):
                                                        self.hidden_size_per_attention_head], 
                                                        dim=3)
             # >>> [ good ]
-            # pax({
-            #     "hidden_states" : hidden_states.transpose(0, 1),
-            #     "num_attention_heads" : self.num_attention_heads_per_partition,
-            #     "hidden_size" : self.hidden_size_per_attention_head,
-            #     "new_tensor_shape" : str(new_tensor_shape),
-            #     "mixed_x_layer" : mixed_x_layer,
-            #     "query_layer" : query_layer.reshape(11, 1, -1).transpose(0, 1),
-            #     "key_layer" : key_layer.reshape(11, 1, -1).transpose(0, 1),
-            #     "value_layer" : value_layer.reshape(11, 1, -1).transpose(0, 1),
-            # })
+            # if debug:
+            #     pax({
+            #         "hidden_states" : hidden_states.transpose(0, 1),
+            #         "num_attention_heads" : self.num_attention_heads_per_partition,
+            #         "hidden_size" : self.hidden_size_per_attention_head,
+            #         "new_tensor_shape" : str(new_tensor_shape),
+            #         "mixed_x_layer" : mixed_x_layer,
+            #         "query_layer" : query_layer.reshape(11, 1, -1).transpose(0, 1),
+            #         "key_layer" : key_layer.reshape(11, 1, -1).transpose(0, 1),
+            #         "value_layer" : value_layer.reshape(11, 1, -1).transpose(0, 1),
+            #     })
             # <<<
             # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn] -
             query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head) 
@@ -796,11 +813,12 @@ class ParallelAttention(MegatronModule):
                 query_layer = apply_rotary_emb_single(query_layer, freqs_cis)
                 key_layer = apply_rotary_emb_single(key_layer, freqs_cis)
             # >>> [ bad; soln = llama rotary + torch.set_default_dtype(torch.cuda.HalfTensor) ]
-            # pax({
-            #     "query_layer" : query_layer.transpose(0, 1),
-            #     "key_layer" : key_layer.transpose(0, 1),
-            #     "value_layer" : value_layer.transpose(0, 1),
-            # })
+            # if debug:
+            #     pax({
+            #         "query_layer" : query_layer.transpose(0, 1),
+            #         "key_layer" : key_layer.transpose(0, 1),
+            #         "value_layer" : value_layer.transpose(0, 1),
+            #     })
             # <<<
             # TODO, can apply positional embedding to value_layer so it has
             # absolute positional embedding.
@@ -813,7 +831,8 @@ class ParallelAttention(MegatronModule):
                     query_layer, key_layer, value_layer, attention_mask)
             else:
                 context_layer = self.core_attention(
-                    query_layer, key_layer, value_layer, attention_mask)
+                    query_layer, key_layer, value_layer, attention_mask,
+                    debug=debug)
         else:
             q, k, v = [rearrange(x, 's b ... -> b s ...').contiguous()
                        for x in (query_layer, key_layer, value_layer)]

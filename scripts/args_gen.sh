@@ -89,6 +89,7 @@ ARGS=" \
     --norm-type rms \
     --exit-on-missing-checkpoint \
     --use-checkpoint-args \
+    --no-query-key-layer-scaling \
 "
 
 # eof.

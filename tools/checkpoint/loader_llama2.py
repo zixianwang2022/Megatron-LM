@@ -53,6 +53,7 @@ def load_args_from_checkpoint(args):
     args.fp16 = True
     args.norm_type = "rms"
     args.add_bias_linear = False
+    args.apply_query_key_layer_scaling = False
 
     args.untie_embeddings_and_output_weights = True # to get 'output_layer'
     args.vocab_size = -1 # 32000 # ... set from tokenizer
@@ -382,6 +383,8 @@ def _load_checkpoint(queue, args):
     md.true_vocab_size = margs.vocab_size
     md.make_vocab_size_divisible_by = None
     md.checkpoint_args = margs
+
+    # pax({"margs / apply": margs.apply_query_key_layer_scaling})
 
     # Get first pipe stage
     mpu.set_pipeline_model_parallel_rank(0)
