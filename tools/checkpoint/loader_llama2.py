@@ -403,7 +403,13 @@ def _load_checkpoint(queue, args):
     # <<<
 
     # >>>
-    # pax({"models": models})
+    # pax({
+    #     "models" : models,
+    #     "embs" : [ m.language_model.embedding.word_embeddings.weight
+    #                for m in models ],
+    #     "outs" : [ m.language_model.output_layer.weight
+    #                for m in models ],
+    # })
     # <<<
 
     md.consumed_train_samples = 0 # consumed_train_samples
