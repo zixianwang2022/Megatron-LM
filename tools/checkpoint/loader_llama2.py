@@ -102,6 +102,10 @@ def concatenate_embeddings(args):
         embedding_shards.append(state_dict["tok_embeddings.weight"])
     embeddings = torch.cat(embedding_shards, dim=1)
 
+    # >>>
+    # pax({"embedding_shards": embedding_shards, "embeddings": embeddings})
+    # <<<
+
     return embeddings
 
 
@@ -332,7 +336,10 @@ def _load_checkpoint(queue, args):
             model = model_provider(True, True).to(dtype)
             load_checkpoint_to_model(margs, rank, model, embeddings)
             models.append(model)
-        return [ [m] for m in models ] # wrap as if from virtual pp stages
+        # >>>
+        # return [ [m] for m in models ] # wrap as if from virtual pp stages
+        return [models]  # wrap as if from virtual pp stages
+        # <<<
 
     set_global_variables(margs, build_tokenizer=False)
     mpu.set_tensor_model_parallel_world_size(margs.tensor_model_parallel_size)
@@ -401,6 +408,14 @@ def _load_checkpoint(queue, args):
         queue.put(msg)
 
     # Send embeddings
+    # >>>
+    # pax({
+    #     "models": len(models),
+    #     # "models / 0": len(models[0]),
+    #     "embeddings" : embeddings,
+    #     "embs" : [models[tp_rank].language_model.embedding.word_embeddings.weight.data for tp_rank in range(tp_size)],
+    # })
+    # <<<
     message = {
         "word embeddings": torch.cat(
             [models[tp_rank].language_model.embedding.word_embeddings.weight.data for tp_rank in range(tp_size)],
