@@ -148,20 +148,21 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    debug(lab)
-    raise Exception("hi.")
+    # debug(lab)
+    # raise Exception("hi.")
     # <<<
 
     # input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
-    input_text = "the funniest knock knock joke i ever heard was "
-    # input_text = "the craziest thing i've ever heard was "
+    # input_text = "the funniest knock knock joke i ever heard was "
+    input_text = "the craziest thing i've ever heard was "
     # input_text = "i'm not the kind of person to " # 300, 0.8
     # input_text = "the best year in history was "
     # input_text = "the best year in history was 1984 because "
     # input_text = "world war 3 will be caused by "
+    # input_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 
     # Generate.
     output_text = generate(
@@ -169,7 +170,7 @@ if __name__ == "__main__":
         input_text,
         max_output_len=300,
         temperature=0.8,
-        seed=1,
+        seed=101,
     )
 
     pax({
