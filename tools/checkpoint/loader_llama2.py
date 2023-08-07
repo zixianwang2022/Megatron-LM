@@ -338,7 +338,8 @@ def _load_checkpoint(queue, args):
             models.append(model)
         # >>>
         # return [ [m] for m in models ] # wrap as if from virtual pp stages
-        return [models]  # wrap as if from virtual pp stages
+        # return [models]  # wrap as if from virtual pp stages
+        return models
         # <<<
 
     set_global_variables(margs, build_tokenizer=False)
@@ -395,8 +396,15 @@ def _load_checkpoint(queue, args):
 
     # Get first pipe stage
     mpu.set_pipeline_model_parallel_rank(0)
-    all_models = [get_models(tp_size, md.params_dtype)]
-    models = all_models[0][0]
+    # >>>
+    # all_models = [get_models(tp_size, md.params_dtype)]
+    # models = all_models[0][0]
+    models = get_models(tp_size, md.params_dtype)
+    # <<<
+
+    # >>>
+    # pax({"models": models})
+    # <<<
 
     md.consumed_train_samples = 0 # consumed_train_samples
     md.consumed_valid_samples = 0 # consumed_valid_samples
@@ -428,70 +436,126 @@ def _load_checkpoint(queue, args):
 
     queue_put("embeddings", message)
 
-    total_layer_num = 0
-    for vp_rank in range(vp_size):
-        mpu.set_virtual_pipeline_model_parallel_rank(vp_rank)
-        for pp_rank in range(pp_size):
-            if pp_rank > 0:
-                mpu.set_pipeline_model_parallel_rank(pp_rank)
-                if vp_rank == 0:
-                    all_models.append(get_models(tp_size, md.params_dtype))
-            models = all_models[pp_rank][vp_rank]
-            for layer_num in range(len(models[0].language_model.encoder.layers)):
-                message = {}
+    # >>>
+    # total_layer_num = 0
+    # for vp_rank in range(vp_size):
+    #     mpu.set_virtual_pipeline_model_parallel_rank(vp_rank)
+    #     for pp_rank in range(pp_size):
+    #         if pp_rank > 0:
+    #             mpu.set_pipeline_model_parallel_rank(pp_rank)
+    #             if vp_rank == 0:
+    #                 all_models.append(get_models(tp_size, md.params_dtype))
+    #         models = all_models[pp_rank][vp_rank]
+    #         for layer_num in range(len(models[0].language_model.encoder.layers)):
+    #             message = {}
 
-                # Get non-parallel tensors from tp_rank 0
-                layer = models[0].language_model.encoder.layers[layer_num]
-                message["input norm weight"] = layer.input_norm.weight.data
-                message["post norm weight"] = layer.post_attention_norm.weight.data
-                if md.linear_bias:
-                    message["dense bias"] = layer.self_attention.dense.bias.data
-                    message["mlp l1 bias"] = layer.mlp.dense_4h_to_h.bias.data
+    #             # Get non-parallel tensors from tp_rank 0
+    #             layer = models[0].language_model.encoder.layers[layer_num]
+    #             message["input norm weight"] = layer.input_norm.weight.data
+    #             message["post norm weight"] = layer.post_attention_norm.weight.data
+    #             if md.linear_bias:
+    #                 message["dense bias"] = layer.self_attention.dense.bias.data
+    #                 message["mlp l1 bias"] = layer.mlp.dense_4h_to_h.bias.data
 
-                # Grab all parallel tensors for this layer
-                qkv_weight = []
-                qkv_bias = []
-                dense_weight = []
-                mlp_l0_weight = []
-                mlp_l0_bias = []
-                mlp_l1_weight = []
-                for tp_rank, model in enumerate(models):
-                    layer = model.language_model.encoder.layers[layer_num]
-                    qkv_weight.append(layer.self_attention.query_key_value.weight.data)
-                    dense_weight.append(layer.self_attention.dense.weight.data)
-                    mlp_l0_weight.append(layer.mlp.dense_h_to_4h.weight.data)
-                    mlp_l1_weight.append(layer.mlp.dense_4h_to_h.weight.data)
-                    if md.linear_bias:
-                        qkv_bias.append(layer.self_attention.query_key_value.bias.data)
-                        mlp_l0_bias.append(layer.mlp.dense_h_to_4h.bias.data)
+    #             # Grab all parallel tensors for this layer
+    #             qkv_weight = []
+    #             qkv_bias = []
+    #             dense_weight = []
+    #             mlp_l0_weight = []
+    #             mlp_l0_bias = []
+    #             mlp_l1_weight = []
+    #             for tp_rank, model in enumerate(models):
+    #                 layer = model.language_model.encoder.layers[layer_num]
+    #                 qkv_weight.append(layer.self_attention.query_key_value.weight.data)
+    #                 dense_weight.append(layer.self_attention.dense.weight.data)
+    #                 mlp_l0_weight.append(layer.mlp.dense_h_to_4h.weight.data)
+    #                 mlp_l1_weight.append(layer.mlp.dense_4h_to_h.weight.data)
+    #                 if md.linear_bias:
+    #                     qkv_bias.append(layer.self_attention.query_key_value.bias.data)
+    #                     mlp_l0_bias.append(layer.mlp.dense_h_to_4h.bias.data)
 
-                # Handle gated linear units
-                if md.swiglu:
-                    # concat all the first halves ('W's) and all the second halves ('V's)
-                    for tp_rank in range(tp_size):
-                        mlp_l0_weight[tp_rank] = torch.chunk(mlp_l0_weight[tp_rank], 2, dim=0)
-                    message["mlp l0 weight W"] = torch.cat([w[0] for w in mlp_l0_weight], dim=0)
-                    message["mlp l0 weight V"] = torch.cat([w[1] for w in mlp_l0_weight], dim=0)
-                else:
-                    message["mlp l0 weight"] = torch.cat(mlp_l0_weight, dim=0)
+    #             # Handle gated linear units
+    #             if md.swiglu:
+    #                 # concat all the first halves ('W's) and all the second halves ('V's)
+    #                 for tp_rank in range(tp_size):
+    #                     mlp_l0_weight[tp_rank] = torch.chunk(mlp_l0_weight[tp_rank], 2, dim=0)
+    #                 message["mlp l0 weight W"] = torch.cat([w[0] for w in mlp_l0_weight], dim=0)
+    #                 message["mlp l0 weight V"] = torch.cat([w[1] for w in mlp_l0_weight], dim=0)
+    #             else:
+    #                 message["mlp l0 weight"] = torch.cat(mlp_l0_weight, dim=0)
 
-                # simple concat of the rest
-                message["qkv weight"] = torch.cat(qkv_weight, dim=0)
-                message["dense weight"] = torch.cat(dense_weight, dim=1)
-                message["mlp l1 weight"] = torch.cat(mlp_l1_weight, dim=1)
-                if md.linear_bias:
-                    message["qkv bias"] = torch.cat(qkv_bias, dim=0)
-                    if md.swiglu:
-                        for tp_rank in range(tp_size):
-                            mlp_l0_bias[tp_rank] = torch.chunk(mlp_l0_bias[tp_rank], 2, dim=0)
-                        message["mlp l0 bias W"] = torch.cat([b[0] for b in mlp_l0_bias],dim=0)
-                        message["mlp l0 bias V"] = torch.cat([b[1] for b in mlp_l0_bias],dim=0)
-                    else:
-                        message["mlp l0 bias"] = torch.cat(mlp_l0_bias, dim=0)
+    #             # simple concat of the rest
+    #             message["qkv weight"] = torch.cat(qkv_weight, dim=0)
+    #             message["dense weight"] = torch.cat(dense_weight, dim=1)
+    #             message["mlp l1 weight"] = torch.cat(mlp_l1_weight, dim=1)
+    #             if md.linear_bias:
+    #                 message["qkv bias"] = torch.cat(qkv_bias, dim=0)
+    #                 if md.swiglu:
+    #                     for tp_rank in range(tp_size):
+    #                         mlp_l0_bias[tp_rank] = torch.chunk(mlp_l0_bias[tp_rank], 2, dim=0)
+    #                     message["mlp l0 bias W"] = torch.cat([b[0] for b in mlp_l0_bias],dim=0)
+    #                     message["mlp l0 bias V"] = torch.cat([b[1] for b in mlp_l0_bias],dim=0)
+    #                 else:
+    #                     message["mlp l0 bias"] = torch.cat(mlp_l0_bias, dim=0)
 
-                queue_put(f"transformer layer {total_layer_num}", message)
+    #             queue_put(f"transformer layer {total_layer_num}", message)
 
-                total_layer_num = total_layer_num + 1
+    #             total_layer_num = total_layer_num + 1
+    # pax({"num_layers": margs.num_layers})
+    for layer_num in range(margs.num_layers):
+        message = {}
+
+        # Get non-parallel tensors from tp_rank 0
+        layer = models[0].language_model.encoder.layers[layer_num]
+        message["input norm weight"] = layer.input_norm.weight.data
+        message["post norm weight"] = layer.post_attention_norm.weight.data
+        if md.linear_bias:
+            message["dense bias"] = layer.self_attention.dense.bias.data
+            message["mlp l1 bias"] = layer.mlp.dense_4h_to_h.bias.data
+
+        # Grab all parallel tensors for this layer
+        qkv_weight = []
+        qkv_bias = []
+        dense_weight = []
+        mlp_l0_weight = []
+        mlp_l0_bias = []
+        mlp_l1_weight = []
+        for tp_rank, model in enumerate(models):
+            layer = model.language_model.encoder.layers[layer_num]
+            qkv_weight.append(layer.self_attention.query_key_value.weight.data)
+            dense_weight.append(layer.self_attention.dense.weight.data)
+            mlp_l0_weight.append(layer.mlp.dense_h_to_4h.weight.data)
+            mlp_l1_weight.append(layer.mlp.dense_4h_to_h.weight.data)
+            if md.linear_bias:
+                qkv_bias.append(layer.self_attention.query_key_value.bias.data)
+                mlp_l0_bias.append(layer.mlp.dense_h_to_4h.bias.data)
+
+        # Handle gated linear units
+        if md.swiglu:
+            # concat all the first halves ('W's) and all the second halves ('V's)
+            for tp_rank in range(tp_size):
+                mlp_l0_weight[tp_rank] = torch.chunk(mlp_l0_weight[tp_rank], 2, dim=0)
+            message["mlp l0 weight W"] = torch.cat([w[0] for w in mlp_l0_weight], dim=0)
+            message["mlp l0 weight V"] = torch.cat([w[1] for w in mlp_l0_weight], dim=0)
+        else:
+            message["mlp l0 weight"] = torch.cat(mlp_l0_weight, dim=0)
+
+        # simple concat of the rest
+        message["qkv weight"] = torch.cat(qkv_weight, dim=0)
+        message["dense weight"] = torch.cat(dense_weight, dim=1)
+        message["mlp l1 weight"] = torch.cat(mlp_l1_weight, dim=1)
+        if md.linear_bias:
+            message["qkv bias"] = torch.cat(qkv_bias, dim=0)
+            if md.swiglu:
+                for tp_rank in range(tp_size):
+                    mlp_l0_bias[tp_rank] = torch.chunk(mlp_l0_bias[tp_rank], 2, dim=0)
+                message["mlp l0 bias W"] = torch.cat([b[0] for b in mlp_l0_bias],dim=0)
+                message["mlp l0 bias V"] = torch.cat([b[1] for b in mlp_l0_bias],dim=0)
+            else:
+                message["mlp l0 bias"] = torch.cat(mlp_l0_bias, dim=0)
+
+        queue_put(f"transformer layer {layer_num}", message)
+    # <<<
 
     # Send final norm from tp_rank 0
     message = {

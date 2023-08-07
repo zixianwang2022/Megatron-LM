@@ -12,7 +12,7 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 ######## Command. ########
 
-NPROCS=8
+NPROCS=1 # 8
 CMD="\
     cd ${MEGATRON_REPO_DIR} && \
     export PYTHONPATH=$PYTHONPATH:${MEGATRON_REPO_DIR}:${LLAMA_REPO_DIR}:/home/lmcafee/src && \
