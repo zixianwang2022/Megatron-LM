@@ -243,6 +243,10 @@ def save_checkpoint(queue, args):
     mpu.set_pipeline_model_parallel_rank(0)
     post_process = args.target_pipeline_parallel_size == 1
     models = get_models(args.target_tensor_parallel_size, md.params_dtype, True, post_process)
+    # >>>
+    from lutil import pax
+    pax({"models": models})
+    # <<<
     for tp_rank, model in enumerate(models):
         model.language_model.embedding.word_embeddings.weight.data.copy_(out_word_embed[tp_rank])
         if pos_embed is not None:
@@ -346,7 +350,13 @@ def save_checkpoint(queue, args):
                     exit(1)
                 output_layer_weight = torch.chunk(msg.pop("weight"), args.target_tensor_parallel_size, dim=0)
                 for tp_rank in range(args.target_tensor_parallel_size):
-                    models[tp_rank].language_model.output_layer.weight.data.copy_(output_layer_weight[tp_rank])
+                    # >>>
+                    try:
+                        models[tp_rank].language_model.output_layer.weight.data.copy_(output_layer_weight[tp_rank])
+                    except Exception as e:
+                        from lutil import pax
+                        pax({"model": models[tp_rank].language_model.output_layer.weight.data, "msg": output_layer_weight[tp_rank]})
+                    # <<<
                 del output_layer_weight
                 check_message(msg)
 
