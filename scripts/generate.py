@@ -107,18 +107,22 @@ def generate(
         next_token = next_token.reshape(-1)
         tokens = torch.cat([tokens, next_token])
 
-    output_text = lab.detokenize(tokens)
+    if torch.distributed.get_rank() == 0:
+        output_text = lab.detokenize(tokens)
 
-    args = get_args()
-    # divider = ("~" * 10) + f" [ {args.gen_model} ] " + ("~" * 10)
-    # print(divider)
-    # print(output_text)
-    # print("~" * len(divider))
-    print(f"[{args.gen_model.upper()}, seed {seed}] {input_text} ...... {' || '.join(output_text.replace(input_text, '').splitlines())}")
-    pax({
-        "input_text" : input_text,
-        "output_text" : output_text,
-    })
+        args = get_args()
+        # divider = ("~" * 10) + f" [ {args.gen_model} ] " + ("~" * 10)
+        # print(divider)
+        # print(output_text)
+        # print("~" * len(divider))
+        print(f"[{args.gen_model.upper()}, seed {seed}] {input_text} ...... {' || '.join(output_text.replace(input_text, '').splitlines())}")
+
+    # pax({
+    #     "input_text" : input_text,
+    #     "output_text" : output_text,
+    # })
+    torch.distributed.barrier()
+    exit()
 
 def add_textgen_args(parser):
     group = parser.add_argument_group(title="Text generation.")
@@ -152,7 +156,7 @@ if __name__ == "__main__":
     # raise Exception("hi.")
     # <<<
 
-    input_text = "lawrence is the fastest cyclist since "
+    # input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
@@ -163,6 +167,8 @@ if __name__ == "__main__":
     # input_text = "the best year in history was 1984 because "
     # input_text = "world war 3 will be caused by "
     # input_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    # input_text = "here's a sentence where every word starts with n."
+    input_text = "here's the python code for hello world."
 
     # Generate.
     output_text = generate(
@@ -170,7 +176,7 @@ if __name__ == "__main__":
         input_text,
         max_output_len=300,
         temperature=0.8,
-        seed=101,
+        seed=0, # 101,
     )
 
     pax({
