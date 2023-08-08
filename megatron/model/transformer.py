@@ -199,11 +199,12 @@ class ParallelMLP(MegatronModule):
         w1, w3 = torch.chunk(self.dense_h_to_4h.weight, 2, dim=0)
         x1 = linear_with_grad_accumulation_and_async_allreduce(x, w1, None, False, False, False)
         x3 = linear_with_grad_accumulation_and_async_allreduce(x, w3, None, False, False, False)
-        out = linear_with_grad_accumulation_and_async_allreduce(
-            F.silu(x1) * x3, self.dense_4h_to_h.weight, None, False, False, False)
+        # out = linear_with_grad_accumulation_and_async_allreduce(
+        #     F.silu(x1) * x3, self.dense_4h_to_h.weight, None, False, False, False)
+        out, _ = self.dense_4h_to_h(F.silu(x1) * x3)
         # >>>
         # pax({
-        #     "x" : x,
+        #     "x" : x.transpose(0, 1),
         #     "w1" : w1,
         #     "w3" : w3,
         #     "x1" : x1.transpose(0, 1),
@@ -1274,13 +1275,16 @@ class ParallelTransformerLayer(MegatronModule):
                                               training=self.training)
             norm_input = residual + self.drop_path(out)
 
-        # >>>
-        # pax({"norm_input": norm_input.transpose(0, 1)})
-        # hasnan(norm_input)
-        # <<<
-
         # Layer norm post the self attention.
         norm_output = self.post_attention_norm(norm_input)
+
+        # >>>
+        pax({
+            "norm_input" : norm_input.transpose(0, 1),
+            "norm_output" : norm_output.transpose(0, 1),
+        })
+        # hasnan(norm_input)
+        # <<<
 
         # Cross attention.
         if self.layer_type == LayerType.encoder:

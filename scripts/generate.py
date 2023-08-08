@@ -40,10 +40,10 @@ def debug(lab):
 
     # >>>
     # input_text = "i am the kind of text that you want to tokenize for all your needs. thank you, it's time that you learn how to debug a llm. they are mean and far from lean, and you're a machine."
-    # input_text = "lawrence is the fastest cyclist since "
+    input_text = "lawrence is the fastest cyclist since "
     # [x] input_text = "Stew and rum set a treehouse on fire."
     # [x] input_text = "That way could please even the most demanding follower of Freud."
-    input_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    # input_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
     # input_text = "Suspendisse in velit eu ex mattis fringilla id convallis ante. Ut maximus eros sit amet massa rhoncus tristique. Integer porta."
 
     input_ids = lab.tokenize(input_text)
@@ -56,7 +56,7 @@ def debug(lab):
     #                           device="cuda")
     # pax({"input_ids": input_ids, "n_tokens": lab.get_ntokens(input_ids)})
 
-    acts = lab.forward_debug(input_ids, debug_layer_idx=None) # 0)
+    acts = lab.forward_debug(input_ids, debug_layer_idx=0)
 
     pax(acts)
     # <<<
@@ -148,8 +148,8 @@ if __name__ == "__main__":
         raise Exception("specialize for '%s'." % args.gen_model)
 
     # >>>
-    # debug(lab)
-    # raise Exception("hi.")
+    debug(lab)
+    raise Exception("hi.")
     # <<<
 
     # input_text = "lawrence is the fastest cyclist since "
