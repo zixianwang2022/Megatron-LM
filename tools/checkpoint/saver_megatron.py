@@ -8,6 +8,10 @@ import sys
 
 import torch
 
+# >>>
+from lutil import pax
+# <<<
+
 def add_arguments(parser):
     group = parser.add_argument_group(title='Megatron saver')
 
@@ -23,6 +27,10 @@ def add_arguments(parser):
 
 def save_checkpoint(queue, args):
 
+    # >>>
+    # pax({"args": args})
+    # <<<
+
     # Search in directory above this
     sys.path.append(os.path.abspath(
         os.path.join(os.path.dirname(__file__),
@@ -36,7 +44,9 @@ def save_checkpoint(queue, args):
         from megatron.checkpointing import save_checkpoint
         from megatron.global_vars import set_global_variables, get_args
         from megatron.core.enums import ModelType
+        # >>>
         from megatron.tokenizer.tokenizer import _vocab_size_with_padding
+        # <<<
         from megatron import fused_kernels
         from megatron.core import mpu
     except ModuleNotFoundError:
@@ -69,6 +79,12 @@ def save_checkpoint(queue, args):
 
 
     md = queue_get()
+
+    # >>>
+    # print(list(vars(md).keys()))
+    # from lutil import pax
+    # pax({"md / keys": list(vars(md).keys())})
+    # <<<
 
     if args.target_tensor_parallel_size is None:
         if hasattr(md, 'previous_tensor_parallel_size'):
@@ -213,7 +229,10 @@ def save_checkpoint(queue, args):
     if md.true_vocab_size is not None:
         # figure out what our padded vocab size is
         orig_vocab_size = orig_word_embed.shape[0]
+        # >>>
         margs.padded_vocab_size = _vocab_size_with_padding(md.true_vocab_size, margs)
+        # margs.padded_vocab_size = md.padded_vocab_size
+        # <<<
 
         # Cut out extra padding we don't need
         if orig_vocab_size > margs.padded_vocab_size:
@@ -244,8 +263,8 @@ def save_checkpoint(queue, args):
     post_process = args.target_pipeline_parallel_size == 1
     models = get_models(args.target_tensor_parallel_size, md.params_dtype, True, post_process)
     # >>>
-    from lutil import pax
-    pax({"models": models})
+    # from lutil import pax
+    # pax({"models": models})
     # <<<
     for tp_rank, model in enumerate(models):
         model.language_model.embedding.word_embeddings.weight.data.copy_(out_word_embed[tp_rank])
@@ -355,7 +374,13 @@ def save_checkpoint(queue, args):
                         models[tp_rank].language_model.output_layer.weight.data.copy_(output_layer_weight[tp_rank])
                     except Exception as e:
                         from lutil import pax
-                        pax({"model": models[tp_rank].language_model.output_layer.weight.data, "msg": output_layer_weight[tp_rank]})
+                        pax({
+                            # "models" : models,
+                            "embs" : [ m.language_model.embedding.word_embeddings.weight for m in models ],
+                            "outs" : [ m.language_model.output_layer.weight for m in models ],
+                            "model" : models[tp_rank].language_model.output_layer.weight.data,
+                            "msg" : output_layer_weight[tp_rank],
+                        })
                     # <<<
                 del output_layer_weight
                 check_message(msg)

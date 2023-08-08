@@ -17,10 +17,10 @@ unset NCCL_DEBUG
 
 # >>>
 MEGATRON_REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
-LLAMA_REPO_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama"
-TOKENIZER_PATH="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
-MEGATRON_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/checkpoints/megatron/7b"
-LLAMA_CHECKPOINT_DIR="/lustre/fs1/portfolios/adlr/users/lmcafee/llama/2/llama/checkpoints/llama/llama-2-7b"
+LLAMA_REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama"
+TOKENIZER_PATH="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
+MEGATRON_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama/checkpoints/megatron/7b"
+LLAMA_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama/checkpoints/llama/llama-2-7b"
 # +++
 # MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/src/megatrons/megatron-lm-llama2-loader"
 # LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
@@ -40,7 +40,7 @@ SCRIPT=scripts/generate.py
 #     --lr-warmup-iters 10000 \
 #     --eval-interval 100 \
 #     --eval-iters 0 \
-#     --data-path /lustre/fs1/portfolios/adlr/users/lmcafee/retro/data/MTNLG/NIHExporter_shuf_text_document \
+#     --data-path /lustre/fsw/portfolios/adlr/users/lmcafee/retro/data/MTNLG/NIHExporter_shuf_text_document \
 #     --split 99,1,0 \
 #     --clip-grad 1.0 \
 #     --weight-decay 0.1 \
