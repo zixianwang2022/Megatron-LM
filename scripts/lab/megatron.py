@@ -149,7 +149,7 @@ class MegatronLab(Lab):
                                  attn_mask,
                                  inference_params=inference_params,
                                  rotary_pos_emb=rope_freqs,
-                                 debug=debug)
+                                 debug=False) # debug)
         acts["hidden"] = hidden_states + acts["attn_output"]
         acts["mlp_norm"] = layer.post_attention_norm(acts["hidden"])
         acts["mlp_output"], _ = layer.mlp(acts["mlp_norm"])

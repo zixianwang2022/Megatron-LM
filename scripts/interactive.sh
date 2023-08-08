@@ -2,6 +2,11 @@
 
 set -u
 
+if [ "$#" != "2" ]; then
+    echo "expected 2 args, found $#."
+    exit 1
+fi
+
 ######## Arguments. ########
 
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -12,7 +17,7 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 ######## Command. ########
 
-NPROCS=1 # 8
+# NPROCS=1 # 8
 CMD="\
     cd ${MEGATRON_REPO_DIR} && \
     export PYTHONPATH=$PYTHONPATH:${MEGATRON_REPO_DIR}:${LLAMA_REPO_DIR}:/home/lmcafee/src && \
