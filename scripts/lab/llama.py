@@ -162,13 +162,13 @@ class LlamaLab(Lab):
 
         acts = {"hidden_states": outs[-1]}
 
-        pax({
-            "hidden_states" : hidden_states,
-            "attn_mask" : attn_mask,
-            "freqs_cis" : freqs_cis,
-            "--" : "--",
-            "outs" : outs,
-        })
+        # pax({
+        #     "hidden_states" : hidden_states,
+        #     "attn_mask" : attn_mask,
+        #     "freqs_cis" : freqs_cis,
+        #     "--" : "--",
+        #     "outs" : outs,
+        # })
         # pax({"outs / -1": outs[-1]})
 
         return acts
@@ -179,7 +179,11 @@ class LlamaLab(Lab):
         acts["norm"] = self.model.norm(hidden_states)
         acts["output"] = self.model.output(acts["norm"]).float()
 
-        # pax(acts)
+        pax({
+            "hidden_states" : hidden_states,
+            "--" : "--",
+            **acts,
+        })
 
         return acts
 

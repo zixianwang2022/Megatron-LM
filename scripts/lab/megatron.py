@@ -29,6 +29,10 @@ class MegatronLab(Lab):
         args = get_args()
 
         models = _get_model(model_provider, ModelType.encoder_or_decoder)
+        model = models[0]
+        # pax({"model": str(model)})
+        # model.module.module.parallel_output = False
+        # pax({"parallel_output": model.module.module.parallel_output})
         # unwrapped_model = unwrap_model(models, (torchDDP, LocalDDP, Float16Module))
         args.iteration = load_checkpoint(models, None, None)
 
@@ -37,7 +41,7 @@ class MegatronLab(Lab):
         #     "models / 0" : models[0].module.module.language_model.embedding.word_embeddings.weight,
         # })
 
-        return models[0]
+        return model # models[0]
 
     def __init__(self):
 
@@ -104,6 +108,13 @@ class MegatronLab(Lab):
         with torch.no_grad():
             logits = self.model(tokens, position_ids, attention_mask,
                                 inference_params=inference_params)
+            # pax({"logits": logits})
+
+            gather_list = [ torch.zeros_like(logits)
+                            for _ in range(args.tensor_model_parallel_size) ]
+            torch.distributed.all_gather(gather_list, logits)
+            logits = torch.cat(gather_list, dim=2)
+            # pax({"logits": logits})
 
         logits = logits[0]
 
@@ -217,13 +228,13 @@ class MegatronLab(Lab):
 
         acts = {"hidden_states": outs[-1]}
 
-        pax({
-            "hidden_states" : hidden_states,
-            "attn_mask" : attn_mask,
-            "rope_freqs" : rope_freqs,
-            "--" : "--",
-            "outs" : [ t.transpose(0, 1) for t in outs ],
-        })
+        # pax({
+        #     "hidden_states" : hidden_states,
+        #     "attn_mask" : attn_mask,
+        #     "rope_freqs" : rope_freqs,
+        #     "--" : "--",
+        #     "outs" : [ t.transpose(0, 1) for t in outs ],
+        # })
         # pax({"outs / -1": outs[-1].transpose(0, 1)})
 
         return acts
@@ -234,9 +245,19 @@ class MegatronLab(Lab):
 
         acts = {}
         acts["norm"] = lm.encoder.final_norm(hidden_states)
-        acts["output"], _ = lm.output_layer(acts["norm"])
+        # acts["output"], _ = lm.output_layer(acts["norm"])
+        out, _ = lm.output_layer(acts["norm"])
 
-        # pax({k:t.transpose(0, 1) for k,t in acts.items()})
+        outs = None if torch.distributed.get_rank() != 0 else [ torch.zeros_like(out), torch.zeros_like(out) ]
+        torch.distributed.gather(out, outs, dst=0)
+        acts["output"] = torch.cat(outs, dim=2)
+
+        pax({
+            "hidden_states" : hidden_states.transpose(0, 1),
+            "--" : "--",
+            **{k:t.transpose(0, 1) for k,t in acts.items()},
+            # **{"out / %d" % i : o.transpose(0, 1) for i, o in enumerate(outs)},
+        })
 
         return acts
 

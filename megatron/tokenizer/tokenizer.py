@@ -45,9 +45,12 @@ def build_tokenizer(args):
         raise NotImplementedError('{} tokenizer is not '
                                   'implemented.'.format(args.tokenizer_type))
     
-    # Add vocab size.
-    args.padded_vocab_size = _vocab_size_with_padding(tokenizer.vocab_size,
-                                                      args)
+    # >>>
+    # Add vocab size (if not already set from a checkpoint).
+    if args.padded_vocab_size is None:
+        args.padded_vocab_size = _vocab_size_with_padding(tokenizer.vocab_size,
+                                                          args)
+    # <<<
 
     return tokenizer
 

@@ -39,8 +39,9 @@ elif [ "${MODEL_SIZE}" = "70b" ]; then
     NPROCS=8
     ARGS=" \
         --hidden-size 8192 \
-	--num-attention-heads 64 \
+	--group-query-attention \
 	--num-query-groups 8 \
+	--num-attention-heads 64 \
 	--num-layers 80 \
 	--norm-epsilon 1e-05 \
     "
@@ -96,7 +97,7 @@ SCRIPT=scripts/generate.py
 # --finetune \ ... doesn't load args from checkpoint
 ARGS=" ${ARGS} \
     --no-masked-softmax-fusion \
-    --tensor-model-parallel-size 1 \
+    --tensor-model-parallel-size ${NPROCS} \
     --pipeline-model-parallel-size 1 \
     --micro-batch-size 1 \
     --seq-length 4096 \

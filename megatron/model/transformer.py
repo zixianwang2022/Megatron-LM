@@ -1279,10 +1279,10 @@ class ParallelTransformerLayer(MegatronModule):
         norm_output = self.post_attention_norm(norm_input)
 
         # >>>
-        pax({
-            "norm_input" : norm_input.transpose(0, 1),
-            "norm_output" : norm_output.transpose(0, 1),
-        })
+        # pax({
+        #     "norm_input" : norm_input.transpose(0, 1),
+        #     "norm_output" : norm_output.transpose(0, 1),
+        # })
         # hasnan(norm_input)
         # <<<
 
