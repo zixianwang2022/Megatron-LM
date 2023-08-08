@@ -490,6 +490,15 @@ def load_args_from_checkpoint(args, load_arg='load'):
         _set_arg('pipeline_model_parallel_size', force=True)
         _set_arg('virtual_pipeline_model_parallel_size', force=True)
         _set_arg('num_layers_per_virtual_pipeline_stage')
+    # >>>
+    # from lutil import pax
+    # pax({
+    #     "args / vocab_size" : args.vocab_size,
+    #     "args / padded_vocab_size" : args.padded_vocab_size,
+    #     "checkpoint_args / vocab_size" : checkpoint_args.vocab_size,
+    #     "checkpoint_args / padded_vocab_size" : checkpoint_args.padded_vocab_size,
+    # })
+    # <<<
     return args, checkpoint_args
 
 

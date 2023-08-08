@@ -361,6 +361,13 @@ class TransformerLanguageModel(MegatronModule):
 
         # Embeddings.
         if self.pre_process:
+            # >>>
+            # from scripts import pax
+            # pax({
+            #     "kv_channels" : args.kv_channels,
+            #     "padded_vocab_size" : args.padded_vocab_size,
+            # })
+            # <<<
             self.embedding = Embedding(self.hidden_size,
                                        args.padded_vocab_size,
                                        args.max_position_embeddings,
@@ -516,6 +523,10 @@ class TransformerLanguageModel(MegatronModule):
         # output. For example, it is helpful to compute
         # similarity between two sequences by average pooling
         if not self.add_decoder or output_enc_hidden:
+            # >>>
+            # from lutil import pax
+            # pax({"add_pooler": self.add_pooler})
+            # <<<
             if self.add_pooler and self.post_process:
                 return encoder_output, pooled_output
             else:
