@@ -140,6 +140,7 @@ def main():
 
     # >>>
     # loader.load_checkpoint(queue, args)
+    # saver.save_checkpoint(queue, args)
     # raise Exception("hi.")
     # <<<
 
