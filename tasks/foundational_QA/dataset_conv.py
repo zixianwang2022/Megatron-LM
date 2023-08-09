@@ -292,16 +292,21 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
+    formatted_dataset_name = ["doc2dial"]
     user_template = ""
-    if dataset_name in short_span_with_context:
-        user = "Answer the following question with a short span. {}".format(query)
-    elif dataset_name in yes_no_without_context:
-        user = "Answer the above question with True or False. {}".format(query)
-    else:
-        user = "Please give a full and complete answer for the question. {}".format(query)
 
-    dialogue_format="User: {}\n\nAssistant:"
-    dialogue_turn = dialogue_format.format(user)
+    if dataset_name in formatted_dataset_name:
+        dialogue_turn = query
+    else:
+        if dataset_name in short_span_with_context:
+            user = "Answer the following question with a short span. {}".format(query)
+        elif dataset_name in yes_no_without_context:
+            user = "Answer the above question with True or False. {}".format(query)
+        else:
+            user = "Please give a full and complete answer for the question. {}".format(query)
+
+        dialogue_format="User: {}\n\nAssistant:"
+        dialogue_turn = dialogue_format.format(user)
 
     if ft_neighbours > 0:
         # if shuffle_topn:

@@ -24,13 +24,14 @@ if [[ $model_size == "8b" ]]; then
 fi
 
 if [[ $model_size == "43b" ]]; then
-    num_nodes=64
+    # num_nodes=64
+    num_nodes=4 # debug
     min_lr=0.00000001
 fi
 
 SAVENAME="${blend_name}_${model_card}_same_format_ctx${ft_neighbours}_${model_size}_${global_bsz}_${lr}"
-CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
-TENSORBOARD_DIR="${QA_HOME}/tensorboard/${SAVENAME}"
+CHECKPOINT_PATH="${SAVE_HOME}/checkpoints/applications/${SAVENAME}"
+TENSORBOARD_DIR="${SAVE_HOME}/tensorboard/${SAVENAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
 OUTPUT_ARGS="--log-interval 10 \
@@ -86,7 +87,11 @@ run_cmd="python -u ${DIR}/tasks/foundational_QA/finetune_gpt_with_pretrain.py ${
 #      --output=$DIR/logs/%x_%j_$DATETIME.log sh -c "${run_cmd}"
 # $run_cmd
 
-export SUBMIT_LOGS="${QA_HOME}/megatron-lm/logs"
+## running command
+## debug
+# bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b 4 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_doc2dial
+
+export SUBMIT_LOGS="${SAVE_HOME}/megatron-lm/logs"
 mkdir -p $SUBMIT_LOGS
 export NCCL_DEBUG=INFO
 
