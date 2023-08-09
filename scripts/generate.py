@@ -156,7 +156,7 @@ if __name__ == "__main__":
     # raise Exception("hi.")
     # <<<
 
-    # input_text = "lawrence is the fastest cyclist since "
+    input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     # input_text = "world war 3 will be caused by "
     # input_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
     # input_text = "here's a sentence where every word starts with n."
-    input_text = "here's the python code for hello world."
+    # input_text = "here's the python code for hello world."
 
     # Generate.
     output_text = generate(

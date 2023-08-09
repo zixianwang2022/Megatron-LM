@@ -35,7 +35,7 @@ def build_tokenizer(args):
     elif args.tokenizer_type == 'GPTSentencePieceTokenizer':
         assert args.tokenizer_model is not None
         tokenizer = _GPTSentencePieceTokenizer(args.tokenizer_model)
-    elif args.tokenizer_type == 'Llama2':
+    elif args.tokenizer_type == 'Llama2Tokenizer':
         assert args.tokenizer_model is not None
         tokenizer = _Llama2Tokenizer(args.tokenizer_model)
     elif args.tokenizer_type == 'NullTokenizer':

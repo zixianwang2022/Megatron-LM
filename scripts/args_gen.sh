@@ -52,21 +52,23 @@ fi
 
 # >>>
 # MEGATRON_REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
-# LLAMA_REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama"
-# TOKENIZER_PATH="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama/tokenizer.model"
+MEGATRON_REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/megatron/megatron-lm-llama2-loader"
+LLAMA_REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama"
+BIG_BENCH_REPO_DIR="/lustre/fs3/portfolios/adlr/users/lmcafee/llama/2/megatron/big-bench-megatron-lm"
+TOKENIZER_PATH="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/tokenizer.model"
 
-# COMMON_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama/checkpoints"
-# MEGATRON_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/megatron/text/${MODEL_SIZE}"
-# LLAMA_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/llama/text/llama-2-${MODEL_SIZE}"
-# +++
-MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/megatron/megatron-lm-llama2-loader"
-LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
-# TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model"
-TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/tokenizer_hf/tokenizer.model"
-
-COMMON_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/checkpoints"
+COMMON_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/checkpoints"
 MEGATRON_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/megatron/text/${MODEL_SIZE}"
 LLAMA_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/llama/text/llama-2-${MODEL_SIZE}"
+# +++
+# MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/megatron/megatron-lm-llama2-loader"
+# LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
+# # TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model"
+# TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/tokenizer_hf/tokenizer.model"
+
+# COMMON_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/checkpoints"
+# MEGATRON_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/megatron/text/${MODEL_SIZE}"
+# LLAMA_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/llama/text/llama-2-${MODEL_SIZE}"
 # <<<
 
 ######## args. ########
@@ -93,6 +95,7 @@ SCRIPT=scripts/generate.py
 #     --disable-bias-linear \
 #     --rotary-percent 0.5 \
 # --finetune \ ... doesn't load args from checkpoint
+#     --swiglu-llama \
 ARGS=" ${ARGS} \
     --no-masked-softmax-fusion \
     --tensor-model-parallel-size ${NPROCS} \
@@ -100,7 +103,7 @@ ARGS=" ${ARGS} \
     --micro-batch-size 1 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --tokenizer-type Llama2 \
+    --tokenizer-type Llama2Tokenizer \
     --tokenizer-model ${TOKENIZER_PATH} \
     --load ${MEGATRON_CHECKPOINT_DIR} \
     --load-llama ${LLAMA_CHECKPOINT_DIR} \
@@ -118,7 +121,6 @@ ARGS=" ${ARGS} \
     --untie-embeddings-and-output-weights \
     --no-position-embedding \
     --use-rotary-position-embeddings \
-    --swiglu-llama \
     \
     --gen-model $1 \
     --norm-type rms \
