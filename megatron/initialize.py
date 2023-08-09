@@ -49,8 +49,9 @@ def initialize_megatron(
         # >>>
         # from lutil import pax
         # pax({
+        #     "args" : args,
         #     "kv_channels" : args.kv_channels,
-        #     "padded_vocab_size" : args.padded_vocab_size,
+        #     # "padded_vocab_size" : args.padded_vocab_size,
         # })
         # <<<
 

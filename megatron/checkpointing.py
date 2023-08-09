@@ -433,6 +433,14 @@ def load_args_from_checkpoint(args, load_arg='load'):
 
     state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=True)
 
+    # >>>
+    # from scripts import pax
+    # pax({
+    #     "load_dir" : load_dir,
+    #     "state_dict" : state_dict,
+    # })
+    # <<<
+
     # Args.
     if not state_dict:
         print_rank_0('Checkpoint not found to provide arguments, using provided arguments.')
