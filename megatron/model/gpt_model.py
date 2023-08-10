@@ -24,9 +24,16 @@ def post_language_model_processing(lm_output, labels, logit_weights,
         parallel_output)
 
     if labels is None:
+        # >>>
+        # from scripts import pax
+        # pax({"output": output})
+        # <<<
         # [s b h] => [b s h]
         return output.transpose(0,1).contiguous()
     else:
+        # >>>
+        raise Exception("hi.")
+        # <<<
         # [b s] => [s b]
         labels = labels.transpose(0,1).contiguous()
         if fp16_lm_cross_entropy:

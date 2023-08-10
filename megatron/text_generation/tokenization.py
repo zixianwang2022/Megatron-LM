@@ -31,8 +31,8 @@ def detokenize_generations(tokens_gpu_tensor,
             words = []
             for token in sequence_tokens:
                 # >>>
-                from scripts import pax
-                pax({"tokenizer_type": args.tokenizer_type})
+                # from scripts import pax
+                # pax({"tokenizer_type": args.tokenizer_type})
                 # <<<
                 if args.tokenizer_type in ['SentencePieceTokenizer', 
                                            'GPTSentencePieceTokenizer',

@@ -13,7 +13,7 @@ from .lab import Lab
 
 class LlamaLab(Lab):
 
-    def __init__(self):
+    def __init__(self, max_seq_len=None, max_batch_size=None):
 
         args = get_args()
         # args.seq_length = 128
@@ -21,8 +21,8 @@ class LlamaLab(Lab):
         generator = Llama.build(
             ckpt_dir=args.load_llama,
             tokenizer_path=args.tokenizer_model, # path,
-            max_seq_len=args.seq_length,
-            max_batch_size=1,
+            max_seq_len=max_seq_len or args.seq_length,
+            max_batch_size=max_batch_size or 1, # or args.micro_batch_size
             model_parallel_size=None,
         )
 
@@ -59,6 +59,31 @@ class LlamaLab(Lab):
         # })
 
         return logits
+
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # ... downstream task testing ...
+
+    def eval(self):
+        pass
+
+    def set_input_tensor(self, tensor):
+        assert tensor is None
+
+    def __call__(self, input_ids, position_ids, attention_mask, inference_params):
+
+        logits = self.model.forward(input_ids, 0)
+        # logits = logits.transpose(0, 1)
+
+        # pax({
+        #     "input_ids" : input_ids,
+        #     # "position_ids" : position_ids,
+        #     # "attention_mask" : attention_mask,
+        #     "logits" : logits,
+        # })
+
+        return logits
+
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     def forward_debug_preprocess(self, input_ids, start_pos=0):

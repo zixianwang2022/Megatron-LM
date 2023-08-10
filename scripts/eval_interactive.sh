@@ -54,7 +54,21 @@ my_dict["standard_tasks"]=" --max_length=64 --json_shots='0,1,2' "
 my_dict["tydiqa_task_list"]=" --max_length=16 --json_shots='1,4' "
 
 TASK_LIST="standard_tasks"
-TASK="abstract_narrative_understanding"
+# TASK="abstract_narrative_understanding"
+# TASK="general_knowledge"
+TASK="human_organs_senses"
+# TASK="intent_recognition"
+# TASK="riddle_sense"
+# TASK="similarities_abstraction"
+# TASK="simple_arithmetic_json"
+# TASK="simple_arithmetic_json_multiple_choice"
+# TASK="undo_permutation"
+# TASK="unit_conversion"
+# TASK="qa_wikidata"
+# TASK="linguistic_mappings"
+# TASK="date_understanding"
+# TASK="conlang_translation"
+
 # TASK_ARGS="--task=${TASK} ${my_dict[$TASK_LIST]}",MODEL_NAME="megatron-llama"
 ARGS=" \
     ${ARGS} \
@@ -62,12 +76,13 @@ ARGS=" \
     --top_p 0.0 "
 # ${TASK_ARGS} \
 TASK_OPTIONS=" \
-   --models=megatron-lm \
+   --models=${MODEL_TYPE} \
    --task=${TASK} \
    ${my_dict[$TASK_LIST]} \
    --undefok=sequence-parallel,recompute-activations,use-flash-attn,overlap-p2p-communication,apply-layernorm-1p,untie-embeddings-and-output-weights,disable-bias-linear,no-position-embedding,use-rotary-position-embeddings,rotary-percent,swiglu,attention-dropout,hidden-dropout,exit-duration-in-mins,tensor-model-parallel-size,pipeline-model-parallel-size,num-layers,hidden-size,num-attention-heads,seq-length,max-position-embeddings,micro-batch-size,global-batch-size,rampup-batch-size,train-samples,lr-decay-samples,lr-warmup-samples,lr,min-lr,lr-decay-style,log-interval,eval-iters,eval-interval,tokenizer-type,tokenizer-model,save-interval,load,split,clip-grad,weight-decay,adam-beta1,adam-beta2,init-method-std,log-params-norm,log-num-zeros-in-grad,bf16,DDP-impl,top_k,top_p,num-layers-per-virtual-pipeline-stage\
 \
-,norm-epsilon,no-masked-softmax-fusion,load-llama,no-load-optim,no-load-rng,fp16,gen-model,norm-type,exit-on-missing-checkpoint,use-checkpoint-args,no-query-key-layer-scaling"
+,norm-epsilon,no-masked-softmax-fusion,load-llama,no-load-optim,no-load-rng,fp16,gen-model,norm-type,exit-on-missing-checkpoint,use-checkpoint-args,no-query-key-layer-scaling,use-llama-rotary-emb,use-llama-qkv,use-llama-mlp,use-llama-matmul,use-llama-default-dtype"
+
 # please note that undefok needs to be defined properly by including all flags added in $options.
 # this solve the conflicts between `argparse` and `absl.flags`
 

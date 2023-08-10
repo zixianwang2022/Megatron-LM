@@ -38,6 +38,9 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     parser = _add_inference_args(parser)
     parser = _add_transformer_engine_args(parser)
     parser = _add_retro_args(parser)
+    # >>>
+    parser = _add_llama_args(parser)
+    # <<<
 
     # Custom arguments.
     if extra_args_provider is not None:
@@ -538,6 +541,18 @@ def _add_retro_args(parser):
     return parser
 
 
+# >>>
+def _add_llama_args(parser):
+    group = parser.add_argument_group(title='llama')
+    group.add_argument("--use-llama-rotary-emb", action="store_true")
+    group.add_argument("--use-llama-qkv", action="store_true")
+    group.add_argument("--use-llama-mlp", action="store_true")
+    group.add_argument("--use-llama-matmul", action="store_true")
+    group.add_argument("--use-llama-default-dtype", action="store_true")
+    return parser
+# <<<
+
+
 def _add_network_size_args(parser):
     group = parser.add_argument_group(title='network size')
 
@@ -601,8 +616,6 @@ def _add_network_size_args(parser):
                        help='Use squared relu activation instead of default gelu')
     group.add_argument('--swiglu', action='store_true',
                        help='Use gated linear units and SiLU activation instead of default gelu')
-    group.add_argument('--swiglu-llama', action='store_true',
-                       help='Use Llama formula for computing FFN hidden size.')
     group.add_argument('--onnx-safe', type=bool, required=False,
                        help='Use workarounds for known problems with '
                        'Torch ONNX exporter')

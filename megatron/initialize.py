@@ -57,12 +57,9 @@ def initialize_megatron(
 
     validate_args(args, args_defaults)
 
-    # >>>
-    # from lutil import pax
-    # pax({
-    #     "kv_channels" : args.kv_channels,
-    #     "padded_vocab_size" : args.padded_vocab_size,
-    # })
+    # >>> [llama]
+    if args.use_llama_default_dtype:
+        torch.set_default_tensor_type(torch.cuda.HalfTensor)
     # <<<
 
     # set global args, build tokenizer, and set adlr-autoresume,
