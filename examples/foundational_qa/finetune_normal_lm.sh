@@ -30,8 +30,8 @@ if [[ $model_size == "43b" ]]; then
 fi
 
 SAVENAME="${blend_name}_${model_card}_same_format_ctx${ft_neighbours}_${model_size}_${global_bsz}_${lr}"
-CHECKPOINT_PATH="${SAVE_HOME}/checkpoints/applications/${SAVENAME}"
-TENSORBOARD_DIR="${SAVE_HOME}/tensorboard/${SAVENAME}"
+CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
+TENSORBOARD_DIR="${QA_HOME}/tensorboard/${SAVENAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
 OUTPUT_ARGS="--log-interval 10 \
@@ -90,8 +90,10 @@ run_cmd="python -u ${DIR}/tasks/foundational_QA/finetune_gpt_with_pretrain.py ${
 ## running command
 ## debug
 # bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b 4 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_doc2dial
+# bash examples/foundational_qa/finetune_normal_lm.sh multiturn_qa_blendv1 43b 4 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_debug
+# bash examples/foundational_qa/finetune_normal_lm.sh multiturn_qa_blendv1 43b 64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn
 
-export SUBMIT_LOGS="${SAVE_HOME}/megatron-lm/logs"
+export SUBMIT_LOGS="${QA_HOME}/megatron-lm/logs"
 mkdir -p $SUBMIT_LOGS
 export NCCL_DEBUG=INFO
 
