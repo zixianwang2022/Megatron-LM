@@ -15,6 +15,7 @@ export NCCL_IB_QPS_PER_CONNECTION=4
 export NCCL_SOCKET_IFNAME=^vlan,lo
 unset NCCL_DEBUG
 
+MODEL_TYPE=$1
 MODEL_SIZE=$2
 if [ "${MODEL_SIZE}" = "7b" ]; then
     # {"dim": 4096, "multiple_of": 256, "n_heads": 32, "n_layers": 32, "norm_eps": 1e-05, "vocab_size": -1}
@@ -122,11 +123,16 @@ ARGS=" ${ARGS} \
     --no-position-embedding \
     --use-rotary-position-embeddings \
     \
-    --gen-model $1 \
+    --gen-model ${MODEL_TYPE} \
     --norm-type rms \
     --exit-on-missing-checkpoint \
     --use-checkpoint-args \
     --no-query-key-layer-scaling \
 "
+ARGS="${ARGS} --use-llama-rotary-emb"
+ARGS="${ARGS} --use-llama-qkv"
+ARGS="${ARGS} --use-llama-mlp"
+ARGS="${ARGS} --use-llama-matmul"
+ARGS="${ARGS} --use-llama-default-dtype"
 
 # eof.
