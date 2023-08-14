@@ -2,6 +2,8 @@
 
 """Pretrain Flamingo"""
 
+from contextlib import nullcontext
+
 import torch
 from functools import partial
 from megatron import get_args
@@ -15,7 +17,7 @@ from megatron.core.enums import ModelType
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from megatron.utils import average_losses_across_data_parallel_group
-from megatron.model.vision.vit_backbone import CLIPVitBackbone, SAMViTBackbone
+from megatron.model.vision.vit_backbone import CLIPViTBackbone, SAMViTBackbone
 from megatron.data.blendable_dataset import BlendableDataset
 from megatron.arguments import core_transformer_config_from_args
 
@@ -38,10 +40,10 @@ def visual_model_provider(visual_arch, pre_process=True, post_process=False):
     print_rank_0('building visual model ...')
     config = core_transformer_config_from_args(get_args())
     if visual_arch.startswith("SAM"):
-        visual_model = SAMViTBackbone(config, pre_process=pre_process, 
-                                   post_process=post_process)
+        visual_model = SAMViTBackbone(config, pre_process=pre_process,
+                                    post_process=post_process)
     else:
-        visual_model = CLIPViTBackbone(config, pre_process=pre_process, 
+        visual_model = CLIPViTBackbone(config, pre_process=pre_process,
                                    post_process=post_process)
 
     print_rank_0('building visual model....')
@@ -51,7 +53,7 @@ def get_batch(data_iterator, visual_model):
     """Generate a batch"""
 
     args = get_args()
-    
+
     tokens = None
     labels = None
     loss_mask = None
@@ -59,6 +61,7 @@ def get_batch(data_iterator, visual_model):
     position_ids = None
 
     # Broadcast data.
+    torch.cuda.nvtx.range_push("get_data")
     if data_iterator is not None:
         data = next(data_iterator)
     else:
@@ -66,25 +69,36 @@ def get_batch(data_iterator, visual_model):
 
     data_text = tensor_parallel.broadcast_data(["text"], data, torch.int64)["text"]
     data_img = tensor_parallel.broadcast_data(["img"], data, torch.float32)
+    torch.cuda.nvtx.range_pop()
 
-    # Unpack.
-    tokens_ = data_text.long()
-    img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
+    # NOTE(jbarker): this freezes the whole ViT model, but we
+    # actually need to allow the last couple of "neck" layers
+    # to be trainable
+    with torch.no_grad() if args.freeze_ViT else nullcontext():
+        # Unpack.
+        tokens_ = data_text.long()
+        img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
 
-    if img_raw is None:
-        img_tokens = None
-    else:
-        img_tokens = visual_model(img_raw).transpose(0, 1).contiguous()
+        if img_raw is None:
+            img_tokens = None
+        else:
+            torch.cuda.nvtx.range_push("visual_model forward")
+            img_tokens = visual_model(img_raw).transpose(0, 1).contiguous()
+            torch.cuda.nvtx.range_pop()
 
-    tokenizer = get_tokenizer()
-    tokens = tokens_[:, :args.seq_length].contiguous()
-    labels = tokens_[:, 1:args.seq_length+1].contiguous()
-    
-    attention_mask, loss_mask, position_ids = \
-        get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
-                                        args.reset_position_ids,
-                                        args.reset_attention_mask,
-                                        args.eod_mask_loss)
+        torch.cuda.nvtx.range_push("index tokens")
+        tokenizer = get_tokenizer()
+        tokens = tokens_[:, :args.seq_length].contiguous()
+        labels = tokens_[:, 1:args.seq_length+1].contiguous()
+        torch.cuda.nvtx.range_pop()
+
+        torch.cuda.nvtx.range_push("get_ltor_masks_and_position_ids")
+        attention_mask, loss_mask, position_ids = \
+            get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
+                                            args.reset_position_ids,
+                                            args.reset_attention_mask,
+                                            args.eod_mask_loss)
+        torch.cuda.nvtx.range_pop()
 
     return tokens, labels, img_tokens, loss_mask, attention_mask, position_ids
 
@@ -109,12 +123,17 @@ def forward_step(data_iterator, model, visual_model):
 
     # Get the batch.
     timers('batch-generator', log_level=2).start()
+    torch.cuda.nvtx.range_push("batch-generator")
+
     tokens, labels, img_tokens, loss_mask, attention_mask, position_ids = get_batch(
         data_iterator, visual_model=visual_model)
+    torch.cuda.nvtx.range_pop()
     timers('batch-generator').stop()
 
+    torch.cuda.nvtx.range_push("language_model forward")
     output_tensor = model(tokens, img_tokens, position_ids, attention_mask,
                           labels=labels)
+    torch.cuda.nvtx.range_pop()
 
     return output_tensor, partial(loss_func, loss_mask)
 
@@ -161,6 +180,16 @@ def add_validation_args(parser):
     return parser
 
 if __name__ == "__main__":
+
+    ## VSCODE DEBUGGER INIT
+    # import os
+
+    # if int(os.environ["RANK"]) == 0:
+    #     import debugpy
+
+    #     debugpy.listen(("0.0.0.0", 5678))
+    #     print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
+    #     debugpy.wait_for_client()
 
     pretrain(train_valid_test_datasets_provider, model_provider,
              ModelType.encoder_or_decoder,

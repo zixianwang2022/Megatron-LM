@@ -231,11 +231,14 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         for model_gbuf_range_map in model_gbuf_ranges:
             for dtype, gbuf_range_map in model_gbuf_range_map.items():
                 for param in gbuf_range_map["param_map"]:
-                    group_index = world_param_group_map[param]
-                    group_range = group_ranges[group_index]
-                    group_range["params"].append(param)
-                    local_param_group_map[param] = \
-                        (group_index, len(group_range["params"]) - 1)
+                    if param not in world_param_group_map:
+                        continue
+                    else:
+                        group_index = world_param_group_map[param]
+                        group_range = group_ranges[group_index]
+                        group_range["params"].append(param)
+                        local_param_group_map[param] = \
+                            (group_index, len(group_range["params"]) - 1)
 
         # Squeeze zero-size group ranges.
         for group_index, group_range in enumerate(group_ranges):

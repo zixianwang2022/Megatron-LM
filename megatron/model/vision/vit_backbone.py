@@ -146,7 +146,7 @@ def twod_interpolate_position_embeddings_hook(
         state_dict[key] = input_param
 
 
-class CLIPVitBackbone(MegatronModule):
+class CLIPViTBackbone(MegatronModule):
     """Vision Transformer Model."""
 
     def __init__(self,
@@ -155,7 +155,7 @@ class CLIPVitBackbone(MegatronModule):
                  class_token=True,
                  single_token_output=False,
                  drop_path_rate=0.0):
-        super(CLIPVitBackbone, self).__init__(share_word_embeddings=False)
+        super(CLIPViTBackbone, self).__init__(share_word_embeddings=False)
         args = get_args()
 
         if args.init_method_xavier_uniform:
@@ -376,6 +376,7 @@ class SAMViTBackbone(MegatronModule):
 
     def forward(self, input):
 
+        torch.cuda.nvtx.range_push("conv")
         encoder_output = self.conv1(input)
         encoder_output = einops.rearrange(
             encoder_output,
@@ -386,7 +387,9 @@ class SAMViTBackbone(MegatronModule):
         token_embeddings = encoder_output + \
             self.position_embeddings(self.position_ids[:, :encoder_output.shape[1]])
         token_embeddings = token_embeddings.transpose(0, 1).contiguous()
+        torch.cuda.nvtx.range_pop()
 
+        torch.cuda.nvtx.range_push("transformer")
         hidden_states = self.transformer(token_embeddings, None)
         hidden_states = einops.rearrange(
             hidden_states,
@@ -395,5 +398,6 @@ class SAMViTBackbone(MegatronModule):
             p2=self.num_patches_per_dim_h,
         )
         hidden_states = self.neck(hidden_states).flatten(2)
+        torch.cuda.nvtx.range_pop()
         return hidden_states
 

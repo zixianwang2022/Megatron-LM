@@ -203,10 +203,12 @@ def forward_step(forward_step_func,
 
     if parallel_state.is_pipeline_last_stage():
         if not collect_non_loss_data:
+            torch.cuda.nvtx.range_push("loss")
             output_tensor = loss_func(output_tensor)
             loss, loss_reduced = output_tensor
             output_tensor = loss / num_microbatches
             forward_data_store.append(loss_reduced)
+            torch.cuda.nvtx.range_pop()
         else:
             data = loss_func(output_tensor, non_loss_data=True)
             forward_data_store.append(data)
@@ -338,7 +340,9 @@ def forward_backward_no_pipelining(*,
             output_tensor = forward_step(forward_step_func, data_iterator, model, num_microbatches,
                                          input_tensor, forward_data_store, config, collect_non_loss_data, visual_model=visual_model)
             if not forward_only:
+                torch.cuda.nvtx.range_push("backward")
                 backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config)
+                torch.cuda.nvtx.range_pop()
 
     # Run computation for last microbatch out of context handler (want to
     # synchronize gradients).
@@ -346,7 +350,9 @@ def forward_backward_no_pipelining(*,
                                  input_tensor, forward_data_store, config, collect_non_loss_data, visual_model=visual_model)
 
     if not forward_only:
+        torch.cuda.nvtx.range_push("backward (final)")
         backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config)
+        torch.cuda.nvtx.range_pop()
 
     return forward_data_store
 

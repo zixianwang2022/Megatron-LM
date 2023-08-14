@@ -489,8 +489,10 @@ def train_step(forward_step_func, data_iterator,
     if args.empty_unused_memory_level >= 1:
         torch.cuda.empty_cache()
 
+    torch.cuda.nvtx.range_push("reduce grads")
     # Reduce gradients.
     optimizer.reduce_model_grads(args, timers)
+    torch.cuda.nvtx.range_pop()
 
     # Vision gradients.
     if args.vision_pretraining and args.vision_pretraining_type == "dino":
@@ -500,12 +502,16 @@ def train_step(forward_step_func, data_iterator,
 
     # Update parameters.
     timers('optimizer', log_level=1).start(barrier=args.barrier_with_L1_time)
+    torch.cuda.nvtx.range_push("optimizer")
     update_successful, grad_norm, num_zeros_in_grad = optimizer.step(args, timers)
+    torch.cuda.nvtx.range_pop()
     timers('optimizer').stop()
 
     # Gather params.
     if update_successful:
+        torch.cuda.nvtx.range_push("gather params")
         optimizer.gather_model_params(args, timers)
+        torch.cuda.nvtx.range_pop()
 
     # Vision momentum.
     if args.vision_pretraining and args.vision_pretraining_type == "dino":
@@ -514,6 +520,7 @@ def train_step(forward_step_func, data_iterator,
         unwrapped_model.update_momentum(args.curr_iteration)
 
     # Update learning rate.
+    torch.cuda.nvtx.range_push("update lr")
     if update_successful:
         increment = get_num_microbatches() * \
                     args.micro_batch_size * \
@@ -522,6 +529,7 @@ def train_step(forward_step_func, data_iterator,
         skipped_iter = 0
     else:
         skipped_iter = 1
+    torch.cuda.nvtx.range_pop()
 
     # Empty unused memory.
     if args.empty_unused_memory_level >= 2:
@@ -740,6 +748,9 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     if visual_model:
         visual_model.train()  
 
+    if visual_model:
+        visual_model.train()
+
     # Tracking loss.
     total_loss_dict = {}
 
@@ -915,7 +926,7 @@ def evaluate(forward_step_func,
                             key, torch.cuda.FloatTensor([0.0])) + loss_dict[key]
 
             args.consumed_valid_samples += eval_batch_size
-        
+
         collected_non_loss_data = None
         if process_non_loss_data_func is not None and is_last_rank():
             collected_non_loss_data = forward_backward_func(
