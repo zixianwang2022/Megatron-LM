@@ -33,7 +33,7 @@ class FlamingoModel(MegatronModule):
         self.untie_embeddings_and_output_weights = args.untie_embeddings_and_output_weights
 
         self.perceiver_model, self._perceiver_model_key = get_perceiver(config=config)
-        
+
         self.language_model, self._language_model_key = get_language_model(
             config=config,
             num_tokentypes=num_tokentypes,
@@ -54,14 +54,14 @@ class FlamingoModel(MegatronModule):
                 tokentype_ids=None, inference_params=None):
 
         import torch
-        perceiver_output = self.perceiver_model(img_tokens, inference_params=inference_params) 
+        perceiver_output = self.perceiver_model(img_tokens, inference_params=inference_params)
 
         lm_output = self.language_model(
             input_ids,
             position_ids,
             attention_mask,
             inference_params=inference_params, vision_inputs=perceiver_output)
-        
+
         if self.post_process:
             return post_language_model_processing(
                 lm_output, labels,

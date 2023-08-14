@@ -231,7 +231,7 @@ class LinearWithGradAccumulationAndAsyncCommunication(torch.autograd.Function):
                 get_global_memory_buffer().get_tensor(dim_size, input.dtype, "mpu")
             torch.distributed._all_gather_base(
                 all_gather_buffer,
-                input,
+                input.contiguous(),
                 group=get_tensor_model_parallel_group())
             total_input = all_gather_buffer
         else:

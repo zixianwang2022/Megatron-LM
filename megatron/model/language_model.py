@@ -331,14 +331,14 @@ class Embedding(MegatronModule):
 class PerceiverResampler(MegatronModule):
 
     def __init__(self, config):
-                 
+
         super(PerceiverResampler, self).__init__()
         args = get_args()
         super(PerceiverResampler, self).__init__(share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
 
         self.init_method = config.init_method
         self.output_layer_init_method = config.output_layer_init_method
-        
+
         if args.perceiver_type == "self-attn":
             self.encoder = ParallelOCRPerceiverResampler(
                     config,
@@ -347,13 +347,13 @@ class PerceiverResampler(MegatronModule):
             )
         elif args.perceiver_type == "cross-attn":
             self.encoder = ParallelPerceiverResampler(
-                    config, 
+                    config,
                     self.init_method,
                     self.output_layer_init_method,
             )
         else:
             if args.affine:
-                self.affine = ParallelAffineLayer(config) 
+                self.affine = ParallelAffineLayer(config)
             else:
                 self.affine = None
             self.encoder = None
@@ -370,7 +370,7 @@ class PerceiverResampler(MegatronModule):
             'input_tensor should only be length 1 for stage with only encoder'
         if self.encoder:
             self.encoder.set_input_tensor(input_tensor[0])
-    
+
     def state_dict_for_save_checkpoint(self, destination=None, prefix='',
                                        keep_vars=False):
         """For easy load."""
@@ -389,8 +389,8 @@ class PerceiverResampler(MegatronModule):
     def load_state_dict(self, state_dict, strict=True):
         """Customized load."""
         # Encoder.
-        
-        
+
+
         if self.encoder:
             if self._encoder_key in state_dict:
                 state_dict_ = state_dict[self._encoder_key]
