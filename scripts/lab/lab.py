@@ -14,66 +14,72 @@ class Lab(abc.ABC):
         self.tokenizer = tokenizer
         self.pad_id = pad_id
 
-    def get_ntokens(self, tokens):
-        assert tokens.shape
-        # return torch.sum((tokens != self.tokenizer.eod).view(-1)).item()
-        return torch.sum((tokens != self.pad_id).view(-1)).item()
+    # def get_ntokens(self, tokens):
+    #     assert tokens.shape
+    #     # return torch.sum((tokens != self.tokenizer.eod).view(-1)).item()
+    #     return torch.sum((tokens != self.pad_id).view(-1)).item()
 
     @abc.abstractmethod
     def _tokenize(self, text):
         pass
 
+    # def tokenize(self, text):
+
+    #     args = get_args()
+
+    #     tokens = torch.tensor(
+    #         self._tokenize(text),
+    #         dtype=torch.long,
+    #         device=torch.cuda.current_device())
+    #     # tokens = torch.cat([
+    #     #     tokens,
+    #     #     torch.full(
+    #     #         (args.seq_length - tokens.numel(),),
+    #     #         self.pad_id, # self.tokenizer.eod,
+    #     #         dtype=torch.long,
+    #     #         device=torch.cuda.current_device(),
+    #     #     ),
+    #     # ], dim=0)
+    #     # tokens = tokens.reshape((1, -1)) # (args.micro_batch_size, -1))
+
+    #     # pax({
+    #     #     "text" : text,
+    #     #     "tokens" : tokens,
+    #     #     "n_tokens" : self.get_ntokens(tokens),
+    #     # })
+
+    #     return tokens
     def tokenize(self, text):
-
-        args = get_args()
-
-        tokens = torch.tensor(
-            self._tokenize(text),
-            dtype=torch.long,
-            device=torch.cuda.current_device())
-        # tokens = torch.cat([
-        #     tokens,
-        #     torch.full(
-        #         (args.seq_length - tokens.numel(),),
-        #         self.pad_id, # self.tokenizer.eod,
-        #         dtype=torch.long,
-        #         device=torch.cuda.current_device(),
-        #     ),
-        # ], dim=0)
-        # tokens = tokens.reshape((1, -1)) # (args.micro_batch_size, -1))
-
-        # pax({
-        #     "text" : text,
-        #     "tokens" : tokens,
-        #     "n_tokens" : self.get_ntokens(tokens),
-        # })
-
-        return tokens
+        return self._tokenize(text)
 
     @abc.abstractmethod
     def _detokenize(self, tokens):
         pass
 
+    # def detokenize(self, tokens):
+
+    #     args = get_args()
+
+    #     # assert tokens.shape == (args.seq_length,)
+
+    #     n_tokens = self.get_ntokens(tokens)
+
+    #     text = self._detokenize(tokens[:n_tokens].tolist())
+
+    #     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    #     # print(text)
+    #     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    #     # pax({
+    #     #     "n_tokens" : n_tokens,
+    #     #     "tokens" : tokens,
+    #     #     "text" : text,
+    #     # })
+
+    #     return text
     def detokenize(self, tokens):
-
-        args = get_args()
-
-        # assert tokens.shape == (args.seq_length,)
-
-        n_tokens = self.get_ntokens(tokens)
-
-        text = self._detokenize(tokens[:n_tokens].tolist())
-
-        # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        # print(text)
-        # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        # pax({
-        #     "n_tokens" : n_tokens,
-        #     "tokens" : tokens,
-        #     "text" : text,
-        # })
-
-        return text
+        if isinstance(tokens, torch.Tensor):
+            tokens = tokens.tolist()
+        return self._detokenize(tokens)
 
     @abc.abstractmethod
     def forward(self, tokens):

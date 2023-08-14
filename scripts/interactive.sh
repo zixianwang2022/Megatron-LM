@@ -2,10 +2,10 @@
 
 set -u
 
-if [ "$#" != "2" ]; then
-    echo "expected 2 args, found $#."
-    exit 1
-fi
+# if [ "$#" != "2" ]; then
+#     echo "expected 2 args, found $#."
+#     exit 1
+# fi
 
 ######## Arguments. ########
 

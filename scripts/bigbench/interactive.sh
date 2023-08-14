@@ -13,7 +13,7 @@ DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # . args.sh
 # . /home/lmcafee/src/megatrons/megatron-lm-main/scripts/args.sh
-. $DIR/args_gen.sh "$@"
+. $DIR/../args_gen.sh "$@"
 
 ######## Task args. ########
 
@@ -87,7 +87,7 @@ ARGS=" \
     --top_p 0.0 "
 # ${TASK_ARGS} \
 TASK_OPTIONS=" \
-   --models=${MODEL_TYPE} \
+   --models=${MODEL_FAMILY} \
    --task=${TASK} \
    ${my_dict[$TASK_LIST]} \
    --undefok=sequence-parallel,recompute-activations,use-flash-attn,overlap-p2p-communication,apply-layernorm-1p,untie-embeddings-and-output-weights,disable-bias-linear,no-position-embedding,use-rotary-position-embeddings,rotary-percent,swiglu,attention-dropout,hidden-dropout,exit-duration-in-mins,tensor-model-parallel-size,pipeline-model-parallel-size,num-layers,hidden-size,num-attention-heads,seq-length,max-position-embeddings,micro-batch-size,global-batch-size,rampup-batch-size,train-samples,lr-decay-samples,lr-warmup-samples,lr,min-lr,lr-decay-style,log-interval,eval-iters,eval-interval,tokenizer-type,tokenizer-model,save-interval,load,split,clip-grad,weight-decay,adam-beta1,adam-beta2,init-method-std,log-params-norm,log-num-zeros-in-grad,bf16,DDP-impl,top_k,top_p,num-layers-per-virtual-pipeline-stage\
@@ -137,9 +137,12 @@ CMD="\
     --master_port 6000 \
     ${BIG_BENCH_REPO_DIR}/bigbench/evaluate_task.py ${ARGS} ${TASK_OPTIONS} \
 "
+# >>>
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "CMD = '$CMD'."
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 eval $CMD
+# +++
+# <<<
 
 # eof.

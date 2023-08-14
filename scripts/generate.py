@@ -80,8 +80,17 @@ def generate(
 ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
 
     tokens = lab.tokenize(input_text)
-    n_tokens = lab.get_ntokens(tokens)
-
+    # >>>
+    # n_tokens = lab.get_ntokens(tokens)
+    # +++
+    tokens = torch.tensor(
+        tokens,
+        dtype=torch.long,
+        device=torch.cuda.current_device())
+    n_tokens = tokens.numel()
+    # pax({"tokens": tokens, "n_tokens": n_tokens})
+    # <<<
+    
     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     # print(tokens[:n_tokens].tolist())
     # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -111,11 +120,11 @@ def generate(
         output_text = lab.detokenize(tokens)
 
         args = get_args()
-        # divider = ("~" * 10) + f" [ {args.gen_model} ] " + ("~" * 10)
+        # divider = ("~" * 10) + f" [ {args._model_family} ] " + ("~" * 10)
         # print(divider)
         # print(output_text)
         # print("~" * len(divider))
-        print(f"[{args.gen_model.upper()}, seed {seed}] {input_text} ...... {' || '.join(output_text.replace(input_text, '').splitlines())}")
+        print(f"[{args._model_family.upper()}, {args._model_type}, {args._model_size} | seed {seed}] {input_text} ...... {' || '.join(output_text.replace(input_text, '').splitlines())}")
 
     # pax({
     #     "input_text" : input_text,
@@ -124,18 +133,19 @@ def generate(
     torch.distributed.barrier()
     exit()
 
-def add_textgen_args(parser):
-    group = parser.add_argument_group(title="Text generation.")
-    group.add_argument("--gen-model", choices=["megatron","llama"], required=True)
-    group.add_argument("--load-llama", required=True)
-    return parser
+# def add_textgen_args(parser):
+#     group = parser.add_argument_group(title="Text generation.")
+#     group.add_argument("--gen-model", choices=["megatron","llama"], required=True)
+#     group.add_argument("--load-llama", required=True)
+#     return parser
 
 if __name__ == "__main__":
 
     # {"dim": 4096, "multiple_of": 256, "n_heads": 32, "n_layers": 32, "norm_eps": 1e-05, "vocab_size": -1}
 
     # Initalize.
-    initialize_megatron(extra_args_provider=add_textgen_args)
+    # initialize_megatron(extra_args_provider=add_textgen_args)
+    initialize_megatron()
     set_jit_fusion_options()
 
     # >>> [llama]
@@ -144,24 +154,24 @@ if __name__ == "__main__":
 
     # Model, tokenizer.
     args = get_args()
-    if args.gen_model == "megatron":
+    if args._model_family == "megatron":
         lab = MegatronLab()
-    elif args.gen_model == "llama":
+    elif args._model_family == "llama":
         lab = LlamaLab()
     else:
-        raise Exception("specialize for '%s'." % args.gen_model)
+        raise Exception("specialize for '%s'." % args._model_family)
 
     # >>>
     # debug(lab)
     # raise Exception("hi.")
     # <<<
 
-    # input_text = "lawrence is the fastest cyclist since "
+    input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
     # input_text = "the funniest knock knock joke i ever heard was "
-    input_text = "the craziest thing i've ever heard was "
+    # input_text = "the craziest thing i've ever heard was "
     # input_text = "i'm not the kind of person to " # 300, 0.8
     # input_text = "the best year in history was "
     # input_text = "the best year in history was 1984 because "
@@ -169,6 +179,8 @@ if __name__ == "__main__":
     # input_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
     # input_text = "here's a sentence where every word starts with n."
     # input_text = "here's the python code for hello world."
+    # input_text = "the rudest thing i've ever seen was "
+    # input_text = "i witnessed a crime that no one else saw."
 
     # Generate.
     output_text = generate(

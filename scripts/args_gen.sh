@@ -2,8 +2,8 @@
 
 ######## setup. ########
 
-if [ "$#" != "2" ]; then
-    echo "expected 2 args, found $#."
+if [ "$#" != "3" ]; then
+    echo "expected 3 args, found $#."
     exit 1
 fi
 
@@ -15,8 +15,9 @@ export NCCL_IB_QPS_PER_CONNECTION=4
 export NCCL_SOCKET_IFNAME=^vlan,lo
 unset NCCL_DEBUG
 
-MODEL_TYPE=$1
-MODEL_SIZE=$2
+MODEL_FAMILY=$1
+MODEL_TYPE=$2
+MODEL_SIZE=$3
 if [ "${MODEL_SIZE}" = "7b" ]; then
     # {"dim": 4096, "multiple_of": 256, "n_heads": 32, "n_layers": 32, "norm_eps": 1e-05, "vocab_size": -1}
     NPROCS=1
@@ -53,14 +54,17 @@ fi
 
 # >>>
 # MEGATRON_REPO_DIR="/home/lmcafee/src/megatrons/megatron-lm-llama2-loader"
-MEGATRON_REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/megatron/megatron-lm-llama2-loader"
-LLAMA_REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/llama"
-BIG_BENCH_REPO_DIR="/lustre/fs3/portfolios/adlr/users/lmcafee/llama/2/megatron/big-bench-megatron-lm"
+ROOT_SRC_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/src"
+MEGATRON_REPO_DIR="${ROOT_SRC_DIR}/megatron-lm-llama2-loader"
+LLAMA_REPO_DIR="${ROOT_SRC_DIR}/llama"
+BIG_BENCH_REPO_DIR="${ROOT_SRC_DIR}/big-bench-megatron-lm"
+BIG_CODE_REPO_DIR="${ROOT_SRC_DIR}/bigcode-evaluation-harness"
 TOKENIZER_PATH="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/tokenizer.model"
 
-COMMON_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/checkpoints"
-MEGATRON_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/megatron/text/${MODEL_SIZE}"
-LLAMA_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/llama/text/llama-2-${MODEL_SIZE}"
+# ROOT_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/checkpoints"
+# MEGATRON_CHECKPOINT_DIR="${ROOT_CHECKPOINT_DIR}/megatron/${MODEL_TYPE}/${MODEL_SIZE}"
+# LLAMA_CHECKPOINT_DIR="${ROOT_CHECKPOINT_DIR}/llama/${MODEL_TYPE}/llama-2-${MODEL_SIZE}"
+CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/checkpoints/${MODEL_FAMILY}/${MODEL_TYPE}/${MODEL_SIZE}"
 # +++
 # MEGATRON_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/megatron/megatron-lm-llama2-loader"
 # LLAMA_REPO_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama"
@@ -68,8 +72,8 @@ LLAMA_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/llama/text/llama-2-${MODEL_SIZE}"
 # TOKENIZER_PATH="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/llama/tokenizer_hf/tokenizer.model"
 
 # COMMON_CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/lmcafee/data/llama/2/checkpoints"
-# MEGATRON_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/megatron/text/${MODEL_SIZE}"
-# LLAMA_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/llama/text/llama-2-${MODEL_SIZE}"
+# MEGATRON_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/megatron/${MODEL_TYPE}/${MODEL_SIZE}"
+# LLAMA_CHECKPOINT_DIR="${COMMON_CHECKPOINT_DIR}/llama/${MODEL_TYPE}/llama-2-${MODEL_SIZE}"
 # <<<
 
 ######## args. ########
@@ -97,6 +101,8 @@ SCRIPT=scripts/generate.py
 #     --rotary-percent 0.5 \
 # --finetune \ ... doesn't load args from checkpoint
 #     --swiglu-llama \
+#     --load ${MEGATRON_CHECKPOINT_DIR} \
+#     --load-llama ${LLAMA_CHECKPOINT_DIR} \
 ARGS=" ${ARGS} \
     --no-masked-softmax-fusion \
     --tensor-model-parallel-size ${NPROCS} \
@@ -106,8 +112,7 @@ ARGS=" ${ARGS} \
     --max-position-embeddings 4096 \
     --tokenizer-type Llama2Tokenizer \
     --tokenizer-model ${TOKENIZER_PATH} \
-    --load ${MEGATRON_CHECKPOINT_DIR} \
-    --load-llama ${LLAMA_CHECKPOINT_DIR} \
+    --load ${CHECKPOINT_DIR} \
     --no-load-optim \
     --no-load-rng \
     \
@@ -123,12 +128,17 @@ ARGS=" ${ARGS} \
     --no-position-embedding \
     --use-rotary-position-embeddings \
     \
-    --gen-model ${MODEL_TYPE} \
+    --_model_family ${MODEL_FAMILY} \
+    --_model_type ${MODEL_TYPE} \
+    --_model_size ${MODEL_SIZE} \
     --norm-type rms \
-    --exit-on-missing-checkpoint \
     --use-checkpoint-args \
     --no-query-key-layer-scaling \
 "
+if [ "${MODEL_FAMILY}" = "megatron" ]; then
+    ARGS="${ARGS} --exit-on-missing-checkpoint"
+fi
+
 ARGS="${ARGS} --use-llama-rotary-emb"
 ARGS="${ARGS} --use-llama-qkv"
 ARGS="${ARGS} --use-llama-mlp"

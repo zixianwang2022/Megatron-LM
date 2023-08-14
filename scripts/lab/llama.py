@@ -19,7 +19,8 @@ class LlamaLab(Lab):
         # args.seq_length = 128
 
         generator = Llama.build(
-            ckpt_dir=args.load_llama,
+            # ckpt_dir=args.load_llama,
+            ckpt_dir=args.load,
             tokenizer_path=args.tokenizer_model, # path,
             max_seq_len=max_seq_len or args.seq_length,
             max_batch_size=max_batch_size or 1, # or args.micro_batch_size
@@ -46,16 +47,19 @@ class LlamaLab(Lab):
 
         # assert tokens.shape == (args.seq_length,)
 
-        n_tokens = self.get_ntokens(tokens)
-        tokens = tokens[:n_tokens]
+        # n_tokens = self.get_ntokens(tokens)
+        # tokens = tokens[:n_tokens]
         tokens = tokens.reshape((1, -1))
 
         logits = self.model.forward(tokens, 0)
         logits = logits[0]
+        # logits = logits[-1]
 
         # pax({
         #     "tokens" : tokens,
         #     "logits" : logits,
+        #     "logits / 0" : logits[0],
+        #     "logits / -1" : logits[-1],
         # })
 
         return logits
@@ -71,7 +75,15 @@ class LlamaLab(Lab):
 
     def __call__(self, input_ids, position_ids, attention_mask, inference_params):
 
+        # tokens = torch.tensor(
+        #     self._tokenize(text),
+        #     dtype=torch.long,
+        #     device=torch.cuda.current_device())
+
+        # try:
         logits = self.model.forward(input_ids, 0)
+        # except Exception as e:
+        #     pax({"input_ids": input_ids, "e": e})
         # logits = logits.transpose(0, 1)
 
         # pax({
@@ -82,6 +94,16 @@ class LlamaLab(Lab):
         # })
 
         return logits
+
+    # @property
+    # def eos_token(self):
+    #     return self.tokenizer.eos_id
+    @property
+    def eod(self):
+        return self.tokenizer.eos_id
+
+    # def decode(self, token_ids):
+    #     return self.tokenizer.decode(token_ids)
 
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
