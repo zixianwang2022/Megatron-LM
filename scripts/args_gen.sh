@@ -145,4 +145,8 @@ ARGS="${ARGS} --use-llama-mlp"
 ARGS="${ARGS} --use-llama-matmul"
 ARGS="${ARGS} --use-llama-default-dtype"
 
+for ARG in ${OMIT_ARGS}; do
+    ARGS=${ARGS/"--$ARG"/""}
+done
+
 # eof.
