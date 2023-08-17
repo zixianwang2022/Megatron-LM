@@ -51,3 +51,6 @@ bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv13 43b  64 3e-7 1 g
 
 bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_doc2dial
 bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv13 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_doc2dial
+
+
+bash examples/foundational_qa/finetune_normal_lm.sh qa_blendv12 43b  64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_fixed_doc2dial_fixed_getbatch
