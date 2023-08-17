@@ -16,6 +16,12 @@ from .transformer import ParallelTransformer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
 
+# >>>
+def pax(a):
+    from scripts import pax as _pax
+    _pax(a)
+# <<<
+
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
                        bias=None):
@@ -361,13 +367,6 @@ class TransformerLanguageModel(MegatronModule):
 
         # Embeddings.
         if self.pre_process:
-            # >>>
-            # from scripts import pax
-            # pax({
-            #     "kv_channels" : args.kv_channels,
-            #     "padded_vocab_size" : args.padded_vocab_size,
-            # })
-            # <<<
             self.embedding = Embedding(self.hidden_size,
                                        args.padded_vocab_size,
                                        args.max_position_embeddings,
@@ -391,6 +390,10 @@ class TransformerLanguageModel(MegatronModule):
             # partial rotary embeddings, which is better than full rotary
             # Wang and Komatsuzaki et al
             # https://github.com/kingoflolz/mesh-transformer-jax/
+            # >>>
+            # from scripts import pax
+            # pax({"rotary_dim": rotary_dim})
+            # <<<
             self.rotary_pos_emb = RotaryEmbedding(rotary_dim)
 
         # Encoder (usually set to True, False if part of an encoder-decoder
@@ -494,8 +497,20 @@ class TransformerLanguageModel(MegatronModule):
         rotary_pos_emb = None
         if self.use_rotary_position_embeddings:
             if inference_params is not None:
-                rotary_pos_emb = \
-                    self.rotary_pos_emb(inference_params.max_sequence_len)
+                # >>>
+                # pax({"inference_params": inference_params})
+                # <<<
+                # >>>
+                if 1:
+                    rotary_pos_emb = \
+                        self.rotary_pos_emb(inference_params.max_sequence_len)
+                else:
+                    rotary_pos_emb = \
+                        self.rotary_pos_emb(2*inference_params.max_sequence_len)
+                # <<<
+                # >>>
+                # pax({"rotary_pos_emb": rotary_pos_emb})
+                # <<<
             else:
                 rotary_pos_emb = self.rotary_pos_emb(self.seq_length)
 

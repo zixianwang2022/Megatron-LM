@@ -88,8 +88,8 @@ class MegatronLab(Lab):
         # assert tokens.shape == (args.seq_length,)
 
         # >>>
-        n_tokens = self.get_ntokens(tokens)
-        tokens = tokens[:n_tokens]
+        # n_tokens = self.get_ntokens(tokens)
+        # tokens = tokens[:n_tokens]
         # <<<
         tokens = tokens.reshape((1, -1))
 

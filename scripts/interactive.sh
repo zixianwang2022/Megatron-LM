@@ -7,6 +7,9 @@ set -u
 #     exit 1
 # fi
 
+# OMIT_ARGS="xxxxxxxxxx"
+# OMIT_ARGS="use-llama-rotary-emb"
+
 ######## Arguments. ########
 
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )

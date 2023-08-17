@@ -663,6 +663,15 @@ class ParallelAttention(MegatronModule):
     ):
         # hidden_states: [sq, b, h]
 
+        # >>>
+        # nseq = hidden_states.shape[0]
+        # pax({
+        #     "hidden_states" : hidden_states.transpose(0, 1),
+        #     "rotary_pos_emb" : rotary_pos_emb.transpose(0, 1),
+        #     f"rotary_pos_emb / :{nseq}" : rotary_pos_emb[:nseq].transpose(0, 1),
+        # })
+        # <<<
+
         # =================================================
         # Pre-allocate memory for key-values for inference.
         # =================================================
@@ -791,6 +800,10 @@ class ParallelAttention(MegatronModule):
             else:
                 rotary_pos_emb = ((rotary_pos_emb,) * 2)
 
+        # >>>
+        # pax({"rotary_pos_emb": rotary_pos_emb, "is_first_step": is_first_step})
+        # <<<
+
         if inference_params:
             batch_start = inference_params.batch_size_offset
             batch_end = batch_start + key_layer.size(1)
@@ -829,6 +842,10 @@ class ParallelAttention(MegatronModule):
                 k_pos_emb = k_pos_emb[:sequence_end, :, :, :]
                 rotary_pos_emb = (q_pos_emb, k_pos_emb)
 
+        # >>>
+        # pax({"rotary_pos_emb": tuple(t.transpose(0, 1) for t in rotary_pos_emb)})
+        # <<<
+
         # ==================================
         # core attention computation
         # ==================================
@@ -842,12 +859,18 @@ class ParallelAttention(MegatronModule):
         # apply relative positional encoding (rotary embedding)
         if rotary_pos_emb is not None:
             q_pos_emb, k_pos_emb = rotary_pos_emb
-
+            
             # >>>
+            # pax({
+            #     "use_llama_rotary_emb" : get_args().use_llama_rotary_emb,
+            #     "query_layer" : query_layer,
+            # })
+
             if not get_args().use_llama_rotary_emb:
                 query_layer = apply_rotary_pos_emb(query_layer, q_pos_emb)
                 key_layer = apply_rotary_pos_emb(key_layer, k_pos_emb)
             else:
+                # from llama.model import precompute_freqs_cis, apply_rotary_emb_single
                 from llama.model import precompute_freqs_cis, apply_rotary_emb_single
                 freqs_cis = precompute_freqs_cis(
                     self.hidden_size_per_attention_head,
@@ -860,6 +883,11 @@ class ParallelAttention(MegatronModule):
                 # })
                 query_layer = apply_rotary_emb_single(query_layer, freqs_cis)
                 key_layer = apply_rotary_emb_single(key_layer, freqs_cis)
+
+            # pax({
+            #     "use_llama_rotary_emb" : get_args().use_llama_rotary_emb,
+            #     "query_layer" : query_layer.transpose(0, 1),
+            # })
             # <<<
 
             # >>> [ bad; soln = llama rotary + torch.set_default_dtype(torch.cuda.HalfTensor) ]
