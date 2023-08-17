@@ -167,12 +167,6 @@ def forward_step(data_iterator, model):
     args = get_args()
     timers = get_timers()
 
-    # Get the batch.
-    timers('batch-generator', log_level=2).start()
-    tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
-        data_iterator)
-    timers('batch-generator').stop()
-
     if args.add_retriever:
         timers('batch-generator', log_level=2).start()
         tokens, labels, loss_mask, attention_mask, position_ids, \
