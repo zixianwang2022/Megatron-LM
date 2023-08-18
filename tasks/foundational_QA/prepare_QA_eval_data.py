@@ -121,6 +121,7 @@ def load_multirc(split="validation"):
 def main(task="mrqa", subset_key="TextbookQA", base_dir="./eval_data/", split="test"):
 
     if task == "mrqa":
+        assert split != "train", "no train for TextbookQA"
         if split == "train":
             mrqa = load_mrqa(split=split)
         else:
