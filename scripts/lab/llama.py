@@ -226,11 +226,11 @@ class LlamaLab(Lab):
         acts["norm"] = self.model.norm(hidden_states)
         acts["output"] = self.model.output(acts["norm"]).float()
 
-        pax({
-            "hidden_states" : hidden_states,
-            "--" : "--",
-            **acts,
-        })
+        # pax({
+        #     "hidden_states" : hidden_states,
+        #     "--" : "--",
+        #     **acts,
+        # })
 
         return acts
 

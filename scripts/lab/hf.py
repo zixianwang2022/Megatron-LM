@@ -37,17 +37,17 @@ class HFLab(Lab):
         # pax({"default device": torch.device}) # get_default_device()})
 
         model = LlamaForCausalLM.from_pretrained(args.load, device_map="cpu")
-        # model.to("cuda")
+        model.to("cuda")
         tokenizer = LlamaTokenizer.from_pretrained(args.load)
 
         # >>>
-        if torch.distributed.get_rank() == 0:
-            print(model)
-        pax({
-            "device" : str(model.device),
-            "nparams" : sum(t.numel() for t in model.parameters()),
-            "params / 0" : list(model.parameters())[0],
-        })
+        # if torch.distributed.get_rank() == 0:
+        #     print(model)
+        # pax({
+        #     "device" : str(model.device),
+        #     "nparams" : sum(t.numel() for t in model.parameters()),
+        #     "params / 0" : list(model.parameters())[0],
+        # })
         # <<<
 
         super().__init__(

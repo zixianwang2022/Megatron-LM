@@ -391,7 +391,6 @@ class TransformerLanguageModel(MegatronModule):
             # Wang and Komatsuzaki et al
             # https://github.com/kingoflolz/mesh-transformer-jax/
             # >>>
-            # from scripts import pax
             # pax({"rotary_dim": rotary_dim})
             # <<<
             self.rotary_pos_emb = RotaryEmbedding(rotary_dim)
@@ -501,12 +500,12 @@ class TransformerLanguageModel(MegatronModule):
                 # pax({"inference_params": inference_params})
                 # <<<
                 # >>>
-                if 1:
-                    rotary_pos_emb = \
-                        self.rotary_pos_emb(inference_params.max_sequence_len)
-                else:
-                    rotary_pos_emb = \
-                        self.rotary_pos_emb(2*inference_params.max_sequence_len)
+                # if 1:
+                rotary_pos_emb = \
+                    self.rotary_pos_emb(inference_params.max_sequence_len)
+                # else:
+                #     rotary_pos_emb = \
+                #         self.rotary_pos_emb(2*inference_params.max_sequence_len)
                 # <<<
                 # >>>
                 # pax({"rotary_pos_emb": rotary_pos_emb})
