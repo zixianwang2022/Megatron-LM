@@ -210,7 +210,7 @@ def set_layer_state(args, model, hf_model, layer_idx):
 # def load_checkpoint_to_model(args, rank, model, embeddings):
 def load_checkpoint_to_model(args):
 
-    from megatron.core import mpu
+    # from megatron.core import mpu
     from pretrain_gpt import model_provider
     from transformers import LlamaForCausalLM # , LlamaTokenizer
 
@@ -218,7 +218,6 @@ def load_checkpoint_to_model(args):
     hf_model = LlamaForCausalLM.from_pretrained(args.load, device_map="cpu")
 
     # Init Megatron model.
-    mpu.set_tensor_model_parallel_rank(0)
     model = model_provider(True, True).to(args.params_dtype)
 
     # pax({
@@ -236,11 +235,10 @@ def load_checkpoint_to_model(args):
 
     return model
 
+
 def _load_checkpoint(queue, args):
 
     verify_transformers_version()
-
-    # pax({"args": args})
 
     # Search in directory above this
     sys.path.append(os.path.abspath(
@@ -253,7 +251,6 @@ def _load_checkpoint(queue, args):
     try:
         from megatron.arguments import parse_args, validate_args
         from megatron.global_vars import set_args, set_global_variables
-        # from megatron.checkpointing import load_args_from_checkpoint, load_checkpoint
         from megatron.model import module
         from megatron.core import mpu
         from megatron.core.enums import ModelType
@@ -277,27 +274,11 @@ def _load_checkpoint(queue, args):
                 '--no-save-rng',
                 '--no-initialization',
                 '--load', args.load_dir
-                # >>>
-                # ,
-                # '--_model_family', args._model_family,
-                # '--_model_type', args._model_type,
-                # '--_model_size', args._model_size,
-                # <<<
                 ]
 
     margs = parse_args()
     margs.tokenizer_model = args.tokenizer_model
-    # margs.tensor_model_parallel_size = args.target_tensor_parallel_size
-    # marg
-    # >>>
-    # margs._model_size = args._model_size
-    # <<<
     load_args_from_checkpoint(margs)
-    # >>>
-    # load_vocab_size(margs)
-    # <<<
-
-    # pax({"margs": margs})
 
     # Arguments do sanity checks on the world size, but we don't care,
     # so trick it into thinking we are plenty of processes
@@ -343,21 +324,6 @@ def _load_checkpoint(queue, args):
     mpu.set_virtual_pipeline_model_parallel_world_size(margs.virtual_pipeline_model_parallel_size)
     fused_kernels.load(margs)
 
-    # >>>
-    # # Get true (non-padded) vocab size
-    # if args.true_vocab_size is not None:
-    #     true_vocab_size = args.true_vocab_size
-    # elif args.vocab_file is not None:
-    #     vocab = json.load(open(args.vocab_file))
-    #     true_vocab_size = len(vocab)
-    #     if args.true_vocab_size is not None and true_vocab_size != args.true_vocab_size:
-    #         print("Both --true-vocab-size and --vocab-file specified and the vocab size does not match, aborting.")
-    #         queue.put("exit")
-    #         exit(1)
-    # else:
-    #     true_vocab_size = None
-    # <<<
-
     # short aliases
     tp_size = margs.tensor_model_parallel_size
     pp_size = margs.pipeline_model_parallel_size
@@ -386,28 +352,14 @@ def _load_checkpoint(queue, args):
     # >>>
     # md.true_vocab_size = margs.vocab_size
     md.true_vocab_size = None # skips padding in saver
-    # md.padded_vocab_size = margs.padded_vocab_size
     # <<<
     md.make_vocab_size_divisible_by = None
     md.checkpoint_args = margs
 
     # Get first pipe stage
+    mpu.set_tensor_model_parallel_rank(0)
     mpu.set_pipeline_model_parallel_rank(0)
-    # >>>
-    # models = get_models(tp_size, md.params_dtype)
     model = load_checkpoint_to_model(margs)
-    pax({"model": model})
-    # <<<
-
-    # >>>
-    # pax({
-    #     "models" : models,
-    #     "embs" : [ m.language_model.embedding.word_embeddings.weight
-    #                for m in models ],
-    #     "outs" : [ m.language_model.output_layer.weight
-    #                for m in models ],
-    # })
-    # <<<
 
     md.consumed_train_samples = 0 # consumed_train_samples
     md.consumed_valid_samples = 0 # consumed_valid_samples
@@ -419,23 +371,13 @@ def _load_checkpoint(queue, args):
         queue.put(msg)
 
     # Send embeddings
-    # >>>
-    # pax({
-    #     "models": len(models),
-    #     # "models / 0": len(models[0]),
-    #     "embeddings" : embeddings,
-    #     "embs" : [models[tp_rank].language_model.embedding.word_embeddings.weight.data for tp_rank in range(tp_size)],
-    # })
-    # <<<
     message = {
-        "word embeddings": torch.cat(
-            [models[tp_rank].language_model.embedding.word_embeddings.weight.data for tp_rank in range(tp_size)],
-            dim = 0)
+        "word embeddings": model.language_model.embedding.word_embeddings.weight.data
     }
     if md.position_embedding_type == 'learned_absolute':
-        message["position embeddings"] = models[0].language_model.embedding.position_embeddings.weight.data
+        message["position embeddings"] = model.language_model.embedding.position_embeddings.weight.data
     else:
-        assert not hasattr(models[0].language_model.embedding, 'position_embeddings')
+        assert not hasattr(model.language_model.embedding, 'position_embeddings')
 
     queue_put("embeddings", message)
 
@@ -443,7 +385,7 @@ def _load_checkpoint(queue, args):
         message = {}
 
         # Get non-parallel tensors from tp_rank 0
-        layer = models[0].language_model.encoder.layers[layer_num]
+        layer = model.language_model.encoder.layers[layer_num]
         message["input norm weight"] = layer.input_norm.weight.data
         message["post norm weight"] = layer.post_attention_norm.weight.data
         if md.linear_bias:
@@ -457,15 +399,14 @@ def _load_checkpoint(queue, args):
         mlp_l0_weight = []
         mlp_l0_bias = []
         mlp_l1_weight = []
-        for tp_rank, model in enumerate(models):
-            layer = model.language_model.encoder.layers[layer_num]
-            qkv_weight.append(layer.self_attention.query_key_value.weight.data)
-            dense_weight.append(layer.self_attention.dense.weight.data)
-            mlp_l0_weight.append(layer.mlp.dense_h_to_4h.weight.data)
-            mlp_l1_weight.append(layer.mlp.dense_4h_to_h.weight.data)
-            if md.linear_bias:
-                qkv_bias.append(layer.self_attention.query_key_value.bias.data)
-                mlp_l0_bias.append(layer.mlp.dense_h_to_4h.bias.data)
+        layer = model.language_model.encoder.layers[layer_num]
+        qkv_weight.append(layer.self_attention.query_key_value.weight.data)
+        dense_weight.append(layer.self_attention.dense.weight.data)
+        mlp_l0_weight.append(layer.mlp.dense_h_to_4h.weight.data)
+        mlp_l1_weight.append(layer.mlp.dense_4h_to_h.weight.data)
+        if md.linear_bias:
+            qkv_bias.append(layer.self_attention.query_key_value.bias.data)
+            mlp_l0_bias.append(layer.mlp.dense_h_to_4h.bias.data)
 
         # Handle gated linear units
         if md.swiglu:
@@ -495,15 +436,13 @@ def _load_checkpoint(queue, args):
 
     # Send final norm from tp_rank 0
     message = {
-        "weight": models[0].language_model.encoder.final_norm.weight.data,
+        "weight": model.language_model.encoder.final_norm.weight.data,
     }
     queue_put("final norm", message)
 
     if md.output_layer:
         message = {
-            "weight": torch.cat(
-                [models[tp_rank].language_model.output_layer.weight.data for tp_rank in range(tp_size)],
-                dim = 0)
+            "weight": model.language_model.output_layer.weight.data
         }
         queue_put("output layer", message)
 
