@@ -10,7 +10,7 @@ from llama.generation import sample_top_p
 from megatron import get_args
 from megatron.initialize import initialize_megatron, set_jit_fusion_options
 
-from lab import Lab, LlamaLab, MegatronLab
+from lab import HFLab, Lab, LlamaLab, MegatronLab
 
 def pax(a):
     from scripts import pax as _pax
@@ -154,24 +154,29 @@ if __name__ == "__main__":
 
     # Model, tokenizer.
     args = get_args()
-    if args._model_family == "megatron":
-        lab = MegatronLab()
-    elif args._model_family == "llama":
-        lab = LlamaLab()
-    else:
-        raise Exception("specialize for '%s'." % args._model_family)
+    # if args._model_family == "megatron":
+    #     lab = MegatronLab()
+    # elif args._model_family == "llama":
+    #     lab = LlamaLab()
+    # else:
+    #     raise Exception("specialize for '%s'." % args._model_family)
+    lab = {
+        "megatron" : MegatronLab,
+        "llama" : LlamaLab,
+        "hf" : HFLab,
+    }[args._model_family]()
 
     # >>>
     # debug(lab)
     # raise Exception("hi.")
     # <<<
 
-    input_text = "lawrence is the fastest cyclist since "
+    # input_text = "lawrence is the fastest cyclist since "
     # input_text = "the three most important inventions are "
     # input_text = "the most important thing nvidia did was "
     # input_text = "it just makes me so angry that "
     # input_text = "the funniest knock knock joke i ever heard was "
-    # input_text = "the craziest thing i've ever heard was "
+    input_text = "the craziest thing i've ever heard was "
     # input_text = "i'm not the kind of person to " # 300, 0.8
     # input_text = "the best year in history was "
     # input_text = "the best year in history was 1984 because "

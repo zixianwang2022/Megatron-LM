@@ -866,23 +866,25 @@ class ParallelAttention(MegatronModule):
             #     "query_layer" : query_layer,
             # })
 
-            if not get_args().use_llama_rotary_emb:
-                query_layer = apply_rotary_pos_emb(query_layer, q_pos_emb)
-                key_layer = apply_rotary_pos_emb(key_layer, k_pos_emb)
-            else:
-                # from llama.model import precompute_freqs_cis, apply_rotary_emb_single
-                from llama.model import precompute_freqs_cis, apply_rotary_emb_single
-                freqs_cis = precompute_freqs_cis(
-                    self.hidden_size_per_attention_head,
-                    inference_params.max_sequence_len * 2)
-                freqs_cis = freqs_cis[:query_layer.shape[0]].to("cuda")
-                # pax({
-                #     "head size" : self.hidden_size_per_attention_head,
-                #     "inference_params" : inference_params,
-                #     "freqs_cis" : freqs_cis,
-                # })
-                query_layer = apply_rotary_emb_single(query_layer, freqs_cis)
-                key_layer = apply_rotary_emb_single(key_layer, freqs_cis)
+            # >>>
+            # if not get_args().use_llama_rotary_emb:
+            query_layer = apply_rotary_pos_emb(query_layer, q_pos_emb)
+            key_layer = apply_rotary_pos_emb(key_layer, k_pos_emb)
+            # else:
+            #     # from llama.model import precompute_freqs_cis, apply_rotary_emb_single
+            #     from llama.model import precompute_freqs_cis, apply_rotary_emb_single
+            #     freqs_cis = precompute_freqs_cis(
+            #         self.hidden_size_per_attention_head,
+            #         inference_params.max_sequence_len * 2)
+            #     freqs_cis = freqs_cis[:query_layer.shape[0]].to("cuda")
+            #     # pax({
+            #     #     "head size" : self.hidden_size_per_attention_head,
+            #     #     "inference_params" : inference_params,
+            #     #     "freqs_cis" : freqs_cis,
+            #     # })
+            #     query_layer = apply_rotary_emb_single(query_layer, freqs_cis)
+            #     key_layer = apply_rotary_emb_single(key_layer, freqs_cis)
+            # <<<
 
             # pax({
             #     "use_llama_rotary_emb" : get_args().use_llama_rotary_emb,

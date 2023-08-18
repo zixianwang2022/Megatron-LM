@@ -139,9 +139,9 @@ def main():
     queue = mp.Queue(maxsize=args.max_queue_size)
 
     # >>>
-    # loader.load_checkpoint(queue, args)
+    loader.load_checkpoint(queue, args)
     # saver.save_checkpoint(queue, args)
-    # raise Exception("hi.")
+    raise Exception("hi.")
     # <<<
 
     print("Starting saver...")
