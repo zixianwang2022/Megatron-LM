@@ -156,6 +156,19 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     print_rank_0("> finished creating Multimodal datasets ...")
 
+    if args.valid_path is not None:
+        _, valid_set, _ = build_train_valid_test_datasets(
+            data_prefix=args.valid_path,
+            data_impl="mmap",
+            splits_string="0,100,0",
+            train_valid_test_num_samples=train_val_test_num_samples,
+            max_seq_length=args.ds_seq_length,
+            seed=args.seed,
+            skip_warmup=(not args.mmap_warmup),
+            dataset_type='multimodal')
+        
+        valid_ds = BlendableDataset([valid_set], [args.weight], len(valid_set) // 2)
+
     train_ds = BlendableDataset([train_ds1], [args.weight], len(train_ds1)//2)
     return train_ds, valid_ds, test_ds
 

@@ -19,6 +19,7 @@ TENSORBOARD_DIR="$DIR/tensorboard/${NAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
 DATA_TRAIN="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_train_mmdata_512sl_256k_vocab"
+DATA_VALID="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_val_mmdata_512sl_256k_vocab_mmdata"
 
 VISUAL_ARCH="SAM_L"
 VISUAL_TYPE="sam"
@@ -63,12 +64,13 @@ options=" \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_TRAIN} \
+    --valid-path ${DATA_VALID} \
     --prompt-path ${PROMPT_PATH} \
     --dset-config ${DATASET_CONFIG} \
     --save-interval 1000 \
     --save ${FINETUNE_DIR} \
     --load ${CHECKPOINT_DIR} \
-    --split 60,40,0 \
+    --split 100,0,0 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \

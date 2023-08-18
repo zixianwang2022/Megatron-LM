@@ -1006,8 +1006,7 @@ def build_train_valid_test_datasets(build_train_valid_test_datasets_provider):
         train_samples = args.train_samples
     else:
         train_samples = args.train_iters * args.global_batch_size
-    eval_iters = (args.train_iters // args.eval_interval + 1) * \
-                 args.eval_iters
+    eval_iters = args.eval_iters
     test_iters = args.eval_iters
     train_val_test_num_samples = [train_samples,
                                   eval_iters * args.global_batch_size,
