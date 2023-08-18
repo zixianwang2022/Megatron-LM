@@ -19,14 +19,9 @@ from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_em
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, get_norm
 
 # >>>
-# from lutil import pax
 def pax(a):
     from scripts import pax as _pax
     _pax(a)
-# def hasnan(t):
-#     num_nans = torch.isnan(t).sum().item()
-#     if num_nans > 0:
-#         pax({"t": t, "num_nans": num_nans})
 # <<<
 
 try:

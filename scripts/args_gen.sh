@@ -2,8 +2,8 @@
 
 ######## setup. ########
 
-if [ "$#" != "4" ]; then
-    echo "expected 4 args, found $#."
+if [ "$#" != "3" ]; then
+    echo "expected 3 args, found $#."
     exit 1
 fi
 
@@ -18,7 +18,7 @@ unset NCCL_DEBUG
 MODEL_FAMILY=$1
 MODEL_TYPE=$2
 MODEL_SIZE=$3
-OMIT_ARGS=$4
+# OMIT_ARGS=$4
 if [ "${MODEL_SIZE}" = "7b" ]; then
     # {"dim": 4096, "multiple_of": 256, "n_heads": 32, "n_layers": 32, "norm_eps": 1e-05, "vocab_size": -1}
     NPROCS=1
@@ -140,14 +140,16 @@ if [ "${MODEL_FAMILY}" = "megatron" ]; then
     ARGS="${ARGS} --exit-on-missing-checkpoint"
 fi
 
-ARGS="${ARGS} --use-llama-rotary-emb"
-ARGS="${ARGS} --use-llama-qkv"
-ARGS="${ARGS} --use-llama-mlp"
-ARGS="${ARGS} --use-llama-matmul"
-ARGS="${ARGS} --use-llama-default-dtype"
+if [ "0" = "1" ]; then
+    ARGS="${ARGS} --use-llama-rotary-emb"
+    ARGS="${ARGS} --use-llama-qkv"
+    ARGS="${ARGS} --use-llama-mlp"
+    ARGS="${ARGS} --use-llama-matmul"
+    ARGS="${ARGS} --use-llama-default-dtype"
+fi
 
-for ARG in ${OMIT_ARGS}; do
-    ARGS=${ARGS/"--$ARG"/""}
-done
+# for ARG in ${OMIT_ARGS}; do
+#     ARGS=${ARGS/"--$ARG"/""}
+# done
 
 # eof.

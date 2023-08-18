@@ -390,9 +390,6 @@ class TransformerLanguageModel(MegatronModule):
             # partial rotary embeddings, which is better than full rotary
             # Wang and Komatsuzaki et al
             # https://github.com/kingoflolz/mesh-transformer-jax/
-            # >>>
-            # pax({"rotary_dim": rotary_dim})
-            # <<<
             self.rotary_pos_emb = RotaryEmbedding(rotary_dim)
 
         # Encoder (usually set to True, False if part of an encoder-decoder
@@ -497,18 +494,12 @@ class TransformerLanguageModel(MegatronModule):
         if self.use_rotary_position_embeddings:
             if inference_params is not None:
                 # >>>
-                # pax({"inference_params": inference_params})
-                # <<<
-                # >>>
                 # if 1:
                 rotary_pos_emb = \
                     self.rotary_pos_emb(inference_params.max_sequence_len)
                 # else:
                 #     rotary_pos_emb = \
                 #         self.rotary_pos_emb(2*inference_params.max_sequence_len)
-                # <<<
-                # >>>
-                # pax({"rotary_pos_emb": rotary_pos_emb})
                 # <<<
             else:
                 rotary_pos_emb = self.rotary_pos_emb(self.seq_length)
@@ -537,10 +528,6 @@ class TransformerLanguageModel(MegatronModule):
         # output. For example, it is helpful to compute
         # similarity between two sequences by average pooling
         if not self.add_decoder or output_enc_hidden:
-            # >>>
-            # from lutil import pax
-            # pax({"add_pooler": self.add_pooler})
-            # <<<
             if self.add_pooler and self.post_process:
                 return encoder_output, pooled_output
             else:
