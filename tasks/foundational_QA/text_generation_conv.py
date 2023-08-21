@@ -30,7 +30,8 @@ from megatron.model import GPTModel
 from megatron.training import get_model
 from megatron.text_generation import generate_and_post_process, beam_search_and_post_process
 from finetune_gpt_with_pretrain import get_tasks_args
-from dataset_conv import reformat_prompt_v2, preprocess, reformat_prompt_v1
+from dataset_conv import reformat_prompt_v1, reformat_prompt_v2, preprocess
+from dataset_conv import load_incontext_fewshot_samples, reformat_prompt_with_fewshot_samples
 import numpy as np
 import time
 # from tasks.prompt_learning.task_datasets import e2e_format_query, xsum_format_s
@@ -64,6 +65,8 @@ def add_text_generate_args(parser):
     group.add_argument("--sample-input-file", type=str, default=None,
                        help='Get input from file instead of interactive mode, '
                        'each line is an input.')
+    group.add_argument("--fewshot-input-file", type=str, default=None,
+                       help='Get in-context few-shot input from file')
     group.add_argument("--sample-output-file", type=str, default=None,
                        help='Output file got from --sample-input-file')
     group.add_argument("--num-samples", type=int, default=0,
@@ -94,6 +97,11 @@ def add_text_generate_args(parser):
                         help='setting ckpt step manually')
     group.add_argument("--use-retrieved-neighbours", action='store_true', default=False,
                        help='Use retrieved neighbours')
+    
+    # in-context few-shot
+    group.add_argument("--incontext-fewshot", default=False, action='store_true', help="use in-context few-shot")
+    group.add_argument("--n-shot", type=int, default=None, help='number of fewshot samples')
+
     return parser
 
 def generate_samples_conditional(model):
@@ -111,6 +119,10 @@ def generate_samples_conditional(model):
             all_data = all_data[:args.num_gen]
         input_count = len(all_data)
         input_pos = 0
+
+        if args.incontext_fewshot:
+            # load incontext fewshot samples
+            fewshot_list = load_incontext_fewshot_samples(args.fewshot_input_file, args.n_shot)
 
     if args.beam_search:
         assert args.micro_batch_size == 1
@@ -138,7 +150,10 @@ def generate_samples_conditional(model):
                     query, _, neighbours = sample
                     tokenizer = get_tokenizer()
 
-                    input_tokens = reformat_prompt_v2(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
+                    if args.incontext_fewshot:
+                        input_tokens = reformat_prompt_with_fewshot_samples(query, neighbours, args.task, args.ft_neighbours, fewshot_list, max_target_len, tokenizer, args.seq_length)
+                    else:
+                        input_tokens = reformat_prompt_v2(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
                     # input_tokens = reformat_prompt_v1(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
                     raw_text = tokenizer.detokenize(input_tokens)
                     print(raw_text)

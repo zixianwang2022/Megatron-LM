@@ -136,6 +136,15 @@ def eli5_preprocess(data_file):
             #     print("found provenance", item["provenance"], "\n")
     return data
 
+def load_incontext_fewshot_samples(data_file, n_shot):
+    with open(data_file, "r") as f:
+        data_list = json.load(f)
+
+    assert len(data_list) >= n_shot
+    data_list = data_list[:n_shot]
+    
+    return data_list
+
 def get_processed_dataset(name, data_folder, processed=True, ratio=None, index=None, num_samples=None):
 
     if name.lower() == 'eli5':
@@ -237,7 +246,7 @@ def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
-    formatted_dataset_name = ["doc2dial"]
+    formatted_dataset_name = ["doc2dial", "quac", "qrecc", "sharc"]
     user_template = ""
 
     ## fix bug format for formatted text, no change
@@ -282,7 +291,8 @@ def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
 def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     max_output_len, tokenizer, max_seq_length):
 
-    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+    # system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions based on the context. The assistant should also indicate when the answer cannot be found in the context.\n\n"
 
     if dataset_name in ["oasst", "quiet_cockatoo"]:
         input_tokens = tokenizer.tokenize(system + query)
@@ -292,7 +302,8 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
-    formatted_dataset_name = ["doc2dial"]
+    # multi-turn qa datasets
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "quac", "qrecc", "sharc"]
     user_template = ""
 
     if dataset_name in formatted_dataset_name:
@@ -301,7 +312,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         if dataset_name in short_span_with_context:
             user = "Answer the following question with a short span. {}".format(query)
         elif dataset_name in yes_no_without_context:
-            user = "Answer the above question with True or False. {}".format(query)
+            user = "Answer the following question with True or False. {}".format(query)
         else:
             user = "Please give a full and complete answer for the question. {}".format(query)
 
@@ -333,6 +344,89 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
 
     return  input_tokens
 
+
+def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_neighbours, fewshot_list, \
+    max_output_len, tokenizer, max_seq_length):
+
+    # system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions based on the context. The assistant should also indicate when the answer cannot be found in the context.\n\n"
+    
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
+    yes_no_without_context = ["BoolQ"]
+    multichoices = [""]
+    # multi-turn qa datasets
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "quac", "qrecc", "sharc"]
+    user_template = ""
+
+    if dataset_name in formatted_dataset_name:
+        instruction = None
+        dialogue_turn = query
+    else:
+        if dataset_name in short_span_with_context:
+            # user = "Answer the following question with a short span. {}".format(query)
+            instruction = "Answer the following question with a short span."
+            user = instruction + " " + query
+        elif dataset_name in yes_no_without_context:
+            # user = "Answer the following question with True or False. {}".format(query)
+            instruction = "Answer the following question with True or False."
+            user = instruction + " " + query
+        else:
+            # user = "Please give a full and complete answer for the question. {}".format(query)
+            instruction = "Please give a full and complete answer for the question."
+            user = instruction + " " + query
+
+        dialogue_format="User: {}\n\nAssistant:"
+        dialogue_turn = dialogue_format.format(user)
+
+    fewshot_prompt = "Here are some question answer samples between user and assistant:\n\n"
+    for i, item in enumerate(fewshot_list):
+        question = item['question']
+        answer = item['answer']
+        if question.endswith("\n\nAssistant:"):
+            assert instruction is None
+            formatted_sample = question + " " + answer
+        else:
+            assert instruction is not None
+            formatted_sample = "User: " + instruction + " " + question + "\n\nAssistant: " + answer
+
+        fewshot_prompt += "Sample %d:\n\n" % (i+1)
+        fewshot_prompt += formatted_sample + "\n\n"
+    fewshot_prompt += "Assistant should follow the answer templates from the aboved samples and give a response to the following user's question.\n\n"
+
+    if dataset_name in ["oasst", "quiet_cockatoo"]:
+        # input_tokens = tokenizer.tokenize(system + query)
+        input_tokens = tokenizer.tokenize(system + fewshot_prompt + query)
+        # print(dataset_name, system + query)
+        return input_tokens
+    
+    if ft_neighbours > 0:
+        # if shuffle_topn:
+        #     import random
+        #     random.seed(1234)
+        #     random_neighbours = neighbours[0:ft_neighbours]
+        #     random.shuffle(random_neighbours)
+        #     neighbours = random_neighbours + neighbours[ft_neighbours:]
+        # Truncate to `max_sequence_length` to fit in output tokens.
+        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
+        context_tokens = tokenizer.tokenize(context)
+        dialogue_tokens = tokenizer.tokenize(dialogue_turn)
+        system_tokens = tokenizer.tokenize(system)
+        fewshot_tokens = tokenizer.tokenize(fewshot_prompt)
+        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(fewshot_tokens) - len(system_tokens)]
+        context = tokenizer.detokenize(context_tokens)
+
+        ## already try to put fewshot_prompt between system and context, results are not good
+        all_input = system + context + fewshot_prompt + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+    else:
+        all_input = system + fewshot_prompt + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+
+    # print(dataset_name, all_input)
+
+    return  input_tokens
+
+
 def build_normal_training_sample_v2(sample,
                           max_seq_length,
                           pad_id,
@@ -349,7 +443,8 @@ def build_normal_training_sample_v2(sample,
     tokenizer = get_tokenizer()
     output_tokens = tokenizer.tokenize(answer)
 
-    input_tokens = reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
+    # input_tokens = reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
+    input_tokens = reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
     # print(answer)
     
     # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)

@@ -6,10 +6,11 @@ sampling=$3
 split=$4
 gen_start=$5
 num_gen=$6
-ft_neighbours=$8
+ft_neighbours=$7
+model_card=$8
 use_retrieved_neighbours=$9
 # model_card="unbiased_cuckoo_pp1"
-model_card="quiet_cockatoo_pp1"
+# model_card="quiet_cockatoo_pp1"
 
 . ./examples/foundational_qa/common_args.sh
 . ./examples/foundational_qa/gen_input.sh
@@ -30,9 +31,10 @@ if [[ $model_card == *quiet_cockatoo* ]]; then
     CHECKPOINT_PATH=${quiet_cockatoo}
 fi
 
-sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}.txt.v2"
+SAVE_PATH="${QA_HOME}/checkpoints/applications/${model_card}"
+sample_output_file="${SAVE_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}.txt.v2"
 if [[ $use_retrieved_neighbours ]]; then
-    sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_ret.txt.v2"
+    sample_output_file="${SAVE_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_ret.txt.v2"
 fi
 
 DIR=`pwd`
