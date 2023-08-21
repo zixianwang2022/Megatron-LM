@@ -391,7 +391,7 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
 
         fewshot_prompt += "Sample %d:\n\n" % (i+1)
         fewshot_prompt += formatted_sample + "\n\n"
-    fewshot_prompt += "Assistant should follow the answer templates from the aboved samples and give a response to the following user's question.\n\n"
+    fewshot_prompt += "Assistant should follow the answer formats from the aboved samples and give a response to the following user's question.\n\n"
 
     if dataset_name in ["oasst", "quiet_cockatoo"]:
         # input_tokens = tokenizer.tokenize(system + query)
