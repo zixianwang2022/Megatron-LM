@@ -1,6 +1,6 @@
 
-# model_name=multiturn_qa_blendv2_gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn_same_format_ctx1_43b_64_3e-7
-model_name=multiturn_qa_blend_commercial_gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn_same_format_ctx1_43b_64_3e-7
+model_name=multiturn_qa_blendv2_gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn_same_format_ctx1_43b_64_3e-7
+# model_name=multiturn_qa_blend_commercial_gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn_same_format_ctx1_43b_64_3e-7
 num_ctxs=5
 
 ## single-turn qa (batch-1)
