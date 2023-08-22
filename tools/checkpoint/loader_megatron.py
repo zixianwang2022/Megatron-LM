@@ -225,7 +225,7 @@ def _load_checkpoint(queue, args):
     queue_put("embeddings", message)
 
     # Layernorm has bias; RMSNorm does not.
-    norm_has_bias = md.checkpoint_args.norm_type == "layer"
+    norm_has_bias = md.checkpoint_args.normalization == "LayerNorm"
 
     total_layer_num = 0
     for vp_rank in range(vp_size):

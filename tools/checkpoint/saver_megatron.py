@@ -252,7 +252,7 @@ def save_checkpoint(queue, args):
             assert not hasattr(model.language_model.embedding, "position_embeddings")
 
     # Layernorm has bias; RMSNorm does not.
-    norm_has_bias = md.checkpoint_args.norm_type == "layer"
+    norm_has_bias = md.checkpoint_args.normalization == "LayerNorm"
 
     # Transformer layers
     #-------------------

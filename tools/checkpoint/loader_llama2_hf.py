@@ -49,7 +49,7 @@ def load_args_from_checkpoint(args):
     args.swiglu = True
     args.tokenizer_type = "Llama2Tokenizer"
     args.fp16 = True
-    args.norm_type = "rms"
+    args.normalization = "RMSNorm"
     args.add_bias_linear = False
     args.apply_query_key_layer_scaling = False
     args.untie_embeddings_and_output_weights = True
