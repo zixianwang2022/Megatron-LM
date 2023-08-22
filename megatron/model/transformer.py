@@ -758,8 +758,7 @@ class ParallelAttention(MegatronModule):
                     query_layer, key_layer, value_layer, attention_mask)
             else:
                 context_layer = self.core_attention(
-                    query_layer, key_layer, value_layer, attention_mask,
-                    debug=debug)
+                    query_layer, key_layer, value_layer, attention_mask)
         else:
             q, k, v = [rearrange(x, 's b ... -> b s ...').contiguous()
                        for x in (query_layer, key_layer, value_layer)]

@@ -9,6 +9,7 @@ set -u
 
 # OMIT_ARGS="xxxxxxxxxx"
 # OMIT_ARGS="use-llama-rotary-emb"
+EXTRA_ARGS=""
 
 ######## Arguments. ########
 
