@@ -132,7 +132,7 @@ ARGS=" ${ARGS} \
     --_model_family ${MODEL_FAMILY} \
     --_model_type ${MODEL_TYPE} \
     --_model_size ${MODEL_SIZE} \
-    --norm-type rms \
+    --normalization RMSNorm \
     --use-checkpoint-args \
     --no-query-key-layer-scaling \
 "

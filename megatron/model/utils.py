@@ -60,14 +60,14 @@ def erf_gelu(x):
 
 def get_norm(config):
     args = get_args()
-    if args.norm_type == "layer":
+    if args.normalization == "LayerNorm":
         return LayerNorm(
             config.hidden_size,
             eps=config.layernorm_epsilon,
             no_persist_layer_norm=not config.persist_layer_norm,
             sequence_parallel=config.sequence_parallel,
             apply_layernorm_1p=args.apply_layernorm_1p)
-    elif args.norm_type == "rms":
+    elif args.normalization == "RMSNorm":
         return RMSNorm(args.hidden_size, args.norm_epsilon)
     else:
-        raise Exception(f"unsupported norm type '{args.norm_type}'.")
+        raise Exception(f"unsupported norm type '{args.normalization}'.")
