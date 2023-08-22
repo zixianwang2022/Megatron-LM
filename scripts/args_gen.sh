@@ -140,16 +140,18 @@ if [ "${MODEL_FAMILY}" = "megatron" ]; then
     ARGS="${ARGS} --exit-on-missing-checkpoint"
 fi
 
-if [ "0" = "1" ]; then
-    ARGS="${ARGS} --use-llama-rotary-emb"
-    ARGS="${ARGS} --use-llama-qkv"
-    ARGS="${ARGS} --use-llama-mlp"
-    ARGS="${ARGS} --use-llama-matmul"
-    ARGS="${ARGS} --use-llama-default-dtype"
-fi
+# if [ "0" = "1" ]; then
+#     ARGS="${ARGS} --use-llama-rotary-emb"
+#     ARGS="${ARGS} --use-llama-qkv"
+#     ARGS="${ARGS} --use-llama-mlp"
+#     ARGS="${ARGS} --use-llama-matmul"
+#     ARGS="${ARGS} --use-llama-default-dtype"
+# fi
 
 # for ARG in ${OMIT_ARGS}; do
 #     ARGS=${ARGS/"--$ARG"/""}
 # done
+
+ARGS="${ARGS} ${EXTRA_ARGS}"
 
 # eof.

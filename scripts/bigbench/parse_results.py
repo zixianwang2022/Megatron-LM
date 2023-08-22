@@ -20,11 +20,12 @@ if __name__ == "__main__":
 
         filename = os.path.splitext(os.path.basename(log_path))[0]
         task, model = re.split("_llama-|_megatron-", filename)
-        model, omit = model.split("_OMIT:")
+        # model, omit = model.split("_OMIT:")
+        model, extra = model.split("_EXTRA:")
         model_type, model_size = model.split("-")
         assert model_type in ("text", "chat")
         assert model_size in ("7b", "13b", "70b")
-        omit, job_id = omit.split("__")
+        extra, job_id = extra.split("__")
 
         if "llama" in filename and "megatron" not in filename:
             model_family = "llama"
@@ -78,7 +79,7 @@ if __name__ == "__main__":
             "path" : log_path,
             "model_family" : model_family,
             "model_type" : model_type,
-            "omit" : omit,
+            "extra" : extra,
             "job_id" : job_id,
             "score" : score,
         })
@@ -90,11 +91,11 @@ if __name__ == "__main__":
         #         "model_family" : model_family,
         #         "model_type" : model_type,
         #         "model_size" : model_size,
-        #         "omit" : omit,
+        #         "extra" : extra,
         #         "job_id" : job_id,
         #     })
 
-    omit_map = defaultdict(lambda : defaultdict(list))
+    extra_map = defaultdict(lambda : defaultdict(list))
     for task, task_data in log_map.items():
         for model_size, model_size_data in task_data.items():
             assert len(model_size_data) == 2 # llama, megatron
@@ -104,7 +105,7 @@ if __name__ == "__main__":
                 continue
             for megatron_data in model_size_data["megatron"]:
                 megatron_score = megatron_data["score"]
-                omit_map[model_size][megatron_data["omit"]].append(megatron_score / llama_score)
+                extra_map[model_size][megatron_data["extra"]].append(megatron_score / llama_score)
             
             # pax({
             #     "task" : task,
@@ -116,9 +117,9 @@ if __name__ == "__main__":
     pax({
         "log_paths" : log_paths,
         "log_map" : log_map,
-        "omit_map" : {k:"%d / %s" % (len(v), v) for k,v in omit_map.items()},
-        # "omit_map / result" : {k:np.mean(v) for k,v in omit_map.items()},
-        **{f"omit_map / {model_size}" : {omit:np.mean(scores) for omit, scores in data.items()} for model_size, data in omit_map.items()},
+        # "extra_map" : {k:"%d / %s" % (len(v), v) for k,v in extra_map.items()},
+        # "extra_map / result" : {k:np.mean(v) for k,v in extra_map.items()},
+        **{f"extra_map / {model_size}" : {extra:"[%d] %s" % (len(scores), np.mean(scores)) for extra, scores in data.items()} for model_size, data in extra_map.items()},
     })
 
 # eof
