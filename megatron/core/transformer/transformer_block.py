@@ -1,16 +1,18 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 from contextlib import nullcontext
+
 import torch
 
 from megatron.core import parallel_state, tensor_parallel
-
+from megatron.core.fusions.fused_layer_norm import FusedLayerNorm
+from megatron.core.transformer.custom_layers.transformer_engine import TENorm
+from megatron.core.transformer.enums import AttnMaskType
 from megatron.core.transformer.module import MegatronModule
 from megatron.core.transformer.transformer_config import TransformerConfig
-from megatron.core.transformer.enums import AttnMaskType
-from megatron.core.fusions.fused_layer_norm import FusedLayerNorm
 from megatron.core.transformer.transformer_layer import TransformerLayer
 from megatron.core.utils import make_viewless_tensor
+
 
 class TransformerBlock(MegatronModule):
     """Transformer class."""
@@ -54,7 +56,9 @@ class TransformerBlock(MegatronModule):
         #     self.norm_factor *= coeff
         def build_layer(layer_number):
             return TransformerLayer(
-                config=self.config, layer_number=layer_number, self_attn_mask_type=self.self_attn_mask_type,
+                config=self.config,
+                layer_number=layer_number,
+                self_attn_mask_type=self.self_attn_mask_type,
             )
 
         pipeline_rank = parallel_state.get_pipeline_model_parallel_rank()
@@ -111,13 +115,28 @@ class TransformerBlock(MegatronModule):
 
         if self.post_process and self.post_layer_norm:
             # Final layer norm before output.
-            self.final_layernorm = FusedLayerNorm(
-                hidden_size=self.config.hidden_size,
-                eps=self.config.layernorm_epsilon,
-                persist_layer_norm=self.config.persist_layer_norm,
-                sequence_parallel=self.config.sequence_parallel,
-                zero_centered_gamma=self.config.layernorm_zero_centered_gamma,
-            )
+            # TODO (sudhakars): Need to replace the usage of `FusedLayerNorm`
+            # with `TENorm` wrapper class since we'd want consistent use of
+            # normalization layers.
+            if self.config.normalization == "LayerNorm":
+                self.final_layernorm = FusedLayerNorm(
+                    hidden_size=self.config.hidden_size,
+                    eps=self.config.layernorm_epsilon,
+                    persist_layer_norm=self.config.persist_layer_norm,
+                    sequence_parallel=self.config.sequence_parallel,
+                    zero_centered_gamma=self.config.layernorm_zero_centered_gamma,
+                )
+            elif self.config.normalization == "RMSNorm":
+                self.final_layernorm = TENorm(
+                    hidden_size=self.config.hidden_size,
+                    eps=self.config.layernorm_epsilon,
+                    persist_layer_norm=self.config.persist_layer_norm,
+                    sequence_parallel=self.config.sequence_parallel,
+                    zero_centered_gamma=self.config.layernorm_zero_centered_gamma,
+                    normalization=self.config.normalization,
+                )
+            else:
+                raise AssertionError("Only `LayerNorm` and `RMSNorm` are currently supported.")
 
     def _get_layer(self, layer_number):
         return self.layers[layer_number]
@@ -140,7 +159,7 @@ class TransformerBlock(MegatronModule):
             # the input activation of each divided chunk.
             # A method to further reduce memory usage reducing checkpoints.
             l = 0
-            while l < self.num_layers:
+            while l < self.num_layers_per_pipeline_rank:
                 hidden_states = tensor_parallel.checkpoint(
                     custom(l, l + self.config.recompute_num_layers),
                     self.config.distribute_saved_activations,
@@ -149,7 +168,7 @@ class TransformerBlock(MegatronModule):
                     rotary_pos_emb,
                 )
 
-                l += self.recompute_num_layers
+                l += self.config.recompute_num_layers
 
         elif self.config.recompute_method == 'block':
             # Checkpoint the input activation of only a set number of individual
@@ -204,7 +223,9 @@ class TransformerBlock(MegatronModule):
         #   likely redundant, since p2p_communication.py (likely originator)
         #   already creates viewless tensors. That said, make_viewless_tensor()
         #   is called here to be future-proof and corner-case-proof.
-        hidden_states = make_viewless_tensor(inp=hidden_states, requires_grad=True, keep_graph=True,)
+        hidden_states = make_viewless_tensor(
+            inp=hidden_states, requires_grad=True, keep_graph=True,
+        )
 
         if self.config.sequence_parallel:
             rng_context = tensor_parallel.get_cuda_rng_tracker().fork()
@@ -212,15 +233,16 @@ class TransformerBlock(MegatronModule):
             rng_context = nullcontext()
 
         if self.config.fp8:
-            import transformer_engine # To keep out TE dependency when not training in fp8
+            import transformer_engine  # To keep out TE dependency when not training in fp8
+
             fp8_recipe = transformer_engine.common.recipe.DelayedScaling(
                 margin=self.config.fp8_margin,
                 interval=self.config.fp8_interval,
                 fp8_format=transformer_engine.common.recipe.Format.E4M3
-                             if self.config.fp8_e4m3 else
-                               transformer_engine.common.recipe.Format.HYBRID,
-                fp8_amax_compute_algo=self.config.fp8_amax_compute_algo,
-                fp8_amax_history_len=self.config.fp8_amax_history_len
+                if self.config.fp8_e4m3
+                else transformer_engine.common.recipe.Format.HYBRID,
+                amax_compute_algo=self.config.fp8_amax_compute_algo,
+                amax_history_len=self.config.fp8_amax_history_len,
             )
             fp8_context = transformer_engine.pytorch.fp8_autocast(
                 enabled=True, fp8_recipe=fp8_recipe
@@ -231,14 +253,19 @@ class TransformerBlock(MegatronModule):
         with rng_context and fp8_context:
             # Forward pass.
             if self.config.recompute_granularity == 'full':
-                hidden_states = self._checkpointed_forward(hidden_states=hidden_states,
-                                                           attention_mask=attention_mask,
-                                                           rotary_pos_emb=rotary_pos_emb)
+                hidden_states = self._checkpointed_forward(
+                    hidden_states=hidden_states,
+                    attention_mask=attention_mask,
+                    rotary_pos_emb=rotary_pos_emb,
+                )
             else:
                 for layer in self.layers:
-                    hidden_states = layer(hidden_states=hidden_states,
-                                          attention_mask=attention_mask,
-                                          rotary_pos_emb=rotary_pos_emb)
+                    hidden_states = layer(
+                        hidden_states=hidden_states,
+                        attention_mask=attention_mask,
+                        rotary_pos_emb=rotary_pos_emb,
+                        inference_params=inference_params,
+                    )
 
         # Final layer norm.
         if self.post_process and self.post_layer_norm:

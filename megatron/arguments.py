@@ -323,11 +323,6 @@ def validate_args(args, defaults={}):
             'v1.10 and above (Nvidia Pytorch container >= 21.07). Current ' \
             'pytorch version is v%s.%s.' % (TORCH_MAJOR, TORCH_MINOR)
 
-    # Tranformer-Engine/FP8 related checking
-    if args.fp8_e4m3 or args.fp8_hybrid:
-        assert args.transformer_impl == 'transformer_engine', \
-            'transformer-engine required for fp8 training and inference'
-
     assert not (args.fp8_e4m3 and args.fp8_hybrid), \
         'cannot train with both fp8 e4m3 and hybrid formatting'
 
@@ -442,6 +437,10 @@ def core_transformer_config_from_args(args):
     kw_args['fp8'] = args.fp8_e4m3 or args.fp8_hybrid
     kw_args['fp8_e4m3'] = args.fp8_e4m3
     kw_args['fp8_margin'] = args.fp8_hybrid
+    if args.group_query_attention:
+        kw_args['num_query_groups'] = args.num_query_groups
+    else:
+        kw_args['num_query_groups'] = None
 
     return TransformerConfig(**kw_args)
 
@@ -469,6 +468,10 @@ def _add_transformer_engine_args(parser):
                        choices=['most_recent', 'max'],
                        help='Algorithm for computing amax from history',
                        dest='fp8_amax_compute_algo')
+    group.add_argument('--normalization', default='LayerNorm',
+                       choices=['LayerNorm', 'RMSNorm'],
+                       help='Which normalization technique to use.',
+                       dest='normalization')
 
     return parser
 
@@ -591,7 +594,9 @@ def _add_network_size_args(parser):
                        help='Use rotary positional embeddings or not. '
                        'Deprecated: use --position-embedding-type')
     group.add_argument('--rotary-percent', type=float, default=1.0,
-                       help='Percent of rotary dimension to use, default 100%')
+                       help='Percent of rotary dimension to use, default 100%%')
+    group.add_argument('--rotary-seq-len-interpolation-factor', type=int, default=None,
+                       help='Sequence length interpolation factor for rotary embeddings.')
     group.add_argument('--no-position-embedding',
                        action='store_false',
                        help='Disable position embedding. Deprecated: use --position-embedding-type',

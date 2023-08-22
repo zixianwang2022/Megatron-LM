@@ -7,13 +7,13 @@ import torch
 from torch import Tensor
 
 from megatron.core import parallel_state, tensor_parallel
-
-from megatron.core.transformer.module import MegatronModule
-from megatron.core.transformer.transformer_config import TransformerConfig
-from megatron.core.transformer.transformer_block import TransformerBlock
-from megatron.core.transformer.enums import AttnMaskType, ModelType
-from megatron.core.models.gpt.gpt_embedding import GPTEmbedding
 from megatron.core.models.common.rotary_pos_embedding import RotaryEmbedding
+from megatron.core.models.gpt.gpt_embedding import GPTEmbedding
+from megatron.core.transformer.enums import AttnMaskType, ModelType
+from megatron.core.transformer.module import MegatronModule
+from megatron.core.transformer.transformer_block import TransformerBlock
+from megatron.core.transformer.transformer_config import TransformerConfig
+
 
 class GPTModel(MegatronModule):
     """Transformer language model.
@@ -71,8 +71,10 @@ class GPTModel(MegatronModule):
         # Embeddings.
         if self.pre_process:
             self.embedding = GPTEmbedding(
-                config=self.config, vocab_size=self.vocab_size, max_sequence_length=self.max_sequence_length,
-                add_position_embedding=(self.position_embedding_type == 'learned_absolute')
+                config=self.config,
+                vocab_size=self.vocab_size,
+                max_sequence_length=self.max_sequence_length,
+                add_position_embedding=(self.position_embedding_type == 'learned_absolute'),
             )
 
         # Rotary Position Embeddings
@@ -103,7 +105,9 @@ class GPTModel(MegatronModule):
                 bias=False,
                 skip_bias_add=False,
                 gather_output=not self.parallel_output,
-                skip_weight_param_allocation=self.pre_process and self.share_embeddings_and_output_weights)
+                skip_weight_param_allocation=self.pre_process
+                and self.share_embeddings_and_output_weights,
+            )
 
         if self.share_embeddings_and_output_weights and (self.pre_process or self.post_process):
             self.initialize_last_stage_with_word_embeddings()
@@ -124,12 +128,17 @@ class GPTModel(MegatronModule):
         input_ids: Tensor,
         position_ids: Tensor,
         attention_mask: Tensor,
+        decoder_input: Tensor = None,
         labels: Tensor = None,
         inference_params=None,
     ):
+        # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
+        # Otherwise, apply embedding layer on input_ids and position_ids to get decoder_input.
 
         # Decoder embedding.
-        if self.pre_process:
+        if decoder_input is not None:
+            pass
+        elif self.pre_process:
             decoder_input = self.embedding(input_ids=input_ids, position_ids=position_ids)
         else:
             # intermediate stage of pipeline
@@ -139,9 +148,18 @@ class GPTModel(MegatronModule):
         # Rotary positional embeddings
         rotary_pos_emb = None
         if self.rotary_pos_emb is not None:
-            rotary_seq_len = self.max_sequence_length
             if inference_params is not None:
                 rotary_seq_len = inference_params.max_sequence_length
+            else:
+                if self.decoder.input_tensor is not None:
+                    rotary_seq_len = self.decoder.input_tensor.size(0)
+                else:
+                    rotary_seq_len = decoder_input.size(0)
+
+                # Decoder input is split along sequence dimension, but RoPE is applied in tensor parallel region
+                if self.config.sequence_parallel:
+                    rotary_seq_len *= self.config.tensor_model_parallel_size
+
             rotary_pos_emb = self.rotary_pos_emb(rotary_seq_len)
 
         # Run decoder.
@@ -149,7 +167,7 @@ class GPTModel(MegatronModule):
             hidden_states=decoder_input,
             attention_mask=attention_mask,
             inference_params=inference_params,
-            rotary_pos_emb=rotary_pos_emb
+            rotary_pos_emb=rotary_pos_emb,
         )
 
         if not self.post_process:
@@ -214,7 +232,9 @@ class GPTModel(MegatronModule):
         if torch.distributed.is_initialized():
             if parallel_state.is_rank_in_embedding_group():
                 weight = self.shared_embedding_or_output_weight()
-                torch.distributed.all_reduce(weight.data, group=parallel_state.get_embedding_group())
+                torch.distributed.all_reduce(
+                    weight.data, group=parallel_state.get_embedding_group()
+                )
 
         elif not getattr(GPTModel, "embedding_warning_printed", False):
             logging.getLogger(__name__).warning(

@@ -199,14 +199,18 @@ class SwitchMLP(MegatronModule):
             local_indices = (max_ind == expert_num).nonzero()
             hidden = hidden_states[local_indices,:]
             output, output_bias = expert(hidden)
-            output_bias = output_bias.expand_as(output)
+            if output_bias is not None:
+                output_bias = output_bias.expand_as(output)
+                output_bias_total[local_indices,:] = output_bias
             output_total[local_indices,:] = output
-            output_bias_total[local_indices,:] = output_bias
 
         output_total = output_total*max_prob
-        output_bias_total = output_bias_total*max_prob
         output_total = output_total.view(s, b, h)
-        output_bias_total = output_bias_total.view(s, b, h)
+        if output_bias is not None:
+            output_bias_total = output_bias_total*max_prob
+            output_bias_total = output_bias_total.view(s, b, h)
+        else:
+            output_bias_total = None
 
         return output_total, output_bias_total
 
@@ -436,12 +440,13 @@ class ParallelAttention(MegatronModule):
 
         self.group_query_attention = args.group_query_attention
         self.num_query_groups = args.num_query_groups
-        
+
+        query_projection_size = config.kv_channels * config.num_attention_heads
         if self.group_query_attention:
-            key_projection_size = args.kv_channels * args.num_query_groups
+            kv_projection_size = args.kv_channels * args.num_query_groups
         else:
-            key_projection_size = args.kv_channels * args.num_attention_heads
-        
+            kv_projection_size = args.kv_channels * args.num_attention_heads
+
         self.use_flash_attn = args.use_flash_attn \
             and attention_type == AttnType.self_attn \
             and self.attn_mask_type == AttnMaskType.causal
@@ -456,17 +461,15 @@ class ParallelAttention(MegatronModule):
             if rearrange is None:
                 raise ImportError('einops is not installed, please install with pip install einops')
 
-        projection_size = config.kv_channels * config.num_attention_heads
-
         # Per attention head and per partition values.
         world_size = mpu.get_tensor_model_parallel_world_size()
         self.hidden_size_per_attention_head = core.utils.divide(
-            projection_size, config.num_attention_heads)
+            query_projection_size, config.num_attention_heads)
         self.num_attention_heads_per_partition = core.utils.divide(
             config.num_attention_heads, world_size)
 
         if self.group_query_attention:
-            if args.num_query_groups % world_size != 0: 
+            if args.num_query_groups % world_size != 0:
                 raise NotImplementedError('Currently the num_query_groups should be '
                                           'a multiple of the tensor parallel size')
             self.num_query_groups_per_partition = core.utils.divide(
@@ -478,7 +481,7 @@ class ParallelAttention(MegatronModule):
         if attention_type == AttnType.self_attn:
             self.query_key_value = tensor_parallel.ColumnParallelLinear(
                 config.hidden_size,
-                projection_size + 2 * key_projection_size,
+                query_projection_size + 2 * kv_projection_size,
                 config=config,
                 init_method=config.init_method,
                 bias=args.add_bias_linear,
@@ -488,10 +491,11 @@ class ParallelAttention(MegatronModule):
 
             if self.group_query_attention:
                 raise NotImplementedError("Grouped query attention not implemented for cross-attention.")
-            
+            assert query_projection_size == kv_projection_size
+
             self.query = tensor_parallel.ColumnParallelLinear(
                 config.hidden_size,
-                projection_size,
+                query_projection_size,
                 config=config,
                 init_method=config.init_method,
                 bias=config.add_bias_linear,
@@ -499,7 +503,7 @@ class ParallelAttention(MegatronModule):
 
             self.key_value = tensor_parallel.ColumnParallelLinear(
                 config.hidden_size,
-                2 * projection_size,
+                2 * kv_projection_size,
                 config=config,
                 init_method=config.init_method,
                 bias=config.add_bias_linear,
@@ -516,7 +520,7 @@ class ParallelAttention(MegatronModule):
 
         # Output.
         self.dense = tensor_parallel.RowParallelLinear(
-            projection_size,
+            query_projection_size,
             config.hidden_size,
             config=config,
             init_method=config.output_layer_init_method,
@@ -567,13 +571,13 @@ class ParallelAttention(MegatronModule):
         is_first_step = False
         if inference_params:
             if self.layer_number not in inference_params.key_value_memory_dict:
-                inf_max_seq_len = inference_params.max_sequence_len
+                inf_max_seq_len = inference_params.max_sequence_length
                 inf_max_batch_size = inference_params.max_batch_size
                 inference_key_memory = self._allocate_memory(
-                    inf_max_seq_len, inf_max_batch_size, 
+                    inf_max_seq_len, inf_max_batch_size,
                     self.num_query_groups_per_partition)
                 inference_value_memory = self._allocate_memory(
-                    inf_max_seq_len, inf_max_batch_size, 
+                    inf_max_seq_len, inf_max_batch_size,
                     self.num_query_groups_per_partition)
 
                 inference_params.key_value_memory_dict[self.layer_number] = (
@@ -595,17 +599,27 @@ class ParallelAttention(MegatronModule):
                 # [sq, b, hp] --> [sq, b, ng, (np/ng + 2) * hn]
                 new_tensor_shape = mixed_x_layer.size()[:-1] + (
                     self.num_query_groups_per_partition,
-                    (int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) + 2) * self.hidden_size_per_attention_head, 
+                    (
+                        (self.num_attention_heads_per_partition // self.num_query_groups_per_partition + 2)
+                        * self.hidden_size_per_attention_head
+                    ),
                 )
                 mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
 
                 # [sq, b, ng, (np/ng + 2) * hn] --> [sq, b, ng, np/ng * hn], [sq, b, ng, hn], [sq, b, ng, hn]
                 (query_layer,
                 key_layer,
-                value_layer) = torch.split(mixed_x_layer, [int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition) * self.hidden_size_per_attention_head, 
-                                                           self.hidden_size_per_attention_head,
-                                                           self.hidden_size_per_attention_head], 
-                                                           dim=3)
+                value_layer) = torch.split(
+                    mixed_x_layer,
+                    [
+                        (
+                            self.num_attention_heads_per_partition // self.num_query_groups_per_partition
+                            * self.hidden_size_per_attention_head
+                        ),
+                        self.hidden_size_per_attention_head,
+                        self.hidden_size_per_attention_head
+                    ],
+                    dim=3)
             # +++
             else:
                 wqkv = self.query_key_value.weight.reshape(
@@ -642,7 +656,7 @@ class ParallelAttention(MegatronModule):
             # <<<
 
             # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn] -
-            query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head) 
+            query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head)
         else:
             # Attention heads [sk, b, h] --> [sk, b, (np * 2 * hn)]
             mixed_kv_layer, _ = self.key_value(encoder_output)
@@ -717,12 +731,16 @@ class ParallelAttention(MegatronModule):
         # ==================================
         # core attention computation
         # ==================================
-        
+
         # expand the key_layer and value_layer [sk, b, ng, hn] -> [sk, b, np, hn]
-        key_layer = key_layer.repeat_interleave(int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition),
-                                            dim = 2)
-        value_layer = value_layer.repeat_interleave(int(self.num_attention_heads_per_partition / self.num_query_groups_per_partition),
-                                            dim = 2)
+        key_layer = key_layer.repeat_interleave(
+            self.num_attention_heads_per_partition // self.num_query_groups_per_partition,
+            dim = 2
+        )
+        value_layer = value_layer.repeat_interleave(
+            self.num_attention_heads_per_partition // self.num_query_groups_per_partition,
+            dim = 2
+        )
 
         # apply relative positional encoding (rotary embedding)
         if rotary_pos_emb is not None:
@@ -1346,6 +1364,8 @@ class ParallelTransformer(MegatronModule):
 
         # Transformer Engine Init.
         self.transformer_engine_v_0_10 = False
+        self.transformer_engine_v_0_11 = False
+        self.transformer_engine_v_0_8 = False
         if self.transformer_impl == 'transformer_engine':
             global transformer_engine
             import transformer_engine
@@ -1353,8 +1373,12 @@ class ParallelTransformer(MegatronModule):
             from pkg_resources import packaging
 
             te_version = packaging.version.Version(version("transformer-engine"))
+            if te_version >= packaging.version.Version("0.8.0"):
+                self.transformer_engine_v_0_8 = True
             if te_version >= packaging.version.Version("0.10.0"):
                 self.transformer_engine_v_0_10 = True
+            if te_version >= packaging.version.Version("0.11.0"):
+                self.transformer_engine_v_0_11 = True
 
             del version, packaging
 
@@ -1364,7 +1388,9 @@ class ParallelTransformer(MegatronModule):
         self.fp8_recipe = None
         self.fp8_group = None
         if self.use_fp8:
-            self.fp8_group = mpu.get_data_parallel_group()
+            assert args.transformer_impl == 'transformer_engine', \
+                'transformer-engine required for fp8 training and inference'
+            self.fp8_group = mpu.get_amax_reduction_group()
             if args.fp8_e4m3:
                 fp8_format = transformer_engine.common.recipe.Format.E4M3
             elif args.fp8_hybrid:
@@ -1417,9 +1443,13 @@ class ParallelTransformer(MegatronModule):
                     drop_path_rate=self.drop_path_rates[layer_number - 1])
             else:
                 # This argument is only available from TE v0.10 onwards.
-                activation_kwarg = {}
+                extra_transformer_engine_kwargs = {}
+                if self.transformer_engine_v_0_8:
+                    extra_transformer_engine_kwargs["bias"] = args.add_bias_linear
                 if self.transformer_engine_v_0_10:
-                    activation_kwarg["activation"] = "swiglu" if args.swiglu else "gelu"
+                    extra_transformer_engine_kwargs["activation"] = "swiglu" if args.swiglu else "gelu"
+                if self.transformer_engine_v_0_11:
+                    extra_transformer_engine_kwargs["normalization"] = args.normalization
                 return transformer_engine.pytorch.TransformerLayer(
                     config.hidden_size,
                     config.ffn_hidden_size,
@@ -1447,7 +1477,7 @@ class ParallelTransformer(MegatronModule):
                     drop_path_rate=self.drop_path_rates[layer_number - 1],
                     set_parallel_mode=True,
                     fuse_qkv_params=True,
-                    **activation_kwarg)
+                    **extra_transformer_engine_kwargs)
 
         if config.virtual_pipeline_model_parallel_size is not None:
             assert config.num_layers % config.virtual_pipeline_model_parallel_size == 0, \
@@ -1540,7 +1570,7 @@ class ParallelTransformer(MegatronModule):
             l = 0
             while l < self.num_layers:
                 if self.transformer_impl == 'transformer_engine':
-                    hidden_states = transformer_engine.pytorch.distributed.checkpoint(
+                    hidden_states = transformer_engine.pytorch.checkpoint(
                         custom(l, l + self.recompute_num_layers),
                         self.distribute_saved_activations,
                         tensor_parallel.get_cuda_rng_tracker,
@@ -1564,7 +1594,7 @@ class ParallelTransformer(MegatronModule):
             for l in range(self.num_layers):
                 if l < self.recompute_num_layers:
                     if self.transformer_impl == 'transformer_engine':
-                        hidden_states = transformer_engine.pytorch.distributed.checkpoint(
+                        hidden_states = transformer_engine.pytorch.checkpoint(
                             custom(l, l + 1),
                             self.distribute_saved_activations,
                             tensor_parallel.get_cuda_rng_tracker,
