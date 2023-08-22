@@ -8,9 +8,6 @@ import sys
 
 import torch
 
-# >>>
-from lutil import pax
-# <<<
 
 def add_arguments(parser):
     group = parser.add_argument_group(title='Megatron saver')
@@ -350,19 +347,7 @@ def save_checkpoint(queue, args):
                     exit(1)
                 output_layer_weight = torch.chunk(msg.pop("weight"), args.target_tensor_parallel_size, dim=0)
                 for tp_rank in range(args.target_tensor_parallel_size):
-                    # >>>
-                    try:
-                        models[tp_rank].language_model.output_layer.weight.data.copy_(output_layer_weight[tp_rank])
-                    except Exception as e:
-                        from lutil import pax
-                        pax({
-                            # "models" : models,
-                            "embs" : [ m.language_model.embedding.word_embeddings.weight for m in models ],
-                            "outs" : [ m.language_model.output_layer.weight for m in models ],
-                            "model" : models[tp_rank].language_model.output_layer.weight.data,
-                            "msg" : output_layer_weight[tp_rank],
-                        })
-                    # <<<
+                    models[tp_rank].language_model.output_layer.weight.data.copy_(output_layer_weight[tp_rank])
                 del output_layer_weight
                 check_message(msg)
 

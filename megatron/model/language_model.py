@@ -16,12 +16,6 @@ from .transformer import ParallelTransformer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
 
-# >>>
-def pax(a):
-    from scripts import pax as _pax
-    _pax(a)
-# <<<
-
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
                        bias=None):
@@ -493,14 +487,8 @@ class TransformerLanguageModel(MegatronModule):
         rotary_pos_emb = None
         if self.use_rotary_position_embeddings:
             if inference_params is not None:
-                # >>>
-                # if 1:
                 rotary_pos_emb = \
                     self.rotary_pos_emb(inference_params.max_sequence_len)
-                # else:
-                #     rotary_pos_emb = \
-                #         self.rotary_pos_emb(2*inference_params.max_sequence_len)
-                # <<<
             else:
                 rotary_pos_emb = self.rotary_pos_emb(self.seq_length)
 

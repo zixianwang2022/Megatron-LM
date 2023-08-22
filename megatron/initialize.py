@@ -46,14 +46,6 @@ def initialize_megatron(
     if args.use_checkpoint_args or args_defaults.get("use_checkpoint_args", False):
         assert args.load is not None, "--use-checkpoints-args requires --load argument"
         load_args_from_checkpoint(args)
-        # >>>
-        # from lutil import pax
-        # pax({
-        #     "args" : args,
-        #     "kv_channels" : args.kv_channels,
-        #     # "padded_vocab_size" : args.padded_vocab_size,
-        # })
-        # <<<
 
     validate_args(args, args_defaults)
 

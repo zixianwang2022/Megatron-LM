@@ -138,15 +138,6 @@ def main():
 
     queue = mp.Queue(maxsize=args.max_queue_size)
 
-    # >>>
-    # loader.load_checkpoint(queue, args)
-    # saver.save_checkpoint(queue, args)
-    # raise Exception("hi.")
-
-    # from lutil import pax
-    # pax({"args": args})
-    # <<<
-
     print("Starting saver...")
     saver_proc = mp.Process(target=saver.save_checkpoint, args=(queue, args))
     saver_proc.start()

@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 """Megatron arguments."""
 
@@ -544,12 +544,10 @@ def _add_retro_args(parser):
 # >>>
 def _add_llama_args(parser):
     group = parser.add_argument_group(title='llama')
-    # group.add_argument("--gen-model", choices=["megatron","llama"], required=True)
-    # group.add_argument("--load-llama", required=True)
     group.add_argument("--_model_family", choices=["megatron", "llama", "hf"]) # , required=True)
     group.add_argument("--_model_type", choices=["text", "chat"]) # , required=True)
     group.add_argument("--_model_size", choices=["7b", "13b", "70b"]) # , required=True)
-    group.add_argument("--use-llama-rotary-emb", action="store_true")
+    # group.add_argument("--use-llama-rotary-emb", action="store_true")
     group.add_argument("--use-llama-qkv", action="store_true")
     group.add_argument("--use-llama-mlp", action="store_true")
     group.add_argument("--use-llama-matmul", action="store_true")

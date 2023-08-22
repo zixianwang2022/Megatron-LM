@@ -433,14 +433,6 @@ def load_args_from_checkpoint(args, load_arg='load'):
 
     state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=True)
 
-    # >>>
-    # from scripts import pax
-    # pax({
-    #     "load_dir" : load_dir,
-    #     "state_dict" : state_dict,
-    # })
-    # <<<
-
     # Args.
     if not state_dict:
         print_rank_0('Checkpoint not found to provide arguments, using provided arguments.')
@@ -498,15 +490,6 @@ def load_args_from_checkpoint(args, load_arg='load'):
         _set_arg('pipeline_model_parallel_size', force=True)
         _set_arg('virtual_pipeline_model_parallel_size', force=True)
         _set_arg('num_layers_per_virtual_pipeline_stage')
-    # >>>
-    # from lutil import pax
-    # pax({
-    #     "args / vocab_size" : args.vocab_size,
-    #     "args / padded_vocab_size" : args.padded_vocab_size,
-    #     "checkpoint_args / vocab_size" : checkpoint_args.vocab_size,
-    #     "checkpoint_args / padded_vocab_size" : checkpoint_args.padded_vocab_size,
-    # })
-    # <<<
     return args, checkpoint_args
 
 
