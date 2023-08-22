@@ -193,7 +193,7 @@ def count_stat(dataset, tokenizer):
 class FtDataset(torch.utils.data.Dataset):
 
     def __init__(self, name, indexed_dataset, max_seq_length, 
-                 max_seq_length_dec=0):
+                 max_seq_length_dec=0, fewshot_list=None):
 
         # Params to store.
         self.dataset_name = name ## dataset_name equals to data_prefix in pretrain
@@ -206,6 +206,7 @@ class FtDataset(torch.utils.data.Dataset):
         tokenizer = get_tokenizer()
         self.eos_id = tokenizer.eod
         self.pad_id = tokenizer.eod
+        self.fewshot_list = fewshot_list
 
         self.args = get_args()
 
@@ -231,7 +232,8 @@ class FtDataset(torch.utils.data.Dataset):
                                 self.pad_id, self.eos_id,
                                 self.dataset_name,
                                 self.args.ft_neighbours,
-                                self.args.shuffle_topn)
+                                self.args.shuffle_topn,
+                                self.fewshot_list)
 
 def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
     max_output_len, tokenizer, max_seq_length):
@@ -299,9 +301,9 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         # print(dataset_name, system + query)
         return input_tokens
 
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
-    yes_no_without_context = ["BoolQ"]
-    multichoices = [""]
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "BioASQ", "DuoRC_ParaphraseRC", "TextbookQA"]
+    yes_no_without_context = ["boolq", "multirc"]
+    multichoices = ["race"]
     # multi-turn qa datasets
     formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "quac", "qrecc", "sharc"]
     user_template = ""
@@ -313,6 +315,8 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
             user = "Answer the following question with a short span. {}".format(query)
         elif dataset_name in yes_no_without_context:
             user = "Answer the following question with True or False. {}".format(query)
+        elif dataset_name in multichoices:
+            user = "Answer the following question by selecting one of the provided options. {}".format(query)
         else:
             user = "Please give a full and complete answer for the question. {}".format(query)
 
@@ -346,14 +350,14 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
 
 
 def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_neighbours, fewshot_list, \
-    max_output_len, tokenizer, max_seq_length):
+    max_output_len, tokenizer, max_seq_length, multiturn_max_fewshot=3):
 
     # system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
     system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions based on the context. The assistant should also indicate when the answer cannot be found in the context.\n\n"
     
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
-    yes_no_without_context = ["BoolQ"]
-    multichoices = [""]
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "BioASQ", "DuoRC_ParaphraseRC", "TextbookQA"]
+    yes_no_without_context = ["boolq", "multirc"]
+    multichoices = ["race"]
     # multi-turn qa datasets
     formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "quac", "qrecc", "sharc"]
     user_template = ""
@@ -370,6 +374,9 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
             # user = "Answer the following question with True or False. {}".format(query)
             instruction = "Answer the following question with True or False."
             user = instruction + " " + query
+        elif dataset_name in multichoices:
+            instruction = "Answer the following question by selecting one of the provided options."
+            user = instruction + " " + query
         else:
             # user = "Please give a full and complete answer for the question. {}".format(query)
             instruction = "Please give a full and complete answer for the question."
@@ -377,6 +384,10 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
 
         dialogue_format="User: {}\n\nAssistant:"
         dialogue_turn = dialogue_format.format(user)
+
+    multiturn_dataset_name = formatted_dataset_name + ["quiet_cockatoo"]
+    if dataset_name in multiturn_dataset_name:
+        fewshot_list = fewshot_list[:multiturn_max_fewshot]
 
     fewshot_prompt = "Here are some question answer samples between user and assistant:\n\n"
     for i, item in enumerate(fewshot_list):
@@ -433,7 +444,8 @@ def build_normal_training_sample_v2(sample,
                           eos_id,
                           dataset_name,
                           ft_neighbours=1,
-                          shuffle_topn=False):
+                          shuffle_topn=False,
+                          fewshot_list=None):
 
     # unpack tokens
     query, answer, neighbours = sample

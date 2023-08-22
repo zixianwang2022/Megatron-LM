@@ -91,6 +91,7 @@ run_cmd="python -u ${DIR}/tasks/foundational_QA/finetune_gpt_with_pretrain.py ${
 ## debug
 # bash examples/foundational_qa/finetune_normal_lm.sh multiturn_qa_blendv1 43b 64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn
 # bash examples/foundational_qa/finetune_normal_lm.sh multiturn_qa_blendv2 43b 64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn
+# bash examples/foundational_qa/finetune_normal_lm.sh multiturn_qa_blend_commercial 43b 64 3e-7 1 gpt_1e-8_conv_quiet_cockatoo_pp1_addmultiturn
 
 export SUBMIT_LOGS="${QA_HOME}/megatron-lm/logs"
 mkdir -p $SUBMIT_LOGS

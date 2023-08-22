@@ -42,6 +42,48 @@ if [[ $TASK == landrover* ]]; then
     fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/landrover/fewshot_samples.json"
 fi
 
+if [[ $TASK == "BioASQ" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK/test.json"
+    fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
+fi
+
+if [[ $TASK == "DuoRC_ParaphraseRC" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK/test.json"
+    fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
+fi
+
+if [[ $TASK == "boolq" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK/test.json"
+    fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
+fi
+
+if [[ $TASK == "msmarco" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK/test.json"
+    fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
+fi
+
+if [[ $TASK == "multirc" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK/test.json"
+    fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
+fi
+
+if [[ $TASK == "race" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK/test.json"
+    fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
+fi
+
+if [[ $TASK == "TextbookQA" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/$TASK/test.json"
+    fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
+fi
+
 if [[ $TASK == "doc2dial" ]]; then
     DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/$TASK"
     sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/$TASK/${TASK}_ftdragon_chatgptgen7k_chunk150_QA_test.json"
