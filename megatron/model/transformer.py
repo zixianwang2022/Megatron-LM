@@ -1453,7 +1453,7 @@ class ParallelTransformer(MegatronModule):
                     config.hidden_size,
                     config.ffn_hidden_size,
                     config.num_attention_heads,
-                    norm_epsilon=config.norm_epsilon,
+                    layernorm_epsilon=config.norm_epsilon,
                     hidden_dropout=config.hidden_dropout,
                     attention_dropout=config.attention_dropout,
                     init_method=config.init_method,
