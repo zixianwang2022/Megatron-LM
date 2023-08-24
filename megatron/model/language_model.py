@@ -217,12 +217,7 @@ class Embedding(MegatronModule):
 
     def forward(self, input_ids, position_ids, tokentype_ids=None):
         # Embeddings.
-        if self.embedding_weights_in_fp32:
-            self.word_embeddings = self.word_embeddings.to(torch.float32)
-        words_embeddings = self.word_embeddings(input_ids)
-        if self.embedding_weights_in_fp32:
-            words_embeddings = words_embeddings.to(self.params_dtype)
-            self.word_embeddings = self.word_embeddings.to(self.params_dtype)
+        words_embeddings = self.word_embeddings(input_ids, self.embedding_weights_in_fp32)
         if self.add_position_embedding:
             position_embeddings = self.position_embeddings(position_ids)
             embeddings = words_embeddings + position_embeddings
