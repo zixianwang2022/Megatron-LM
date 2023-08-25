@@ -202,7 +202,7 @@ class VocabParallelEmbedding(torch.nn.Module):
             if config.perform_initialization:
                 _initialize_affine_weight_gpu(self.weight, init_method, partition_dim=0, stride=1)
 
-    def forward(self, input_, embedding_weights_in_fp32=False):
+    def forward(self, input_):
         if self.tensor_model_parallel_size > 1:
             # Build the mask.
             input_mask = (input_ < self.vocab_start_index) | (input_ >= self.vocab_end_index)
@@ -214,7 +214,7 @@ class VocabParallelEmbedding(torch.nn.Module):
             # Get the embeddings.
         output_parallel = F.embedding(
             masked_input,
-            self.weight.to(torch.float32) if embedding_weights_in_fp32 else self.weight,
+            self.weight,
             self.padding_idx,
             self.max_norm,
             self.norm_type,

@@ -168,6 +168,7 @@ class Float16Module(MegatronModule):
         else:
             raise Exception('should not be here')
 
+        self.module.language_model.embedding.word_embeddings.weight.data = self.module.language_model.embedding.word_embeddings.weight.data.to(torch.float32)
         self.float16_convertor = float16_convertor
 
 
