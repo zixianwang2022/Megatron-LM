@@ -9,7 +9,7 @@ Llama-2 checkpoints can be loaded into Megatron for inference and for fine-tunin
 The following sections detail these steps. The final section list benchmark result comparisons between: 1) Llama-2 inference code running the native checkpoints, and 2) Megatron running the converted checkpoints.
 
 # Contents
-  * [Download native checkpoints](#download-native-checkpoints)
+  * [Download Meta or Huggingface checkpoints](#download-meta-or-huggingface-checkpoints)
   * [Convert checkpoint format](#convert-checkpoint-format)
     * [Native Llama-2 format](#native-llama-2-format)
     * [Huggingface format](#huggingface-format)
@@ -20,7 +20,7 @@ The following sections detail these steps. The final section list benchmark resu
     * [70B args](#70b-args)
   * [Benchmark results](#benchmark-results)
 
-# Download native checkpoints
+# Download Meta or Huggingface checkpoints
 
 Users must first apply for access to download the Llama-2 checkpoints either directly from [Meta](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) or through [Huggingface](https://huggingface.co/docs/transformers/main/model_doc/llama2) (HF). The checkpoints are available in two formats, native Llama-2 format (available from both the Meta and HF links), and HF format (available only from HF). Either format can be converted to Megatron, as detailed next.
 
