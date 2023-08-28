@@ -92,7 +92,7 @@ if __name__ == '__main__':
         print("Interleaved pipeline schedule is not yet supported for downstream tasks.")
         exit()
 
-    valid_tasks = ['nq', 'eli5', 'tqa', 'benz', 'benz_plus_landrover', 'landrover', 'att', 'nq_longform', 'iternal', 'carmanual', 'nvit', 'tcs']
+    valid_tasks = ['nq', 'eli5', 'tqa', 'benz', 'benz_plus_landrover', 'landrover', 'ford', 'att', 'nq_longform', 'iternal', 'carmanual', 'nvit', 'tcs', 'sandia']
     if args.task.lower() in valid_tasks or any([x in args.task.lower() for x in valid_tasks]):
         from tasks.retro_qa.finetune_gpt import main
 
