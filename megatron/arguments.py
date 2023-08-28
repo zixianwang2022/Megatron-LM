@@ -15,6 +15,16 @@ from tools.retro.utils import get_args_path as get_retro_args_path
 
 from megatron.core.transformer import TransformerConfig
 
+
+# >>>
+def _add_llama_args(parser):
+    group = parser.add_argument_group(title='llama')
+    group.add_argument("--_model_family", choices=["megatron", "llama", "hf"])
+    group.add_argument("--_model_type", choices=["text", "chat"])
+    group.add_argument("--_model_size", choices=["7b", "13b", "70b"])
+    return parser
+# <<<
+
 def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     """Parse all arguments."""
     parser = argparse.ArgumentParser(description='Megatron-LM Arguments',
@@ -538,16 +548,6 @@ def _add_retro_args(parser):
             "styling. Please fix '%s'." % ", ".join(action.option_strings)
 
     return parser
-
-
-# >>>
-def _add_llama_args(parser):
-    group = parser.add_argument_group(title='llama')
-    group.add_argument("--_model_family", choices=["megatron", "llama", "hf"]) # , required=True)
-    group.add_argument("--_model_type", choices=["text", "chat"]) # , required=True)
-    group.add_argument("--_model_size", choices=["7b", "13b", "70b"]) # , required=True)
-    return parser
-# <<<
 
 
 def _add_network_size_args(parser):
