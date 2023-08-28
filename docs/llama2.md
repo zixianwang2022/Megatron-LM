@@ -12,6 +12,10 @@ The following sections detail these steps.
   * [Download native checkpoints](#download-native-checkpoints)
   * [Convert checkpoint format](#convert-checkpoint-format)
   * [Launch model](#launch-model)
+    * [Common args](#common-args)
+    * [7B args](#7b-args)
+    * [13B args](#13b-args)
+    * [70B args](#70b-args)
 
 # Download native checkpoints
 
@@ -25,7 +29,12 @@ Depending on which checkpoint format is downloaded (native Llama-2 or HF), one o
 
 The native Llama-2 checkpoints must first be converted to HF format before converting to Megatron format. The `transformers` package is required for the first step, and must have version >=4.31.0 (e.g., `pip install transformers>=4.31.0`). Assuming the downloaded checkpoints are in `$CHECKPOINT_DIR` (with separate sub-directories for 7B, 13B, 70B, etc.), the following example command can be used to convert from Llama-2 format to HF format:
 
-`$> python $LIB_DIR/transformers/models/llama/convert_llama_weights_to_hf.py --input_dir $LLAMA_FORMAT_DIR --output_dir $HF_FORMAT_DIR --model_size 7B`
+```
+$>: python $LIB_DIR/transformers/models/llama/convert_llama_weights_to_hf.py \
+ >    --input_dir $LLAMA_FORMAT_DIR \
+ >    --output_dir $HF_FORMAT_DIR \
+ >    --model_size 7B`
+```
 
 Valid values for `--model_size` include `7B`, `13B`, and `70B` (for pretrained-only models), and `7Bf`, `13Bf`, and `70Bf` (for chat-finetuned models). Use `python convert_llama_weights_to_hf.py --help` for additional argument details. Once the checkpoints have been converted to HF format, proceed to step 2.
 
@@ -39,7 +48,7 @@ The HF checkpoints can be converted to Megatron format by using Megatron's own L
 | 13B        | 2                           |
 | 70B        | 8                           |
 
-Using these values for `TP`, along with the path to the Llama-2 tokenizer model (automatically downloaded with original checkpoint download), run the following command from the root of your Megatron source code to convert from HF format to Megatron format:
+Using these values for `TP`, along with the path to the Llama-2 tokenizer model (automatically downloaded with original checkpoint download; see `${TOKENIZER_MODEL}` below), run the following command from the root of your Megatron source code to convert from HF format to Megatron format:
 
 ```
 $>: python tools/checkpoint/util.py \
@@ -49,10 +58,52 @@ $>: python tools/checkpoint/util.py \
  >    --target-tensor-parallel-size ${TP} \
  >    --load-dir ${HF_FORMAT_DIR} \
  >    --save-dir ${MEGATRON_FORMAT_DIR} \
- >    --tokenizer-model ${LLAMA2_TOKENIZER_PATH}
+ >    --tokenizer-model ${TOKENIZER_MODEL}
 ```
+
+After this conversion, we are ready to load the checkpoints into a Megatron GPT model.
 
 # Launch model
 
-in ...
+Each model size (7B, 13B, and 70B) has its own set of hyperparameters, along with some common arguments that all the models share. The sections below details how to correctly set arguments to load the Llama-2 models.
 
+### Common args
+
+If loading for either inference or finetuning, using the folloing common arguments:
+
+```
+--no-masked-softmax-fusion \
+--tensor-model-parallel-size ${TP} \
+--pipeline-model-parallel-size 1 \
+--seq-length 4096 \
+--max-position-embeddings 4096 \
+--tokenizer-type Llama2Tokenizer \
+--tokenizer-model ${TOKENIZER_MODEL} \
+--load ${CHECKPOINT_DIR} \
+--exit-on-missing-checkpoint \
+--use-checkpoint-args \
+--no-load-optim \
+--no-load-rng \
+--fp16 \
+--DDP-impl local \
+--untie-embeddings-and-output-weights \
+--no-position-embedding \
+--use-rotary-position-embeddings \
+--normalization RMSNorm \
+--no-query-key-layer-scaling
+```
+
+If loading only for inference, the following must be set, but the values do not matter:
+
+```
+--train-samples 1 \
+--min-lr 3.0e-5 \
+--lr 3.0e-4 \
+--lr-decay-style cosine \
+```
+
+### 7B args
+
+### 13B args
+
+### 70B args
