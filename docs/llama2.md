@@ -5,15 +5,15 @@ The Llama-2 [family of models](https://ai.meta.com/llama/) are an open-source se
 Llama-2 checkpoints can be loaded into Megatron for inference and for finetuning. Loading these checkpoints consists of three steps:
 
 1. Get access to download the checkpoints.
-2. Convert the checkpoints from Llama-2 format to Megatron format.
+2. Convert the checkpoints from Meta/Huggingface format to Megatron format.
 3. Setup arguments for launching the model.
 
-The following sections detail these steps. The final section list benchmark result comparisons between: 1) Llama-2 inference code running the native checkpoints, and 2) Megatron running the converted checkpoints.
+The following sections detail these steps. The final section lists benchmark result comparisons between: 1) Llama-2 inference code running the Meta-format checkpoints, and 2) Megatron inference code running the converted checkpoints.
 
 # Contents
   * [Download Meta or Huggingface checkpoints](#download-meta-or-huggingface-checkpoints)
   * [Convert checkpoint format](#convert-checkpoint-format)
-    * [Native Llama-2 format](#native-llama-2-format)
+    * [Meta format](#meta-format)
     * [Huggingface format](#huggingface-format)
   * [Launch model](#launch-model)
     * [Common args](#common-args)
@@ -24,15 +24,15 @@ The following sections detail these steps. The final section list benchmark resu
 
 # Download Meta or Huggingface checkpoints
 
-Users must first apply for access to download the Llama-2 checkpoints either directly from [Meta](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) or through [Huggingface](https://huggingface.co/docs/transformers/main/model_doc/llama2) (HF). The checkpoints are available in two formats, native Llama-2 format (available from both the Meta and HF links), and HF format (available only from HF). Either format can be converted to Megatron, as detailed next.
+Users must first apply for access to download the Llama-2 checkpoints either directly from [Meta](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) or through [Huggingface](https://huggingface.co/docs/transformers/main/model_doc/llama2) (HF). The checkpoints are available in two formats, Meta's native format (available from both the Meta and HF links), and HF's format (available only from HF). Either format can be converted to Megatron, as detailed next.
 
 # Convert checkpoint format
 
-Depending on which checkpoint format is downloaded (native Llama-2 or HF), one or two steps must be taken to convert to Megatron format.
+Depending on which checkpoint format is downloaded (Meta or HF), one or two steps must be taken to convert to Megatron format.
 
-### Native Llama-2 format
+### Meta format
 
-The native Llama-2 checkpoints must first be converted to HF format before converting to Megatron format. The `transformers` package is required for the first step, and must have version >=4.31.0 (e.g., `pip install transformers>=4.31.0`). Assuming the downloaded checkpoints are in `$CHECKPOINT_DIR` (with separate sub-directories for 7B, 13B, 70B, etc.), the following example command can be used to convert from Llama-2 format to HF format:
+The Meta format checkpoints must first be converted to HF format before converting to Megatron format. The `transformers` package is required for the first step, and must have version >=4.31.0 (e.g., `pip install transformers>=4.31.0`). Assuming the downloaded checkpoints are in `$CHECKPOINT_DIR` (with separate sub-directories for 7B, 13B, 70B, etc.), the following example command can be used to convert from Llama-2 format to HF format:
 
 ```
 $>: python $LIB_DIR/transformers/models/llama/convert_llama_weights_to_hf.py \
