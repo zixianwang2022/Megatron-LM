@@ -9,15 +9,15 @@ Llama-2 checkpoints can be loaded into Megatron for inference and for fine-tunin
 The following sections detail these steps.
 
 # Contents
-  * [Llama-2 Inference](#llama-2-inference)
-    * [Checkpoint Conversion](#llama-2-checkpoint-conversion)
-    * [Inference](#llama-2-launch-inference)
+  * [Download native checkpoints](#download-native-checkpoints)
+  * [Convert checkpoint format](#convert-checkpoint-format)
+  * [Launch model](#launch-model)
 
-# [Download checkpoints](#llama-2-download-checkpoints)
+# [Download native checkpoints]
 
 Users must first apply for access to download the Llama-2 checkpoints either directly from [Meta](https://ai.meta.com/resources/models-and-libraries/llama-downloads/) or through [Huggingface](https://huggingface.co/docs/transformers/main/model_doc/llama2) (HF). The checkpoints are available in two formats, native Llama-2 format (available from both the Meta and HF links), and HF format (available only from HF). Either format can be used for converting to Megatron, as detailed next.
 
-# [Checkpoint Conversion](#llama-2-checkpoint-conversion)
+# [Convert checkpoint format]
 
 Depending on which checkpoint format is downloaded (native Llama-2 or HF), one or two steps must be taken to convert to Megatron format.
 
@@ -27,9 +27,28 @@ Depending on which checkpoint format is downloaded (native Llama-2 or HF), one o
 
 Valid values for `--model_size` include `7B`, `13B`, and `70B` (for pretrained-only models), and `7Bf`, `13Bf`, and `70Bf` (for chat-finetuned models). Use `python convert_llama_weights_to_hf.py --help` for additional argument details. Once the checkpoints have been converted to HF format, proceed to step 2.
 
-2. HF format: The HF checkpoints can be converted to Megatron format by using Megatron's own Llama-2 checkpoint converter for HF format (see script `tools/checkpoint/loader_llama2_hf.py`).
+2. HF format: The HF checkpoints can be converted to Megatron format by using Megatron's own Llama-2 checkpoint converter for HF format (see script `tools/checkpoint/loader_llama2_hf.py`). One important argument that must be set correctly is the tensor parallel size (`TP`) for each model. The following table shows these values:
 
-# [Inference](#llama-2-launch-inference)
+| Model size | Tensor parallel size (`TP`) |
+| ---------- | --------------------------- |
+|  7B        | 1                           |
+| 13B        | 2                           |
+| 70B        | 8                           |
+
+Using these values for `TP`, along with the path to the Llama-2 tokenizer model (automatically downloaded with original checkpoint download), run the following command from the root of your Megatron source code to convert from HF format to Megatron format:
+
+```
+$>: python tools/checkpoint/util.py \
+ >    --model-type GPT \
+ >    --loader llama2_hf \
+ >    --saver megatron \
+ >    --target-tensor-parallel-size ${TP} \
+ >    --load-dir ${HF_FORMAT_DIR} \
+ >    --save-dir ${MEGATRON_FORMAT_DIR} \
+ >    --tokenizer-model ${LLAMA2_TOKENIZER_PATH}
+```
+
+# [Launch model]
 
 in ...
 
