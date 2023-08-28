@@ -54,6 +54,9 @@ The following table shows both model (MFU) and hardware (HFU) FLOPs utilization 
       * [BERT Task Evaluation](#bert-task-evaluation)
          * [RACE Evaluation](#race-evaluation)
          * [MNLI Evaluation](#mnli-evaluation)
+      * [Llama-2 Inference](#llama-2-inference)
+         * [Checkpoint Conversion](#llama-2-checkpoint-conversion)
+         * [Inference](#llama-2-launch-inference)
    * [Datasets](#datasets)
       * [Collecting Wikipedia Training Data](#collecting-wikipedia-training-data)
       * [Collecting GPT Webtext Data](#collecting-gpt-webtext-data)
@@ -498,6 +501,18 @@ python tasks/main.py \
        --lr 5.0e-5 \
        --lr-warmup-fraction 0.065
 </pre>
+
+## [Llama-2 Inference](#llama-2-inference)
+
+Fill ...
+
+### [Checkpoint Conversion](#llama-2-checkpoint-conversion)
+
+me ...
+
+### [Inference](#llama-2-launch-inference)
+
+in ...
 
 # Datasets
 We do not host any datasets for GPT or BERT training, however, we detail their collection so that our results may be reproduced.
