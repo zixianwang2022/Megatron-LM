@@ -11,6 +11,8 @@ The following sections detail these steps. The final section list benchmark resu
 # Contents
   * [Download native checkpoints](#download-native-checkpoints)
   * [Convert checkpoint format](#convert-checkpoint-format)
+    * [Native Llama-2 format](#native-llama-2-format)
+    * [Huggingface format](#huggingface-format)
   * [Launch model](#launch-model)
     * [Common args](#common-args)
     * [7B args](#7b-args)
@@ -26,7 +28,7 @@ Users must first apply for access to download the Llama-2 checkpoints either dir
 
 Depending on which checkpoint format is downloaded (native Llama-2 or HF), one or two steps must be taken to convert to Megatron format.
 
-### 1. Native Llama-2 format
+### Native Llama-2 format
 
 The native Llama-2 checkpoints must first be converted to HF format before converting to Megatron format. The `transformers` package is required for the first step, and must have version >=4.31.0 (e.g., `pip install transformers>=4.31.0`). Assuming the downloaded checkpoints are in `$CHECKPOINT_DIR` (with separate sub-directories for 7B, 13B, 70B, etc.), the following example command can be used to convert from Llama-2 format to HF format:
 
@@ -37,9 +39,9 @@ $>: python $LIB_DIR/transformers/models/llama/convert_llama_weights_to_hf.py \
  >    --model_size 7B`
 ```
 
-Valid values for `--model_size` include `7B`, `13B`, and `70B` (for pretrained-only models), and `7Bf`, `13Bf`, and `70Bf` (for chat-finetuned models). Use `python convert_llama_weights_to_hf.py --help` for additional argument details. Once the checkpoints have been converted to HF format, proceed to step 2.
+Valid values for `--model_size` include `7B`, `13B`, and `70B` (for pretrained-only models), and `7Bf`, `13Bf`, and `70Bf` (for chat-finetuned models). Use `python convert_llama_weights_to_hf.py --help` for additional argument details. Once the checkpoints have been converted to HF format, proceed to the Huggingface format section below.
 
-### 2. HF format
+### Huggingface format
 
 The HF checkpoints can be converted to Megatron format by using Megatron's own Llama-2 checkpoint converter for HF format (see script `tools/checkpoint/loader_llama2_hf.py`). One important argument that must be set correctly is the tensor parallel size (`TP`) for each model. The following table shows these values:
 
