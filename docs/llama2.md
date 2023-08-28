@@ -6,7 +6,7 @@ Llama-2 checkpoints can be loaded into Megatron for inference and for fine-tunin
 2. Convert the checkpoints from Llama-2 format to Megatron format.
 3. Setup arguments for launching the model.
 
-The following sections detail these steps.
+The following sections detail these steps. The final section list benchmark result comparisons between: 1) Llama-2 inference code running the native checkpoints, and 2) Megatron running the converted checkpoints.
 
 # Contents
   * [Download native checkpoints](#download-native-checkpoints)
@@ -16,6 +16,7 @@ The following sections detail these steps.
     * [7B args](#7b-args)
     * [13B args](#13b-args)
     * [70B args](#70b-args)
+  * [Benchmark results](#benchmark-results)
 
 # Download native checkpoints
 
@@ -69,7 +70,7 @@ Each model size (7B, 13B, and 70B) has its own set of hyperparameters, along wit
 
 ### Common args
 
-If loading for either inference or finetuning, using the folloing common arguments:
+If loading for either inference or finetuning, use the folloing common arguments:
 
 ```
 --no-masked-softmax-fusion \
@@ -90,7 +91,7 @@ If loading for either inference or finetuning, using the folloing common argumen
 --no-position-embedding \
 --use-rotary-position-embeddings \
 --normalization RMSNorm \
---no-query-key-layer-scaling
+--no-query-key-layer-scaling \
 ```
 
 If loading only for inference, the following must be set, but the values do not matter:
@@ -104,6 +105,33 @@ If loading only for inference, the following must be set, but the values do not 
 
 ### 7B args
 
+```
+--hidden-size 4096 \
+--num-attention-heads 32 \
+--num-layers 32 \
+--norm-epsilon 1e-05 \
+```
+
 ### 13B args
 
+```
+--hidden-size 5120 \
+--num-attention-heads 40 \
+--num-layers 40 \
+--norm-epsilon 1e-05 \
+```
+
 ### 70B args
+
+```
+--hidden-size 8192 \
+--group-query-attention \
+--num-query-groups 8 \
+--num-attention-heads 64 \
+--num-layers 80 \
+--norm-epsilon 1e-05 \
+```
+
+# Benchmark results
+
+coming soon ...
