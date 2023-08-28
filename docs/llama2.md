@@ -1,6 +1,8 @@
-The Llama-2 [family of models](https://ai.meta.com/llama/) are an open-source set of pretrained & fine-tuned (for chat) models that have achieved strong results across a wide set of benchmarks. At the time of release, Llama-2 models achieved among the best results for open-source models, and were competitive with the closed-source GPT-3.5 model (see https://arxiv.org/pdf/2307.09288.pdf).
+# Llama-2 Inference and Finetuning
 
-Llama-2 checkpoints can be loaded into Megatron for inference and for fine-tuning. Loading these checkpoints consists of three steps:
+The Llama-2 [family of models](https://ai.meta.com/llama/) are an open-source set of pretrained & finetuned (for chat) models that have achieved strong results across a wide set of benchmarks. At the time of release, Llama-2 models achieved among the best results for open-source models, and were competitive with the closed-source GPT-3.5 model (see https://arxiv.org/pdf/2307.09288.pdf).
+
+Llama-2 checkpoints can be loaded into Megatron for inference and for finetuning. Loading these checkpoints consists of three steps:
 
 1. Get access to download the checkpoints.
 2. Convert the checkpoints from Llama-2 format to Megatron format.
