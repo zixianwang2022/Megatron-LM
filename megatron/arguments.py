@@ -546,11 +546,6 @@ def _add_llama_args(parser):
     group.add_argument("--_model_family", choices=["megatron", "llama", "hf"]) # , required=True)
     group.add_argument("--_model_type", choices=["text", "chat"]) # , required=True)
     group.add_argument("--_model_size", choices=["7b", "13b", "70b"]) # , required=True)
-    # group.add_argument("--use-llama-rotary-emb", action="store_true")
-    group.add_argument("--use-llama-qkv", action="store_true")
-    group.add_argument("--use-llama-mlp", action="store_true")
-    group.add_argument("--use-llama-matmul", action="store_true")
-    group.add_argument("--use-llama-default-dtype", action="store_true")
     return parser
 # <<<
 

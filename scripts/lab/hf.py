@@ -83,8 +83,8 @@ class HFLab(Lab):
         # pax({"model": self.model, "tokens": tokens})
 
         # logits = self.model.forward(tokens, 0)
-        logits = self.model(tokens)
-        logits = logits.logits[0]
+        result = self.model(tokens)
+        logits = result.logits[0]
         # logits = logits[-1]
 
         # pax({
@@ -100,16 +100,12 @@ class HFLab(Lab):
     # ... downstream task testing ...
 
     def eval(self):
-        raise Exception("hi.")
         pass
 
     def set_input_tensor(self, tensor):
-        raise Exception("hi.")
         assert tensor is None
 
     def __call__(self, input_ids, position_ids, attention_mask, inference_params):
-
-        raise Exception("hi.")
 
         # tokens = torch.tensor(
         #     self._tokenize(text),
@@ -117,7 +113,9 @@ class HFLab(Lab):
         #     device=torch.cuda.current_device())
 
         # try:
-        logits = self.model.forward(input_ids, 0)
+        result = self.model(input_ids)
+        logits = result.logits
+        # pax({"logits": logits})
         # except Exception as e:
         #     pax({"input_ids": input_ids, "e": e})
         # logits = logits.transpose(0, 1)

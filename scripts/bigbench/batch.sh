@@ -5,11 +5,13 @@ set -u
 # MODEL_FAMILY=llama OMIT_ARGS_ALL="xxxxxxxxx"
 # MODEL_FAMILY=megatron OMIT_ARGS_ALL="xxxxxxxxx use-llama-rotary-emb use-llama-qkv use-llama-mlp use-llama-matmul use-llama-default-dtype"
 
-# MODEL_FAMILY=llama EXTRA_ARGS_ALL="--log-world-size-to-tensorboard"
-# MODEL_FAMILY=megatron EXTRA_ARGS_ALL="--log-world-size-to-tensorboard --use-llama-qkv --use-llama-mlp --use-llama-matmul --use-llama-default-dtype"
-MODEL_FAMILY=megatron EXTRA_ARGS_ALL="--use-llama-qkv,--use-llama-mlp,--use-llama-matmul,--use-llama-default-dtype"
+MODEL_FAMILY=llama EXTRA_ARGS_ALL="--log-world-size-to-tensorboard"
+# MODEL_FAMILY=hf EXTRA_ARGS_ALL="--log-world-size-to-tensorboard"
+# MODEL_FAMILY=megatron EXTRA_ARGS_ALL="--log-world-size-to-tensorboard"
+# MODEL_FAMILY=megatron EXTRA_ARGS_ALL="--log-world-size-to-tensorboard --use-llama-qkv --use-llama-mlp --use-llama-matmul --use-llama-default-dtype --use-llama-qkv,--use-llama-mlp,--use-llama-matmul,--use-llama-default-dtype"
 MODEL_TYPE=text
 # MODEL_SIZES=7b
+# MODEL_SIZES="7b 13b"
 MODEL_SIZES="7b 13b 70b"
 
 SCRIPT_DIR="/lustre/fs3/portfolios/adlr/users/lmcafee/llama/2/src/megatron-lm-llama2-loader/scripts/bigbench"
@@ -27,9 +29,9 @@ mgsm_task_list="mgsm.en-english_cot mgsm.de-english_cot mgsm.fr-english_cot mgsm
 # STANDARD_TASKS="general_knowledge"
 # xcopa_task_list="xcopa.en-template-mGPT-remove-punctuation"
 
-# TASK_LISTS="STANDARD_TASKS"
+TASK_LISTS="STANDARD_TASKS"
 # TASK_LISTS="TYDIQA_TASKS"
-TASK_LISTS="xcopa_task_list"
+# TASK_LISTS="xcopa_task_list"
 # TASK_LISTS="tydiqa_task_list"
 # TASK_LISTS="flores_task_list"
 # TASK_LISTS="mgsm_task_list"

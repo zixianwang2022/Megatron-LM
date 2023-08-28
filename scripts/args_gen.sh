@@ -60,6 +60,8 @@ MEGATRON_REPO_DIR="${ROOT_SRC_DIR}/megatron-lm-llama2-loader"
 LLAMA_REPO_DIR="${ROOT_SRC_DIR}/llama"
 BIG_BENCH_REPO_DIR="${ROOT_SRC_DIR}/big-bench-megatron-lm"
 BIG_CODE_REPO_DIR="${ROOT_SRC_DIR}/bigcode-evaluation-harness"
+LM_EVAL_REPO_DIR="${ROOT_SRC_DIR}/lm-evaluation-harness-megatron"
+MMLU_REPO_DIR="${ROOT_SRC_DIR}/mmlu"
 TOKENIZER_PATH="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/tokenizer.model"
 
 # ROOT_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/llama/2/checkpoints"
@@ -152,6 +154,8 @@ fi
 #     ARGS=${ARGS/"--$ARG"/""}
 # done
 
-ARGS="${ARGS} ${EXTRA_ARGS}"
+# >>>
+# ARGS="${ARGS} ${EXTRA_ARGS}"
+# <<<
 
 # eof.

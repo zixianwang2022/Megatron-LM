@@ -2,15 +2,16 @@
 
 set -u
 
-if [ "$#" != "2" ]; then
-    echo "expected 2 args, found $#."
-    exit 1
-fi
+# if [ "$#" != "3" ]; then
+#     echo "expected 3 args, found $#."
+#     exit 1
+# fi
 
 ######## Arguments. ########
 
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+EXTRA_ARGS=""
 # . args.sh
 # . /home/lmcafee/src/megatrons/megatron-lm-main/scripts/args.sh
 . $DIR/../args_gen.sh "$@"
@@ -53,9 +54,9 @@ declare -A my_dict
 my_dict["standard_tasks"]=" --max_length=64 --json_shots='0,1,2' "
 my_dict["tydiqa_task_list"]=" --max_length=16 --json_shots='1,4' "
 
-# TASK_LIST="standard_tasks"
+TASK_LIST="standard_tasks"
 # TASK="abstract_narrative_understanding"
-# TASK="general_knowledge"
+TASK="general_knowledge"
 # TASK="human_organs_senses"
 # TASK="intent_recognition"
 # TASK="riddle_sense"
@@ -69,8 +70,8 @@ my_dict["tydiqa_task_list"]=" --max_length=16 --json_shots='1,4' "
 # TASK="date_understanding"
 # TASK="conlang_translation"
 
-TASK_LIST="tydiqa_task_list"
-TASK="tydiqa_goldp.ar"
+# TASK_LIST="tydiqa_task_list"
+# TASK="tydiqa_goldp.ar"
 # TASK="tydiqa_goldp.bn"
 # TASK="tydiqa_goldp.en"
 # TASK="tydiqa_goldp.fi"
@@ -92,7 +93,7 @@ TASK_OPTIONS=" \
    ${my_dict[$TASK_LIST]} \
    --undefok=sequence-parallel,recompute-activations,use-flash-attn,overlap-p2p-communication,apply-layernorm-1p,untie-embeddings-and-output-weights,disable-bias-linear,no-position-embedding,use-rotary-position-embeddings,rotary-percent,swiglu,attention-dropout,hidden-dropout,exit-duration-in-mins,tensor-model-parallel-size,pipeline-model-parallel-size,num-layers,hidden-size,num-attention-heads,seq-length,max-position-embeddings,micro-batch-size,global-batch-size,rampup-batch-size,train-samples,lr-decay-samples,lr-warmup-samples,lr,min-lr,lr-decay-style,log-interval,eval-iters,eval-interval,tokenizer-type,tokenizer-model,save-interval,load,split,clip-grad,weight-decay,adam-beta1,adam-beta2,init-method-std,log-params-norm,log-num-zeros-in-grad,bf16,DDP-impl,top_k,top_p,num-layers-per-virtual-pipeline-stage\
 \
-,norm-epsilon,no-masked-softmax-fusion,load-llama,no-load-optim,no-load-rng,fp16,gen-model,norm-type,exit-on-missing-checkpoint,use-checkpoint-args,no-query-key-layer-scaling,use-llama-rotary-emb,use-llama-qkv,use-llama-mlp,use-llama-matmul,use-llama-default-dtype"
+,norm-epsilon,no-masked-softmax-fusion,load-llama,no-load-optim,no-load-rng,fp16,gen-model,normalization,exit-on-missing-checkpoint,use-checkpoint-args,no-query-key-layer-scaling,use-llama-rotary-emb,use-llama-qkv,use-llama-mlp,use-llama-matmul,use-llama-default-dtype,_model_family,_model_type,_model_size"
 
 # please note that undefok needs to be defined properly by including all flags added in $options.
 # this solve the conflicts between `argparse` and `absl.flags`

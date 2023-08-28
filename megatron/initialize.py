@@ -49,11 +49,6 @@ def initialize_megatron(
 
     validate_args(args, args_defaults)
 
-    # >>> [llama]
-    if args.use_llama_default_dtype:
-        torch.set_default_tensor_type(torch.cuda.HalfTensor)
-    # <<<
-
     # set global args, build tokenizer, and set adlr-autoresume,
     # tensorboard-writer, and timers.
     set_global_variables(args)
