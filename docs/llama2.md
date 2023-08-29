@@ -138,4 +138,49 @@ If loading only for inference, the following must be set, but the values do not 
 
 # Benchmark results
 
-coming soon ...
+### Big Bench
+
+| bigbench / standard | 7b | 13b | 70b |
+| -- | -- | -- | -- |
+| date_understanding | 100.29% | 99.87% | 100.12% |
+| general_knowledge | 100.00% | 100.00% | 100.00% |
+| human_organs_senses | 100.00% | 100.00% | 100.00% |
+| intent_recognition | 100.00% | 99.89% | 100.00% |
+| riddle_sense | 100.00% | 100.00% | 100.00% |
+| similarities_abstraction | 100.00% | 100.58% | 100.00% |
+| simple_arithmetic_json_multiple_choice | 100.00% | 100.00% | 100.00% |
+| undo_permutation | 100.19% | 100.19% | 100.18% |
+
+### Multilingual
+
+| multilingual / xcopa | 7b  | 13b  | 70b |
+| -- | -- | -- | -- |
+| en-template-mGPT-remove-punctuation | 100.08% | 100.00% | 100.00% |
+| et-template-mGPT-remove-punctuation | 100.00% | 100.13% | 99.75% |
+| ht-template-mGPT-remove-punctuation | 99.74% | 100.13% | 99.74% |
+| id-template-mGPT-remove-punctuation | 100.11% | 100.00% | 99.81% |
+| it-template-mGPT-remove-punctuation | 100.00% | 99.90% | 99.91% |
+| qu-template-mGPT-remove-punctuation | 100.00% | 100.00% | 99.73% |
+| sw-template-mGPT-remove-punctuation | 100.14% | 99.87% | 99.87% |
+| th-template-mGPT-remove-punctuation | 99.75% | 99.87% | 100.13% |
+| tr-template-mGPT-remove-punctuation | 99.74% | 100.00% | 99.66% |
+| vi-template-mGPT-remove-punctuation | 100.00% | 100.11% | 100.00% |
+| zh-template-mGPT-remove-punctuation | 100.00% | 99.90% | 99.91% |
+
+### LM Evaluation Harness
+
+| lm-eval | 7b  | 13b  | 70b |
+| -- | -- | -- | -- |
+| boolq | 0.999615 | 0.999628 | 1.000718 |
+| hellaswag | 1.000174 | 1.000331 | 0.999695 |
+| piqa | 1 | 1 | 0.999332 |
+| winogrande | 1 | 1.001089 | 1.001965 |
+
+### MMLU
+
+| mmlu | 7b  | 13b  | 70b |
+| -- | -- | -- | -- |
+| stem [18]  | 1.007911 | 0.999483 | 0.99988 |
+| humanities [13]  | 0.998052 | 1.00013 | 0.999796 |
+| other (business, health, misc.) [14]  | 1.000791 | 0.999361 | 1.001164 |
+| social sciences [12]  | 1.003689 | 1.002129 | 0.99985 |
