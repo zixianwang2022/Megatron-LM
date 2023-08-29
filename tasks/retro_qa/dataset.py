@@ -20,6 +20,7 @@ from os import sendfile
 import torch
 import numpy as np
 from megatron import get_tokenizer, get_args
+import glob
 
 def format_question(question):
     args = get_args()
@@ -37,7 +38,7 @@ def format_answer(answer):
     return " {}".format(answer)
 
 """GPT ft dataset."""
-def preprocess(data_file, inference_only=False):
+def preprocess1(data_file, inference_only=False):
 
     args = get_args()
     if args.longform_answer:
@@ -78,6 +79,81 @@ def preprocess(data_file, inference_only=False):
                     answers = [instance["answer"]]
                 else:
                     raise ValueError("need to have answer or answers")
+            for answer in answers:
+                answer = format_answer(answer)
+                data.append((question, answer, neighbours))
+    
+    return data
+
+
+"""GPT ft dataset."""
+def preprocess(data_file, inference_only=False, retrieved_neighbours=True, fix_newsqa=False):
+
+    args = get_args()
+    assert args.ft_neighbours > 0 
+    if args.longform_answer:
+        nq_examples = []
+        with open(data_file, "r") as f:
+            for fn in f:
+                nq_examples.append(json.loads(fn))
+    else:
+        nq_examples = []
+        for my_data_file in sorted(glob.glob(data_file)):
+            with open(my_data_file, "r", encoding='utf-8') as f:
+                nq_examples.extend(json.load(f))
+    
+    data = []
+    for instance in nq_examples:
+        question = instance["question"]
+        if 'qa_type' in instance and instance['qa_type'] == "multi_choice_qa":
+            question = format_multichoice_question(question, instance["multichoice_options"])
+        if args.bert_retriever_neighbours:
+            contexts = instance["bert_pretrain_corpus_neighbours"]
+            neighbours = ["source: " + ctx for ctx in contexts]
+        else:
+            if retrieved_neighbours:
+                contexts = instance["ctxs"]
+                neighbours = ["title: " + ctx["title"] + ", source: " + ctx["text"] for ctx in contexts] 
+            else:
+                if "sub-paragraphs" in instance:
+                    neighbours = ["title: , source: " + instance["sub-paragraphs"]]
+                elif fix_newsqa and "sub_paragraph" in instance:
+                    neighbours = ["title: , source: " + instance["sub_paragraph"]]
+                else:
+                    neighbours = ["title: , source: "]
+
+        if inference_only:
+            data.append((question, None, neighbours))
+        else:
+            if args.longform_answer:
+                if "longform_answer" in instance:
+                    answers = [instance["longform_answer"]]
+                else:
+                    continue
+            else:
+                if "answers" in instance:
+                    answers = instance["answers"]
+                elif "answer" in instance:
+                    if type(instance["answer"]) is str:
+                        answers = [instance["answer"]]
+                    elif type(instance["answer"]) is list:
+                        answers = instance["answer"]
+                    else:
+                        answers = [str(instance["answer"])]
+                else:
+                    raise ValueError("need to have answer or answers")
+            if len(answers) < 1:
+                continue
+                # answers = ["This question cannot be answered based on the given information."]
+            else:
+                ## only take answer 0
+                if type(answers[0]) is dict:
+                    answers = [answers[0]["text"].strip()]
+                elif type(answers[0]) is str:
+                    answers = [answers[0]]
+                else:
+                    raise ValueError("unsupported type for answer(s)")
+
             for answer in answers:
                 answer = format_answer(answer)
                 data.append((question, answer, neighbours))
@@ -159,7 +235,7 @@ def count_stat(dataset, tokenizer):
 class RetroFtDataset(torch.utils.data.Dataset):
 
     def __init__(self, name, indexed_dataset, max_seq_length, 
-                 max_seq_length_dec=0):
+                 max_seq_length_dec=0, fewshot_list=None):
 
         # Params to store.
         self.dataset_name = name
@@ -172,6 +248,7 @@ class RetroFtDataset(torch.utils.data.Dataset):
         tokenizer = get_tokenizer()
         self.eos_id = tokenizer.eod
         self.pad_id = tokenizer.eod
+        self.fewshot_list = fewshot_list
 
         self.args = get_args()
 
@@ -191,12 +268,14 @@ class RetroFtDataset(torch.utils.data.Dataset):
                                 self.args.ft_neighbours,
                                 self.args.shuffle_topn)
         else:
-            return build_normal_training_sample(sample,
+            return build_normal_training_sample_v2(sample,
                                 self.max_seq_length,  # needed for padding
                                 self.pad_id, self.eos_id,
                                 self.dataset_name,
                                 self.args.ft_neighbours,
-                                self.args.shuffle_topn)
+                                self.args.shuffle_topn,
+                                self.fewshot_list)
+        
 
 def build_normal_training_sample(sample,
                           max_seq_length,
@@ -243,14 +322,84 @@ def build_normal_training_sample(sample,
     return train_sample
 
 
-def build_retro_training_sample(sample,
-                          max_seq_length,
-                          pad_id,
-                          eos_id,
-                          dataset_name,
-                          ft_neighbours=1):
-    """Build training sample for retro NQ.
-    """
+
+def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
+    max_output_len, tokenizer, max_seq_length):
+
+    # system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions based on the context. The assistant should also indicate when the answer cannot be found in the context.\n\n"
+
+    if dataset_name in ["oasst", "quiet_cockatoo"]:
+        input_tokens = tokenizer.tokenize(system + query)
+        # print(dataset_name, system + query)
+        return input_tokens
+
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "BioASQ", "DuoRC_ParaphraseRC", "TextbookQA"]
+    yes_no_without_context = ["boolq", "multirc"]
+    multichoices = ["race"]
+    # multi-turn qa datasets
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "quac", "qrecc", "sharc"]
+    user_template = ""
+
+    if dataset_name in formatted_dataset_name:
+        dialogue_turn = query
+    else:
+        if dataset_name in short_span_with_context:
+            user = "Answer the following question with a short span. {}".format(query)
+        elif dataset_name in yes_no_without_context:
+            user = "Answer the following question with True or False. {}".format(query)
+        elif dataset_name in multichoices:
+            user = "Answer the following question by selecting one of the provided options. {}".format(query)
+        else:
+            user = "Please give a full and complete answer for the question. {}".format(query)
+
+        dialogue_format="User: {}\n\nAssistant:"
+        dialogue_turn = dialogue_format.format(user)
+
+    if ft_neighbours > 0:
+        # if shuffle_topn:
+        #     import random
+        #     random.seed(1234)
+        #     random_neighbours = neighbours[0:ft_neighbours]
+        #     random.shuffle(random_neighbours)
+        #     neighbours = random_neighbours + neighbours[ft_neighbours:]
+        # Truncate to `max_sequence_length` to fit in output tokens.
+        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
+        context_tokens = tokenizer.tokenize(context)
+        dialogue_tokens = tokenizer.tokenize(dialogue_turn)
+        system_tokens = tokenizer.tokenize(system)
+        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
+        context = tokenizer.detokenize(context_tokens)
+
+        all_input = system + context + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+    else:
+        all_input = system + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+
+    return  input_tokens
+
+
+def build_normal_training_sample_v2(sample, max_seq_length, pad_id, eos_id, dataset_name, ft_neighbours=1, shuffle_topn=False, fewshot_list=None):
+    # unpack tokens
+    query, answer, neighbours = sample
+    
+    # tokenization
+    tokenizer = get_tokenizer()
+    output_tokens = tokenizer.tokenize(answer)
+
+    # input_tokens = reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
+    input_tokens = reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
+
+    # Padding
+    tokens, answer_mask = pad_and_convert_to_numpy(input_tokens, output_tokens, pad_id, max_seq_length, eos_id)
+
+    train_sample = {'text': tokens, 'answer_mask': answer_mask,}
+    return train_sample
+
+
+def build_retro_training_sample(sample, max_seq_length, pad_id, eos_id, dataset_name, ft_neighbours=1):
+    """Build training sample for retro NQ."""
 
     # unpack tokens
     query, answer, neighbours = sample

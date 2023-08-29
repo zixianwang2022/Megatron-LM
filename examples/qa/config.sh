@@ -1,4 +1,4 @@
-DATA_HOME="../../inform-retriever-msmarco"
+DATA_HOME="../../inform-retriever-sp"
 
 sample_input_file="${DATA_HOME}/data/$TASK/${split}.json"
 DATA_FOLDER="${DATA_HOME}/data/$TASK"
@@ -45,7 +45,7 @@ fi
 
 QA_HOME="$PWD/.."
 MOUNTS="/lustre/fsw/portfolios"
-PARTITION="batch_block1,batch_block2"
+PARTITION="batch_block1"
 LAUNCH="$ADLR_UTILS/mp_launch"
 
 
