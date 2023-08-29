@@ -138,7 +138,13 @@ If loading only for inference, the following must be set, but the values do not 
 
 # Benchmark results
 
+The tables below list the benchmark comparisons between native Llama-2 (using Meta's checkpoint and Meta's inference code) and Megatron (using a converted HF checkpoint and Megatron's inference code).
+
+All percentage results are computed as `<megatron-score> / <llama-score>`, where the type of score is detailed before each table.
+
 ### Big Bench
+
+Score type: multiple choice grade.
 
 | bigbench / standard | 7b | 13b | 70b |
 | -- | -- | -- | -- |
@@ -152,6 +158,8 @@ If loading only for inference, the following must be set, but the values do not 
 | undo_permutation | 100.19% | 100.19% | 100.18% |
 
 ### Multilingual
+
+Score type: multiple choice grade.
 
 | multilingual / xcopa | 7b  | 13b  | 70b |
 | -- | -- | -- | -- |
@@ -169,18 +177,24 @@ If loading only for inference, the following must be set, but the values do not 
 
 ### LM Evaluation Harness
 
+Score type: multiple choice grade.
+
 | lm-eval | 7b  | 13b  | 70b |
 | -- | -- | -- | -- |
-| boolq | 0.999615 | 0.999628 | 1.000718 |
-| hellaswag | 1.000174 | 1.000331 | 0.999695 |
-| piqa | 1 | 1 | 0.999332 |
-| winogrande | 1 | 1.001089 | 1.001965 |
+| boolq | 99.96% | 99.96% | 100.07% |
+| hellaswag | 100.02% | 100.03% | 99.97% |
+| piqa | 100.00% | 100.00% | 99.93% |
+| winogrande | 100.00% | 100.11% | 100.20% |
 
 ### MMLU
 
+Score type: multiple choice grade.
+
+Note: the number in brackets is the number of sub-tasks for each supercategory.
+
 | mmlu | 7b  | 13b  | 70b |
 | -- | -- | -- | -- |
-| stem [18]  | 1.007911 | 0.999483 | 0.99988 |
-| humanities [13]  | 0.998052 | 1.00013 | 0.999796 |
-| other (business, health, misc.) [14]  | 1.000791 | 0.999361 | 1.001164 |
-| social sciences [12]  | 1.003689 | 1.002129 | 0.99985 |
+| stem [18]  | 100.79% | 99.95% | 99.99% |
+| humanities [13]  | 99.81% | 100.01% | 99.98% |
+| other (business, health, misc.) [14]  | 100.08% | 99.94% | 100.11% |
+| social sciences [12]  | 100.37% | 100.21% | 99.99% |
