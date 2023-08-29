@@ -16,15 +16,6 @@ from tools.retro.utils import get_args_path as get_retro_args_path
 from megatron.core.transformer import TransformerConfig
 
 
-# >>>
-def _add_llama_args(parser):
-    group = parser.add_argument_group(title='llama')
-    group.add_argument("--_model_family", choices=["megatron", "llama", "hf"])
-    group.add_argument("--_model_type", choices=["text", "chat"])
-    group.add_argument("--_model_size", choices=["7b", "13b", "70b"])
-    return parser
-# <<<
-
 def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     """Parse all arguments."""
     parser = argparse.ArgumentParser(description='Megatron-LM Arguments',
@@ -48,9 +39,6 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     parser = _add_inference_args(parser)
     parser = _add_transformer_engine_args(parser)
     parser = _add_retro_args(parser)
-    # >>>
-    parser = _add_llama_args(parser)
-    # <<<
 
     # Custom arguments.
     if extra_args_provider is not None:
