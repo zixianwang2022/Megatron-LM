@@ -70,11 +70,7 @@ After this conversion, we are ready to load the checkpoints into a Megatron GPT 
 
 # Launch model
 
-Each model size (7B, 13B, and 70B) has its own set of hyperparameters, along with some common arguments that all the models share. The sections below details how to correctly set arguments to load the Llama-2 models.
-
-### Common args
-
-If loading for either inference or finetuning, use the folloing common arguments:
+If loading for either inference or finetuning, use the following arguments:
 
 ```
 --no-masked-softmax-fusion \
@@ -96,44 +92,6 @@ If loading for either inference or finetuning, use the folloing common arguments
 --use-rotary-position-embeddings \
 --normalization RMSNorm \
 --no-query-key-layer-scaling \
-```
-
-<!-- If loading only for inference, the following must be set, but the values do not matter: -->
-
-<!-- ``` -->
-<!-- --train-samples 1 \ -->
-<!-- --min-lr 3.0e-5 \ -->
-<!-- --lr 3.0e-4 \ -->
-<!-- --lr-decay-style cosine \ -->
-<!-- ``` -->
-
-### 7B args
-
-```
---hidden-size 4096 \
---num-attention-heads 32 \
---num-layers 32 \
---norm-epsilon 1e-05 \
-```
-
-### 13B args
-
-```
---hidden-size 5120 \
---num-attention-heads 40 \
---num-layers 40 \
---norm-epsilon 1e-05 \
-```
-
-### 70B args
-
-```
---hidden-size 8192 \
---group-query-attention \
---num-query-groups 8 \
---num-attention-heads 64 \
---num-layers 80 \
---norm-epsilon 1e-05 \
 ```
 
 # Benchmark results
