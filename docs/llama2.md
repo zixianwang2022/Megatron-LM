@@ -99,7 +99,7 @@ If loading for either inference or finetuning, use the following arguments:
 The tables below list the benchmark comparisons between native Llama-2 (using Meta's checkpoint and Meta's inference code) and Megatron (using a converted HF checkpoint and Megatron's inference code).
 
 <!-- All percentage results are computed as `<megatron-score> / <llama-score>`, where the type of score is detailed before each table. -->
-The values are the percent error between Megatron and Llama-2, calculated using the formula: `|<llama-score> - <megatron-score>| / <llama-score>`, where the type of score is detailed before each table. Across all tests (80 total per model size), the mean error is 0.15%.
+The values are the percent error between Megatron and Llama-2, calculated using the formula: `|<llama_score> - <megatron_score>| / <llama_score>`, where the type of score is detailed before each table. Across all tests (80 total per model size), the mean error is 0.15%.
 
 ### Big Bench
 
@@ -107,14 +107,6 @@ Score type: multiple choice grade.
 
 | bigbench / standard | 7b | 13b | 70b |
 | -- | -- | -- | -- |
-<!-- | date_understanding | 100.29% | 99.87% | 100.12% | -->
-<!-- | general_knowledge | 100.00% | 100.00% | 100.00% | -->
-<!-- | human_organs_senses | 100.00% | 100.00% | 100.00% | -->
-<!-- | intent_recognition | 100.00% | 99.89% | 100.00% | -->
-<!-- | riddle_sense | 100.00% | 100.00% | 100.00% | -->
-<!-- | similarities_abstraction | 100.00% | 100.58% | 100.00% | -->
-<!-- | simple_arithmetic_json_multiple_choice | 100.00% | 100.00% | 100.00% | -->
-<!-- | undo_permutation | 100.19% | 100.19% | 100.18% | -->
 | date_understanding | 0.29% | 0.13% | 0.12% |
 | general_knowledge | 0.00% | 0.00% | 0.00% |
 | human_organs_senses | 0.00% | 0.00% | 0.00% |
@@ -123,6 +115,14 @@ Score type: multiple choice grade.
 | similarities_abstraction | 0.00% | 0.58% | 0.00% |
 | simple_arithmetic_json_multiple_choice | 0.00% | 0.00% | 0.00% |
 | undo_permutation | 0.19% | 0.19% | 0.18% |
+<!-- | date_understanding | 100.29% | 99.87% | 100.12% | -->
+<!-- | general_knowledge | 100.00% | 100.00% | 100.00% | -->
+<!-- | human_organs_senses | 100.00% | 100.00% | 100.00% | -->
+<!-- | intent_recognition | 100.00% | 99.89% | 100.00% | -->
+<!-- | riddle_sense | 100.00% | 100.00% | 100.00% | -->
+<!-- | similarities_abstraction | 100.00% | 100.58% | 100.00% | -->
+<!-- | simple_arithmetic_json_multiple_choice | 100.00% | 100.00% | 100.00% | -->
+<!-- | undo_permutation | 100.19% | 100.19% | 100.18% | -->
 
 ### Multilingual
 
@@ -130,17 +130,6 @@ Score type: multiple choice grade.
 
 | multilingual / xcopa | 7b  | 13b  | 70b |
 | -- | -- | -- | -- |
-<!-- | en-template-mGPT-remove-punctuation | 100.08% | 100.00% | 100.00% | -->
-<!-- | et-template-mGPT-remove-punctuation | 100.00% | 100.13% | 99.75% | -->
-<!-- | ht-template-mGPT-remove-punctuation | 99.74% | 100.13% | 99.74% | -->
-<!-- | id-template-mGPT-remove-punctuation | 100.11% | 100.00% | 99.81% | -->
-<!-- | it-template-mGPT-remove-punctuation | 100.00% | 99.90% | 99.91% | -->
-<!-- | qu-template-mGPT-remove-punctuation | 100.00% | 100.00% | 99.73% | -->
-<!-- | sw-template-mGPT-remove-punctuation | 100.14% | 99.87% | 99.87% | -->
-<!-- | th-template-mGPT-remove-punctuation | 99.75% | 99.87% | 100.13% | -->
-<!-- | tr-template-mGPT-remove-punctuation | 99.74% | 100.00% | 99.66% | -->
-<!-- | vi-template-mGPT-remove-punctuation | 100.00% | 100.11% | 100.00% | -->
-<!-- | zh-template-mGPT-remove-punctuation | 100.00% | 99.90% | 99.91% | -->
 | en-template-mGPT-remove-punctuation | 0.08% | 0.00% | 0.00% |
 | et-template-mGPT-remove-punctuation | 0.00% | 0.13% | 0.25% |
 | ht-template-mGPT-remove-punctuation | 0.26% | 0.13% | 0.26% |
@@ -152,6 +141,17 @@ Score type: multiple choice grade.
 | tr-template-mGPT-remove-punctuation | 0.26% | 0.00% | 0.34% |
 | vi-template-mGPT-remove-punctuation | 0.00% | 0.11% | 0.00% |
 | zh-template-mGPT-remove-punctuation | 0.00% | 0.10% | 0.09% |
+<!-- | en-template-mGPT-remove-punctuation | 100.08% | 100.00% | 100.00% | -->
+<!-- | et-template-mGPT-remove-punctuation | 100.00% | 100.13% | 99.75% | -->
+<!-- | ht-template-mGPT-remove-punctuation | 99.74% | 100.13% | 99.74% | -->
+<!-- | id-template-mGPT-remove-punctuation | 100.11% | 100.00% | 99.81% | -->
+<!-- | it-template-mGPT-remove-punctuation | 100.00% | 99.90% | 99.91% | -->
+<!-- | qu-template-mGPT-remove-punctuation | 100.00% | 100.00% | 99.73% | -->
+<!-- | sw-template-mGPT-remove-punctuation | 100.14% | 99.87% | 99.87% | -->
+<!-- | th-template-mGPT-remove-punctuation | 99.75% | 99.87% | 100.13% | -->
+<!-- | tr-template-mGPT-remove-punctuation | 99.74% | 100.00% | 99.66% | -->
+<!-- | vi-template-mGPT-remove-punctuation | 100.00% | 100.11% | 100.00% | -->
+<!-- | zh-template-mGPT-remove-punctuation | 100.00% | 99.90% | 99.91% | -->
 
 ### LM Evaluation Harness
 
@@ -159,14 +159,14 @@ Score type: multiple choice grade.
 
 | lm-eval | 7b  | 13b  | 70b |
 | -- | -- | -- | -- |
-<!-- | boolq | 99.96% | 99.96% | 100.07% | -->
-<!-- | hellaswag | 100.02% | 100.03% | 99.97% | -->
-<!-- | piqa | 100.00% | 100.00% | 99.93% | -->
-<!-- | winogrande | 100.00% | 100.11% | 100.20% | -->
 | boolq | 0.04% | 0.04% | 0.07% |
 | hellaswag | 0.02% | 0.03% | 0.03% |
 | piqa | 0.00% | 0.00% | 0.07% |
 | winogrande | 0.00% | 0.11% | 0.20% |
+<!-- | boolq | 99.96% | 99.96% | 100.07% | -->
+<!-- | hellaswag | 100.02% | 100.03% | 99.97% | -->
+<!-- | piqa | 100.00% | 100.00% | 99.93% | -->
+<!-- | winogrande | 100.00% | 100.11% | 100.20% | -->
 
 ### MMLU
 
@@ -176,11 +176,11 @@ Note: the number in brackets is the number of sub-tasks for each supercategory.
 
 | mmlu | 7b  | 13b  | 70b |
 | -- | -- | -- | -- |
-<!-- | stem [18]  | 100.79% | 99.95% | 99.99% | -->
-<!-- | humanities [13]  | 99.81% | 100.01% | 99.98% | -->
-<!-- | other (business, health, misc.) [14]  | 100.08% | 99.94% | 100.11% | -->
-<!-- | social sciences [12]  | 100.37% | 100.21% | 99.99% | -->
 | stem [18]  | 0.79% | 0.05% | 0.01% |
 | humanities [13]  | 0.19% | 0.01% | 0.02% |
 | other (business, health, misc.) [14]  | 0.08% | 0.06% | 0.12% |
 | social sciences [12]  | 0.37% | 0.21% | 0.01% |
+<!-- | stem [18]  | 100.79% | 99.95% | 99.99% | -->
+<!-- | humanities [13]  | 99.81% | 100.01% | 99.98% | -->
+<!-- | other (business, health, misc.) [14]  | 100.08% | 99.94% | 100.11% | -->
+<!-- | social sciences [12]  | 100.37% | 100.21% | 99.99% | -->
