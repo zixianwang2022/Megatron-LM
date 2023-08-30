@@ -73,7 +73,6 @@ After this conversion, we are ready to load the checkpoints into a Megatron GPT 
 If loading for either inference or finetuning, use the following arguments:
 
 ```
---no-masked-softmax-fusion \
 --tensor-model-parallel-size ${TP} \
 --pipeline-model-parallel-size 1 \
 --seq-length 4096 \
@@ -88,9 +87,10 @@ If loading for either inference or finetuning, use the following arguments:
 --fp16 \
 --DDP-impl local \
 --untie-embeddings-and-output-weights \
---no-position-embedding \
 --use-rotary-position-embeddings \
 --normalization RMSNorm \
+--no-position-embedding \
+--no-masked-softmax-fusion \
 --no-query-key-layer-scaling \
 ```
 
