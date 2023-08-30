@@ -78,10 +78,11 @@ class OptimizerParamScheduler(object):
         """Learning rate decay functions from:
               https://openreview.net/pdf?id=BJYwwY9ll pg. 4"""
 
-        # Use linear warmup for the initial part.
+        # Use linear warmup for the initial part. change it to adapt to tian's pi finetune
         if self.lr_warmup_steps > 0 and self.num_steps <= self.lr_warmup_steps:
-            return self.max_lr * float(self.num_steps) / \
-                float(self.lr_warmup_steps)
+            # return self.max_lr * float(self.num_steps) / \
+            #     float(self.lr_warmup_steps)
+            return 0.1 * self.max_lr + (self.max_lr - 0.1 * self.max_lr) * min(1, self.num_steps / self.lr_warmup_steps)
 
         # If the learning rate is constant, just return the initial value.
         if self.lr_decay_style == 'constant':
