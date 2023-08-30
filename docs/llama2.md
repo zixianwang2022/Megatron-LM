@@ -98,14 +98,14 @@ If loading for either inference or finetuning, use the folloing common arguments
 --no-query-key-layer-scaling \
 ```
 
-If loading only for inference, the following must be set, but the values do not matter:
+<!-- If loading only for inference, the following must be set, but the values do not matter: -->
 
-```
---train-samples 1 \
---min-lr 3.0e-5 \
---lr 3.0e-4 \
---lr-decay-style cosine \
-```
+<!-- ``` -->
+<!-- --train-samples 1 \ -->
+<!-- --min-lr 3.0e-5 \ -->
+<!-- --lr 3.0e-4 \ -->
+<!-- --lr-decay-style cosine \ -->
+<!-- ``` -->
 
 ### 7B args
 
