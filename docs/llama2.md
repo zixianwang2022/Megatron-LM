@@ -97,11 +97,11 @@ If loading for either inference or finetuning, use the following arguments:
 
 ### Launch Meta
 
-See: https://github.com/facebookresearch/llama
+Meta checkpoints can be launched with: https://github.com/facebookresearch/llama
 
 ### Launch Huggingface
 
-See: https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py
+Huggingface checkpoints can be launched with: https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py
 
 # Benchmark results
 
