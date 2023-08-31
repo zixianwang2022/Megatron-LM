@@ -397,7 +397,7 @@ class SAMViTBackbone(MegatronModule):
             p1=self.num_patches_per_dim_h,
             p2=self.num_patches_per_dim_h,
         )
-        hidden_states = self.neck(hidden_states).flatten(2)
+        hidden_states = self.neck(hidden_states).flatten(2).transpose(1, 2)
         torch.cuda.nvtx.range_pop()
         return hidden_states
 

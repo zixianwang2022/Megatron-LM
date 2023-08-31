@@ -85,7 +85,7 @@ class ParallelAffineLayer(MegatronModule):
         # Project input_dim to output_dim.
         self.dense = tensor_parallel.ColumnParallelLinear(
             args.visual_output_size,
-            config.hidden_size * 2 if args.swiglu else output_dim,
+            config.hidden_size,
             config=config,
             bias=self.add_bias,
             gather_output=False,
@@ -95,36 +95,14 @@ class ParallelAffineLayer(MegatronModule):
 
         self.bias_gelu_fusion = False
         self.activation_func = None
-        self.swiglu = args.swiglu
+        self.swiglu = False
 
-        if args.openai_gelu:
-            self.activation_func = openai_gelu
-        elif args.onnx_safe:
-            self.activation_func = erf_gelu
-        elif args.swiglu:
-            def swiglu(x):
-                x = torch.chunk(x, 2, dim=-1)
-                return F.silu(x[0]) * x[1]
-            self.activation_func = swiglu
-        elif args.squared_relu:
-            def squared_relu(x):
-                return torch.pow(F.relu(x), 2)
-            self.activation_func = squared_relu
-        else:
-            self.bias_gelu_fusion = args.bias_gelu_fusion
-            self.activation_func = F.gelu
 
     def forward(self, hidden_states):
         affine_parallel, bias_parallel = self.dense(hidden_states)
 
-        if self.bias_gelu_fusion:
-            assert self.add_bias is True
-            assert self.activation_func == F.gelu
-            affine_parallel = bias_gelu_impl(affine_parallel, bias_parallel)
-        else:
-            if bias_parallel is not None:
-                affine_parallel = affine_parallel + bias_parallel
-            affine_parallel = self.activation_func(affine_parallel)
+        if bias_parallel is not None:
+            affine_parallel = affine_parallel + bias_parallel
         return affine_parallel
 
 class ParallelMLP(MegatronModule):

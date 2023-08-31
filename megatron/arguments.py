@@ -201,7 +201,7 @@ def validate_args(args, defaults={}):
             args.visual_hidden_size = 768
             args.visual_ffn_hidden_size = 3072
             args.visual_num_attention_heads = 12
-            args.visual_output_size = 3072
+            args.visual_output_size = 256
             args.window_size = 14
             args.quickgelu = False
         elif args.visual_arch == "SAM_L":
@@ -210,7 +210,7 @@ def validate_args(args, defaults={}):
             args.visual_hidden_size = 1024
             args.visual_ffn_hidden_size = 4096
             args.visual_num_attention_heads = 16
-            args.visual_output_size = 4096
+            args.visual_output_size = 256
             args.window_size = 14
             args.quickgelu = False
 
