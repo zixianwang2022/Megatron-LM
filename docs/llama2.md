@@ -16,10 +16,9 @@ The following sections detail these steps. The final section lists benchmark res
     * [Meta format](#meta-format)
     * [Huggingface format](#huggingface-format)
   * [Launch model](#launch-model)
-    * [Common args](#common-args)
-    * [7B args](#7b-args)
-    * [13B args](#13b-args)
-    * [70B args](#70b-args)
+    * [Megatron](#launch-megatron)
+    * [Meta](#launch-meta)
+    * [Huggingface](#launch-hf)
   * [Benchmark results](#benchmark-results)
 
 # Download Meta or Huggingface checkpoints
@@ -70,6 +69,8 @@ After this conversion, we are ready to load the checkpoints into a Megatron GPT 
 
 # Launch model
 
+### Launch Megatron
+
 If loading for either inference or finetuning, use the following arguments:
 
 ```
@@ -93,6 +94,14 @@ If loading for either inference or finetuning, use the following arguments:
 --no-masked-softmax-fusion \
 --no-query-key-layer-scaling \
 ```
+
+### Launch Meta
+
+See: https://github.com/facebookresearch/llama
+
+### Launch Huggingface
+
+See: https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py
 
 # Benchmark results
 
