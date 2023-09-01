@@ -107,8 +107,11 @@ Huggingface checkpoints can be launched with: https://github.com/huggingface/tra
 
 The tables below list the benchmark comparisons between native Llama-2 (using Meta's checkpoint and Meta's inference code) and Megatron (using a converted HF checkpoint and Megatron's inference code).
 
-<!-- All percentage results are computed as `<megatron-score> / <llama-score>`, where the type of score is detailed before each table. -->
-The values are the percent error between Megatron and Llama-2, calculated using the formula: `|<llama_score> - <megatron_score>| / <llama_score>`, where the type of score is detailed before each table. Across all tests (80 total per model size), the mean error is 0.15%.
+The values are the percent error between Megatron and Llama-2, calculated using the formula: `|<llama_score> - <megatron_score>| / <llama_score>`, where the type of score is detailed before each table. Across all tests (80 total per model size), the mean error is 0.15%. The small difference in benchmark scores between the two models is due to minor arithmetic differences in implementation that alter the numerics slightly. Some of the factors that influence this difference include:
+
+- Megatron performs batch matrix multiplications in a couple places, such as within self attention and in SwiGLU, that Llama performs separately.
+- Megatron uses `torch.baddbmm` within self attention, versus Llama using `torch.matmul`.
+- Llama calls `torch.set_default_dtype(torch.float16)` during initialization, which Megatron does not.
 
 ### Big Bench
 
