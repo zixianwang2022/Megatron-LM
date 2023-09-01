@@ -111,6 +111,7 @@ The values are the percent error between Megatron and Llama-2, calculated using 
 
 - Megatron performs batch matrix multiplications in a couple places, such as within self attention and in SwiGLU, that Llama performs separately.
 - Megatron uses `torch.baddbmm` within self attention, versus Llama using `torch.matmul`.
+- Megatron uses a `sin`/`cos` implementation for rotary position embeddings, versus Llama using a `polar`/`complex` implementation.
 - Llama calls `torch.set_default_dtype(torch.float16)` during initialization, which Megatron does not.
 
 ### Big Bench
