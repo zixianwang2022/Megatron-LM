@@ -401,7 +401,7 @@ def setup_model_and_optimizer(model_provider_func,
 
     unwrapped_model = unwrap_model(model,
                                    (torchDDP, LocalDDP, Float16Module))
-    
+
     if visual_model:
         unwrapped_visual_model = unwrap_model(visual_model,
                                        (torchDDP, LocalDDP, Float16Module))
@@ -744,9 +744,9 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     # Turn on training mode which enables dropout.
     for model_module in model:
         model_module.train()
-    
+
     if visual_model:
-        visual_model.train()  
+        visual_model.train()
 
     if visual_model:
         visual_model.train()

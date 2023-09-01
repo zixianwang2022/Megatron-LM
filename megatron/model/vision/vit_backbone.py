@@ -159,20 +159,14 @@ class CLIPViTBackbone(MegatronModule):
         args = get_args()
         super(CLIPViTBackbone, self).__init__(config=config, share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
 
-        # if args.init_method_xavier_uniform:
-        #     self.init_method = torch.nn.init.xavier_uniform_
-        #     self.scaled_init_method = torch.nn.init.xavier_uniform_
-        # else:
-        #     self.init_method = init_method_normal(args.init_method_std)
-        #     self.scaled_init_method = scaled_init_method_normal(
-        #         args.init_method_std, args.visual_num_layers
-        #     )
-        if config.init_method is None:
-            config.init_method = init_method_normal(config.init_method_std)
-
-        if config.output_layer_init_method is None:
-            config.output_layer_init_method = scaled_init_method_normal(config.init_method_std,
-                                                                    config.num_layers)
+        if args.init_method_xavier_uniform:
+            self.init_method = torch.nn.init.xavier_uniform_
+            self.scaled_init_method = torch.nn.init.xavier_uniform_
+        else:
+            self.init_method = init_method_normal(args.init_method_std)
+            self.scaled_init_method = scaled_init_method_normal(
+                args.init_method_std, args.visual_num_layers
+            )
 
         self.pre_process = pre_process
         self.post_process = post_process
@@ -290,7 +284,7 @@ class CLIPViTBackbone(MegatronModule):
         if self.single_token_output:
             hidden_states = hidden_states[:,0,:]
 
-        return hidden_states.transpose(0, 1).contiguous()
+        return hidden_states.contiguous()
 
 class SAMViTBackbone(MegatronModule):
     """Vision SAM Model."""
