@@ -38,11 +38,15 @@ from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 from megatron.text_generation.flamingo_api import flamingo_generate_and_post_process, flamingo_beam_search_and_post_process
 from megatron.model.vision.vit_backbone import CLIPViTBackbone, SAMViTBackbone
 from megatron.model import DistributedDataParallel as LocalDDP
+from megatron.arguments import core_transformer_config_from_args
+
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
     print_rank_0('building Flamingo model ...')
+    config = core_transformer_config_from_args(get_args())
     model = FlamingoModel(
+        config,
         num_tokentypes=0,
         parallel_output=True,
         pre_process=pre_process,
@@ -52,12 +56,12 @@ def model_provider(pre_process=True, post_process=True):
     
 def visual_model_provider(visual_arch, pre_process=True, post_process=False):
     """Build the visual model."""
-    
+    config = core_transformer_config_from_args(get_args())
     if visual_arch.startswith("SAM"):
-        visual_model = SAMViTBackbone(pre_process=pre_process, 
+        visual_model = SAMViTBackbone(config, pre_process=pre_process, 
                                    post_process=post_process)
     else:
-        visual_model = CLIPViTBackbone(pre_process=pre_process, 
+        visual_model = CLIPViTBackbone(config, pre_process=pre_process, 
                                    post_process=post_process)
 
     print_rank_0('building visual model....')
@@ -213,7 +217,7 @@ def generate_samples_unconditional(model, visual_model):
             prompt=sentences[np.random.randint(len(sentences))]
 
             max_len = args.out_seq_length
-            
+
             token_embs = torch.from_numpy(eval_imgs[cnt].reshape(-1, 3, args.img_h, args.img_w)).cuda()
 
             token_embs = visual_model(token_embs)
@@ -308,8 +312,8 @@ def main():
     args.bf16 = bf16
 
     if args.load is not None:
-        _ = load_checkpoint(model, None, None, load_iter=args.load_iter)
-        load_visual_checkpoint(visual_model[0], load_iter=args.load_iter)
+        _ = load_checkpoint(model, None, None)#, load_iter=args.load_iter)
+        load_visual_checkpoint(visual_model[0])#, load_iter=args.load_iter)
 
     model = model[0]
     visual_model = visual_model[0]

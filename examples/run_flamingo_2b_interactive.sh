@@ -23,7 +23,7 @@ DATA_VALID="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_val_mmda
 
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_15"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${DIR}/GPT4-prompts.json"
@@ -51,14 +51,14 @@ options=" \
     --max-position-embeddings 4096 \
     --cyclic-train-iters 100000000 \
     --train-samples 131072 \
-    --micro-batch-size 32 \
-    --global-batch-size 256 \
+    --micro-batch-size 16 \
+    --global-batch-size 128 \
     --lr-decay-samples 25600000 \
     --lr-warmup-samples 83200 \
     --lr 2.0e-5 \
     --min-lr 2.0e-6 \
     --lr-decay-style cosine \
-    --log-interval 100 \
+    --log-interval 1 \
     --eval-iters 10 \
     --eval-interval 1000 \
     --tokenizer-type GPTSentencePieceTokenizer \
@@ -77,6 +77,7 @@ options=" \
     --adam-beta2 0.95 \
     --init-method-std 0.014 \
     --add-gated-xattn \
+    --xattn_everyk 1 \
     --add-BOS \
     --visual-arch ${VISUAL_ARCH} \
     --visual-path ${VISUAL_LOAD_DIR} \
@@ -91,10 +92,9 @@ options=" \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
-    --img-h 336 \
-    --img-w 336 \
+    --img-h 224 \
+    --img-w 224 \
     --dataloader-type cyclic --no-data-sharding \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
 torchrun --nproc-per-node 8 ${DIR}/pretrain_flamingo.py ${options}
-

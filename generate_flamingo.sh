@@ -3,24 +3,23 @@
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NAME="flamingo-2b-pretrain-1e-5-coco-debug-fixsam-noact"
+NAME="flamingo-2b-1node-COCO-overfit"
 
-CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/flamingo-checkpoints/${NAME}"
+CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
 
 dataset="GPT"
 samples=1000
 task="captioning"
 
-EVAL_PATH="./coco_test"
-resolution=1024
-VISUAL_ARCH="SAM_L"
-VISUAL_TYPE="sam"
+EVAL_PATH="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO/coco_train"
+resolution=224
+VISUAL_ARCH="L_14"
+VISUAL_TYPE="vit"
 VISUAL_DIR="${CHECKPOINT_DIR}/${VISUAL_TYPE}"
 
 iter=30000
 
 python generation/generate_samples_flamingo.py \
-       --use-container-fused-kernels \
        --use-flash-attn \
        --apply-layernorm-1p \
        --untie-embeddings-and-output-weights \
@@ -38,10 +37,9 @@ python generation/generate_samples_flamingo.py \
        --hidden-size 2048 \
        --num-attention-heads 16 \
        --max-position-embeddings 4096 \
-       --no-masked-softmax-fusion \
        --load ${CHECKPOINT_DIR} \
        --tokenizer-type GPTSentencePieceTokenizer \
-       --tokenizer-model /lustre/fsw/adlr/adlr-nlp/zhuoliny/new-nvllm/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
+       --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
        --bf16 \
        --micro-batch-size 1 \
        --seq-length 256 \
