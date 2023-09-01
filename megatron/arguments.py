@@ -183,6 +183,8 @@ def validate_args(args, defaults={}):
             args.visual_ffn_hidden_size = 4096
             args.visual_num_attention_heads = 16
             args.visual_output_size = 1024
+            args.v_jitter = 0
+            args.crop_middle = False
             if args.img_h == 336:
                 args.quickgelu = False
             else:
@@ -617,7 +619,7 @@ def _add_network_size_args(parser):
     group.add_argument('--visual-path', type=str, default=None,
                        help='Path for pretrained visual model.')
     group.add_argument('--visual-arch', type=str, default=None,
-                       help='Visual model architecture. [B/32, L/14, G/14, SAM_B, SAM_L]')
+                       help='Visual model architecture. [B_32, L_14, G_14, SAM_B, SAM_L]')
     group.add_argument('--visual-type', type=str, default=None,
                        help='Visual model type. [vit, sam]')
     group.add_argument('--visual-hidden_size', type=int, default=None,

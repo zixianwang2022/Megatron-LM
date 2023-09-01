@@ -5,14 +5,14 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=256
 
-NAME="flamingo-2b-debug-interactive"
+NAME="flamingo-2b-COCO-overfit-interactive"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 mkdir -p $DIR/logs
 
-FINETUNE_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/flamingo-checkpoints/${NAME}"
+FINETUNE_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
 CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/checkpoints/${LOAD_NAME}"
 
 TENSORBOARD_DIR="$DIR/tensorboard/${NAME}"
@@ -21,9 +21,9 @@ mkdir -p ${TENSORBOARD_DIR}
 DATA_TRAIN="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_train_mmdata_512sl_256k_vocab"
 DATA_VALID="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_val_mmdata_512sl_256k_vocab_mmdata"
 
-VISUAL_ARCH="SAM_L"
-VISUAL_TYPE="sam"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
+VISUAL_ARCH="L_14"
+VISUAL_TYPE="vit"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_15"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${DIR}/GPT4-prompts.json"
@@ -51,8 +51,8 @@ options=" \
     --max-position-embeddings 4096 \
     --cyclic-train-iters 100000000 \
     --train-samples 131072 \
-    --micro-batch-size 1 \
-    --global-batch-size 4 \
+    --micro-batch-size 32 \
+    --global-batch-size 256 \
     --lr-decay-samples 25600000 \
     --lr-warmup-samples 83200 \
     --lr 2.0e-5 \
@@ -91,10 +91,10 @@ options=" \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
-    --img-h 1024 \
-    --img-w 1024 \
+    --img-h 336 \
+    --img-w 336 \
     --dataloader-type cyclic --no-data-sharding \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
-python -u ${DIR}/pretrain_flamingo.py ${options}
+torchrun --nproc-per-node 8 ${DIR}/pretrain_flamingo.py ${options}
 

@@ -150,22 +150,29 @@ class CLIPViTBackbone(MegatronModule):
     """Vision Transformer Model."""
 
     def __init__(self,
+                 config,
                  pre_process=True,
                  post_process=True,
                  class_token=True,
                  single_token_output=False,
                  drop_path_rate=0.0):
-        super(CLIPViTBackbone, self).__init__(share_word_embeddings=False)
         args = get_args()
+        super(CLIPViTBackbone, self).__init__(config=config, share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
 
-        if args.init_method_xavier_uniform:
-            self.init_method = torch.nn.init.xavier_uniform_
-            self.scaled_init_method = torch.nn.init.xavier_uniform_
-        else:
-            self.init_method = init_method_normal(args.init_method_std)
-            self.scaled_init_method = scaled_init_method_normal(
-                args.init_method_std, args.visual_num_layers
-            )
+        # if args.init_method_xavier_uniform:
+        #     self.init_method = torch.nn.init.xavier_uniform_
+        #     self.scaled_init_method = torch.nn.init.xavier_uniform_
+        # else:
+        #     self.init_method = init_method_normal(args.init_method_std)
+        #     self.scaled_init_method = scaled_init_method_normal(
+        #         args.init_method_std, args.visual_num_layers
+        #     )
+        if config.init_method is None:
+            config.init_method = init_method_normal(config.init_method_std)
+
+        if config.output_layer_init_method is None:
+            config.output_layer_init_method = scaled_init_method_normal(config.init_method_std,
+                                                                    config.num_layers)
 
         self.pre_process = pre_process
         self.post_process = post_process
@@ -224,12 +231,14 @@ class CLIPViTBackbone(MegatronModule):
 
         # Transformer
         self.transformer = ParallelTransformer(
-            self.init_method,
-            self.scaled_init_method,
+            config,
+            model_type=args.model_type,
             pre_process=self.pre_process,
             post_process=self.post_process,
             drop_path_rate=self.drop_path_rate,
-            is_vit=True
+            is_vit=True,
+            # use_rel_pos=True,
+            # window_size=self.window_size
         )
 
     def set_input_tensor(self, input_tensor):
@@ -273,7 +282,8 @@ class CLIPViTBackbone(MegatronModule):
         else:
             hidden_states = input
 
-        hidden_states = self.pre_layernorm(hidden_states, visual_layer_norm=True)
+        #hidden_states = self.pre_layernorm(hidden_states, visual_layer_norm=True)
+        hidden_states = self.pre_layernorm(hidden_states)
 
         hidden_states = self.transformer(hidden_states, None)
 

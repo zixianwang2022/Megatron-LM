@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=1
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:revilm-2b-profile
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:revilm-2b-COCO-overfit
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=256
 
-NAME="flamingo-2b-1node-profile"
+NAME="flamingo-2b-1node-COCO-overfit"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -35,9 +35,9 @@ mkdir -p ${TENSORBOARD_DIR}
 DATA_TRAIN="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_train_mmdata_512sl_256k_vocab"
 DATA_VALID="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_val_mmdata_512sl_256k_vocab_mmdata"
 
-VISUAL_ARCH="SAM_L"
-VISUAL_TYPE="sam"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/old_SAM_L_16"
+VISUAL_ARCH="L_14"
+VISUAL_TYPE="vit"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_15"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -66,8 +66,8 @@ options=" \
     --max-position-embeddings 4096 \
     --cyclic-train-iters 100000000 \
     --train-samples 131072 \
-    --micro-batch-size 1 \
-    --global-batch-size 8 \
+    --micro-batch-size 32 \
+    --global-batch-size 256 \
     --lr-decay-samples 25600000 \
     --lr-warmup-samples 83200 \
     --lr 2.0e-5 \
@@ -106,16 +106,15 @@ options=" \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
-    --img-h 1024 \
-    --img-w 1024 \
+    --img-h 336 \
+    --img-w 336 \
     --dataloader-type cyclic --no-data-sharding \
     --tensorboard-dir ${TENSORBOARD_DIR} \
     --profile \
     --profile-step-start 10 \
     --profile-step-end 13"
 
-#run_cmd="nsys profile -w true -t cuda,nvtx,osrt,cudnn,cublas -s cpu  --capture-range=cudaProfilerApi --capture-range-end=stop --cudabacktrace=true -x true -o ${SOURCE}/2b_profile python -u ${SOURCE}/pretrain_flamingo.py ${options}"
-run_cmd="${SCRIPTS_DIR}/bind.sh --cpu=${SCRIPTS_DIR}/dgxa100_ccx.sh --mem=${SCRIPTS_DIR}/dgxa100_ccx.sh nsys profile -w true -t cuda,nvtx,osrt,cudnn,cublas -s cpu  --capture-range=cudaProfilerApi --capture-range-end=stop --cudabacktrace=true -x true -o ${SOURCE}/2b_profile python -u ${SOURCE}/pretrain_flamingo.py ${options}"
+run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
