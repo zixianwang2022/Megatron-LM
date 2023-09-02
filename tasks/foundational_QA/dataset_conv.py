@@ -216,6 +216,11 @@ class FtDataset(torch.utils.data.Dataset):
                                 self.dataset_name,
                                 self.args.ft_neighbours,
                                 self.args.shuffle_topn)
+        elif "flan" in self.dataset_name.lower(): # for flan, we use simple input/output training
+            return build_simple_io_training_sample(sample,
+                                self.max_seq_length,  # needed for padding
+                                self.pad_id, self.eos_id,
+                                self.dataset_name)
         else:
             return build_normal_training_sample_v2(sample,
                                 self.max_seq_length,  # needed for padding
@@ -223,6 +228,33 @@ class FtDataset(torch.utils.data.Dataset):
                                 self.dataset_name,
                                 self.args.ft_neighbours,
                                 self.args.shuffle_topn)
+
+def build_simple_io_training_sample(sample,
+                          max_seq_length,
+                          pad_id,
+                          eos_id,
+                          dataset_name):
+
+    # unpack tokens
+    query, answer, neighbours = sample
+
+    # tokenization
+    tokenizer = get_tokenizer()
+
+    input_tokens = tokenizer.tokenize(query)
+    output_tokens = tokenizer.tokenize(answer)
+
+    # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)
+    # Padding
+    tokens, answer_mask \
+        = pad_and_convert_to_numpy(input_tokens, output_tokens,
+                                   pad_id, max_seq_length, eos_id)
+
+    train_sample = {
+        'text': tokens,
+        'answer_mask': answer_mask,
+    }
+    return train_sample
 
 def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
     max_output_len, tokenizer, max_seq_length):
