@@ -65,8 +65,7 @@ if [[ $model_card == *quiet_cockatoo* ]]; then
     PRETRAINED_CHECKPOINT=$quiet_cockatoo
 fi
 
-
-if [[ -d "$CHECKPOINT_PATH" ]]; then
+if [[ -f "$CHECKPOINT_PATH/latest_checkpointed_iteration.txt" ]]; then
     options="$options \
         --load $CHECKPOINT_PATH "
 else
