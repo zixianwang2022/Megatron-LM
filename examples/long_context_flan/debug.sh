@@ -36,7 +36,7 @@ OUTPUT_ARGS="--log-interval 1 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --eval-iters 2"
 
-. ./examples/foundational_qa/${blend_name}.sh
+. ./examples/long_context_flan/${blend_name}.sh
 
 options=" \
     $GPT_ARGS \

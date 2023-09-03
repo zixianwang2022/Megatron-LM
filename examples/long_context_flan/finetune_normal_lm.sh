@@ -37,7 +37,7 @@ OUTPUT_ARGS="--log-interval 10 \
              --log-validation-ppl-to-tensorboard \
              --eval-iters 20"
 
-. ./examples/foundational_qa/${blend_name}.sh
+. ./examples/long_context_flan/${blend_name}.sh
 
 options=" \
     $GPT_ARGS \

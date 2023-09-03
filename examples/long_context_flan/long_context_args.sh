@@ -48,6 +48,7 @@ GPT_ARGS="--apply-layernorm-1p \
         --log-num-zeros-in-grad \
         --bf16 \
 	--use-distributed-optimizer \
+	--exit-duration-in-mins 230 \
         --DDP-impl local"
         # --weight-decay 1.0e-1
         # --lr-decay-iters 10000 \
