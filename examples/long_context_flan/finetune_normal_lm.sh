@@ -21,7 +21,7 @@ if [[ $model_size == "8b" ]]; then
 fi
 
 if [[ $model_size == "43b" ]]; then
-    num_nodes=64
+    num_nodes=32
     min_lr=0.00000001
 fi
 
@@ -84,4 +84,5 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
 echo ${run_cmd}
-submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude luna-0534,luna-0253,luna-0377 # --dependent_clones 1
+export SUBMIT_ACCOUNT=llmservice_nlp_fm
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude luna-0534,luna-0253,luna-0377  --dependent_clones 5
