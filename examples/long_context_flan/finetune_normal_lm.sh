@@ -7,6 +7,7 @@ global_bsz=$3
 lr=$4
 model_card=$5
 
+task=None
 train_iters=43000
 
 . ./examples/long_context_flan/long_context_args.sh
