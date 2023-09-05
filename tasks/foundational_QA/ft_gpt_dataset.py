@@ -13,8 +13,8 @@ from megatron.core import mpu
 from megatron.data.blendable_dataset import BlendableDataset
 from megatron.data.dataset_utils import get_datasets_weights_and_num_samples
 from megatron.data.dataset_utils import get_train_valid_test_split_
-from dataset_conv import FtDataset as SFTDataset
-from dataset_conv import get_processed_dataset
+from tasks.foundational_QA.dataset_conv import FtDataset as SFTDataset
+from tasks.foundational_QA.dataset_conv import get_processed_dataset
 # from dataset import FtDataset as SFTDataset
 # from dataset import get_processed_dataset
 

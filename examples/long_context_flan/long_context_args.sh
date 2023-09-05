@@ -57,6 +57,7 @@ if [[ ${model_card} == *itp-16k*  ]]; then
     GPT_ARGS="$GPT_ARGS \
     --seq-length 16384 \
     --max-position-embeddings 16384 \
+    --max-tokens-to-oom 16384 \
     --rotary-seq-len-interpolation-factor 4 \
     --distributed-timeout-minutes 30"
 
@@ -64,6 +65,7 @@ elif [[ ${model_card} == *itp-32k*  ]]; then
     GPT_ARGS="$GPT_ARGS \
     --seq-length 32768 \
     --max-position-embeddings 32768 \
+    --max-tokens-to-oom 32768 \
     --recompute-activations \
     --rotary-seq-len-interpolation-factor 8 \
     --distributed-timeout-minutes 30"
