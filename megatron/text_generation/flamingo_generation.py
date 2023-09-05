@@ -37,7 +37,7 @@ def flamingo_score_and_return_on_first_stage(model, tokens, lengths, vision_inpu
         lengths: original prompt length, size: [b]
     Note: Outside of model, other parameters only need to be available on
           rank 0.
-    Outputs: 
+    Outputs:
         output_log_probs: log probability of the selected tokens. size: [b, s]
     """
 
@@ -77,20 +77,20 @@ def flamingo_score_and_return_on_first_stage(model, tokens, lengths, vision_inpu
             # Always the last stage should have an output.
             assert logits is not None
             log_probs = F.log_softmax(logits, dim=2)
-            
+
             # Pick the tokens that we need to get the log
             # probabilities for. Note that next input token is
             # the token which we selected in the current logits,
             # so shift by 1.
             indices = torch.unsqueeze(tokens[:, 1:], 2)
             output_log_probs = torch.gather(log_probs, 2, indices).squeeze(2)
-    
+
     # ======================================
     # Broadcast to the first pipeline stage.
     # ======================================
     output_log_probs = broadcast_from_last_to_first_pipeline_stage(
         output_log_probs_size, torch.float32, output_log_probs)
-    
+
     return tokens, lengths, output_log_probs
 
 def flamingo_generate_tokens_probs_and_return_on_first_stage(
@@ -176,7 +176,7 @@ def flamingo_generate_tokens_probs_and_return_on_first_stage(
     # Run infernece
     # =============
 
- 
+
     with torch.no_grad():
         attention_mask, position_ids = _build_attention_mask_and_position_ids(
             tokens)
@@ -191,7 +191,7 @@ def flamingo_generate_tokens_probs_and_return_on_first_stage(
 
             attention_mask2use = attention_mask[
                 ..., prev_context_length:context_length, :context_length]
-            
+
             # logits will be meanigful only in the last pipeline stage.
             logits = forward_step(tokens2use, positions2use, attention_mask2use, vision_inputs)
             if mpu.is_pipeline_last_stage():
@@ -295,7 +295,7 @@ def flamingo_beam_search_and_return_on_first_stage(model, tokens, lengths, beam_
     prompt_length = lengths.item()
     final_sequence_length = tokens.size(1)
     final_sequence_length = min(final_sequence_length, args.max_position_embeddings)
-    
+
     # If the context is too big, this happens
     if prompt_length >= final_sequence_length:
         raise ValueError("context length + tokens_to_generate too large")
@@ -366,12 +366,12 @@ def flamingo_beam_search_and_return_on_first_stage(model, tokens, lengths, beam_
 
                 if beam_hyp.is_done(best_scores.max().item(), context_length + 1 - prompt_length):
                     done = torch.ones(1, dtype=torch.uint8, device=torch.cuda.current_device())
-            
+
                 best_batches = tokens.new([item[2] for item in next_beams])
                 tokens = tokens[best_batches,:]
                 tokens[:, context_length] = tokens.new([item[0] for item in next_beams])
                 scores = scores.new([item[1] for item in next_beams]).unsqueeze(1)
-          
+
             # torch.distributed.barrier()
             done = broadcast_from_last_pipeline_stage(1, torch.uint8, done)
             if done:

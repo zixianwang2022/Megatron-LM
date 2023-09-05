@@ -53,15 +53,15 @@ def model_provider(pre_process=True, post_process=True):
         post_process=post_process
     )
     return model
-    
+
 def visual_model_provider(visual_arch, pre_process=True, post_process=False):
     """Build the visual model."""
     config = core_transformer_config_from_args(get_args())
     if visual_arch.startswith("SAM"):
-        visual_model = SAMViTBackbone(config, pre_process=pre_process, 
+        visual_model = SAMViTBackbone(config, pre_process=pre_process,
                                    post_process=post_process)
     else:
-        visual_model = CLIPViTBackbone(config, pre_process=pre_process, 
+        visual_model = CLIPViTBackbone(config, pre_process=pre_process,
                                    post_process=post_process)
 
     print_rank_0('building visual model....')
@@ -239,7 +239,7 @@ def generate_samples_unconditional(model, visual_model):
                                                top_k_sampling=args.top_k,
                                                top_p_sampling=args.top_p,
                                                add_BOS=False,
-                                               temperature=1.0, 
+                                               temperature=1.0,
                                                vision_inputs=token_embs)
 
             #resp_sentences[0] = resp_sentences[0].replace("\n", " ")
@@ -303,13 +303,13 @@ def main():
     args = get_args()
 
     model = get_model(model_provider, wrap_with_ddp=False)
-    fp16 = args.fp16
-    bf16 = args.bf16
-    args.fp16 = False
-    args.bf16 = False
+    # fp16 = args.fp16
+    # bf16 = args.bf16
+    # args.fp16 = False
+    # args.bf16 = False
     visual_model = get_model(visual_model_provider, visual_arch=args.visual_arch, wrap_with_ddp=False)
-    args.fp16 = fp16
-    args.bf16 = bf16
+    # args.fp16 = fp16
+    # args.bf16 = bf16
 
     if args.load is not None:
         _ = load_checkpoint(model, None, None)#, load_iter=args.load_iter)

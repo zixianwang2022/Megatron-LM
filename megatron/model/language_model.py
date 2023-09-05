@@ -597,6 +597,10 @@ class TransformerLanguageModel(MegatronModule):
             else:
                 rotary_pos_emb = self.rotary_pos_emb(self.seq_length)
 
+        # NOTE(jbarker): This is a temp hack to make sure we only
+        # the rotary pos embs for the current context
+        rotary_pos_emb = rotary_pos_emb[:encoder_input.shape[0]]
+
         # Run encoder.
         if enc_hidden_states is None:
             if self.encoder is not None:

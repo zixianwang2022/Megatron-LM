@@ -32,7 +32,7 @@ class InferenceParams:
         "swap between batches"
         if len(self.key_value_memory_dict) == 0:
             raise ValueError("should not swap when dict in empty")
-        
+
         for layer_number in self.key_value_memory_dict.keys():
             inference_key_memory, inference_value_memory = self.key_value_memory_dict[layer_number]
             assert len(batch_idx) == inference_key_memory.shape[1] ## make sure batch size is the same
