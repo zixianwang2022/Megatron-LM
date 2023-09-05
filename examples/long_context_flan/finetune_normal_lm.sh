@@ -7,7 +7,7 @@ global_bsz=$3
 lr=$4
 model_card=$5
 
-task=None
+TASK=None
 train_iters=43000
 
 . ./examples/long_context_flan/long_context_args.sh
@@ -42,6 +42,10 @@ OUTPUT_ARGS="--log-interval 10 \
 
 options=" \
     $GPT_ARGS \
+    --weight-decay 0.1 \
+    --lr-decay-style cosine \
+    --adam-beta1 0.9 \
+    --adam-beta2 0.95 \
     --data-path ${DATA_BLEND} \
     --data-folder ${data_folder} \
     --sequence-parallel \
@@ -86,4 +90,4 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo ${run_cmd}
 export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude luna-0534,luna-0253,luna-0377  --dependent_clones 5
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude luna-0534,luna-0253,luna-0377  # --dependent_clones 5
