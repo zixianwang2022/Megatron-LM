@@ -47,8 +47,8 @@ GPT_ARGS="--apply-layernorm-1p \
         --log-params-norm \
         --log-num-zeros-in-grad \
         --bf16 \
-	--use-distributed-optimizer \
-	--exit-duration-in-mins 230 \
+        --use-distributed-optimizer \
+        --exit-duration-in-mins 230 \
         --DDP-impl local"
         # --weight-decay 1.0e-1
         # --lr-decay-iters 10000 \
@@ -77,6 +77,6 @@ fi
 
 FT_ARGS="--eod-mask-loss \
     --answer-loss-only \
-    --task None"
+    --task $TASK"
 
 DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
