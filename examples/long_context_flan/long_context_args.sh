@@ -20,6 +20,9 @@ if [[ $model_size == "43b" ]]; then
     if [[ $model_card == *itp-32k* ]]; then
         mod_par=16
     fi
+    if [[ $model_card == *quiet_cockatoo* ]]; then
+        pip_par=1
+    fi
 fi
 
 GPT_ARGS="--apply-layernorm-1p \
@@ -45,6 +48,7 @@ GPT_ARGS="--apply-layernorm-1p \
         --bf16 \
         --use-distributed-optimizer \
         --exit-duration-in-mins 230 \
+        --task $TASK \
         --DDP-impl local"
         # --weight-decay 1.0e-1
         # --lr-decay-iters 10000 \
@@ -62,7 +66,6 @@ elif [[ ${model_card} == *itp-32k*  ]]; then
     --seq-length 32768 \
     --max-position-embeddings 32768 \
     --max-tokens-to-oom 32768 \
-    --recompute-activations \
     --rotary-seq-len-interpolation-factor 8 \
     --distributed-timeout-minutes 30"
 else
@@ -74,7 +77,11 @@ fi
 
 
 FT_ARGS="--eod-mask-loss \
-    --answer-loss-only \
-    --task $TASK"
+    --answer-loss-only"
+
+if [[ ${model_card} == *itp-32k*  ]]; then
+    FT_ARGS="$FT_ARGS \
+    --recompute-activations"
+fi
 
 DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"

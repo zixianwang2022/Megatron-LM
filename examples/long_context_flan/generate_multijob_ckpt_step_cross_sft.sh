@@ -63,8 +63,7 @@ COMMAND="$COMMAND \
        $GPT_ARGS \
        $GEN_ARGS \
        --load $CHECKPOINT_PATH \
-       --micro-batch-size $micro_bsz \
-       $FT_ARGS"
+       --micro-batch-size $micro_bsz"
 
 if [[ $use_retrieved_neighbours ]]; then
         COMMAND+=" --use-retrieved-neighbours "
@@ -80,5 +79,5 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo $COMMAND
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 1
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 2
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 
