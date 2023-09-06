@@ -325,6 +325,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
     formatted_dataset_name = ["doc2dial"]
+    summary_dataset_name = ["gov_report", "summ_screen_fd"]
     user_template = ""
 
     ## fix bug format for formatted text, no change
@@ -335,6 +336,8 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
             user = "Answer the following question with a short span. {}".format(query)
         elif dataset_name in yes_no_without_context:
             user = "Answer the above question with True or False. {}".format(query)
+        elif dataset_name in summary_dataset_name:
+            user = "Summarize the passage above."
         else:
             user = "Please give a full and complete answer for the question. {}".format(query)
 
