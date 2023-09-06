@@ -84,12 +84,14 @@ class ParallelAffineLayer(MegatronModule):
 
         # Project input_dim to output_dim.
         self.dense = tensor_parallel.RowParallelLinear( 
-            input_dim,
-            output_dim,
-            bias=default_bias,
-            init_method=init_method,
-            skip_bias_add=True,
-            **_args_to_kwargs())
+            args.visual_output_size,
+            config.hidden_size,
+            config=config,
+            init_method=config.output_layer_init_method,
+            bias=self.add_bias,
+            input_is_parallel=True
+        )
+
         self.bias_gelu_fusion = False
         self.activation_func = None
         self.swiglu = False
