@@ -30,7 +30,9 @@ from megatron.model import GPTModel
 from megatron.training import get_model
 from megatron.text_generation import generate_and_post_process, beam_search_and_post_process
 from tasks.foundational_QA.finetune_gpt_with_pretrain import get_tasks_args
-from tasks.long_context_QA.long_context_dataset import preprocess, format_query
+# from tasks.long_context_QA.long_context_dataset import preprocess, format_query
+from tasks.foundational_QA.dataset_conv import preprocess
+from tasks.foundational_QA.dataset_conv import reformat_prompt_v2
 import numpy as np
 import time
 # from tasks.prompt_learning.task_datasets import e2e_format_query, xsum_format_s
@@ -137,7 +139,8 @@ def generate_samples_conditional(model):
                     query, _, neighbours = sample
                     tokenizer = get_tokenizer()
 
-                    input_tokens = format_query(args.task.split(".")[0], neighbours, query, args.seq_length, tokenizer, args.out_seq_length)
+                    # input_tokens = format_query(args.task.split(".")[0], neighbours, query, args.seq_length, tokenizer, args.out_seq_length)
+                    input_tokens = reformat_prompt_v2(query, neighbours, args.task.split(".")[0], args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
                     raw_text = tokenizer.detokenize(input_tokens)
                     print(raw_text)
                 else:
