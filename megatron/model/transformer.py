@@ -83,16 +83,13 @@ class ParallelAffineLayer(MegatronModule):
         self.add_bias = config.add_bias_linear
 
         # Project input_dim to output_dim.
-        self.dense = tensor_parallel.ColumnParallelLinear(
-            args.visual_output_size,
-            config.hidden_size,
-            config=config,
-            bias=self.add_bias,
-            gather_output=False,
-            init_method=config.init_method,
+        self.dense = tensor_parallel.RowParallelLinear( 
+            input_dim,
+            output_dim,
+            bias=default_bias,
+            init_method=init_method,
             skip_bias_add=True,
-        )
-
+            **_args_to_kwargs())
         self.bias_gelu_fusion = False
         self.activation_func = None
         self.swiglu = False
@@ -103,6 +100,7 @@ class ParallelAffineLayer(MegatronModule):
 
         if bias_parallel is not None:
             affine_parallel = affine_parallel + bias_parallel
+        
         return affine_parallel
 
 class ParallelMLP(MegatronModule):
@@ -614,12 +612,13 @@ class ParallelAttention(MegatronModule):
 
 
             self.key_value = tensor_parallel.ColumnParallelLinear(
-                self.hidden_size if not args.visual_hidden_size else args.visual_hidden_size,
+                self.hidden_size if not is_vit else args.visual_hidden_size,
                 2 * projection_size,
                 config=config,
                 init_method=config.init_method,
                 bias=config.add_bias_linear or is_vit,
                 gather_output=False)
+
 
         self.core_attention = CoreAttention(self.layer_number, config,
                                             is_vit=self.is_vit, window_size=self.window_size,
@@ -721,7 +720,7 @@ class ParallelAttention(MegatronModule):
         else:
             # Attention heads [sk, b, h] --> [sk, b, (np * 2 * hn)]
             mixed_kv_layer, _ = self.key_value(encoder_output)
-
+            
             # [sk, b, (np * 2 * hn)] --> [sk, b, np, 2 * hn]
             new_tensor_shape = mixed_kv_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,

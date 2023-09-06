@@ -490,6 +490,8 @@ class ColumnParallelLinear(torch.nn.Module):
         else:
             self.weight = None
 
+        print(self.weight.shape, self.input_size)
+        print("*****")
         if bias:
             if config.use_cpu_initialization:
                 self.bias = Parameter(torch.empty(
