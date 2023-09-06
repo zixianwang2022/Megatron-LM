@@ -28,8 +28,10 @@ from megatron.initialize import initialize_megatron
 from megatron.model import GPTModel
 from megatron.training import get_model
 from megatron.text_generation import generate_and_post_process, beam_search_and_post_process
+#from finetune_gpt_with_pretrain import get_tasks_args
 from main import get_tasks_args
-from dataset import preprocess, pad_neighbours_for_query_only
+from dataset import reformat_prompt_v2, preprocess
+from dataset import load_incontext_fewshot_samples, reformat_prompt_with_fewshot_samples
 import time
 # from tasks.prompt_learning.task_datasets import e2e_format_query, xsum_format_s
 
@@ -41,9 +43,6 @@ def model_provider(pre_process=True, post_process=True):
     model = GPTModel(num_tokentypes=0, parallel_output=False,
                      pre_process=pre_process, post_process=post_process)
 
-    if getattr(args, 'prefix_tuning', False):
-        print_rank_0('building prefix tuning model ...')
-        model = PrefixTuningModel("tbd", model, args.shallow)
     return model
 
 def add_text_generate_args(parser):
@@ -65,6 +64,8 @@ def add_text_generate_args(parser):
     group.add_argument("--sample-input-file", type=str, default=None,
                        help='Get input from file instead of interactive mode, '
                        'each line is an input.')
+    group.add_argument("--fewshot-input-file", type=str, default=None,
+                       help='Get in-context few-shot input from file')
     group.add_argument("--sample-output-file", type=str, default=None,
                        help='Output file got from --sample-input-file')
     group.add_argument("--num-samples", type=int, default=0,
@@ -93,6 +94,13 @@ def add_text_generate_args(parser):
                         help='project size for adapters')
     group.add_argument('--ckpt-step', type=int, default=None,
                         help='setting ckpt step manually')
+    group.add_argument("--use-retrieved-neighbours", action='store_true', default=False,
+                       help='Use retrieved neighbours')
+    
+    # in-context few-shot
+    group.add_argument("--incontext-fewshot", default=False, action='store_true', help="use in-context few-shot")
+    group.add_argument("--n-shot", type=int, default=None, help='number of fewshot samples')
+
     return parser
 
 def generate_samples_conditional(model):
@@ -103,17 +111,17 @@ def generate_samples_conditional(model):
     model.eval()
     if torch.distributed.get_rank() == 0:
 
-        data = preprocess(args.sample_input_file, inference_only=True)
+        data = preprocess(args.sample_input_file, inference_only=True, retrieved_neighbours=args.use_retrieved_neighbours)
         print("total rows {}".format(len(data)))
-        all_raw_text = [item[0] for item in data]
-        all_neighbours = [item[-1] for item in data]
-        all_raw_text = all_raw_text[args.gen_start_idx:] ## start fron gen_start_idx
-        all_neighbours = all_neighbours[args.gen_start_idx:]
+        all_data = data[args.gen_start_idx:] ## start fron gen_start_idx
         if args.num_gen > 0:
-            all_raw_text = all_raw_text[:args.num_gen] ## end at number of gen
-            all_neighbours = all_neighbours[:args.num_gen]
-        input_count = len(all_raw_text)
+            all_data = all_data[:args.num_gen]
+        input_count = len(all_data)
         input_pos = 0
+
+        if args.incontext_fewshot:
+            # load incontext fewshot samples
+            fewshot_list = load_incontext_fewshot_samples(args.fewshot_input_file, args.n_shot)
 
     if args.beam_search:
         assert args.micro_batch_size == 1
@@ -131,37 +139,30 @@ def generate_samples_conditional(model):
                     print("reach the last row")
                     break
                 else:
-                    raw_text = all_raw_text[input_pos]
-                    neighbours = all_neighbours[input_pos]
+                    sample = all_data[input_pos]
                 input_pos += 1
-                
+
                 valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'iternal', 'carmanual', 'nvit', 'tcs', 'sandia']
                 if args.task.lower() in valid_tasks or any([x in args.task.lower() for x in valid_tasks]):
                     max_target_len = args.out_seq_length
                     # disable it for GPT for now
                     # neighbours_array = pad_neighbours_for_query_only(args, [tokenizer.tokenize(neighbour) for neighbour in neighbours], tokenizer.eod, args.ft_neighbours)
-                    if args.ft_neighbours > 0:
-                        if args.shuffle_topn:
-                            import random
-                            random.seed(1234)
-                            random_neighbours = neighbours[0:args.ft_neighbours]
-                            random.shuffle(random_neighbours)
-                            neighbours = random_neighbours + neighbours[args.ft_neighbours:]
-                        if args.add_retriever: ## should be reverse order or not
-                            raw_text = "\n".join(neighbours[0:args.ft_neighbours][::-1]) + "\n" + raw_text
-                            raw_text = tokenizer.detokenize(tokenizer.tokenize(raw_text)[-(args.seq_length - max_target_len):])
-                        else:
-                            q_len = len(tokenizer.tokenize(raw_text))
-                            trun_neighbours = tokenizer.detokenize(tokenizer.tokenize("\n".join(neighbours[0:args.ft_neighbours]))[:(args.seq_length - max_target_len - q_len - 1)])
-                            raw_text = trun_neighbours + "\n" + raw_text
-                        ## to do: cut neighbours to max_len
+                    query, _, neighbours = sample
+                    tokenizer = get_tokenizer()
+
+                    if args.incontext_fewshot:
+                        input_tokens = reformat_prompt_with_fewshot_samples(query, neighbours, args.task, args.ft_neighbours, fewshot_list, max_target_len, tokenizer, args.seq_length)
+                    else:
+                        input_tokens = reformat_prompt_v2(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
+                    # input_tokens = reformat_prompt_v1(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
+                    raw_text = tokenizer.detokenize(input_tokens)
                     print(raw_text)
                 else:
                     raise ValueError("invalid arg for task")
                 sentences.append(raw_text)
                 # n_arrays.append(neighbours_array)
             # neighbours_array = np.array(n_arrays)
-            max_len = args.out_seq_length
+
             if args.beam_search:
                 neighbours_array = neighbours_array.repeat(args.beam_size, axis=0)
                 resp_sentences, resp_sentences_seg, scores = \
@@ -192,7 +193,9 @@ def generate_samples_conditional(model):
                 datum = generation[len(prompt):]
                 if "<|endoftext|>" in datum:
                     datum = datum[:datum.find("<|endoftext|>")].strip()
-                datum = datum.replace("\n", " ")
+                if "\n" in datum:
+                    datum = datum.split("\n", 1)[0]
+                # datum = datum.replace("\n", " ")
                 # print("len of tokens", len(token))
                 print(datum)
                 yield datum
@@ -256,4 +259,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-

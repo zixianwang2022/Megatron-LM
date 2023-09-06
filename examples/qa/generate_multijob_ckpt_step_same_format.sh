@@ -45,10 +45,10 @@ DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
 # COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/prompt_learning/text_generation.py \
 # COMMAND="python -u ${DIR}/tasks/retro_qa/text_generation.py \
 
-COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/retro_qa/text_generation.py"
+COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/retro_qa/text_generation_conv.py"
 
 if [[ $model_size == "43b" ]]; then
-   COMMAND="$LAUNCH python -u ${DIR}/tasks/retro_qa/text_generation.py"
+   COMMAND="$LAUNCH python -u ${DIR}/tasks/retro_qa/text_generation_conv.py"
 fi
 
 COMMAND="$COMMAND \

@@ -555,3 +555,101 @@ def pad_and_convert_to_numpy(input_ids, output_ids,
     answer_mask = np.array(answer_mask, dtype=np.int64)
 
     return tokens, answer_mask
+
+def load_incontext_fewshot_samples(data_file, n_shot):
+    with open(data_file, "r") as f:
+        data_list = json.load(f)
+
+    assert len(data_list) >= n_shot
+    data_list = data_list[:n_shot]
+    
+    return data_list
+
+def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_neighbours, fewshot_list, \
+    max_output_len, tokenizer, max_seq_length, multiturn_max_fewshot=3):
+
+    # system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions based on the context. The assistant should also indicate when the answer cannot be found in the context.\n\n"
+    
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "BioASQ", "DuoRC_ParaphraseRC", "TextbookQA"]
+    yes_no_without_context = ["boolq", "multirc"]
+    multichoices = ["race"]
+    # multi-turn qa datasets
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "quac", "qrecc", "sharc"]
+    user_template = ""
+
+    if dataset_name in formatted_dataset_name:
+        instruction = None
+        dialogue_turn = query
+    else:
+        if dataset_name in short_span_with_context:
+            # user = "Answer the following question with a short span. {}".format(query)
+            instruction = "Answer the following question with a short span."
+            user = instruction + " " + query
+        elif dataset_name in yes_no_without_context:
+            # user = "Answer the following question with True or False. {}".format(query)
+            instruction = "Answer the following question with True or False."
+            user = instruction + " " + query
+        elif dataset_name in multichoices:
+            instruction = "Answer the following question by selecting one of the provided options."
+            user = instruction + " " + query
+        else:
+            # user = "Please give a full and complete answer for the question. {}".format(query)
+            instruction = "Please give a full and complete answer for the question."
+            user = instruction + " " + query
+
+        dialogue_format="User: {}\n\nAssistant:"
+        dialogue_turn = dialogue_format.format(user)
+
+    multiturn_dataset_name = formatted_dataset_name + ["quiet_cockatoo"]
+    if dataset_name in multiturn_dataset_name:
+        fewshot_list = fewshot_list[:multiturn_max_fewshot]
+
+    fewshot_prompt = "Here are some question answer samples between user and assistant:\n\n"
+    for i, item in enumerate(fewshot_list):
+        question = item['question']
+        answer = item['answer']
+        if question.endswith("\n\nAssistant:"):
+            assert instruction is None
+            formatted_sample = question + " " + answer
+        else:
+            assert instruction is not None
+            formatted_sample = "User: " + instruction + " " + question + "\n\nAssistant: " + answer
+
+        fewshot_prompt += "Sample %d:\n\n" % (i+1)
+        fewshot_prompt += formatted_sample + "\n\n"
+    fewshot_prompt += "Assistant should follow the answer formats from the aboved samples and give a response to the following user's question.\n\n"
+
+    if dataset_name in ["oasst", "quiet_cockatoo"]:
+        # input_tokens = tokenizer.tokenize(system + query)
+        input_tokens = tokenizer.tokenize(system + fewshot_prompt + query)
+        # print(dataset_name, system + query)
+        return input_tokens
+    
+    if ft_neighbours > 0:
+        # if shuffle_topn:
+        #     import random
+        #     random.seed(1234)
+        #     random_neighbours = neighbours[0:ft_neighbours]
+        #     random.shuffle(random_neighbours)
+        #     neighbours = random_neighbours + neighbours[ft_neighbours:]
+        # Truncate to `max_sequence_length` to fit in output tokens.
+        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
+        context_tokens = tokenizer.tokenize(context)
+        dialogue_tokens = tokenizer.tokenize(dialogue_turn)
+        system_tokens = tokenizer.tokenize(system)
+        fewshot_tokens = tokenizer.tokenize(fewshot_prompt)
+        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(fewshot_tokens) - len(system_tokens)]
+        context = tokenizer.detokenize(context_tokens)
+
+        ## already try to put fewshot_prompt between system and context, results are not good
+        all_input = system + context + fewshot_prompt + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+    else:
+        all_input = system + fewshot_prompt + dialogue_turn
+        input_tokens = tokenizer.tokenize(all_input)
+
+    # print(dataset_name, all_input)
+
+    return  input_tokens
+
