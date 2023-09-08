@@ -45,15 +45,13 @@ fi
 
 QA_HOME="$PWD/.."
 MOUNTS="/lustre/fsw/portfolios"
-PARTITION="batch_block1"
+PARTITION="batch_block1,batch_block2,batch_block3,batch_block4,backfill_block2,backfill_block3"
 LAUNCH="$ADLR_UTILS/mp_launch"
-
 
 NAME="gpt3-${model_size}-multi-1.1t-gtc"
 if [[ ${model_size} == "843m" ]]; then
     NAME="gpt3-843m-multi-1.1t-gtc-llr"
 fi
-
 if [[ ${model_size} == "43b" ]]; then
     NAME="gpt3-43b-multi-1.1t-gtc/tp8pp4"
 fi
@@ -90,5 +88,9 @@ fi
 if [[ ${model_card} == *-pp1-v8 ]]; then
     ## multiturn-blend (non-commercial)
     PRETRAINED_CHECKPOINT="/lustre/fsw/portfolios/llmservice/projects/llmservice_nlp_retro/inform-base-checkpoints/v8"
+fi
+if [[ ${model_card} == *-pp1-v9 ]]; then
+    ## multiturn-blend (commercial)
+    PRETRAINED_CHECKPOINT="/lustre/fsw/portfolios/llmservice/projects/llmservice_nlp_retro/inform-base-checkpoints/v9"
 fi
 TOKENIZER_MODEL="/lustre/fsw/portfolios/adlr/projects/adlr_nlp_llmnext/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model"

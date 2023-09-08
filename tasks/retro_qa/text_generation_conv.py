@@ -155,6 +155,7 @@ def generate_samples_conditional(model):
                     else:
                         input_tokens = reformat_prompt_v2(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
                     # input_tokens = reformat_prompt_v1(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
+                    print(input_tokens)
                     raw_text = tokenizer.detokenize(input_tokens)
                     print(raw_text)
                 else:
@@ -193,9 +194,9 @@ def generate_samples_conditional(model):
                 datum = generation[len(prompt):]
                 if "<|endoftext|>" in datum:
                     datum = datum[:datum.find("<|endoftext|>")].strip()
-                if "\n" in datum:
-                    datum = datum.split("\n", 1)[0]
-                # datum = datum.replace("\n", " ")
+                if "\n\n" in datum:
+                    datum = datum.split("\n\n", 1)[0]
+                datum = datum.replace("\n", " ")
                 # print("len of tokens", len(token))
                 print(datum)
                 yield datum
