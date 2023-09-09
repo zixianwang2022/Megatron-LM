@@ -17,10 +17,10 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
 # Runs the "345M" parameter model
-DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NNODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port $MASTER_PORT"
+DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NNODES"
 
 # Run for 100 iterations
-python -m torch.distributed.launch $DISTRIBUTED_ARGS \
+torchrun $DISTRIBUTED_ARGS \
        pretrain_bert.py \
        --use-checkpoint-args \
        --use-checkpoint-opt_param-scheduler \
@@ -43,7 +43,6 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS \
        --load $CHECKPOINT_PATH \
        --data-path $DATA_PATH \
        --vocab-file /workspace/data/bert_data/vocab.txt \
-       --data-impl mmap \
        --split 949,50,1 \
        --distributed-backend nccl \
        --lr 0.0001 \
@@ -61,7 +60,7 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS \
 echo 50 > $CHECKPOINT_PATH/latest_checkpointed_iteration.txt
 
 # Resume from 50th iteration ckpt and continue to 100 iterations
-python -m torch.distributed.launch $DISTRIBUTED_ARGS \
+torchrun $DISTRIBUTED_ARGS \
        pretrain_bert.py \
        --use-checkpoint-args \
        --use-checkpoint-opt_param-scheduler \
@@ -84,7 +83,6 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS \
        --load $CHECKPOINT_PATH \
        --data-path $DATA_PATH \
        --vocab-file /workspace/data/bert_data/vocab.txt \
-       --data-impl mmap \
        --split 949,50,1 \
        --distributed-backend nccl \
        --lr 0.0001 \

@@ -13,6 +13,7 @@ from megatron.checkpointing import load_checkpoint
 from megatron.initialize import initialize_megatron
 from megatron.model import GPTModel
 from megatron.training import get_model
+from megatron.arguments import core_transformer_config_from_args
 from megatron.text_generation_server import MegatronServer
 from megatron.text_generation import generate_and_post_process
 from megatron.text_generation import beam_search_and_post_process
@@ -21,8 +22,10 @@ import torch
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
+    config = core_transformer_config_from_args(get_args())
+
     print_rank_0('building GPT model ...')
-    model = GPTModel(num_tokentypes=0, parallel_output=False, pre_process=pre_process, post_process=post_process)
+    model = GPTModel(config, num_tokentypes=0, parallel_output=False, pre_process=pre_process, post_process=post_process)
 
     return model
 
@@ -37,6 +40,8 @@ def add_text_generate_args(parser):
                        help='Top k sampling.')
     group.add_argument("--out-seq-length", type=int, default=1024,
                        help='Size of the output generated text.')
+    group.add_argument("--port", type=int, default=5000,
+                       help='port for text generation server to run on')
     return parser
 
 
@@ -50,6 +55,9 @@ if __name__ == "__main__":
     if args.num_layers_per_virtual_pipeline_stage is not None:
         print("Interleaved pipeline schedule is not yet supported for text generation.")
         exit()
+    print_rank_0("WARNING: Forcing exit_on_missing_checkpoint to True for text "
+                 "generation.")
+    args.exit_on_missing_checkpoint = True
     # Set up model and load checkpoint
     model = get_model(model_provider, wrap_with_ddp=False)
 
@@ -60,7 +68,7 @@ if __name__ == "__main__":
     model = model[0]
     if mpu.is_pipeline_first_stage() and mpu.get_tensor_model_parallel_rank() == 0:
         server = MegatronServer(model)
-        server.run("0.0.0.0")
+        server.run("0.0.0.0",port=args.port)
 
     while True:
         choice = torch.cuda.LongTensor(1)
