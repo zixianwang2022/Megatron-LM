@@ -33,17 +33,23 @@ from finetune_gpt_with_pretrain import get_tasks_args
 from dataset_conv import reformat_prompt_v2, preprocess, reformat_prompt_v1
 import numpy as np
 import time
+from megatron.arguments import core_transformer_config_from_args
 # from tasks.prompt_learning.task_datasets import e2e_format_query, xsum_format_s
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
-    args = get_args()
     print_rank_0('building GPT model ...')
-    model = GPTModel(num_tokentypes=0, parallel_output=False,
-                     pre_process=pre_process, post_process=post_process)
-
+    config = core_transformer_config_from_args(get_args())
+    model = GPTModel(
+        config,
+        num_tokentypes=0,
+        parallel_output=False,
+        pre_process=pre_process,
+        post_process=post_process
+    )
     return model
+
 
 def add_text_generate_args(parser):
     """Text generation arguments."""

@@ -18,6 +18,7 @@ from megatron.model import GPTModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from megatron.utils import average_losses_across_data_parallel_group
+from megatron.arguments import core_transformer_config_from_args
 
 def get_tasks_args(parser):
     """Provide extra arguments required for tasks."""
@@ -83,7 +84,9 @@ def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
     print_rank_0('building GPT model ...')
+    config = core_transformer_config_from_args(get_args())
     model = GPTModel(
+        config,
         num_tokentypes=0,
         parallel_output=True,
         pre_process=pre_process,
