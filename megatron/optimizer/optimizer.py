@@ -268,6 +268,10 @@ class MegatronOptimizer(ABC):
                     if getattr(param, 'sequence_parallel', False):
                         grad = param.main_grad if args.DDP_impl == 'local' else param.grad
                         grads.append(grad.data)
+            
+            # print("grads:")
+            # print(grads)
+            # if len(grads) > 0:
             coalesced = _flatten_dense_tensors(grads)
             torch.distributed.all_reduce(
                 coalesced, group=mpu.get_tensor_model_parallel_group())
