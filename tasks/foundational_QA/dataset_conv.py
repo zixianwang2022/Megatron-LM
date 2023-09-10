@@ -197,6 +197,7 @@ class FtDataset(torch.utils.data.Dataset):
         tokenizer = get_tokenizer()
         self.eos_id = tokenizer.eod
         self.pad_id = tokenizer.eod
+        self.desc = name
 
         self.args = get_args()
 
