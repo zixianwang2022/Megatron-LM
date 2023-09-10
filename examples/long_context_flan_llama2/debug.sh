@@ -1,11 +1,12 @@
 #!/bin/bash
 # bash examples/qa/finetune_normal_lm.sh landrover_tasb_retrieved 843m 1 3e-6 1 
 
-model_size=7b
-global_bsz=8
+model_size=70b
+global_bsz=4
 lr=1.0e-5
-# model_card=llama2_text_7b_itp-16k
-model_card=llama2_text_7b
+model_card=llama2_text_70b_pp8_itp-16k
+# model_card=llama2_text_70b_itp-16k
+# model_card=llama2_text_7b
 
 TASK=None
 train_iters=1000
@@ -17,7 +18,7 @@ num_gpus=8
 
 min_lr=0.000001
 if [[ $model_size == "70b" ]]; then
-    num_nodes=32
+    num_nodes=16
     min_lr=0.00000001
 fi
 
@@ -32,9 +33,6 @@ OUTPUT_ARGS="--log-interval 1 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --log-validation-ppl-to-tensorboard \
              --eval-iters 2"
-
-. /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1.sh
-# --data-path ${DATA_BLEND} \
 
 options=" \
     $GPT_ARGS \
@@ -70,7 +68,7 @@ fi
 
 DIR=`pwd`
 # -m torch.distributed.launch --nproc_per_node 8
-run_cmd="torchrun --nproc_per_node 8 ${DIR}/pretrain_gpt.py ${options}"
+run_cmd="python -u  ${DIR}/pretrain_gpt.py ${options}"
 # srun -l \
 #      --container-image "gitlab-master.nvidia.com/adlr/megatron-lm/boxinw/faissgpu" \
 #      --container-mounts "/home/pengx/projects/retro/:/home/pengx/projects/retro/" \
@@ -87,6 +85,6 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
 echo ${run_cmd}
-${run_cmd}
+# ${run_cmd}
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-# submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude luna-0534,luna-0253,luna-0377 # --dependent_clones 5
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 0.5  --exclude luna-0534,luna-0253,luna-0377 # --dependent_clones 5

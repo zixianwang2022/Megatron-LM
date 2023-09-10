@@ -1,6 +1,7 @@
 #!/bin/bash
 # bash examples/qa/finetune_normal_lm.sh landrover_tasb_retrieved 843m 1 3e-6 1 
 
+blend=pile
 model_size=70b
 global_bsz=128
 lr=1.0e-5
@@ -10,6 +11,7 @@ TASK=None
 train_iters=1000
 
 . ./examples/long_context_flan_llama2/long_context_llama2_pretrain_args.sh
+. ./examples/long_context_flan_llama2/${blend}.sh
 
 num_nodes=1
 num_gpus=8
@@ -32,7 +34,6 @@ OUTPUT_ARGS="--log-interval 10 \
              --log-validation-ppl-to-tensorboard \
              --eval-iters 50"
 
-. /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1.sh
 
 options=" \
     $GPT_ARGS \
@@ -42,7 +43,6 @@ options=" \
     --adam-beta2 0.95 \
     --data-path ${DATA_BLEND} \
     --lr ${lr} \
-    --min-lr ${lr} \
     --lr-warmup-iters 20 \
     --lr-warmup-init 1e-6 \
     --init-method-std 0.010 \

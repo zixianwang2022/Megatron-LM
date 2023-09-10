@@ -26,8 +26,8 @@ if [[ $model_size == "70b" ]]; then
     hid_dim=8192
     heads=64
     pip_par=4
-    if [[ $model_card == *pp1* ]]; then
-        pip_par=1
+    if [[ $model_card == *pp8* ]]; then
+        pip_par=8
     fi
 fi
 
@@ -85,6 +85,9 @@ fi
 
 if [[ ${model_card} == *text*70b* ]]; then
     PRETRAINED_CHECKPOINT=${llama2_text_70b}
+    if [[ ${model_card} == *text*70b*pp8* ]]; then
+        PRETRAINED_CHECKPOINT="/lustre/fsw/adlr/adlr-nlp/pengx/shared_ckpts/llama2_megatron_text_70b_pp8/"
+    fi
 fi
 if [[ ${model_card} == *text*7b* ]]; then
     PRETRAINED_CHECKPOINT=${llama2_text_7b}

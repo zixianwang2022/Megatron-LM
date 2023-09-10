@@ -1,1 +1,3 @@
 bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_base
+
+bash examples/long_context_flan_llama2/finetune_llama2_pi_paper.sh llama2_text_70b_pp8_itp-16k
