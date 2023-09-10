@@ -22,11 +22,8 @@ _POSITION_EMBEDDING_GROUP = None
 # Data parallel group that the current rank belongs to.
 _DATA_PARALLEL_GROUP = None
 _DATA_PARALLEL_GROUP_GLOO = None
-<<<<<<< HEAD
-=======
 # FP8 amax reduction group.
 _AMAX_REDUCTION_GROUP = None
->>>>>>> main
 
 _VIRTUAL_PIPELINE_MODEL_PARALLEL_RANK = None
 _VIRTUAL_PIPELINE_MODEL_PARALLEL_WORLD_SIZE = None

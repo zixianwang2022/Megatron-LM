@@ -19,7 +19,7 @@ from tasks.foundational_QA.dataset_conv import get_processed_dataset
 # from dataset import get_processed_dataset
 
 
-def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
+def build_train_valid_test_datasets(data_prefix, splits_string,
                                     train_valid_test_num_samples,
                                     seq_length, seed, skip_warmup,
                                     train_data_prefix=None,
@@ -34,7 +34,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         # Single dataset.
         if len(data_prefix) == 1:
             return _build_train_valid_test_datasets(data_prefix[0],
-                                                    data_impl, splits_string,
+                                                    splits_string,
                                                     train_valid_test_num_samples,
                                                     seq_length, seed, skip_warmup)
 
@@ -43,6 +43,10 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         output = get_datasets_weights_and_num_samples(data_prefix,
                                                       train_valid_test_num_samples)
         prefixes, weights, datasets_train_valid_test_num_samples = output
+        train_num_samples, valid_num_samples, test_num_samples = map(
+            sum,
+            zip(*datasets_train_valid_test_num_samples)
+        )
 
         # Build individual datasets.
         train_datasets = []
@@ -50,7 +54,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         test_datasets = []
         for i in range(len(prefixes)):
             train_ds, valid_ds, test_ds = _build_train_valid_test_datasets(
-                prefixes[i], data_impl, splits_string,
+                prefixes[i], splits_string,
                 datasets_train_valid_test_num_samples[i],
                 seq_length, seed, skip_warmup,
                 return_doc_ids)
@@ -64,13 +68,13 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         # Blend.
         blending_train_dataset = None
         if train_datasets:
-            blending_train_dataset = BlendableDataset(train_datasets, weights)
+            blending_train_dataset = BlendableDataset(train_datasets, weights, train_num_samples)
         blending_valid_dataset = None
         if valid_datasets:
-            blending_valid_dataset = BlendableDataset(valid_datasets, weights)
+            blending_valid_dataset = BlendableDataset(valid_datasets, weights, valid_num_samples)
         blending_test_dataset = None
         if test_datasets:
-            blending_test_dataset = BlendableDataset(test_datasets, weights)
+            blending_test_dataset = BlendableDataset(test_datasets, weights, test_num_samples)
 
         return (blending_train_dataset, blending_valid_dataset,
                 blending_test_dataset)
@@ -81,24 +85,24 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         train_dataset, valid_dataset, test_dataset = None, None, None
         # Single dataset.
         if train_data_prefix is not None:
-            train_dataset = build_dataset("train", train_data_prefix, data_impl,
+            train_dataset = build_dataset("train", train_data_prefix, 
                                           train_valid_test_num_samples[0],
                                           seq_length, seed, skip_warmup)
 
         if valid_data_prefix is not None:
-            valid_dataset = build_dataset("valid", valid_data_prefix, data_impl,
+            valid_dataset = build_dataset("valid", valid_data_prefix, 
                                           train_valid_test_num_samples[1],
                                           seq_length, seed, False)
 
         if test_data_prefix is not None:
-            test_dataset = build_dataset("test", test_data_prefix, data_impl,
+            test_dataset = build_dataset("test", test_data_prefix, 
                                          train_valid_test_num_samples[2],
                                          seq_length, seed, False)
 
         return (train_dataset, valid_dataset, test_dataset)
 
 
-def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
+def _build_train_valid_test_datasets(data_prefix, splits_string,
                                      train_valid_test_num_samples,
                                      seq_length, seed, skip_warmup,
                                      return_doc_ids=False):
@@ -114,12 +118,12 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
     return (train_dataset, valid_dataset, test_dataset)
 
 
-def build_dataset(dataset_name, data_prefix, data_impl, num_samples,
+def build_dataset(dataset_name, data_prefix, num_samples,
                   seq_length, seed, skip_warmup):
     dataset = None
     if len(data_prefix) == 1:
         dataset = _build_dataset(dataset_name,
-                        data_prefix[0], data_impl,
+                        data_prefix[0], 
                         num_samples, seq_length,
                         seed, skip_warmup)
     else:
@@ -127,23 +131,24 @@ def build_dataset(dataset_name, data_prefix, data_impl, num_samples,
         # Parse the values.
         output = get_datasets_weights_and_num_samples(data_prefix, num_samples)
         prefixes, weights, dataset_num_samples = output
+        num_samples = sum(dataset_num_samples)
 
         # Build individual datasets.
         datasets = []
         for i in range(len(prefixes)):
             ds = _build_dataset(dataset_name, prefixes[i],
-                            data_impl, dataset_num_samples[i],
+                            dataset_num_samples[i],
                             seq_length, seed, skip_warmup)
             if ds:
                 datasets.append(ds)
 
         if datasets:
-            dataset = BlendableDataset(datasets, weights)
+            dataset = BlendableDataset(datasets, weights, num_samples)
 
     return dataset
 
 
-def _build_dataset(dataset_name, data_prefix, data_impl,
+def _build_dataset(dataset_name, data_prefix, 
                    num_samples, seq_length, seed, skip_warmup):
     """
     Build dataset. This method is called when individual

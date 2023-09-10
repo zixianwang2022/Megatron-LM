@@ -78,19 +78,20 @@ def get_tasks_args(parser):
     group.add_argument('--reset_eval', type=bool, default=True) ## by default reset eval for each eval
     return parser
 
-
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
     print_rank_0('building GPT model ...')
+    from megatron.arguments import core_transformer_config_from_args
+    config = core_transformer_config_from_args(get_args())
     model = GPTModel(
+        config,
         num_tokentypes=0,
         parallel_output=True,
         pre_process=pre_process,
         post_process=post_process
     )
     return model
-
 
 def get_batch(data_iterator):
     """Generate a batch"""
@@ -196,7 +197,6 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
                  'for GPT ...')
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
-        data_impl=args.data_impl,
         splits_string=args.split,
         train_valid_test_num_samples=train_val_test_num_samples,
         seq_length=args.seq_length,

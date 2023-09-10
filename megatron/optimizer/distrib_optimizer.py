@@ -368,12 +368,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             check_for_nan_in_grad, params_have_main_grad,
             fp16, bf16, params_dtype, grad_scaler, models)
 
-<<<<<<< HEAD
-        # Verify that contiguous buffers are being used.
-        # - Note: this should already be checked in arguments.py.
-        assert use_contiguous_buffers_in_local_ddp
-=======
->>>>>>> main
         assert isinstance(optimizer, Adam), \
             "Only Adam currently supported, due to checkpointing requirements."
 
