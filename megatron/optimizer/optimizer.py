@@ -219,12 +219,12 @@ class MegatronOptimizer(ABC):
             unwrapped_model = unwrap_model(
                 unwrapped_model, (torchDDP, LocalDDP, Float16Module))
 
-            if unwrapped_model.share_word_embeddings:
-                word_embeddings_weight = unwrapped_model.word_embeddings_weight()
+            if unwrapped_model.share_embeddings_and_output_weights:
+                weight = unwrapped_model.shared_embedding_or_output_weight()
                 if args.DDP_impl == 'local':
-                    grad = word_embeddings_weight.main_grad
+                    grad = weight.main_grad
                 else:
-                    grad = word_embeddings_weight.grad
+                    grad = weight.grad
                 torch.distributed.all_reduce(grad, group=mpu.get_embedding_group())
 
 
@@ -268,13 +268,16 @@ class MegatronOptimizer(ABC):
                     if getattr(param, 'sequence_parallel', False):
                         grad = param.main_grad if args.DDP_impl == 'local' else param.grad
                         grads.append(grad.data)
+            
+            # print("grads:")
+            # print(grads)
+            # if len(grads) > 0:
             coalesced = _flatten_dense_tensors(grads)
             torch.distributed.all_reduce(
                 coalesced, group=mpu.get_tensor_model_parallel_group())
             for buf, synced in zip(grads, _unflatten_dense_tensors(
                     coalesced, grads)):
                 buf.copy_(synced)
-
 
     def reduce_model_grads(self, args, timers):
         """All-reduce all grads, and all-reduce embeddings."""
