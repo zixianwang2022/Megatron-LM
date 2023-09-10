@@ -69,16 +69,13 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
         # Blend.
         blending_train_dataset = None
         if train_datasets:
-            blending_train_dataset = BlendableDataset(train_datasets, weights, train_num_samples,
-                                                      data_cache_path=data_cache_path)
+            blending_train_dataset = BlendableDataset(train_datasets, weights)
         blending_valid_dataset = None
         if valid_datasets:
-            blending_valid_dataset = BlendableDataset(valid_datasets, weights, valid_num_samples,
-                                                      data_cache_path=data_cache_path)
+            blending_valid_dataset = BlendableDataset(valid_datasets, weights)
         blending_test_dataset = None
         if test_datasets:
-            blending_test_dataset = BlendableDataset(test_datasets, weights, test_num_samples,
-                                                     data_cache_path=data_cache_path)
+            blending_test_dataset = BlendableDataset(test_datasets, weights)
 
         return (blending_train_dataset, blending_valid_dataset,
                 blending_test_dataset)
@@ -189,8 +186,7 @@ def build_dataset(dataset_name, data_prefix, data_impl,
                 datasets.append(ds)
 
         if datasets:
-            dataset = BlendableDataset(datasets, weights, num_samples,
-                                       data_cache_path=data_cache_path)
+            dataset = BlendableDataset(datasets, weights)
 
     return dataset
 
