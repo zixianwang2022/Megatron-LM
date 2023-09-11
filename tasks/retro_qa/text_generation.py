@@ -135,7 +135,7 @@ def generate_samples_conditional(model):
                     neighbours = all_neighbours[input_pos]
                 input_pos += 1
                 
-                valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'iternal', 'carmanual', 'nvit', 'tcs', 'sandia']
+                valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'iternal', 'carmanual', 'nvit', 'tcs', 'sandia', 'dropbox']
                 if args.task.lower() in valid_tasks or any([x in args.task.lower() for x in valid_tasks]):
                     max_target_len = args.out_seq_length
                     # disable it for GPT for now

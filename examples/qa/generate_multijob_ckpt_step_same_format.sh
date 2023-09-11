@@ -69,7 +69,7 @@ COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/retro
 
 if [[ $model_size == "43b" ]]; then
     COMMAND="$LAUNCH python -u ${DIR}/tasks/retro_qa/text_generation.py"
-    for CONV_PROMPT_LIST in *-pp1-v3 *-pp1-v4 *-pp1-v5 *-pp1-v6 *-pp1-v7 *-pp1-v8
+    for CONV_PROMPT_LIST in *-pp1-v7 *-pp1-v8 *-pp1-v9 #*-pp1-v3 *-pp1-v4 *-pp1-v5 *-pp1-v6 *-pp1-v7 *-pp1-v8 *-pp1-v9
     do
         if [[ ${model_card} == $CONV_PROMPT_LIST ]]; then
             COMMAND="$LAUNCH python -u ${DIR}/tasks/retro_qa/text_generation_conv.py"
@@ -81,6 +81,7 @@ COMMAND="$COMMAND \
        $GPT_ARGS \
        $GEN_ARGS \
        --load $CHECKPOINT \
+       --use-retrieved-neighbours \
        --micro-batch-size $micro_bsz \
        $FT_ARGS"
 
@@ -94,6 +95,6 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_${model_size}_${TASK}" --duration 1
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_${model_size}_${TASK}" --duration 2
 # $COMMAND
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 

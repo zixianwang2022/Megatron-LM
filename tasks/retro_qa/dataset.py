@@ -190,7 +190,7 @@ def eli5_preprocess(data_file):
 
 def get_processed_dataset(name, data_folder, processed=True, ratio=None, index=None, num_samples=None):
 
-    valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'nq_longform', 'iternal', 'carmanual', 'nvit', 'tcs', 'sandia']
+    valid_tasks = ['nq', 'tqa', 'benz', 'landrover', 'ford', 'att', 'nq_longform', 'iternal', 'carmanual', 'nvit', 'tcs', 'sandia', 'dropbox']
     if name.lower() in valid_tasks or any([x in name.lower() for x in valid_tasks]):
         training_file = data_folder + "/train.json"
         validation_file = data_folder + "/dev.json"
