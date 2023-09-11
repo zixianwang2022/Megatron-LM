@@ -51,7 +51,7 @@ GPT_ARGS="--use-flash-attn \
         --log-params-norm \
         --log-num-zeros-in-grad \
         --bf16 \
-        --exit-duration-in-mins 230 \
+        --exit-duration-in-mins 220 \
         --exit-on-missing-checkpoint \
         --use-checkpoint-args \
         --normalization RMSNorm \

@@ -39,7 +39,6 @@ options=" \
     $GPT_ARGS \
     --weight-decay 0.0 \
     --lr-decay-style constant \
-    --sequence_parallel \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
     --data-path 1.0 /lustre/fsw/adlr/adlr-nlp/pengx/long_context_llm/megatron-lm/eval_data/bin-idx/pg19_test/pg19_test.llama2_text_document \
