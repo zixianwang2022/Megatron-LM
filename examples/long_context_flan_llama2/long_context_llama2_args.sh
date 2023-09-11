@@ -94,7 +94,7 @@ fi
 FT_ARGS="--eod-mask-loss \
     --answer-loss-only"
 
-if [[ ${model_card} == *itp-32k*  ]]; then
+if [[ ${model_card} == *itp*  ]]; then
     FT_ARGS="$FT_ARGS \
     --recompute-activations"
 fi

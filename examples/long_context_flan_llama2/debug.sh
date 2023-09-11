@@ -2,10 +2,10 @@
 # bash examples/qa/finetune_normal_lm.sh landrover_tasb_retrieved 843m 1 3e-6 1 
 
 model_size=70b
-global_bsz=4
+global_bsz=2
 lr=1.0e-5
-model_card=llama2_text_70b_pp8_itp-16k
-# model_card=llama2_text_70b_itp-16k
+model_card=llama2_text_70b_pp8_itp-32k
+model_card=llama2_text_70b_itp-32k
 # model_card=llama2_text_7b
 
 TASK=None
@@ -18,7 +18,7 @@ num_gpus=8
 
 min_lr=0.000001
 if [[ $model_size == "70b" ]]; then
-    num_nodes=16
+    num_nodes=4
     min_lr=0.00000001
 fi
 
@@ -42,7 +42,6 @@ options=" \
     --adam-beta2 0.95 \
     --data-path 1.0 /lustre/fsw/adlr/adlr-nlp/pengx/long_context_llm/megatron-lm/eval_data/bin-idx/pg19_test/pg19_test.llama2_text_document \
     --lr ${lr} \
-    --min-lr ${lr} \
     --lr-warmup-iters 20 \
     --lr-warmup-init 1e-6 \
     --init-method-std 0.010 \
