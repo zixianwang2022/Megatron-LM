@@ -12,8 +12,8 @@ SAVENAME=$9
 model_card=$9
 use_retrieved_neighbours=${10}
 
-. ./examples/long_context_flan/long_context_args.sh
-. ./examples/long_context_flan/gen_input.sh
+. ./examples/long_context_flan_llama2/long_context_llama2_args.sh
+. ./examples/long_context_flan_llama2/gen_input.sh
 
 top_k=1
 micro_bsz=1
@@ -41,10 +41,10 @@ GEN_ARGS="$SAMPLE_ARGS \
           --sample-input-file $sample_input_file \
           --sample-output-file $sample_output_file"
 
-if [[ ${model_card} == *itp-32k*  ]]; then 
-	mod_par=8
-	pip_par=8
-fi
+# if [[ ${model_card} == *itp-32k*  ]]; then 
+# 	mod_par=8
+# 	pip_par=8
+# fi
 DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
                   --nnodes ${pip_par} \
                   --node_rank 0 \
@@ -56,6 +56,9 @@ DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
 COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/long_context_QA/text_generation.py"
 
 if [[ $model_size == "43b" ]]; then
+   COMMAND="$LAUNCH python -u ${DIR}/tasks/long_context_QA/text_generation.py"
+fi
+if [[ $model_size == "70b" ]]; then
    COMMAND="$LAUNCH python -u ${DIR}/tasks/long_context_QA/text_generation.py"
 fi
 

@@ -35,16 +35,20 @@ from tasks.foundational_QA.dataset_conv import preprocess
 from tasks.foundational_QA.dataset_conv import reformat_prompt_v2
 import numpy as np
 import time
-# from tasks.prompt_learning.task_datasets import e2e_format_query, xsum_format_s
+from megatron.arguments import core_transformer_config_from_args
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
-    args = get_args()
     print_rank_0('building GPT model ...')
-    model = GPTModel(num_tokentypes=0, parallel_output=False,
-                     pre_process=pre_process, post_process=post_process)
-
+    config = core_transformer_config_from_args(get_args())
+    model = GPTModel(
+        config,
+        num_tokentypes=0,
+        parallel_output=False,
+        pre_process=pre_process,
+        post_process=post_process
+    )
     return model
 
 def add_text_generate_args(parser):
