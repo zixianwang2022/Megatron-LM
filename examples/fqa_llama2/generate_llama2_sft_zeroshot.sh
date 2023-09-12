@@ -65,7 +65,9 @@ GEN_ARGS="$SAMPLE_ARGS \
           --gen-start-idx $gen_start \
           --num-gen $num_gen \
           --sample-input-file $sample_input_file \
-          --sample-output-file $sample_output_file "
+          --sample-output-file $sample_output_file \
+          --out-seq-length 64 \
+          --model-name $model_card "
 
 DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
                   --nnodes ${pip_par} \

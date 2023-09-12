@@ -53,9 +53,9 @@ TENSORBOARD_DIR="${QA_HOME}/tensorboard/${SAVENAME}"
 mkdir -p ${TENSORBOARD_DIR}
 
 ## original --save-interval 1500
-## make --save-interval 1400 so that we can save two checkpoints in 4 hrs
+## make --save-interval 1300 so that we can save two checkpoints in 4 hrs
 OUTPUT_ARGS="--log-interval 10 \
-             --save-interval 1400 \
+             --save-interval 1200 \
              --eval-interval 100 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --log-validation-ppl-to-tensorboard \
