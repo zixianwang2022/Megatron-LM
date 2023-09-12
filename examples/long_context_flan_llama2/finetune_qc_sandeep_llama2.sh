@@ -13,6 +13,10 @@ train_iters=1000
 . ./examples/long_context_flan_llama2/long_context_llama2_args.sh
 . ./examples/long_context_flan_llama2/${blend_name}.sh
 
+if [[ ${model_card} == *itp* ]]; then
+    PRETRAINED_CHECKPOINT="${QA_HOME}/checkpoints/applications/${model_card}"
+fi
+
 num_nodes=1
 num_gpus=8
 
