@@ -36,7 +36,8 @@ def reformat_prompt_llama2_chat(query, neighbours, dataset_name, ft_neighbours, 
         dialogue_turn = query
     else:
         if dataset_name in short_span_with_context:
-            user = "Answer the following question with a few words. {}".format(query)
+            # user = "Answer the following question with a few words. {}".format(query)
+            user = "Answer the following question with a short span. The answer needs to be just in a few words. {}".format(query)
         elif dataset_name in yes_no_without_context:
             user = "Answer the following question with True or False. {}".format(query)
         elif dataset_name in multichoices:

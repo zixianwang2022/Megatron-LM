@@ -103,6 +103,7 @@ GPT_ARGS="--use-flash-attn \
         --log-params-norm \
         --log-num-zeros-in-grad \
         --fp16 \
+        --exit-duration-in-mins 230 \
         --DDP-impl local \
         --exit-on-missing-checkpoint \
         --use-checkpoint-args \
