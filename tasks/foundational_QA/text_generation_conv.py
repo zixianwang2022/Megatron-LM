@@ -168,7 +168,7 @@ def generate_samples_conditional(model):
                         elif args.model_name == "vehement_coyote" or args.model_name == "wine_jackdaw":
                             input_tokens = reformat_prompt_for_rlhf_models(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
 
-                        elif "llama2_chat" in args.model_name:
+                        elif args.model_name is not None and "llama2_chat" in args.model_name:
                             input_tokens = reformat_prompt_llama2_chat(query, neighbours, args.task, args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
 
                         else:
