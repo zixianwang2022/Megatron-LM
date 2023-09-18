@@ -283,7 +283,7 @@ class CLIPViTBackbone(MegatronModule):
         if self.single_token_output:
             hidden_states = hidden_states[:,0,:]
 
-        return hidden_states.transpose(0, 1).contiguous()
+        return hidden_states.contiguous()
 
 class SAMViTBackbone(MegatronModule):
     """Vision SAM Model."""
