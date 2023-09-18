@@ -83,13 +83,12 @@ class ParallelAffineLayer(MegatronModule):
         self.add_bias = config.add_bias_linear
 
         # Project input_dim to output_dim.
-        self.dense = tensor_parallel.RowParallelLinear( 
+        self.dense = tensor_parallel.ColumnParallelLinear(
             args.visual_output_size,
-            1024, #config.hidden_size,
+            config.hidden_size,
             config=config,
             init_method=config.output_layer_init_method,
             bias=self.add_bias,
-            input_is_parallel=True
         )
 
         self.bias_gelu_fusion = False
@@ -102,7 +101,7 @@ class ParallelAffineLayer(MegatronModule):
 
         if bias_parallel is not None:
             affine_parallel = affine_parallel + bias_parallel
-        
+
         return affine_parallel
 
 class ParallelMLP(MegatronModule):
@@ -722,7 +721,7 @@ class ParallelAttention(MegatronModule):
         else:
             # Attention heads [sk, b, h] --> [sk, b, (np * 2 * hn)]
             mixed_kv_layer, _ = self.key_value(encoder_output)
-            
+
             # [sk, b, (np * 2 * hn)] --> [sk, b, np, 2 * hn]
             new_tensor_shape = mixed_kv_layer.size()[:-1] + \
                 (self.num_attention_heads_per_partition,
