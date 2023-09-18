@@ -276,8 +276,7 @@ class CLIPViTBackbone(MegatronModule):
         else:
             hidden_states = input
 
-        #hidden_states = self.pre_layernorm(hidden_states, visual_layer_norm=True)
-        hidden_states = self.pre_layernorm(hidden_states)
+        hidden_states = self.pre_layernorm(hidden_states, vit_layer_norm=True)
 
         hidden_states = self.transformer(hidden_states, None)
 

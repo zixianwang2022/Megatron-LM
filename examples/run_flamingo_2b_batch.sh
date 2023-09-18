@@ -16,7 +16,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=256
 
-NAME="flamingo-2b-1node-COCO-overfit"
+NAME="flamingo-2b-1node-COCO-overfit-zhuolin-fixes"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
