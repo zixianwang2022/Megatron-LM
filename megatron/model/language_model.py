@@ -599,7 +599,7 @@ class TransformerLanguageModel(MegatronModule):
 
         # NOTE(jbarker): This is a temp hack to make sure we only
         # the rotary pos embs for the current context
-        rotary_pos_emb = rotary_pos_emb[inference_params.sequence_len_offset:inference_params.sequence_len_offset + encoder_input.shape[0]]
+        # rotary_pos_emb = rotary_pos_emb[inference_params.sequence_len_offset:inference_params.sequence_len_offset + encoder_input.shape[0]]
 
         # Run encoder.
         if enc_hidden_states is None:

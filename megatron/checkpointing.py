@@ -279,7 +279,7 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_mod
         # RNG states.
         if not args.no_save_rng:
             state_dict["rng_state"] = rng_state
-            if visual_model: 
+            if visual_model:
                 visual_state_dict["rng_state"] = rng_state
 
         # Save.

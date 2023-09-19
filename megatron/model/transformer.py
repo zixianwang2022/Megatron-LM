@@ -83,12 +83,13 @@ class ParallelAffineLayer(MegatronModule):
         self.add_bias = config.add_bias_linear
 
         # Project input_dim to output_dim.
-        self.dense = tensor_parallel.ColumnParallelLinear(
+        self.dense = tensor_parallel.RowParallelLinear(
             args.visual_output_size,
             config.hidden_size,
             config=config,
             init_method=config.output_layer_init_method,
             bias=self.add_bias,
+            input_is_parallel=True,
         )
 
         self.bias_gelu_fusion = False
@@ -951,160 +952,6 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         use_nvfuser = TORCH_MAJOR > 1 or (TORCH_MAJOR == 1 and TORCH_MINOR >= 10)
         self.bias_dropout_add_exec_handler = \
                 nullcontext if use_nvfuser else torch.enable_grad
-
-    # def forward(self, hidden_states, attention_mask,
-    #             encoder_output=None, enc_dec_attn_mask=None,
-    #             inference_params=None, rotary_pos_emb=None, vision_inputs=None):
-    #     # hidden_states: [s, b, h]
-
-    #     # Layer norm at the beginning of the transformer layer.
-    #     layernorm_output = self.input_layernorm(hidden_states)
-
-    #     # Cross attention.
-    #     attention_output, attention_bias = \
-    #         self.inter_attention(layernorm_output,   # lm output (Q)
-    #                              None, # media_mask
-    #                              encoder_output=vision_inputs) # Vision input (KV)
-    #     # residual connection
-    #     if self.apply_residual_connection_post_layernorm:
-    #         residual = layernorm_output
-    #     else:
-    #         residual = hidden_states
-
-    #     # re-enable torch grad to enable fused optimization.
-    #     if self.drop_path is None:
-    #         # jit scripting for a nn.module (with dropout) is not
-    #         # trigerring the fusion kernel. For now, we use two
-    #         # different nn.functional routines to account for varying
-    #         # dropout semantics during training and inference phases.
-    #         if self.bias_dropout_fusion:
-    #             if self.training:
-    #                 bias_dropout_add_func = bias_dropout_add_fused_train
-    #             else:
-    #                 bias_dropout_add_func = bias_dropout_add_fused_inference
-    #         else:
-    #             bias_dropout_add_func = get_bias_dropout_add(self.training)
-
-    #         with self.bias_dropout_add_exec_handler():
-    #             inter_layernorm_input = bias_dropout_add_func(
-    #                 attention_output,
-    #                 attention_bias,
-    #                 residual,
-    #                 self.hidden_dropout, gate=self.attn_gate) # attn_gate used here
-    #     else:
-    #         out = torch.nn.functional.dropout(attention_output + \
-    #                 attention_bias, p=self.hidden_dropout,
-    #                 training=self.training)
-    #         layernorm_input = residual + self.drop_path(out)
-
-    #     # Layer norm post the cross attention
-    #     inter_layernorm_output = self.post_inter_attention_layernorm(inter_layernorm_input)
-
-    #     # MLP Layer (FFW) after cross attention
-    #     xattn_mlp_output, xattn_mlp_bias = self.xattn_mlp(inter_layernorm_output)
-
-    #     # Second residual connection.
-    #     if self.apply_residual_connection_post_layernorm:
-    #         residual = inter_layernorm_output
-    #     else:
-    #         residual = inter_layernorm_input
-
-    #     with self.bias_dropout_add_exec_handler():
-    #         xattn_layernorm_input = bias_dropout_add_func(
-    #             xattn_mlp_output,
-    #             xattn_mlp_bias,
-    #             residual,
-    #             self.hidden_dropout, gate=self.ff_gate) # ff_gate used here
-
-    #     # Layer norm post the MLP
-    #     xattn_layernorm_output = self.xattn_layernorm(xattn_layernorm_input)
-
-    #     # Self attention.
-    #     self_attention_pos_emb = None
-    #     if rotary_pos_emb is not None:
-    #         self_attention_pos_emb = rotary_pos_emb
-    #     attention_output, attention_bias = \
-    #         self.self_attention(
-    #             xattn_layernorm_output,
-    #             attention_mask,
-    #             inference_params=inference_params,
-    #             rotary_pos_emb=self_attention_pos_emb)
-
-    #     # Residual connection.
-    #     if self.apply_residual_connection_post_layernorm:
-    #         residual = xattn_layernorm_output
-    #     else:
-    #         residual = xattn_layernorm_input
-
-    #     if self.drop_path is None:
-    #         # jit scripting for a nn.module (with dropout) is not
-    #         # trigerring the fusion kernel. For now, we use two
-    #         # different nn.functional routines to account for varying
-    #         # dropout semantics during training and inference phases.
-    #         if self.bias_dropout_fusion:
-    #             if self.training:
-    #                 bias_dropout_add_func = bias_dropout_add_fused_train
-    #             else:
-    #                 bias_dropout_add_func = bias_dropout_add_fused_inference
-    #         else:
-    #             bias_dropout_add_func = get_bias_dropout_add(self.training)
-
-    #         with self.bias_dropout_add_exec_handler():
-    #             layernorm_input = bias_dropout_add_func(
-    #                 attention_output,
-    #                 attention_bias,
-    #                 residual,
-    #                 self.hidden_dropout)
-    #     else:
-    #         out = torch.nn.functional.dropout(attention_output + \
-    #                 attention_bias, p=self.hidden_dropout,
-    #                 training=self.training)
-    #         layernorm_input = residual + self.drop_path(out)
-
-    #     # Layer norm post the self attention.
-    #     layernorm_output = self.post_attention_layernorm(layernorm_input)
-
-    #     # MLP.
-    #     mlp_output, mlp_bias = self.mlp(layernorm_output)
-
-    #     # Second residual connection.
-    #     if self.apply_residual_connection_post_layernorm:
-    #         residual = layernorm_output
-    #     else:
-    #         residual = layernorm_input
-
-    #     if self.drop_path is None:
-    #         with self.bias_dropout_add_exec_handler():
-    #             output = bias_dropout_add_func(
-    #                 mlp_output,
-    #                 mlp_bias,
-    #                 residual,
-    #                 self.hidden_dropout)
-
-    #         # Jit compiled function creates 'view' tensor. This tensor
-    #         # potentially gets saved in the MPU checkpoint function context,
-    #         # which rejects view tensors. While making a viewless tensor here
-    #         # won't result in memory savings (like the data loader, or
-    #         # p2p_communication), it serves to document the origin of this
-    #         # 'view' tensor.
-    #         output = core.utils.make_viewless_tensor(inp = output,
-    #                                                  requires_grad = output.requires_grad,
-    #                                                  keep_graph = True)
-
-    #     else:
-    #         out = torch.nn.functional.dropout(mlp_output + mlp_bias,
-    #                                           p=self.hidden_dropout,
-    #                                           training=self.training)
-    #         output = residual + self.drop_path(out)
-
-    #     return output
-
-    #     # Set bias+dropout+add fusion grad_enable execution handler.
-    #     TORCH_MAJOR = int(torch.__version__.split('.')[0])
-    #     TORCH_MINOR = int(torch.__version__.split('.')[1])
-    #     use_nvfuser = TORCH_MAJOR > 1 or (TORCH_MAJOR == 1 and TORCH_MINOR >= 10)
-    #     self.bias_dropout_add_exec_handler = \
-    #             nullcontext if use_nvfuser else torch.enable_grad
 
     def forward(self, hidden_states, attention_mask,
                 encoder_output=None, enc_dec_attn_mask=None,

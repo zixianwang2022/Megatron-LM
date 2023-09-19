@@ -17,13 +17,13 @@ def get_param_groups(modules, visual_modules,
     """creates param groups based on weight decay condition (regularized vs non regularized)
        and learning rate scale condition (args.lr vs lr_mult * args.lr)
        scale_lr_cond is used during finetuning where head of the network requires a scaled
-       version of the base learning rate. 
+       version of the base learning rate.
     """
     wd_no_scale_lr = []
     wd_scale_lr = []
     no_wd_no_scale_lr = []
     no_wd_scale_lr = []
-    
+
     args = get_args()
     all_modules = modules
 
@@ -71,7 +71,7 @@ def get_param_groups(modules, visual_modules,
                     continue
                 elif not args.train_adaptor:
                     continue
-            
+
             if not no_wd and not scale_lr:
                 wd_no_scale_lr.append(param)
             elif not no_wd and scale_lr:
@@ -176,11 +176,11 @@ def get_megatron_optimizer(model, visual_model=None,
                       args.bf16,
                       args.params_dtype,
                       grad_scaler,
-                      model)
+                      model, visual_model=visual_model[0])
 
     # FP32.
     return FP32Optimizer(optimizer, args.clip_grad,
                          args.log_num_zeros_in_grad,
                          params_have_main_grad,
                          args.use_contiguous_buffers_in_local_ddp,
-                         model)
+                         model, visual_model=visual_model[0])

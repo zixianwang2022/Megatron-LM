@@ -356,7 +356,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
 
     def __init__(self, optimizer, clip_grad, log_num_zeros_in_grad,
                  params_have_main_grad, use_contiguous_buffers_in_local_ddp,
-                 fp16, bf16, params_dtype, grad_scaler, models):
+                 fp16, bf16, params_dtype, grad_scaler, models, visual_model=None):
         """
         See top of class definition for argument descriptions.
 
@@ -370,7 +370,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         super().__init__(
             optimizer, clip_grad, log_num_zeros_in_grad,
             params_have_main_grad, use_contiguous_buffers_in_local_ddp,
-            fp16, bf16, params_dtype, grad_scaler, models)
+            fp16, bf16, params_dtype, grad_scaler, models, visual_model=visual_model)
 
         # Verify that contiguous buffers are being used.
         # - Note: this should already be checked in arguments.py.

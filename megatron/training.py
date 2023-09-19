@@ -413,6 +413,9 @@ def setup_model_and_optimizer(model_provider_func,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
+    if visual_model:
+        load_visual_checkpoint(visual_model[0])
+
     if args.load is not None:
         timers = get_timers()
         timers('load-checkpoint', log_level=0).start(barrier=True)
@@ -459,6 +462,8 @@ def train_step(forward_step_func, data_iterator,
     if args.DDP_impl == 'local' and args.use_contiguous_buffers_in_local_ddp:
         for partition in model:
             partition.zero_grad_buffer()
+        if visual_model is not None:
+            visual_model.zero_grad_buffer()
     optimizer.zero_grad()
 
     # Forward pass.
