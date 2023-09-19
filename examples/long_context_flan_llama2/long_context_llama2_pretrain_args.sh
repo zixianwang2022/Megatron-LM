@@ -73,7 +73,7 @@ elif [[ ${model_card} == *itp-32k*  ]]; then
     GPT_ARGS="$GPT_ARGS \
     --seq-length 32768 \
     --max-position-embeddings 32768 \
-    --max-tokens-to-oom 32768 \
+    --max-tokens-to-oom 16384 \
     --rotary-seq-len-interpolation-factor 8 \
     --distributed-timeout-minutes 30"
 else
@@ -85,9 +85,6 @@ fi
 
 if [[ ${model_card} == *text*70b* ]]; then
     PRETRAINED_CHECKPOINT=${llama2_text_70b}
-    if [[ ${model_card} == *text*70b*pp8* ]]; then
-        PRETRAINED_CHECKPOINT="/lustre/fsw/adlr/adlr-nlp/pengx/shared_ckpts/llama2_megatron_text_70b_pp8/"
-    fi
 fi
 if [[ ${model_card} == *text*7b* ]]; then
     PRETRAINED_CHECKPOINT=${llama2_text_7b}
@@ -102,4 +99,5 @@ if [[ ${model_card} == *itp*  ]]; then
     # --recompute-activations"
 fi
 
-DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
+# DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
+DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
