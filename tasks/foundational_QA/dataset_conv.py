@@ -321,7 +321,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         # print(dataset_name, system + query)
         return input_tokens
 
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "qasper", "narrative_qa", "quality"]
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "qasper", "narrative_qa", "quality", "musique", "hotpotqa", "multifieldqa_en"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
     formatted_dataset_name = ["doc2dial"]
