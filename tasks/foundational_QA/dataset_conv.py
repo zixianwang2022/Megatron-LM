@@ -355,7 +355,10 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         import re
         def nl_replace(input_text):
             pattern = r'\n+'
-            output_text = re.sub(pattern, '\n', input_text)
+            input_text = re.sub(pattern, '\n', input_text)
+            pattern = r' +'
+            # pattern = r'\s+'
+            output_text = re.sub(pattern, ' ', input_text)
             return output_text
 
         neighbours = [nl_replace(n) for n in neighbours[0:ft_neighbours]]
