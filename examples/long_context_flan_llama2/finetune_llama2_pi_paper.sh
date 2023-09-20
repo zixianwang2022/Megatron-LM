@@ -6,9 +6,14 @@ model_size=70b
 global_bsz=128
 lr=1.0e-5
 model_card=$1
+new_iter=$2
 
 TASK=None
+
 train_iters=1000
+if [[ ${new_iter} ]]; then
+	train_iters=${new_iter}
+fi
 
 . ./examples/long_context_flan_llama2/long_context_llama2_pretrain_args.sh
 . ./examples/long_context_flan_llama2/${blend}.sh
