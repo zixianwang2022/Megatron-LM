@@ -181,6 +181,7 @@ def generate_samples_conditional(model):
             for prompt, generation in zip(sentences, resp_sentences):
                 # datum = generation[len(prompt):].replace("<|endoftext|>", "").strip()
                 datum = generation[len(prompt):]
+                print(repr(datum))
                 if "<|endoftext|>" in datum:
                     datum = datum[:datum.find("<|endoftext|>")].strip()
                 if "\n\n" in datum:

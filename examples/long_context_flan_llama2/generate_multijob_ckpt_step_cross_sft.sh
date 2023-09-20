@@ -82,5 +82,5 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo $COMMAND
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 4 --exclude luna-0534,luna-0253,luna-0377
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}_${SAVENAME}_${use_retrieved_neighbours}" --duration 4 --exclude ${bad_nodes}
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 
