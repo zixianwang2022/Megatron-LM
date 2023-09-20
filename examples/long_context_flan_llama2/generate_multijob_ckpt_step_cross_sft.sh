@@ -31,6 +31,8 @@ if [[ $use_retrieved_neighbours ]]; then
     sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}_ret.txt"
 fi
 
+sample_output_file=${sample_output_file}_0920
+
 DIR=`pwd`
 
 GEN_ARGS="$SAMPLE_ARGS \
