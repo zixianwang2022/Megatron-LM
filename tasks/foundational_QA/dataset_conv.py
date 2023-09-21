@@ -320,7 +320,11 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions based on the context. The assistant should also indicate when the answer cannot be found in the context.\n\n"
 
     if dataset_name in ["oasst", "quiet_cockatoo"]:
-        input_tokens = tokenizer.tokenize(system + query)
+        ## replace \n\n with \n
+        all_input = system + query
+        all_input = all_input.replace("\n\n", "\n")
+        input_tokens = tokenizer.tokenize(all_input)
+        # input_tokens = tokenizer.tokenize(system + query)
         # print(dataset_name, system + query)
         return input_tokens
 
@@ -361,11 +365,16 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         system_tokens = tokenizer.tokenize(system)
         context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
         context = tokenizer.detokenize(context_tokens)
-
         all_input = system + context + dialogue_turn
+
+        ## replace \n\n with \n
+        all_input = all_input.replace("\n\n", "\n")
         input_tokens = tokenizer.tokenize(all_input)
     else:
         all_input = system + dialogue_turn
+
+        ## replace \n\n with \n
+        all_input = all_input.replace("\n\n", "\n")
         input_tokens = tokenizer.tokenize(all_input)
 
     # print(dataset_name, all_input)
