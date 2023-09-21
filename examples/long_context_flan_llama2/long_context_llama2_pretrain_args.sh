@@ -97,6 +97,9 @@ if [[ ${model_card} == *itp*  ]]; then
     --recompute-method uniform \
     --recompute-granularity full"
     # --recompute-activations"
+else
+    FT_ARGS="$FT_ARGS \
+    --recompute-activations"
 fi
 
 # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
