@@ -1,7 +1,7 @@
 # model_name=qc_llama2_text_70b_base_70b_128_5e-6
 # model_name=qc_llama2_text_70b_itp-16k_70b_128_1.0e-5_70b_128_5e-6
-model_name=qc_llama2_text_70b_base_70b_128_5e-6
-# model_name=qc_llama2_text_70b_itp-32k_70b_128_1.0e-5_70b_128_5e-6
+# model_name=qc_llama2_text_70b_base_70b_128_5e-6
+model_name=qc_llama2_text_70b_itp-32k_70b_128_1.0e-5_70b_128_5e-6
 step=1000
 # model_name=qc_llama2_text_70b_base_70b_64_2e-5
 # step=4000

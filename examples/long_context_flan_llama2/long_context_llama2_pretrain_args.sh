@@ -92,14 +92,11 @@ fi
 
 FT_ARGS="--eod-mask-loss"
 
-if [[ ${model_card} == *itp*  ]]; then
+if [[ ${model_card} == *text*70b*  ]]; then
     FT_ARGS="$FT_ARGS \
     --recompute-method uniform \
     --recompute-granularity full"
     # --recompute-activations"
-else
-    FT_ARGS="$FT_ARGS \
-    --recompute-activations"
 fi
 
 # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
