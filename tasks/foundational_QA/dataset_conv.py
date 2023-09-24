@@ -321,7 +321,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         # print(dataset_name, system + query)
         return input_tokens
 
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "qasper", "narrative_qa", "quality"]
+    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "qasper", "narrative_qa", "quality", "musique", "hotpotqa", "multifieldqa_en"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
     formatted_dataset_name = ["doc2dial"]
@@ -329,7 +329,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     user_template = ""
 
     ## fix bug format for formatted text, no change
-    if dataset_name in formatted_dataset_name:
+    if any(f_name in dataset_name for f_name in formatted_dataset_name):
         dialogue_turn = query
     else:
         if dataset_name in short_span_with_context:
@@ -352,12 +352,22 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         #     random.shuffle(random_neighbours)
         #     neighbours = random_neighbours + neighbours[ft_neighbours:]
         # Truncate to `max_sequence_length` to fit in output tokens.
-        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
+        import re
+        def nl_replace(input_text):
+            pattern = r'\n+'
+            input_text = re.sub(pattern, '\n', input_text)
+            pattern = r' +'
+            # pattern = r'\s+'
+            output_text = re.sub(pattern, ' ', input_text)
+            return output_text
+
+        neighbours = [nl_replace(n) for n in neighbours[0:ft_neighbours]]
+        context = "\n\n".join(neighbours[0:ft_neighbours])
         context_tokens = tokenizer.tokenize(context)
         dialogue_tokens = tokenizer.tokenize(dialogue_turn)
         system_tokens = tokenizer.tokenize(system)
-        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
-        context = tokenizer.detokenize(context_tokens)
+        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens) - 2]
+        context = tokenizer.detokenize(context_tokens) + "\n\n"
 
         all_input = system + context + dialogue_turn
         input_tokens = tokenizer.tokenize(all_input)

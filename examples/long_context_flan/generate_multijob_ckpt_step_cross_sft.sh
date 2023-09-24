@@ -43,7 +43,7 @@ GEN_ARGS="$SAMPLE_ARGS \
 
 if [[ ${model_card} == *itp-32k*  ]]; then 
 	mod_par=8
-	pip_par=8
+	pip_par=4
 fi
 DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
                   --nnodes ${pip_par} \
@@ -79,5 +79,5 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo $COMMAND
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 4 --exclude luna-0534,luna-0253,luna-0377
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 0.5 --exclude luna-0534,luna-0253,luna-0377
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 

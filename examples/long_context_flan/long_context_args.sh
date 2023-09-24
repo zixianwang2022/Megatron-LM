@@ -20,6 +20,9 @@ if [[ $model_size == "43b" ]]; then
     if [[ $model_card == *itp-32k* ]]; then
         mod_par=16
     fi
+    if [[ $model_card == *tp8* ]]; then
+        mod_par=8
+    fi
     if [[ $model_card == *quiet_cockatoo* ]]; then
         pip_par=1
     fi
