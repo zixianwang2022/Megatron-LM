@@ -96,8 +96,6 @@ def add_text_generate_args(parser):
                         help='project size for adapters')
     group.add_argument('--num-gen', type=int, default=-1,
                         help='project size for adapters')
-    group.add_argument('--ckpt-step', type=int, default=None,
-                        help='setting ckpt step manually')
     group.add_argument("--use-retrieved-neighbours", action='store_true', default=False,
                        help='Use retrieved neighbours')
     return parser
