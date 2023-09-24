@@ -6,6 +6,7 @@ model_size=70b
 global_bsz=128
 lr=5e-6
 model_card=$1
+ckpt_step=$2
 
 TASK=None
 train_iters=1000
@@ -14,6 +15,10 @@ train_iters=1000
 . ./examples/long_context_flan_llama2/${blend_name}.sh
 
 if [[ ${model_card} == *itp* ]]; then
+    PRETRAINED_CHECKPOINT="${QA_HOME}/checkpoints/applications/${model_card}"
+fi
+
+if [[ ${model_card} == *cont_4k* ]]; then
     PRETRAINED_CHECKPOINT="${QA_HOME}/checkpoints/applications/${model_card}"
 fi
 
@@ -27,6 +32,9 @@ if [[ $model_size == "70b" ]]; then
 fi
 
 SAVENAME="${blend_name}_${model_card}_${model_size}_${global_bsz}_${lr}"
+if [[ ${ckpt_step} ]]; then
+    SAVENAME="${blend_name}_${model_card}_${model_size}_${global_bsz}_${lr}_step_${ckpt_step}"
+fi
 CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
 TENSORBOARD_DIR="${QA_HOME}/tensorboard/${SAVENAME}"
 mkdir -p ${TENSORBOARD_DIR}
@@ -68,6 +76,11 @@ else
         --no-load-optim "
 fi
 
+if [[ ${ckpt_step} ]] && [[ ! -f "$CHECKPOINT_PATH/latest_checkpointed_iteration.txt" ]]; then
+    options="$options \
+	    --ckpt-step ${ckpt_step}"
+fi
+
 DIR=`pwd`
 # -m torch.distributed.launch --nproc_per_node 8
 run_cmd="python -u ${DIR}/tasks/foundational_QA/finetune_gpt_with_pretrain.py ${options}"
@@ -88,4 +101,4 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo ${run_cmd}
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude ${bad_nodes}  # --dependent_clones 4
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude ${bad_nodes} # --dependency afterany:100750 # --dependent_clones 4
