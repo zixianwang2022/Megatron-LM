@@ -94,7 +94,7 @@ fi
 FT_ARGS="--eod-mask-loss \
     --answer-loss-only"
 
-if [[ ${model_card} == *itp*  ]]; then
+if [[ ${model_card} == *text*70b*  ]]; then
     FT_ARGS="$FT_ARGS \
     --recompute-method uniform \
     --recompute-granularity full"
