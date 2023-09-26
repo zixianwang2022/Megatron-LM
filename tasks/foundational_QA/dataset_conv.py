@@ -322,7 +322,10 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     if dataset_name in ["oasst", "quiet_cockatoo"]:
         ## replace \n\n with \n
         all_input = system + query
-        all_input = all_input.replace("\n\n", "\n")
+        
+        ## remove it for llama-2-chat generation
+        # all_input = all_input.replace("\n\n", "\n")
+
         input_tokens = tokenizer.tokenize(all_input)
         # input_tokens = tokenizer.tokenize(system + query)
         # print(dataset_name, system + query)
@@ -332,7 +335,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     yes_no_without_context = ["boolq", "multirc"]
     multichoices = ["race"]
     # multi-turn qa datasets
-    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc"]
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
     user_template = ""
 
     if dataset_name in formatted_dataset_name:
@@ -367,14 +370,16 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         context = tokenizer.detokenize(context_tokens)
         all_input = system + context + dialogue_turn
 
-        ## replace \n\n with \n
-        all_input = all_input.replace("\n\n", "\n")
+        ## remove it for llama-2-chat generation
+        # ## replace \n\n with \n
+        # all_input = all_input.replace("\n\n", "\n")
         input_tokens = tokenizer.tokenize(all_input)
     else:
         all_input = system + dialogue_turn
 
-        ## replace \n\n with \n
-        all_input = all_input.replace("\n\n", "\n")
+        ## remove it for llama-2-chat generation
+        # ## replace \n\n with \n
+        # all_input = all_input.replace("\n\n", "\n")
         input_tokens = tokenizer.tokenize(all_input)
 
     # print(dataset_name, all_input)
@@ -392,7 +397,7 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
     yes_no_without_context = ["boolq", "multirc"]
     multichoices = ["race"]
     # multi-turn qa datasets
-    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc"]
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
     user_template = ""
 
     if dataset_name in formatted_dataset_name:
@@ -401,7 +406,7 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
     else:
         if dataset_name in short_span_with_context:
             # user = "Answer the following question with a short span. {}".format(query)
-            instruction = "Answer the following question with a short span."
+            instruction = "Answer the following question with a short span. The answer needs to be just in a few words."
             user = instruction + " " + query
         elif dataset_name in yes_no_without_context:
             # user = "Answer the following question with True or False. {}".format(query)

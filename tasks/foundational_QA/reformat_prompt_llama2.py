@@ -29,7 +29,7 @@ def reformat_prompt_llama2_chat(query, neighbours, dataset_name, ft_neighbours, 
     yes_no_without_context = ["boolq", "multirc"]
     multichoices = ["race"]
     # multi-turn qa datasets
-    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc"]
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
     user_template = ""
 
     if dataset_name in formatted_dataset_name:
