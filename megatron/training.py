@@ -413,9 +413,6 @@ def setup_model_and_optimizer(model_provider_func,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
-    if visual_model:
-        load_visual_checkpoint(visual_model[0])
-
     if args.load is not None:
         timers = get_timers()
         timers('load-checkpoint', log_level=0).start(barrier=True)
@@ -753,8 +750,8 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     if visual_model:
         visual_model.train()
 
-    if visual_model:
-        visual_model.train()
+    # if visual_model:
+    #     visual_model.train()
 
     # Tracking loss.
     total_loss_dict = {}

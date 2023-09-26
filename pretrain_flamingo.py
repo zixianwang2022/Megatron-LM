@@ -74,31 +74,31 @@ def get_batch(data_iterator, visual_model):
     # NOTE(jbarker): this freezes the whole ViT model, but we
     # actually need to allow the last couple of "neck" layers
     # to be trainable
-    with torch.no_grad() if args.freeze_ViT else nullcontext():
-        # Unpack.
-        tokens_ = data_text.long()
-        img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
+    # with torch.no_grad() if args.freeze_ViT else nullcontext():
+    # Unpack.
+    tokens_ = data_text.long()
+    img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
 
-        if img_raw is None:
-            img_tokens = None
-        else:
-            torch.cuda.nvtx.range_push("visual_model forward")
-            img_tokens = visual_model(img_raw).transpose(0, 1).contiguous()
-            torch.cuda.nvtx.range_pop()
-
-        torch.cuda.nvtx.range_push("index tokens")
-        tokenizer = get_tokenizer()
-        tokens = tokens_[:, :args.seq_length].contiguous()
-        labels = tokens_[:, 1:args.seq_length+1].contiguous()
+    if img_raw is None:
+        img_tokens = None
+    else:
+        torch.cuda.nvtx.range_push("visual_model forward")
+        img_tokens = visual_model(img_raw).transpose(0, 1).contiguous()
         torch.cuda.nvtx.range_pop()
 
-        torch.cuda.nvtx.range_push("get_ltor_masks_and_position_ids")
-        attention_mask, loss_mask, position_ids = \
-            get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
-                                            args.reset_position_ids,
-                                            args.reset_attention_mask,
-                                            args.eod_mask_loss)
-        torch.cuda.nvtx.range_pop()
+    torch.cuda.nvtx.range_push("index tokens")
+    tokenizer = get_tokenizer()
+    tokens = tokens_[:, :args.seq_length].contiguous()
+    labels = tokens_[:, 1:args.seq_length+1].contiguous()
+    torch.cuda.nvtx.range_pop()
+
+    torch.cuda.nvtx.range_push("get_ltor_masks_and_position_ids")
+    attention_mask, loss_mask, position_ids = \
+        get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
+                                        args.reset_position_ids,
+                                        args.reset_attention_mask,
+                                        args.eod_mask_loss)
+    torch.cuda.nvtx.range_pop()
 
     return tokens, labels, img_tokens, loss_mask, attention_mask, position_ids
 
@@ -131,9 +131,17 @@ def forward_step(data_iterator, model, visual_model):
     timers('batch-generator').stop()
 
     torch.cuda.nvtx.range_push("language_model forward")
-    output_tensor = model(tokens, img_tokens, position_ids, attention_mask,
+    output_tensor, p_tokens = model(tokens, img_tokens, position_ids, attention_mask,
                           labels=labels)
     torch.cuda.nvtx.range_pop()
+    # import os
+    # if int(os.environ["RANK"]) == 0:
+    #     p_tokens = p_tokens * loss_mask
+    #     t = get_tokenizer()
+    #     for in_line, pred_line in zip(tokens.cpu().numpy(), p_tokens.detach().cpu().numpy()):
+    #         in_tokens = [int(to) for to in in_line]
+    #         pred_tokens = [int(to) for to in pred_line]
+    #         print(f"in: {t.detokenize(in_tokens)}, pred: {t.detokenize(pred_tokens)}")
 
     return output_tensor, partial(loss_func, loss_mask)
 
@@ -189,10 +197,19 @@ def add_validation_args(parser):
     group.add_argument('--eval_ppl', action='store_true', default=False)
     group.add_argument('--perceiver-type', type=str, default='cross-attn')
     group.add_argument('--print-freq', type=int, default=500)
+    group.add_argument('--debug-log', action='store_true', default=False)
 
     return parser
 
 if __name__ == "__main__":
+
+    ## VSCODE DEBUGGER INIT
+    import os
+    if int(os.environ["RANK"]) == 0:
+        import debugpy
+        debugpy.listen(("0.0.0.0", 5678))
+        print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
+        debugpy.wait_for_client()
 
     pretrain(train_valid_test_datasets_provider, model_provider,
              ModelType.encoder_or_decoder,

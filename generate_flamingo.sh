@@ -3,7 +3,7 @@
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NAME="flamingo-2b-1node-COCO-overfit"
+NAME="flamingo-2b-1node-COCO-overfit-clip-batch-mbsz-1"
 
 CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
 

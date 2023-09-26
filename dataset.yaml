@@ -49,7 +49,7 @@ TextVQA_train:
 TextVQA_val:
   category: VQA
   augmentation: False
- 
+
 VQA_vg:
   category: VQA
   augmentation: True

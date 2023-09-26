@@ -63,11 +63,12 @@ class FlamingoModel(MegatronModule):
             inference_params=inference_params, vision_inputs=perceiver_output)
 
         if self.post_process:
-            return post_language_model_processing(
+            lm_output = post_language_model_processing(
                 lm_output, labels,
                 self.language_model.output_layer.weight if self.untie_embeddings_and_output_weights else self.word_embeddings_weight(),
                 self.parallel_output,
                 self.fp16_lm_cross_entropy)
+            return lm_output
         else:
             return lm_output
 

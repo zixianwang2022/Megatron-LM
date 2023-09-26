@@ -563,7 +563,7 @@ def load_visual_checkpoint(model, load_arg='load', strict=True):
     if torch.distributed.is_initialized():
         torch.distributed.barrier()
 
-    print_rank_0(f'  successfully loaded checkpoint from {args.load} '
+    print_rank_0(f'  successfully loaded checkpoint from {args.visual_path} '
                  f'at iteration {iteration}')
 
     return iteration

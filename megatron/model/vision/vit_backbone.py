@@ -276,14 +276,14 @@ class CLIPViTBackbone(MegatronModule):
         else:
             hidden_states = input
 
+        hidden_states = hidden_states.transpose(0, 1).contiguous()
         hidden_states = self.pre_layernorm(hidden_states, vit_layer_norm=True)
-
         hidden_states = self.transformer(hidden_states, None)
 
         if self.single_token_output:
             hidden_states = hidden_states[:,0,:]
 
-        return hidden_states.contiguous()
+        return hidden_states.transpose(0, 1).contiguous()
 
 class SAMViTBackbone(MegatronModule):
     """Vision SAM Model."""

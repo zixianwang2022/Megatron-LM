@@ -525,9 +525,27 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                      dataset_type='standard_bert'):
 
     # Indexed dataset.
-    indexed_dataset = get_indexed_dataset_(data_prefix,
-                                           data_impl,
-                                           skip_warmup)
+    visual_indexed_dataset = None
+    if dataset_type == "multimodal": # Combined multimodal data format
+        if os.path.exists(data_prefix + "_mmdata.idx"):
+            indexed_dataset = get_indexed_dataset_(data_prefix + "_mmdata",
+                                                   data_impl,
+                                                   skip_warmup)
+        elif os.path.exists(data_prefix + "_bytes.idx") and os.path.exists(data_prefix + "_textdata.idx"): # Legacy multimodal data format
+            indexed_dataset = get_indexed_dataset_(data_prefix + "_textdata", data_impl, skip_warmup)
+            visual_indexed_dataset = get_indexed_dataset_(data_prefix + "_bytes", data_impl, skip_warmup)
+            assert indexed_dataset.sizes.shape[0] == visual_indexed_dataset.sizes.shape[0]
+        elif os.path.exists(data_prefix + "_bytes.idx") and os.path.exists(data_prefix + "_new_text.idx"): # Legacy multimodal data format for finetuning
+            indexed_dataset = get_indexed_dataset_(data_prefix + "_new_text", data_impl, skip_warmup)
+            visual_indexed_dataset = get_indexed_dataset_(data_prefix + "_bytes", data_impl, skip_warmup)
+            assert indexed_dataset.sizes.shape[0] == visual_indexed_dataset.sizes.shape[0]
+        else:
+            print(data_prefix)
+            raise NotImplementedError
+    else:
+        indexed_dataset = get_indexed_dataset_(data_prefix,
+                                            data_impl,
+                                            skip_warmup)
 
     # Get start and end indices of train/valid/train into doc-idx
     # Note that doc-idx is desinged to be num-docs + 1 so we can
@@ -563,12 +581,14 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             end_index = splits[index + 1] + 1
             # New doc_idx view.
             indexed_dataset.set_doc_idx(doc_idx_ptr[start_index:end_index])
+            if visual_indexed_dataset is not None:
+                visual_indexed_dataset.set_doc_idx(doc_idx_ptr[start_index:end_index])
 
             dataset = build_dataset(
                 name, data_prefix, data_impl,
                 train_valid_test_num_samples[index], max_seq_length,
                 seed, skip_warmup, binary_head, max_seq_length_dec,
-                dataset_type, indexed_dataset)
+                dataset_type, indexed_dataset, visual_indexed_dataset=visual_indexed_dataset)
 
             # Set the original pointer so dataset remains the main dataset.
             indexed_dataset.set_doc_idx(doc_idx_ptr)
@@ -577,7 +597,7 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
             assert indexed_dataset.doc_idx.shape[0] == \
                 (total_num_of_documents + 1)
         return dataset
-    
+
     train_dataset = build_split_dataset(0, 'train')
     valid_dataset = build_split_dataset(1, 'valid')
     test_dataset = build_split_dataset(2, 'test')
@@ -588,7 +608,7 @@ def _build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 def build_dataset(name, data_prefix, data_impl, max_num_samples,
                   max_seq_length, seed, skip_warmup, binary_head,
                   max_seq_length_dec, dataset_type='standard_bert',
-                  indexed_dataset=None):
+                  indexed_dataset=None, visual_indexed_dataset=None):
 
     from megatron.data.bert_dataset import BertDataset
     from megatron.data.ict_dataset import ICTDataset
@@ -655,8 +675,7 @@ def build_dataset(name, data_prefix, data_impl, max_num_samples,
             num_samples=max_num_samples,
             seq_length=max_seq_length,
             seed=seed,
-            img_h=args.img_h,
-            img_w=args.img_w,
+            visual_indexed_dataset=visual_indexed_dataset
         )
     else:
         raise NotImplementedError("Dataset type not fully implemented.")

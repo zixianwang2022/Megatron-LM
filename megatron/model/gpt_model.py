@@ -38,7 +38,7 @@ def post_language_model_processing(lm_output, labels, logit_weights,
 
         # [s b] => [b, s]
         loss = loss.transpose(0,1).contiguous()
-        return loss
+        return loss, output.argmax(-1).transpose(0, 1)
 
 
 class GPTModel(MegatronModule):
