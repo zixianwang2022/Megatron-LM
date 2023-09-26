@@ -13,3 +13,9 @@ bash examples/long_context_flan_llama2/finetune_qc_llama2_paper.sh llama2_text_7
 
 bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_70b_128_1.0e-5 1000
 bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_70b_128_1.0e-5 4000
+
+bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_4xbsz_70b_512_1.0e-5 250
+bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_4xbsz_70b_512_1.0e-5 1000
+
+bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_70b_128_1.0e-5 1000
+bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_70b_128_1.0e-5 4000
