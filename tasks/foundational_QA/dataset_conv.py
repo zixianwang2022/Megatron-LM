@@ -322,7 +322,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     if dataset_name in ["oasst", "quiet_cockatoo"]:
         ## replace \n\n with \n
         all_input = system + query
-        all_input = all_input.replace("\n\n", "\n")
+        # all_input = all_input.replace("\n\n", "\n")
         input_tokens = tokenizer.tokenize(all_input)
         # input_tokens = tokenizer.tokenize(system + query)
         # print(dataset_name, system + query)
@@ -332,11 +332,19 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     yes_no_without_context = ["boolq", "multirc"]
     multichoices = ["race"]
     # multi-turn qa datasets
-    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc"]
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
+
+    math_program_with_context = ["finqa"]
+    math_program_multiturn = ["convfinqa"]
+
     user_template = ""
 
     if dataset_name in formatted_dataset_name:
         dialogue_turn = query
+
+    elif dataset_name in math_program_multiturn:
+        dialogue_turn = "Assistant needs to answer user's question with a number or the math arithmetic (add, subtract, multiply, and divide).\n{}".format(query)
+
     else:
         if dataset_name in short_span_with_context:
             # user = "Answer the following question with a short span. {}".format(query)
@@ -345,6 +353,8 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
             user = "Answer the following question with True or False. {}".format(query)
         elif dataset_name in multichoices:
             user = "Answer the following question by selecting one of the provided options. {}".format(query)
+        elif dataset_name in math_program_with_context:
+            user = "Answer the following question with the math arithmetic (add, subtract, multiply, and divide). {}".format(query)
         else:
             user = "Please give a full and complete answer for the question. {}".format(query)
 
@@ -367,14 +377,14 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         context = tokenizer.detokenize(context_tokens)
         all_input = system + context + dialogue_turn
 
-        ## replace \n\n with \n
-        all_input = all_input.replace("\n\n", "\n")
+        # ## replace \n\n with \n
+        # all_input = all_input.replace("\n\n", "\n")
         input_tokens = tokenizer.tokenize(all_input)
     else:
         all_input = system + dialogue_turn
 
-        ## replace \n\n with \n
-        all_input = all_input.replace("\n\n", "\n")
+        # ## replace \n\n with \n
+        # all_input = all_input.replace("\n\n", "\n")
         input_tokens = tokenizer.tokenize(all_input)
 
     # print(dataset_name, all_input)
@@ -392,12 +402,22 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
     yes_no_without_context = ["boolq", "multirc"]
     multichoices = ["race"]
     # multi-turn qa datasets
-    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc"]
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
+
+    math_program_with_context = ["finqa"]
+    math_program_multiturn = ["convfinqa"]
+
     user_template = ""
 
     if dataset_name in formatted_dataset_name:
         instruction = None
         dialogue_turn = query
+    
+
+    elif dataset_name in math_program_multiturn:
+        instruction = "Assistant needs to answer user's question with a number or the math arithmetic (add, subtract, multiply, and divide)."
+        dialogue_turn = instruction + "\n" + query
+
     else:
         if dataset_name in short_span_with_context:
             # user = "Answer the following question with a short span. {}".format(query)
@@ -409,6 +429,9 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
             user = instruction + " " + query
         elif dataset_name in multichoices:
             instruction = "Answer the following question by selecting one of the provided options."
+            user = instruction + " " + query
+        elif dataset_name in math_program_with_context:
+            instruction = "Answer the following question with the math arithmetic (add, subtract, multiply, and divide)."
             user = instruction + " " + query
         else:
             # user = "Please give a full and complete answer for the question. {}".format(query)
@@ -439,6 +462,8 @@ def reformat_prompt_with_fewshot_samples(query, neighbours, dataset_name, ft_nei
         if dataset_name in formatted_dataset_name:
             assert instruction is None
             formatted_sample = question + " " + answer
+        elif dataset_name in math_program_multiturn:
+            formatted_sample = instruction + "\n" + question + " " + answer
         else:
             assert instruction is not None
             formatted_sample = "User: " + instruction + " " + question + "\n\nAssistant: " + answer
