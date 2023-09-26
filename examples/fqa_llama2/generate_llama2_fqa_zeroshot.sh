@@ -13,7 +13,7 @@ model_card=$9
 use_retrieved_neighbours=${10}
 
 . ./examples/fqa_llama2/common_args_llama2.sh
-. ./examples/fqa_llama2/gen_input_llama2.sh
+. ./examples/foundational_qa/gen_input.sh
 
 top_k=1
 micro_bsz=1
@@ -82,6 +82,6 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 3
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 3 --exclude luna-0534,luna-0253,luna-0377
 # echo $COMMAND
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 
