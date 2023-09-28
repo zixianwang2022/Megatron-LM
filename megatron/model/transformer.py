@@ -83,13 +83,14 @@ class ParallelAffineLayer(MegatronModule):
         self.add_bias = config.add_bias_linear
 
         # Project input_dim to output_dim.
-        self.dense = tensor_parallel.RowParallelLinear(
+        self.dense = tensor_parallel.ColumnParallelLinear(
             args.visual_output_size,
             config.hidden_size,
             config=config,
-            init_method=config.output_layer_init_method,
+            init_method=config.init_method,
             bias=self.add_bias,
-            input_is_parallel=True,
+            skip_bias_add=True,
+            # input_is_parallel=True,
         )
 
         self.bias_gelu_fusion = False
@@ -171,7 +172,8 @@ class ParallelMLP(MegatronModule):
             config=config,
             init_method=config.output_layer_init_method,
             bias=self.add_bias,
-            input_is_parallel=True
+            input_is_parallel=True,
+            skip_bias_add=True
         )
 
     def forward(self, hidden_states):
@@ -593,14 +595,21 @@ class ParallelAttention(MegatronModule):
         self.num_attention_heads_per_partition = core.utils.divide(
             self.num_attention_heads, world_size)
 
+        skip_bias_add = False
+        default_bias = True
+        if not args.add_bias_linear and (not is_vit):
+            skip_bias_add = True
+            default_bias = False
+
         # Strided linear layer.
         if attention_type == AttnType.self_attn:
             self.query_key_value = tensor_parallel.ColumnParallelLinear(
                 self.hidden_size,
                 3 * projection_size,
                 config=config,
+                bias=default_bias,
+                skip_bias_add=skip_bias_add,
                 init_method=config.init_method,
-                bias=args.add_bias_linear or is_vit,
                 gather_output=False)
         else:
             assert attention_type == AttnType.cross_attn
@@ -641,7 +650,7 @@ class ParallelAttention(MegatronModule):
             init_method=config.output_layer_init_method,
             bias=args.add_bias_linear or is_vit,
             input_is_parallel=True,
-            skip_bias_add=True)
+            skip_bias_add=True if self.is_vit else False)
 
     def _checkpointed_attention_forward(self, query_layer, key_layer,
                                         value_layer, attention_mask,
@@ -830,6 +839,11 @@ class ParallelAttention(MegatronModule):
 
         return output, bias
 
+def get_bias_dropout_add(training):
+    def _bias_dropout_add(x, bias, residual, prob, gate=None):
+        return bias_dropout_add(x, bias, residual, prob, training, gate=gate)
+    return _bias_dropout_add
+
 def bias_dropout_add(x, bias, residual, prob, training, gate=None):
     # type: (Tensor, Optional[Tensor], Tensor, float, bool, Optional[Tensor]) -> Tensor
     if bias is not None:
@@ -840,10 +854,18 @@ def bias_dropout_add(x, bias, residual, prob, training, gate=None):
     out = residual + out
     return out
 
-def get_bias_dropout_add(training):
-    def _bias_dropout_add(x, bias, residual, prob, gate=None):
-        return bias_dropout_add(x, bias, residual, prob, training, gate=gate)
-    return _bias_dropout_add
+def dropout_ignore_bias(x, bias, residual, prob, training, gate=None):
+    # type: (Tensor, Tensor, Tensor, float, bool, Optional[Tensor]) -> Tensor
+    out = torch.nn.functional.dropout(x, p=prob, training=training)
+    if gate is not None:
+        out = out * gate.tanh()
+    out = residual + out
+    return out
+
+def get_dropout_ignore_bias(training):
+    def _dropout_ignore_bias(x, bias, residual, prob, gate=None):
+        return dropout_ignore_bias(x, bias, residual, prob, training, gate=gate)
+    return _dropout_ignore_bias
 
 @torch.jit.script
 def bias_dropout_add_fused_train(x: torch.Tensor,
@@ -945,6 +967,8 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         self.mlp = ParallelMLP(config)
         self.xattn_mlp = ParallelMLP(config)
 
+        self.disable_bias_linear = args.disable_bias_linear
+
 
         # Set bias+dropout+add fusion grad_enable execution handler.
         TORCH_MAJOR = int(torch.__version__.split('.')[0])
@@ -979,7 +1003,9 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
             # different nn.functional routines to account for varying
             # dropout semantics during training and inference phases.
             if self.bias_dropout_fusion:
-                if self.training:
+                if self.disable_bias_linear:
+                    bias_dropout_add_func = get_dropout_ignore_bias(self.training)
+                elif self.training:
                     bias_dropout_add_func = bias_dropout_add_fused_train
                 else:
                     bias_dropout_add_func = bias_dropout_add_fused_inference
@@ -1042,7 +1068,9 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
             # trigerring the fusion kernel. For now, we use two
             # different nn.functional routines to account for varying
             # dropout semantics during training and inference phases.
-            if self.bias_dropout_fusion:
+            if self.disable_bias_linear:
+                bias_dropout_add_func = get_dropout_ignore_bias(self.training)
+            elif self.bias_dropout_fusion:
                 if self.training:
                     bias_dropout_add_func = bias_dropout_add_fused_train
                 else:
@@ -1537,7 +1565,7 @@ class ParallelTransformerLayer(MegatronModule):
             layernorm_input = residual + self.drop_path(out)
 
         # Layer norm post the self attention.
-        layernorm_output = self.post_attention_layernorm(layernorm_input)
+        layernorm_output = self.post_attention_layernorm(layernorm_input, vit_layer_norm=self.is_vit)
 
         # Cross attention.
         if self.layer_type == LayerType.encoder:

@@ -12,12 +12,15 @@ samples=1000
 task="captioning"
 
 EVAL_PATH="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO/coco_train"
+# resolution=1024
+# VISUAL_ARCH="SAM_L"
+# VISUAL_TYPE="sam"
 resolution=224
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
 VISUAL_DIR="${CHECKPOINT_DIR}/${VISUAL_TYPE}"
 
-iter=30000
+iter=95012
 
 python generation/generate_samples_flamingo.py \
        --use-flash-attn \
@@ -51,6 +54,8 @@ python generation/generate_samples_flamingo.py \
        --visual-type ${VISUAL_TYPE} \
        --num-samples $samples \
        --add-gated-xattn \
+       --xattn_everyk 1 \
+       --add-BOS \
        --img-h $resolution \
        --img-w $resolution \
        --seed 153 \

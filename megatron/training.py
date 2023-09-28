@@ -402,13 +402,6 @@ def setup_model_and_optimizer(model_provider_func,
     unwrapped_model = unwrap_model(model,
                                    (torchDDP, LocalDDP, Float16Module))
 
-    if visual_model:
-        unwrapped_visual_model = unwrap_model(visual_model,
-                                       (torchDDP, LocalDDP, Float16Module))
-
-    else:
-        unwrapped_visual_model = None
-
     optimizer = get_megatron_optimizer(model, visual_model, no_wd_decay_cond,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)

@@ -421,7 +421,10 @@ def validate_args(args, defaults={}):
 
     # Disable bias gelu fusion if we are disabling bias altogether
     if not args.add_bias_linear:
+        args.disable_bias_linear = True
         args.bias_gelu_fusion = False
+    else:
+        args.disable_bias_linear = False
 
     # Retro checks.
     if args.retro_add_retriever:

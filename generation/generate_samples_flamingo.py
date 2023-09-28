@@ -214,7 +214,8 @@ def generate_samples_unconditional(model, visual_model):
             elif args.task == "none":
                 sentences = ["Can you briefly explain what you see in the image?"]
 
-            prompt=sentences[np.random.randint(len(sentences))]
+            #prompt=sentences[np.random.randint(len(sentences))]
+            prompt=sentences[0] + " "
 
             max_len = args.out_seq_length
 

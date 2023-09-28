@@ -136,7 +136,9 @@ def get_ltor_masks_and_position_ids(data,
                                     eod_token,
                                     reset_position_ids,
                                     reset_attention_mask,
-                                    eod_mask_loss):
+                                    eod_mask_loss,
+                                    question_length=None,
+                                    weights=None):
     """Build masks and position id for left to right model."""
 
     # Extract batch size and sequence length.
@@ -164,6 +166,10 @@ def get_ltor_masks_and_position_ids(data,
     if reset_position_ids:
         position_ids = position_ids.clone()
 
+    if question_length is not None:
+        for b in range(micro_batch_size):
+            loss_mask[b, :question_length[b].item() - 1] = 0.0
+
     if reset_position_ids or reset_attention_mask:
         # Loop through the batches:
         for b in range(micro_batch_size):
@@ -188,6 +194,8 @@ def get_ltor_masks_and_position_ids(data,
 
     # Convert attention mask to binary:
     attention_mask = (attention_mask < 0.5)
+    if weights is not None:
+        loss_mask = loss_mask * weights
 
     return attention_mask, loss_mask, position_ids
 

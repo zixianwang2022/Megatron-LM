@@ -69,6 +69,8 @@ def get_batch(data_iterator, visual_model):
 
     data_text = tensor_parallel.broadcast_data(["text"], data, torch.int64)["text"]
     data_img = tensor_parallel.broadcast_data(["img"], data, torch.float32)
+    prompt_len = tensor_parallel.broadcast_data(["prompt_len"], data, torch.int64)["prompt_len"]
+
     torch.cuda.nvtx.range_pop()
 
     # NOTE(jbarker): this freezes the whole ViT model, but we
@@ -97,7 +99,8 @@ def get_batch(data_iterator, visual_model):
         get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
                                         args.reset_position_ids,
                                         args.reset_attention_mask,
-                                        args.eod_mask_loss)
+                                        args.eod_mask_loss,
+                                        question_length=prompt_len)
     torch.cuda.nvtx.range_pop()
 
     return tokens, labels, img_tokens, loss_mask, attention_mask, position_ids
@@ -175,9 +178,9 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
             skip_warmup=(not args.mmap_warmup),
             dataset_type='multimodal')
 
-        valid_ds = BlendableDataset([valid_set], [args.weight], len(valid_set) // 2)
+        valid_ds = BlendableDataset([valid_set], [args.weight], len(valid_set))
 
-    train_ds = BlendableDataset([train_ds1], [args.weight], len(train_ds1)//2)
+    train_ds = BlendableDataset([train_ds1], [args.weight], len(train_ds1))
     return train_ds, valid_ds, test_ds
 
 def add_validation_args(parser):
@@ -203,13 +206,13 @@ def add_validation_args(parser):
 
 if __name__ == "__main__":
 
-    ## VSCODE DEBUGGER INIT
-    import os
-    if int(os.environ["RANK"]) == 0:
-        import debugpy
-        debugpy.listen(("0.0.0.0", 5678))
-        print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
-        debugpy.wait_for_client()
+    # ## VSCODE DEBUGGER INIT
+    # import os
+    # if int(os.environ["RANK"]) == 0:
+    #     import debugpy
+    #     debugpy.listen(("0.0.0.0", 5679))
+    #     print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
+    #     debugpy.wait_for_client()
 
     pretrain(train_valid_test_datasets_provider, model_provider,
              ModelType.encoder_or_decoder,
