@@ -54,11 +54,11 @@ def get_perceiver(config):
     if config.output_layer_init_method is None:
         config.output_layer_init_method = scaled_init_method_normal(config.init_method_std,
                                                                     config.num_layers)
-    perceiver_model = PerceiverResampler(config)
+    vision_model = PerceiverResampler(config)
     # key used for checkpoints.
-    perceiver_model_key = 'perceiver'
+    vision_model_key = 'vision_model'
 
-    return perceiver_model, perceiver_model_key
+    return vision_model, vision_model_key
 
 def get_language_model(config, num_tokentypes, add_pooler,
                        encoder_attn_mask_type,
@@ -358,6 +358,7 @@ class PerceiverResampler(MegatronModule):
                 self.affine = None
             self.encoder = None
         self._encoder_key = 'encoder'
+
     def set_input_tensor(self, input_tensor):
         """ See megatron.model.transformer.set_input_tensor()"""
 
@@ -389,7 +390,6 @@ class PerceiverResampler(MegatronModule):
     def load_state_dict(self, state_dict, strict=True):
         """Customized load."""
         # Encoder.
-
 
         if self.encoder:
             if self._encoder_key in state_dict:
@@ -651,6 +651,7 @@ class TransformerLanguageModel(MegatronModule):
         """For easy load."""
 
         state_dict_ = {}
+
         if self.pre_process:
             state_dict_[self._embedding_key] \
                 = self.embedding.state_dict_for_save_checkpoint(prefix=prefix,

@@ -329,13 +329,20 @@ class SAMViTBackbone(MegatronModule):
         self.input_tensor = None
         self.position_ids = None
         self.conv1 = torch.nn.Conv2d(in_channels=3, out_channels=self.hidden_size, kernel_size=self.patch_dim, stride=self.patch_dim, bias=True)
-        if self.pre_process:
-            self.position_ids = torch.arange(self.seq_length).expand(1, -1).cuda()
-            self.position_embeddings = torch.nn.Embedding(
-                self.seq_length, self.hidden_size
-            )
-            init_method_normal(args.init_method_std)(
-                self.position_embeddings.weight
+        if args.align_to_old:
+            self.align_to_old = True
+            if self.pre_process:
+                self.position_ids = torch.arange(self.seq_length).expand(1, -1).cuda()
+                self.position_embeddings = torch.nn.Embedding(
+                    self.seq_length, self.hidden_size
+                )
+                init_method_normal(args.init_method_std)(
+                    self.position_embeddings.weight
+                )
+        else:
+            self.align_to_old = False
+            self.pos_embed = torch.nn.Parameter(
+                torch.zeros(1, self.seq_length, self.hidden_size)
             )
 
         self.transformer = ParallelTransformer(
@@ -387,8 +394,12 @@ class SAMViTBackbone(MegatronModule):
             p1=self.num_patches_per_dim_h,
             p2=self.num_patches_per_dim_h,
         )
-        token_embeddings = encoder_output + \
-            self.position_embeddings(self.position_ids[:, :encoder_output.shape[1]])
+        if self.align_to_old:
+            token_embeddings = encoder_output + \
+                self.position_embeddings(self.position_ids[:, :encoder_output.shape[1]])
+        else:
+            token_embeddings = encoder_output + self.pos_embed
+
         token_embeddings = token_embeddings.transpose(0, 1).contiguous()
         torch.cuda.nvtx.range_pop()
 

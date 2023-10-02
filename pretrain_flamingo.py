@@ -199,6 +199,9 @@ def add_validation_args(parser):
     group.add_argument('--cyclic-train-iters', type=int, default=None)
     group.add_argument('--eval_ppl', action='store_true', default=False)
     group.add_argument('--perceiver-type', type=str, default='cross-attn')
+    group.add_argument('--SAM-randinit', action='store_true', default=False)
+    group.add_argument('--fp32SAM', action='store_true', default=False)
+    group.add_argument('--align-to-old', action='store_true', default=False)
     group.add_argument('--print-freq', type=int, default=500)
     group.add_argument('--debug-log', action='store_true', default=False)
 
@@ -210,7 +213,7 @@ if __name__ == "__main__":
     # import os
     # if int(os.environ["RANK"]) == 0:
     #     import debugpy
-    #     debugpy.listen(("0.0.0.0", 5679))
+    #     debugpy.listen(("0.0.0.0", 5678))
     #     print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
     #     debugpy.wait_for_client()
 

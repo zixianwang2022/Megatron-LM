@@ -548,6 +548,33 @@ def load_visual_checkpoint(model, load_arg='load', strict=True):
     # Model.
     try:
         iteration = state_dict['iteration']
+
+        if args.align_to_old:
+            new_state_dict = {}
+            for key, values in state_dict['model'].items():
+                if "rel_pos" in key and ("core_attention" not in key):
+                    key = key.replace("self_attention", "self_attention.core_attention")
+                new_state_dict[key] = values
+            model.load_state_dict(new_state_dict, strict=strict)
+        else:
+            model.load_state_dict(state_dict['model'], strict=strict)
+
+        if args.SAM_randinit and args.no_load_optim:
+            if (args.fp16 or args.bf16) and (not args.fp32SAM):
+                model.module.module.neck[0].reset_parameters()
+                model.module.module.neck[2].reset_parameters()
+                model.module.module.neck[1].bias.data.zero_()
+                model.module.module.neck[1].weight.data.fill_(1.)
+                model.module.module.neck[3].bias.data.zero_()
+                model.module.module.neck[3].weight.data.fill_(1.)
+            else:
+                model.module.neck[0].reset_parameters()
+                model.module.neck[2].reset_parameters()
+                model.module.neck[1].bias.data.zero_()
+                model.module.neck[1].weight.data.fill_(1.)
+                model.module.neck[3].bias.data.zero_()
+                model.module.neck[3].weight.data.fill_(1.)
+
     except KeyError:
         try:  # Backward compatible with older checkpoints
             iteration = state_dict['total_iters']
@@ -556,8 +583,6 @@ def load_visual_checkpoint(model, load_arg='load', strict=True):
                          'iteration from checkpoint {}, exiting'.format(
                              checkpoint_name))
             sys.exit()
-
-    model.load_state_dict(state_dict['model'], strict=strict)
 
     # Some utilities want to load a checkpoint without distributed being initialized
     if torch.distributed.is_initialized():

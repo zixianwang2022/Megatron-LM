@@ -426,6 +426,10 @@ def validate_args(args, defaults={}):
     else:
         args.disable_bias_linear = False
 
+    if args.disable_bias_linear:
+        args.bias_gelu_fusion = False
+        args.bias_dropout_fusion = False
+
     # Retro checks.
     if args.retro_add_retriever:
 

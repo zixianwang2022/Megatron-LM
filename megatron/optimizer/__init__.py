@@ -52,6 +52,11 @@ def get_param_groups(modules, visual_modules,
                 param_name = "pretraining"
             elif "gate" in name: # Gate parameters:
                 param_name = "pretraining"
+            elif "input_layernorm" in name and "language_model.encoder" in name:
+                if args.align_to_old:
+                    param_name = "Visual"
+                else:
+                    param_name = "pretraining"
             elif "language_model" in name:
                 param_name = "LM"
             elif "neck" in name:

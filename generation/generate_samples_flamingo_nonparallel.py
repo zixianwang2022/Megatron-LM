@@ -38,26 +38,31 @@ from torch.nn.parallel.distributed import DistributedDataParallel as torchDDP
 from megatron.text_generation.flamingo_api import flamingo_generate_and_post_process, flamingo_beam_search_and_post_process
 from megatron.model.vision.vit_backbone import CLIPViTBackbone, SAMViTBackbone
 from megatron.model import DistributedDataParallel as LocalDDP
+from megatron.arguments import core_transformer_config_from_args
+
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
 
     print_rank_0('building Flamingo model ...')
+    config = core_transformer_config_from_args(get_args())
     model = FlamingoModel(
+        config,
         num_tokentypes=0,
         parallel_output=True,
         pre_process=pre_process,
         post_process=post_process
     )
     return model
-    
+
 def visual_model_provider(visual_arch, pre_process=True, post_process=False):
     """Build the visual model."""
-    
+
+    config = core_transformer_config_from_args(get_args())
     if visual_arch.startswith("SAM"):
-        visual_model = SAMViTBackbone(pre_process=pre_process, 
+        visual_model = SAMViTBackbone(config, pre_process=pre_process,
                                    post_process=post_process)
     else:
-        visual_model = CLIPViTBackbone(pre_process=pre_process, 
+        visual_model = CLIPViTBackbone(config, pre_process=pre_process,
                                    post_process=post_process)
 
     print_rank_0('building visual model....')
@@ -105,6 +110,7 @@ def add_text_generate_args(parser):
     group.add_argument('--load-iter', type=int, default=None)
     group.add_argument('--beam-search', action='store_true', default=False)
     group.add_argument('--SAM-randinit', action='store_true', default=False)
+    group.add_argument('--fp32SAM', action='store_true', default=False)
     group.add_argument('--align-to-old', action='store_true', default=False)
     group.add_argument('--with-space', action='store_true', default=False)
     return parser
@@ -131,27 +137,34 @@ def generate_samples_unconditional(model, visual_model):
         pbar = tqdm(total=num_samples)
 
     answers = None
-    if args.eval_path.endswith(".npy"): # prepreocessed npy file
-        eval_imgs = np.load(args.eval_path)
-        if args.dataset == "COCO": # COCO evaluation
-            import pickle
-            with open("/mnt/fsx-main/zhuoliny/karpathy/COCO_imageid.pkl", "rb") as tf:
-                _train, _val, _test = pickle.load(tf)
-        else:
-            _test = [i for i in range(eval_imgs.shape[0])]
-    elif args.eval_path.endswith(".json"):
+    if args.eval_path.endswith(".json"):
         assert args.task == "VQA"
         eval_imgs, _test = [], []
         questions, answers = [], []
+        question_id = []
         json_file = json.load(open(args.eval_path))
         for i in range(num_samples):
             record = json_file[i]
-            img_file = "/mnt/fsx-main/zhuoliny/GPT4-VQA/Images/mscoco/" + record["image"]
-            rgb_img = image_transform(Image.open(img_file))
+            img_file = "/lustre/fsw/adlr/adlr-nlp/zhuoliny/" + record["image"]
+            pixel_mean = [123.675, 116.28, 103.53]
+            pixel_std = [58.395, 57.12, 57.375]
+            img_sample = np.array(Image.open(img_file))
+            pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
+            pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
+            raw_h, raw_w = img_sample.shape[0], img_sample.shape[1]
+            ratio = float(max(args.img_h, args.img_w)) / max(raw_h, raw_w)
+            H, W = int(raw_h * ratio + 0.5), int(raw_w * ratio + 0.5)
+            image_transform = _transform_test(H, W)
+            img = image_transform(img_sample)
+            img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - pixel_mean) / pixel_std
+            delta_h, delta_w = args.img_h - H, args.img_w - W
+            img2 = torch.nn.functional.pad(img, (0, delta_w, 0, delta_h))
             _test.append(img_file)
-            eval_imgs.append(rgb_img.reshape(-1, 3, args.img_h, args.img_w))
+            eval_imgs.append(img2.reshape(-1, 3, args.img_h, args.img_w))
             questions.append(record["question"])
+            question_id.append(record["question_id"])
             answers.append(record["answer"])
+            if len(eval_imgs) == num_samples: break
         eval_imgs = np.concatenate(eval_imgs)
     else: # raw image folder
         eval_imgs, _test = [], []
@@ -169,7 +182,10 @@ def generate_samples_unconditional(model, visual_model):
             img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - pixel_mean) / pixel_std
             delta_h, delta_w = args.img_h - H, args.img_w - W
             img2 = torch.nn.functional.pad(img, (0, delta_w, 0, delta_h))
-            _test.append(int(img_file.split("_")[-1].split(".")[0]))
+            if args.task == 'captioning':
+                _test.append(int(img_file.split("_")[-1].split(".")[0]))
+            else:
+                _test.append(img_file)
             eval_imgs.append(img2.reshape(-1, 3, args.img_h, args.img_w))
             if len(eval_imgs) == num_samples: break
         eval_imgs = np.concatenate(eval_imgs)
@@ -202,7 +218,7 @@ def generate_samples_unconditional(model, visual_model):
                               "Offer a succinct explanation of the picture presented."
                             ]
             elif args.task == 'VQA':
-                sentences = ["Given the image, answer the following question with few words. " + questions[cnt]]
+                sentences = [questions[cnt]]
             elif args.task == "OCR":
                 sentences = ["Can you read the text from image and output here?",
                              "Extract and document the text from the provided image.",
@@ -212,13 +228,14 @@ def generate_samples_unconditional(model, visual_model):
                             ]
             elif args.task == "none":
                 sentences = ["Can you briefly explain what you see in the image?"]
-            
-            if args.with_space:
-                prompt=sentences[0] + " " #np.random.randint(len(sentences))]
 
+            prompt=sentences[0] #np.random.randint(len(sentences))]
+
+            if args.with_space:
+                prompt += " "
             #print("Prompt: ", prompt)
             max_len = args.out_seq_length
-            
+
             token_embs = torch.from_numpy(eval_imgs[cnt].reshape(-1, 3, args.img_h, args.img_w)).cuda()#.bfloat16().cuda()
 
             #print(torch.sum(torch.abs(token_embs.reshape(-1))))
@@ -244,13 +261,13 @@ def generate_samples_unconditional(model, visual_model):
                                                top_k_sampling=args.top_k,
                                                top_p_sampling=args.top_p,
                                                add_BOS=False,
-                                               temperature=1.0, 
+                                               temperature=1.0,
                                                vision_inputs=token_embs)
 
             #resp_sentences[0] = resp_sentences[0].replace("\n", " ")
             for prompt, generation in zip([prompt], resp_sentences):
                 datum = {}
-                datum["image_id"] = _test[cnt]
+                if args.task != "VQA": datum["image_id"] = _test[cnt]
 
                 if args.task == "OCR":
                     generated = "OCR text"
@@ -262,8 +279,12 @@ def generate_samples_unconditional(model, visual_model):
                     generated = "text"
 
                 if args.task == "VQA":
-                    datum["question"] = questions[cnt]
-                datum[generated] = generation[len(prompt)+1:]
+                    #datum["question"] = questions[cnt]
+                    datum["question_id"] = question_id[cnt]
+                if args.task == "captioning" or args.task == "VQA":
+                    datum[generated] = generation[len(prompt)+1:]
+                else:
+                    datum = generation[len(prompt):]
                 print(datum)
                 if answers:
                     print("Ground truth: ", answers[cnt])
@@ -288,10 +309,16 @@ def generate_and_write_samples_unconditional(model, clip_model):
     with open(args.genfile, 'w') as f:
         for datum in generate_samples_unconditional(model, clip_model):
             if torch.distributed.get_rank() == 0:
-                count += 1
-                if count == 1: f.write("[" + json.dumps(datum))
-                else: f.write("," + json.dumps(datum))
-        f.write("]")
+                if args.task == "captioning":
+                    count += 1
+                    if count == 1: f.write("[" + json.dumps(datum))
+                    else: f.write("," + json.dumps(datum))
+                elif args.task == "VQA":
+                    f.write(json.dumps(datum) + "\n")
+                else:
+                    f.write(datum + "\n")
+        if args.task == "captioning":
+            f.write("]")
 
 
 def main():
@@ -308,17 +335,25 @@ def main():
     args = get_args()
 
     model = get_model(model_provider, wrap_with_ddp=False)
-    #fp16 = args.fp16
-    #bf16 = args.bf16
-    #args.fp16 = False
-    #args.bf16 = False
+
+    if args.fp32SAM:
+        fp16 = args.fp16
+        bf16 = args.bf16
+        pdtype = args.params_dtype
+        args.fp16 = False
+        args.bf16 = False
+        args.params_dtype = torch.float32
+
     visual_model = get_model(visual_model_provider, visual_arch=args.visual_arch, wrap_with_ddp=False)
-    #args.fp16 = fp16
-    #args.bf16 = bf16
+
+    if args.fp32SAM:
+        args.fp16 = fp16
+        args.bf16 = bf16
+        args.params_dtype = pdtype
 
     if args.load is not None:
-        _ = load_checkpoint(model, None, None, load_iter=args.load_iter)
-        load_visual_checkpoint(visual_model[0], load_iter=args.load_iter)
+        _ = load_checkpoint(model, None, None)
+        load_visual_checkpoint(visual_model[0])
 
     model = model[0]
     visual_model = visual_model[0]
@@ -333,5 +368,13 @@ def main():
 
 
 if __name__ == "__main__":
+
+    ## VSCODE DEBUGGER INIT
+    import os
+    if int(os.environ["RANK"]) == 0:
+        import debugpy
+        debugpy.listen(("0.0.0.0", 5678))
+        print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
+        debugpy.wait_for_client()
 
     main()

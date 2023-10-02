@@ -32,7 +32,7 @@ class FlamingoModel(MegatronModule):
         self.fp16_lm_cross_entropy = args.fp16_lm_cross_entropy
         self.untie_embeddings_and_output_weights = args.untie_embeddings_and_output_weights
 
-        self.perceiver_model, self._perceiver_model_key = get_perceiver(config=config)
+        self.vision_model, self._vision_model_key = get_perceiver(config=config)
 
         self.language_model, self._language_model_key = get_language_model(
             config=config,
@@ -48,13 +48,13 @@ class FlamingoModel(MegatronModule):
     def set_input_tensor(self, input_tensor):
         """See megatron.model.transformer.set_input_tensor()"""
         self.language_model.set_input_tensor(input_tensor)
-        self.perceiver_model.set_input_tensor([None])
+        self.vision_model.set_input_tensor([None])
 
     def forward(self, input_ids, img_tokens, position_ids, attention_mask, labels=None,
                 tokentype_ids=None, inference_params=None):
 
         import torch
-        perceiver_output = self.perceiver_model(img_tokens, inference_params=inference_params)
+        perceiver_output = self.vision_model(img_tokens, inference_params=inference_params)
 
         lm_output = self.language_model(
             input_ids,
@@ -78,6 +78,9 @@ class FlamingoModel(MegatronModule):
         state_dict_[self._language_model_key] \
             = self.language_model.state_dict_for_save_checkpoint(
                 prefix=prefix, keep_vars=keep_vars)
+        state_dict_[self._vision_model_key] \
+            = self.vision_model.state_dict_for_save_checkpoint(
+                prefix=prefix, keep_vars=keep_vars)
         # Save word_embeddings.
         if self.post_process and not self.pre_process and not self.untie_embeddings_and_output_weights:
             state_dict_[self._word_embeddings_for_head_key] \
@@ -92,5 +95,7 @@ class FlamingoModel(MegatronModule):
             self.word_embeddings.load_state_dict(
                 state_dict[self._word_embeddings_for_head_key], strict=strict)
         if self._language_model_key in state_dict:
-            state_dict = state_dict[self._language_model_key]
-        self.language_model.load_state_dict(state_dict, strict=strict)
+            self.language_model.load_state_dict(state_dict[self._language_model_key], strict=strict)
+        if self._vision_model_key in state_dict:
+            self.vision_model.load_state_dict(state_dict[self._vision_model_key], strict=strict)
+

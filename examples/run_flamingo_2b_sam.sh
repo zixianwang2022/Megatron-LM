@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=1
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-sam-mr
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-sam-mr-perceiver-fix
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=256
 
-NAME="flamingo-2b-1node-COCO-overfit-sam-mr"
+NAME="flamingo-2b-1node-COCO-overfit-sam-mr-perceiver-fix"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -112,7 +112,9 @@ options=" \
     --img-h 1024 \
     --img-w 1024 \
     --dataloader-type cyclic --no-data-sharding \
-    --tensorboard-dir ${TENSORBOARD_DIR}"
+    --tensorboard-dir ${TENSORBOARD_DIR} \
+    --align-to-old \
+    --SAM-randinit "
 
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
 # python -u ${SOURCE}/pretrain_flamingo.py ${options}
@@ -121,7 +123,7 @@ run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 srun -l --verbose \
-    --container-image gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-revilm \
+    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker-revilm.sqsh \
     --container-mounts "/lustre" \
     --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
     sh -c "${run_cmd}"

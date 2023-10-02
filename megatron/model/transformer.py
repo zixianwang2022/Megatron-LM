@@ -97,7 +97,6 @@ class ParallelAffineLayer(MegatronModule):
         self.activation_func = None
         self.swiglu = False
 
-
     def forward(self, hidden_states):
         affine_parallel, bias_parallel = self.dense(hidden_states)
 
@@ -618,7 +617,7 @@ class ParallelAttention(MegatronModule):
                 projection_size,
                 config=config,
                 init_method=config.init_method,
-                bias=config.add_bias_linear or is_vit,
+                # bias=config.add_bias_linear or is_vit,
                 gather_output=False)
 
 
@@ -627,7 +626,7 @@ class ParallelAttention(MegatronModule):
                 2 * projection_size,
                 config=config,
                 init_method=config.init_method,
-                bias=config.add_bias_linear or is_vit,
+                # bias=config.add_bias_linear or is_vit,
                 gather_output=False)
 
 
@@ -2161,7 +2160,8 @@ class ParallelTransformer(MegatronModule):
                             hidden_states = layer(
                                 hidden_states,
                                 attention_mask, vision_inputs=vision_inputs,
-                                rotary_pos_emb=rotary_pos_emb)
+                                rotary_pos_emb=rotary_pos_emb,
+                                inference_params=inference_params)
                         else:
                             hidden_states = layer(
                                 hidden_states,
