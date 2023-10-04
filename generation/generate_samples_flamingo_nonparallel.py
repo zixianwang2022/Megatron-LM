@@ -352,8 +352,8 @@ def main():
         args.params_dtype = pdtype
 
     if args.load is not None:
-        _ = load_checkpoint(model, None, None)
-        load_visual_checkpoint(visual_model[0])
+        _ = load_checkpoint(model, None, None, load_iter=args.load_iter)
+        load_visual_checkpoint(visual_model[0], load_iter=args.load_iter)
 
     model = model[0]
     visual_model = visual_model[0]
@@ -368,13 +368,5 @@ def main():
 
 
 if __name__ == "__main__":
-
-    ## VSCODE DEBUGGER INIT
-    import os
-    if int(os.environ["RANK"]) == 0:
-        import debugpy
-        debugpy.listen(("0.0.0.0", 5678))
-        print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
-        debugpy.wait_for_client()
 
     main()

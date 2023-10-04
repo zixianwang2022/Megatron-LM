@@ -8,15 +8,15 @@
 #SBATCH --overcommit
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
-#SBATCH --nodes=1
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-sam-mr-perceiver-fix
+#SBATCH --nodes=8
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-sam-mr
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-SEQ_LEN=256
+SEQ_LEN=96
 
-NAME="flamingo-2b-1node-COCO-overfit-sam-mr-perceiver-fix"
+NAME="flamingo-2b-1node-COCO-overfit-sam-mr"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -40,7 +40,7 @@ DATA_VALID="1.0000 /lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO_debug/CO
 # VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
 VISUAL_ARCH="SAM_L"
 VISUAL_TYPE="sam"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_17"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -67,15 +67,15 @@ options=" \
     --ds-seq-length 512 \
     --max-position-embeddings 4096 \
     --cyclic-train-iters 100000000 \
-    --train-samples 131072 \
+    --train-samples 410000 \
     --micro-batch-size 1 \
-    --global-batch-size 8 \
+    --global-batch-size 256 \
     --lr-decay-samples 25600000 \
     --lr-warmup-samples 83200 \
-    --lr 2.0e-5 \
-    --min-lr 2.0e-6 \
+    --lr 1e-5 \
+    --min-lr 2.5e-6 \
     --lr-decay-style cosine \
-    --log-interval 1 \
+    --log-interval 10 \
     --eval-iters 10 \
     --eval-interval 1000 \
     --tokenizer-type GPTSentencePieceTokenizer \
@@ -84,17 +84,16 @@ options=" \
     --valid-path ${DATA_VALID} \
     --prompt-path ${PROMPT_PATH} \
     --dset-config ${DATASET_CONFIG} \
-    --save-interval 1000 \
+    --save-interval 2000 \
     --save ${FINETUNE_DIR} \
     --load ${CHECKPOINT_DIR} \
     --split 100,0,0 \
-    --clip-grad 1.0 \
+    --clip-grad 50.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
     --init-method-std 0.014 \
     --add-gated-xattn \
-    --xattn_everyk 1 \
     --add-BOS \
     --visual-arch ${VISUAL_ARCH} \
     --visual-path ${VISUAL_LOAD_DIR} \
@@ -103,18 +102,19 @@ options=" \
     --log-num-zeros-in-grad \
     --bf16 \
     --DDP-impl local \
-    --finetune \
     --no-load-optim \
     --eod-mask-loss \
+    --finetune \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
     --img-h 1024 \
     --img-w 1024 \
     --dataloader-type cyclic --no-data-sharding \
-    --tensorboard-dir ${TENSORBOARD_DIR} \
+    --SAM-randinit \
     --align-to-old \
-    --SAM-randinit "
+    --fp32SAM \
+    --tensorboard-dir ${TENSORBOARD_DIR}"
 
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
 # python -u ${SOURCE}/pretrain_flamingo.py ${options}

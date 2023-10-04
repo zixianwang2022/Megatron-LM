@@ -397,7 +397,21 @@ def setup_model_and_optimizer(model_provider_func,
     args = get_args()
 
     model = get_model(model_provider_func, model_type)
+
+    if args.fp32SAM:
+        fp16 = args.fp16
+        bf16 = args.bf16
+        pdtype = args.params_dtype
+        args.fp16 = False
+        args.bf16 = False
+        args.params_dtype = torch.float32
+
     visual_model = get_model(visual_model_provider, model_type, visual_arch=args.visual_arch)
+
+    if args.fp32SAM:
+        args.fp16 = fp16
+        args.bf16 = bf16
+        args.params_dtype = pdtype
 
     unwrapped_model = unwrap_model(model,
                                    (torchDDP, LocalDDP, Float16Module))

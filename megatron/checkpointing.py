@@ -382,7 +382,7 @@ def fix_query_key_value_ordering(model, checkpoint_version):
                      " checkpoint version {}".format(checkpoint_version))
 
 
-def _load_base_checkpoint(load_dir, rank0=False):
+def _load_base_checkpoint(load_dir, rank0=False, load_iter=None):
     """ Load the base state_dict from the given directory
 
     If rank0 is true, just loads rank 0 checkpoint, ignoring arguments.
@@ -403,6 +403,9 @@ def _load_base_checkpoint(load_dir, rank0=False):
     # Otherwise, read the tracker file and either set the iteration or
     # mark it as a release checkpoint.
     iteration, release = read_metadata(tracker_filename)
+
+    if load_iter is not None:
+        iteration = load_iter
 
     # Checkpoint.
     if rank0:
@@ -517,7 +520,7 @@ def load_args_from_checkpoint(args, load_arg='load'):
         _set_arg('num_layers_per_virtual_pipeline_stage')
     return args, checkpoint_args
 
-def load_visual_checkpoint(model, load_arg='load', strict=True):
+def load_visual_checkpoint(model, load_arg='load', strict=True, load_iter=None):
     """Load a visual model checkpoint and return the iteration.
     strict (bool): whether to strictly enforce that the keys in
         :attr:`state_dict` of the checkpoint match the names of
@@ -528,7 +531,7 @@ def load_visual_checkpoint(model, load_arg='load', strict=True):
 
     model = unwrap_model(model)
 
-    state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False)
+    state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False, load_iter=load_iter)
 
     # Checkpoint not loaded.
     if state_dict is None:
@@ -593,7 +596,7 @@ def load_visual_checkpoint(model, load_arg='load', strict=True):
 
     return iteration
 
-def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', strict=True):
+def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', strict=True, load_iter=None):
     """Load a model checkpoint and return the iteration.
     strict (bool): whether to strictly enforce that the keys in
         :attr:`state_dict` of the checkpoint match the names of
@@ -604,7 +607,7 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
 
     model = unwrap_model(model)
 
-    state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False)
+    state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False, load_iter=load_iter)
 
     # Checkpoint not loaded.
     if state_dict is None:
