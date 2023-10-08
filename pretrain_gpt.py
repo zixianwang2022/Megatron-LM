@@ -124,11 +124,23 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     return train_ds, valid_ds, test_ds
 
+def muT_parse_args(parser_main):
+    parser = parser_main.add_argument_group(title='muT-training')
+    parser.add_argument("--muT_config_file", default=None, )
+    parser.add_argument("--shape_file", default="", required=True)
+    return parser_main
 
 if __name__ == "__main__":
 
-    pretrain(train_valid_test_datasets_provider,
+    # pretrain(train_valid_test_datasets_provider,
+    #          model_provider,
+    #          ModelType.encoder_or_decoder,
+    #          forward_step,
+    #          args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
+    pretrain(train_valid_test_datasets_provider, 
              model_provider,
              ModelType.encoder_or_decoder,
              forward_step,
-             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
+             extra_args_provider=muT_parse_args,
+             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'}
+    )

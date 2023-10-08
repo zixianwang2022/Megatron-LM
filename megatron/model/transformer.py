@@ -19,6 +19,7 @@ from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_em
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, get_norm
 from megatron.core.tensor_parallel import gather_from_sequence_parallel_region_to_moe, reduce_scatter_to_sequence_parallel_region_from_moe
 from megatron.core.parallel_state import get_tensor_model_parallel_group, get_tensor_and_data_parallel_group
+from torch.nn.init import constant_
 
 try:
     from einops import rearrange
@@ -298,9 +299,10 @@ class CoreAttention(MegatronModule):
     def __init__(self, layer_number, config,
                  attn_mask_type=AttnMaskType.padding):
         super(CoreAttention, self).__init__()
+        args = get_args()
         self.fp16 = config.fp16
         self.bf16 = config.bf16
-
+        
         self.apply_query_key_layer_scaling = config.apply_query_key_layer_scaling
         self.attention_softmax_in_fp32 = config.attention_softmax_in_fp32
         if self.apply_query_key_layer_scaling:
@@ -321,7 +323,9 @@ class CoreAttention(MegatronModule):
             config.num_attention_heads, world_size)
 
         coeff = None
-        self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
+        # self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
+        self.norm_factor = self.hidden_size_per_attention_head
+        self.attn_temp = args.attention_temperature
         if self.apply_query_key_layer_scaling:
             coeff = self.layer_number
             self.norm_factor *= coeff
@@ -373,6 +377,9 @@ class CoreAttention(MegatronModule):
 
         # change view to [b, np, sq, sk]
         attention_scores = matmul_result.view(*output_size)
+
+        ### attention logit scale
+        attention_scores.data *= self.attn_temp
 
         # ===========================
         # Attention probs and dropout
@@ -556,6 +563,9 @@ class ParallelAttention(MegatronModule):
                 init_method=config.init_method,
                 bias=args.add_bias_linear,
                 gather_output=False)
+            
+            # zero initializing query head (muT)
+            constant_(self.query_key_value.weight[:,:query_projection_size], 0.)
         else:
             assert attention_type == AttnType.cross_attn
 
@@ -691,7 +701,9 @@ class ParallelAttention(MegatronModule):
                 dim=3)
 
             # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn] -
-            query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head)
+            # query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head)
+            query_layer = query_layer.reshape(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head)
+
         else:
             # Attention heads [sk, b, h] --> [sk, b, (np * 2 * hn)]
             mixed_kv_layer, _ = self.key_value(encoder_output)
