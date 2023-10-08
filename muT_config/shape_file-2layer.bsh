@@ -1,0 +1,53 @@
+# This is a base shape file encoded in yaml
+# - `null` indicates a dimension is "finite", i.e. a non-"width" dimension
+# - a number indicates the base dimension of an "infinite" dimension, i.e. some notion of "width"
+language_model.embedding.word_embeddings.weight:
+- null
+- 1
+language_model.encoder.final_layernorm.bias:
+- 1
+language_model.encoder.final_layernorm.weight:
+- 1
+language_model.encoder.layers.0.input_layernorm.bias:
+- 1
+language_model.encoder.layers.0.input_layernorm.weight:
+- 1
+language_model.encoder.layers.0.mlp.dense_4h_to_h.weight:
+- 1
+- null
+language_model.encoder.layers.0.mlp.dense_h_to_4h.weight:
+- null
+- 1
+language_model.encoder.layers.0.post_attention_layernorm.bias:
+- 1
+language_model.encoder.layers.0.post_attention_layernorm.weight:
+- 1
+language_model.encoder.layers.0.self_attention.dense.weight:
+- 1
+- 1
+language_model.encoder.layers.0.self_attention.query_key_value.weight:
+- 3
+- 1
+language_model.encoder.layers.1.input_layernorm.bias:
+- 1
+language_model.encoder.layers.1.input_layernorm.weight:
+- 1
+language_model.encoder.layers.1.mlp.dense_4h_to_h.weight:
+- 1
+- null
+language_model.encoder.layers.1.mlp.dense_h_to_4h.weight:
+- null
+- 1
+language_model.encoder.layers.1.post_attention_layernorm.bias:
+- 1
+language_model.encoder.layers.1.post_attention_layernorm.weight:
+- 1
+language_model.encoder.layers.1.self_attention.dense.weight:
+- 1
+- 1
+language_model.encoder.layers.1.self_attention.query_key_value.weight:
+- 3
+- 1
+language_model.output_layer.weight:
+- null
+- 1

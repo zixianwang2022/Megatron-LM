@@ -1,0 +1,31 @@
+# base_model:
+#   hidden-size: 4096
+#   num-attention-heads: 32
+# delta_model:
+#   hidden-size: 8192
+#   num-attention-heads: 32
+# model:
+#   hidden_size: 4096
+#   num-attention-heads: 32
+
+# for base 256
+# base_model:
+#   hidden-size: 256
+#   num-attention-heads: 32
+# delta_model:
+#   hidden-size: 512
+#   num-attention-heads: 32
+# model:
+#   hidden_size: 256
+#   num-attention-heads: 32
+
+# for base 1024
+base_model:
+  hidden-size: 1024
+  num-attention-heads: 16
+delta_model:
+  hidden-size: 2048
+  num-attention-heads: 16
+model:
+  hidden_size: 1024
+  num-attention-heads: 16
