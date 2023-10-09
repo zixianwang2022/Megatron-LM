@@ -32,8 +32,8 @@ CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/checkpoint
 TENSORBOARD_DIR="${OUTPUT}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-OCR_train="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/OCR/OCR_nvdata_train"
-OCR_valid="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/OCR/OCR_nvdata_val"
+OCR_train="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/OCR2/OCR_nvdata_train"
+OCR_valid="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/OCR2/OCR_nvdata_val"
 
 DATA_TRAIN="1.0000 ${OCR_train}"
 DATA_VALID="1.0000 ${OCR_valid}"
@@ -116,6 +116,7 @@ options=" \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
+# CUDA_VISIBLE_DEVICES=0 python -u ${SOURCE}/pretrain_flamingo.py ${options}
 run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`

@@ -369,4 +369,12 @@ def main():
 
 if __name__ == "__main__":
 
+    # ## VSCODE DEBUGGER INIT
+    # import os
+    # if int(os.environ["RANK"]) == 0:
+    #     import debugpy
+    #     debugpy.listen(("0.0.0.0", 5678))
+    #     print_rank_0(">>>> RANK 0 IS WAITING FOR DEBUGGER...")
+    #     debugpy.wait_for_client()
+
     main()

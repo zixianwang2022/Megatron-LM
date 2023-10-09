@@ -88,7 +88,7 @@ options=" \
     --save ${FINETUNE_DIR} \
     --load ${CHECKPOINT_DIR} \
     --split 100,0,0 \
-    --clip-grad 50.0 \
+    --clip-grad 52.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \

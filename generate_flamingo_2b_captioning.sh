@@ -4,11 +4,11 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
-NAME="flamingo-2b-1node-COCO-overfit-clip-mr-perceiver-fix"
+NAME="flamingo-2b-1node-COCO-overfit-clip336-mr"
 CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
 
 dataset="GPT"
-samples=5000
+samples=1000
 task="captioning"
 
 EVAL_PATH="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO/coco_test"
@@ -16,14 +16,15 @@ EVAL_PATH="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO/coco_test"
 # resolution=1024
 # VISUAL_ARCH="SAM_L"
 # VISUAL_TYPE="sam"
-resolution=224
+resolution=336
+# resolution=224
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
 VISUAL_DIR="${CHECKPOINT_DIR}/${VISUAL_TYPE}"
 
-iter=60000
+iter=28000
 
-CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flamingo_nonparallel.py \
+CUDA_VISIBLE_DEVICES=7 MASTER_PORT=44147 python generation/generate_samples_flamingo_nonparallel.py \
        --use-flash-attn \
        --apply-layernorm-1p \
        --untie-embeddings-and-output-weights \
@@ -47,7 +48,7 @@ CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flam
        --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
        --bf16 \
        --micro-batch-size 1 \
-       --seq-length 256 \
+       --seq-length 96 \
        --out-seq-length 30 \
        --temperature 1.0 \
        --dataset $dataset \
@@ -68,3 +69,4 @@ CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flam
        --genfile ./generated_files/$NAME-$iter-bs-$dataset-$task-${resolution}px.jsonl \
        --align-to-old \
        --with-space \
+       --fp32SAM \
