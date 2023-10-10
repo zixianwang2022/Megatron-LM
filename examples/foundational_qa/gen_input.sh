@@ -84,10 +84,28 @@ if [[ $TASK == "TextbookQA" ]]; then
     fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/single-turn-qa/$TASK/fewshot_samples.json"
 fi
 
+if [[ $TASK == "sandia" ]]; then
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/single-turn-qa/sandia_e5_unsupervised_retriever_chunkbysents300_retrieved/test.json"
+    ## Need to work on fewshot inputs
+    fewshot_input_file=""
+fi
+
 if [[ $TASK == "doc2dial" ]]; then
     DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/$TASK"
     sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/$TASK/${TASK}_ftdragon_chatgptgen7k_chunk150_QA_test.json"
     fewshot_input_file="${FEWSHOT_INPUT_FOLDER}/multi-turn-qa/doc2dial/fewshot_samples.json"
+fi
+
+if [[ $TASK == "doc2dial_gold" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/doc2dial"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/doc2dial/doc2dial_goldctx_QA_test.json"
+    fewshot_input_file=""
+fi
+
+if [[ $TASK == "doc2dial_gold_v2" ]]; then
+    DATA_FOLDER="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/doc2dial"
+    sample_input_file="/lustre/fsw/adlr/adlr-nlp/zihanl/datasets/foundational-qa/multi-turn-qa/doc2dial/doc2dial_goldctx_v2_QA_test.json"
+    fewshot_input_file=""
 fi
 
 if [[ $TASK == "quac" ]]; then
