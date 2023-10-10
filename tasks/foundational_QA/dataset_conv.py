@@ -324,7 +324,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "qasper", "narrative_qa", "quality", "musique", "hotpotqa", "multifieldqa_en"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
-    formatted_dataset_name = ["doc2dial"]
+    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
     summary_dataset_name = ["gov_report", "summ_screen_fd"]
     user_template = ""
 
@@ -366,7 +366,10 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         context_tokens = tokenizer.tokenize(context)
         dialogue_tokens = tokenizer.tokenize(dialogue_turn)
         system_tokens = tokenizer.tokenize(system)
+        # print(len(context_tokens), repr(context))
+        # print(max_seq_length, max_output_len, len(dialogue_tokens), len(system_tokens))
         context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens) - 2]
+        # print(len(context_tokens), repr(tokenizer.detokenize(context_tokens)))
         context = tokenizer.detokenize(context_tokens) + "\n\n"
 
         all_input = system + context + dialogue_turn
