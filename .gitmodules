@@ -1,0 +1,3 @@
+[submodule "nvgpt4-base"]
+	path = nvgpt4-base
+	url = https://gitlab-master.nvidia.com/ADLR/nvgpt4/nvgpt4-base

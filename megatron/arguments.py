@@ -232,6 +232,10 @@ def validate_args(args, defaults={}):
             args.no_load_optim = False
             args.finetune = False
 
+        args.dataloader_save = os.path.join(args.save, 'dataloader')
+        if os.path.exists(args.dataloader_save):
+            args.dataloader_path = args.dataloader_save
+
     if args.rank == 0:
         print('using {} for parameters ...'.format(args.params_dtype),
               flush=True)
@@ -904,7 +908,7 @@ def _add_training_args(parser):
                        choices=['adam', 'sgd'],
                        help='Optimizer function')
     group.add_argument('--dataloader-type', type=str, default=None,
-                       choices=['single', 'cyclic'],
+                       choices=['single', 'cyclic', 'nvgpt4'],
                        help='Single pass vs multiple pass data loader')
     group.add_argument('--no-async-tensor-model-parallel-allreduce',
                        action='store_false',
@@ -1243,6 +1247,8 @@ def _add_data_args(parser):
                        help='Number of perceiver resampler layers.')
     group.add_argument('--num-latents', type=int, default=None,
                        help='Number of latent dims')
+    group.add_argument('--dataset-type', type=str, default='index',
+                      choices=['nvgpt4', 'index'])
     return parser
 
 

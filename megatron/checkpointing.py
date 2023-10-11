@@ -79,7 +79,8 @@ def ensure_directory_exists(filename):
 
 def get_checkpoint_name(checkpoints_path, iteration, release=False,
                         pipeline_parallel=None,
-                        tensor_rank=None, pipeline_rank=None):
+                        tensor_rank=None, pipeline_rank=None,
+                        save_basename="model_optim_rng.pt"):
     """Determine the directory name for this rank's checkpoint."""
     if release:
         directory = 'release'
@@ -104,7 +105,7 @@ def get_checkpoint_name(checkpoints_path, iteration, release=False,
         common_path = os.path.join(checkpoints_path, directory,
                         f'mp_rank_{tensor_rank:02d}_{pipeline_rank:03d}')
 
-    return os.path.join(common_path, "model_optim_rng.pt")
+    return os.path.join(common_path, save_basename)
 
 
 def get_distributed_optimizer_checkpoint_name(model_checkpoint_name):
@@ -212,7 +213,8 @@ def get_rng_state():
     return rng_state_list
 
 
-def save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_model=None):
+def save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
+                    visual_model=None, train_dataloader=None):
     """Save a model checkpoint."""
     args = get_args()
 
@@ -238,6 +240,38 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_mod
         visual_state_dict = {}
     else:
         visual_checkpoint_name = None
+
+    if (
+        not torch.distributed.is_initialized() or (
+            mpu.is_pipeline_first_stage(ignore_virtual=True)
+            and mpu.get_tensor_model_parallel_rank() == 0
+            )
+        ) and train_dataloader and hasattr(train_dataloader, 'save_state_rank'):
+        # Only do this on each first data parallel rank (i.e. pipeline rank 0, model parallel rank 0)
+        
+        dp_rank = mpu.get_data_parallel_rank() if torch.distributed.is_initialized() else 0
+        print(f'saving dataloader checkpoint at iteration {iteration:7d} to {args.dataloader_save}')
+        # Must save state over all data parallel ranks!
+        train_dataloader_state_dict = train_dataloader.save_state_rank()
+        data_state_save_name = get_checkpoint_name(
+            args.dataloader_save, iteration,
+            save_basename=f'train_dataloader_dprank{dp_rank:03d}.pt'
+        )
+
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
+
+        if not torch.distributed.is_initialized() \
+        or mpu.get_data_parallel_rank() == 0:
+            ensure_directory_exists(data_state_save_name)
+
+        if torch.distributed.is_initialized():
+            torch.distributed.barrier()
+
+        dataloader_save_dict = {}
+        dataloader_save_dict['dataloader_state_dict'] = train_dataloader_state_dict
+        dataloader_save_dict['train_data_path'] = args.train_data_path
+        torch.save(dataloader_save_dict, data_state_save_name)
 
     # Save distributed optimizer's custom parameter state.
     if args.use_distributed_optimizer:
