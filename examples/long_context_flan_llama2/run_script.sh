@@ -19,3 +19,5 @@ bash examples/long_context_flan_llama2/finetune_llama2_pi_paper_further_train.sh
 
 bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_70b_128_1.0e-5_70b_128_1.0e-5 2000
 bash examples/long_context_flan_llama2/finetune_qc_sandeep_llama2.sh llama2_text_70b_cont_4k_70b_128_1.0e-5_70b_128_1.0e-5 4000
+
+bash examples/long_context_flan_llama2/finetune_qc_long_blend_llama2.sh llama2_text_70b_itp-32k_70b_128_1.0e-5 1000 long_qc_v1
