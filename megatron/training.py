@@ -24,7 +24,7 @@ from megatron.core.utils import get_model_config
 from megatron import print_rank_0
 from megatron import print_rank_last
 from megatron.checkpointing import load_checkpoint, load_visual_checkpoint
-from megatron.checkpointing import save_checkpoint
+from megatron.checkpointing import save_checkpoint, get_checkpoint_name
 from megatron.model import Float16Module
 from megatron.model import GPTModel
 from megatron.core.enums import ModelType
@@ -42,7 +42,19 @@ from megatron.utils import calc_params_l2_norm
 from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.model.vision.knn_monitor import compute_feature_bank
-
+from nvgpt4.data import (
+    WorkerConfig,
+    get_loader,
+    get_savable_loader,
+    get_train_dataset,
+    get_val_datasets,
+    LimitDataset,
+    RepeatDataset,
+)
+from megatron.data.nvgpt4_multimodal_dataset import (
+    TaskEncoder,
+    print_error_handler
+)
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -138,8 +150,10 @@ def pretrain(train_valid_test_dataset_provider,
                                for data_iterators in all_data_iterators]
         test_data_iterator = [data_iterators[2]
                               for data_iterators in all_data_iterators]
+        train_dataloader = [data_iterators[3]
+                            for data_iterators in all_data_iterators]
     else:
-        train_data_iterator, valid_data_iterator, test_data_iterator \
+        train_data_iterator, valid_data_iterator, test_data_iterator, train_dataloader \
             = build_train_valid_test_data_iterators(
                 train_valid_test_dataset_provider)
     timers('train/valid/test-data-iterators-setup').stop()
@@ -162,12 +176,15 @@ def pretrain(train_valid_test_dataset_provider,
             iteration = train(forward_step_func,
                               model, optimizer, opt_param_scheduler,
                               train_data_iterator, valid_data_iterator,
-                              process_non_loss_data_func, config, visual_model=visual_model)
+                              process_non_loss_data_func, config,
+                              visual_model=visual_model,
+                              train_dataloader=train_dataloader)
 
         print_datetime('after training is done')
 
         if args.save and iteration != 0:
-            save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_model=visual_model)
+            save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
+                            visual_model=visual_model, train_dataloader=train_dataloader)
     else:
         print_rank_0('skipping training (--skip-train is on) ...')
 
@@ -730,19 +747,22 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
     return report_memory_flag
 
 
-def save_checkpoint_and_time(iteration, model, optimizer, opt_param_scheduler, visual_model=None):
+def save_checkpoint_and_time(iteration, model, optimizer, opt_param_scheduler,
+                                visual_model=None, train_dataloader=None):
     timers = get_timers()
     # Extra barrier is added to make sure
     # all ranks report the max time.
     timers('save-checkpoint', log_level=0).start(barrier=True)
-    save_checkpoint(iteration, model, optimizer, opt_param_scheduler, visual_model=visual_model)
+    save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
+                    visual_model=visual_model, train_dataloader=train_dataloader)
     timers('save-checkpoint').stop(barrier=True)
     timers.log(['save-checkpoint'])
 
 
 def train(forward_step_func, model, optimizer, opt_param_scheduler,
           train_data_iterator, valid_data_iterator,
-          process_non_loss_data_func, config, visual_model=None):
+          process_non_loss_data_func, config,
+          visual_model=None, train_dataloader=None):
     """Train the model function."""
     args = get_args()
     timers = get_timers()
@@ -817,7 +837,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
         if args.adlr_autoresume and \
            (iteration % args.adlr_autoresume_interval == 0):
             check_adlr_autoresume_termination(iteration, model, optimizer,
-                                              opt_param_scheduler)
+                                              opt_param_scheduler, train_dataloader=train_dataloader)
 
         # Evaluation
         if args.eval_interval and iteration % args.eval_interval == 0 and \
@@ -833,14 +853,15 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
             signal_handler = get_signal_handler()
             if any(signal_handler.signals_received()):
                 save_checkpoint_and_time(iteration, model, optimizer,
-                                         opt_param_scheduler)
+                                         opt_param_scheduler, train_dataloader=train_dataloader)
                 print_datetime('exiting program after receiving SIGTERM.')
                 sys.exit()
 
         if args.save and args.save_interval and \
            iteration % args.save_interval == 0:
             save_checkpoint_and_time(iteration, model, optimizer,
-                                     opt_param_scheduler, visual_model=visual_model)
+                                     opt_param_scheduler, visual_model=visual_model,
+                                     train_dataloader=train_dataloader)
             saved_checkpoint = True
 
         # Exiting based on duration
@@ -854,7 +875,8 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
             if done:
                 if not saved_checkpoint:
                     save_checkpoint_and_time(iteration, model, optimizer,
-                                             opt_param_scheduler, visual_model=visual_model)
+                                             opt_param_scheduler, visual_model=visual_model,
+                                             train_dataloader=train_dataloader)
                 print_datetime('exiting program after {} minutes'.format(train_time))
                 sys.exit()
 
@@ -862,7 +884,8 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
         if args.exit_interval and iteration % args.exit_interval == 0:
             if args.save and not saved_checkpoint:
                 save_checkpoint_and_time(iteration, model, optimizer,
-                                         opt_param_scheduler, visual_model=visual_model)
+                                         opt_param_scheduler, visual_model=visual_model,
+                                         train_dataloader=train_dataloader)
             torch.distributed.barrier()
             print_datetime('exiting program at iteration {}'.format(iteration))
             sys.exit()
@@ -959,7 +982,7 @@ def evaluate(forward_step_func,
     return total_loss_dict, collected_non_loss_data
 
 def evaluate_and_print_results(prefix, forward_step_func,
-                               data_iterator, model,
+                               data_iterators, model,
                                iteration, process_non_loss_data_func, config,
                                verbose=False, write_to_tensorboard=True, visual_model=None):
     """Helper function to evaluate and dump results on screen."""
@@ -968,35 +991,71 @@ def evaluate_and_print_results(prefix, forward_step_func,
         writer = get_tensorboard_writer()
     else:
         writer = None
+    string = ""
 
-    total_loss_dict, collected_non_loss_data = evaluate(
-        forward_step_func, data_iterator, model,
-        process_non_loss_data_func, config, verbose, visual_model=visual_model)
-    string = ' validation loss at {} | '.format(prefix)
-    for key in total_loss_dict:
-        string += '{} value: {:.6E} | '.format(key, total_loss_dict[key].item())
-        ppl = math.exp(min(20, total_loss_dict[key].item()))
-        string += '{} PPL: {:.6E} | '.format(key, ppl)
-        if writer:
-            writer.add_scalar('{} validation'.format(key),
-                              total_loss_dict[key].item(),
-                              iteration)
-            writer.add_scalar('{} validation vs samples'.format(key),
-                              total_loss_dict[key].item(),
-                              args.consumed_train_samples)
-            if args.log_validation_ppl_to_tensorboard:
-                writer.add_scalar('{} validation ppl'.format(key), ppl,
-                                  iteration)
-                writer.add_scalar('{} validation ppl vs samples'.format(key),
-                                  ppl, args.consumed_train_samples)
+    if args.dataset_type == "nvgpt4":
+        import yaml
 
+        with open(args.valid_path[0]) as val_f:
+            val_config = yaml.safe_load(val_f)["splits"]["val"]["datasets"]
+
+    for i, data_iterator in enumerate(data_iterators):
+        total_loss_dict, collected_non_loss_data = evaluate(
+            forward_step_func,
+            data_iterator,
+            model,
+            process_non_loss_data_func,
+            config,
+            verbose,
+            visual_model=visual_model,
+        )
+
+        # DANNY ADDED FOR WEBDATASET FORMAT; CHANGED BY GUILIN AGAIN
+
+        if args.dataset_type == "nvgpt4":
+            val_dataset_names = val_config[i]["path"].split("/")
+            dataset_name = val_dataset_names[-2] + "_" + val_dataset_names[-1]
+        else:
+            dataset_name = "validset"
+
+        string += " validation loss at {} | ".format(dataset_name)
+        for key in total_loss_dict:
+            string += "{} value: {:.6E} | ".format(key, total_loss_dict[key].item())
+            ppl = math.exp(min(20, total_loss_dict[key].item()))
+            string += "{} PPL: {:.6E} | ".format(key, ppl)
+            if writer:
+                writer.add_scalar(
+                    "{} validation on dataset {}".format(key, dataset_name),
+                    total_loss_dict[key].item(),
+                    iteration,
+                )
+                writer.add_scalar(
+                    "{} vs samples on dataset {}".format(key, dataset_name),
+                    total_loss_dict[key].item(),
+                    args.consumed_train_samples,
+                )
+                if args.log_validation_ppl_to_tensorboard:
+                    writer.add_scalar(
+                        "{} validation ppl on dataset {}".format(key, dataset_name),
+                        ppl,
+                        iteration,
+                    )
+                    writer.add_scalar(
+                        "{} validation ppl vs samples on dataset {}".format(
+                            key, dataset_name
+                        ),
+                        ppl,
+                        args.consumed_train_samples,
+                    )
+
+        string += "\n"
     if process_non_loss_data_func is not None and writer and is_last_rank():
         process_non_loss_data_func(collected_non_loss_data, iteration, writer)
 
-    length = len(string) + 1
-    print_rank_last('-' * length)
-    print_rank_last(string)
-    print_rank_last('-' * length)
+    length = len(string) // len(data_iterators)
+    print_rank_last("-" * length)
+    print_rank_last(string[:-1])
+    print_rank_last("-" * length)
 
 
 def cyclic_iter(iter):
@@ -1005,8 +1064,8 @@ def cyclic_iter(iter):
             yield x
 
 
-def build_train_valid_test_datasets(build_train_valid_test_datasets_provider):
-    """Build pretraining datasets."""
+def get_train_val_test_num_samples():
+    """Get train/val/test num of samples."""
 
     args = get_args()
 
@@ -1025,8 +1084,91 @@ def build_train_valid_test_datasets(build_train_valid_test_datasets_provider):
     print_rank_0('    validation: {}'.format(train_val_test_num_samples[1]))
     print_rank_0('    test:       {}'.format(train_val_test_num_samples[2]))
 
+    return train_val_test_num_samples
+
+
+def build_train_valid_test_datasets(build_train_valid_test_datasets_provider):
+    """Build pretraining datasets."""
+
+    train_val_test_num_samples = get_train_val_test_num_samples()
+
     # Build the datasets.
     return build_train_valid_test_datasets_provider(train_val_test_num_samples)
+
+
+def build_nvgpt_dataloader():
+    """Build nvGPT4 datasets."""
+
+    args = get_args()
+
+    train_val_test_num_samples = get_train_val_test_num_samples()
+
+    if getattr(args, "worker_debug_path", None) is not None:
+        worker_debug_path = os.path.join(
+            args.worker_debug_path,
+            f"it{args.iteration:08d}",
+            f"rank{mpu.get_data_parallel_rank():02d}_pid{{pid:08d}}_worker{{worker_id:04d}}.jsonl",
+        )
+        worker_log_level = 3
+    else:
+        worker_debug_path = None
+        worker_log_level = 0
+    worker_config = WorkerConfig(
+        rank=mpu.get_data_parallel_rank(),
+        world_size=mpu.get_data_parallel_world_size(),
+        num_workers=args.num_workers,
+        data_parallel_group=mpu.get_data_parallel_group(),
+        worker_debug_path=worker_debug_path,
+        worker_log_level=worker_log_level,
+    )
+    train_ds, valid_ds1, test_ds = nvgpt4_datasets_provider(
+        train_val_test_num_samples, worker_config
+    )
+
+    train_dataloader = get_savable_loader(train_ds, worker_config=worker_config)
+    if args.load is not None:
+        if hasattr(args, "dataloader_path"):
+            dp_rank = (
+                mpu.get_data_parallel_rank()
+                if torch.distributed.is_initialized()
+                else 0
+            )
+            data_save_name = get_checkpoint_name(
+                args.dataloader_path,
+                args.iteration,
+                save_basename=f"train_dataloader_dprank{dp_rank:03d}.pt",
+            )
+            try:
+                dataset_state_dict = torch.load(
+                    data_save_name, map_location="cpu"
+                )
+                if (
+                    "dataset_state_dict" in dataset_state_dict.keys()
+                    and dataset_state_dict["train_data_path"]
+                    != args.train_data_path
+                ):
+                    print_rank_0(
+                        f"Not restoring dataset state from {data_save_name}, path to dataset changed from {dataset_state_dict['train_data_path']} to {args.train_data_path}"
+                    )
+                else:
+                    train_dataloader.restore_state_rank(
+                        dataset_state_dict["dataloader_state_dict"]
+                    )
+                    print_rank_0(
+                        f"restoring dataset state from {data_save_name}"
+                    )
+            except Exception as e:
+                print_rank_0(
+                    "loading dataloader checkpoint failed. Skipping. " + str(e)
+                )
+
+    valid_dataloader = [
+        get_loader(valid_ds, worker_config=worker_config)
+        for valid_ds in valid_ds1
+    ]
+    test_dataloader = None
+
+    return train_dataloader, valid_dataloader, test_dataloader
 
 
 def build_train_valid_test_data_loaders(
@@ -1052,19 +1194,22 @@ def build_train_valid_test_data_loaders(
     # Data loader only on rank 0 of each model parallel group.
     if mpu.get_tensor_model_parallel_rank() == 0:
 
-        # Build datasets.
-        train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
-            build_train_valid_test_datasets_provider)
-
-        # Build dataloders.
-        train_dataloader = build_pretraining_data_loader(
-            train_ds, args.consumed_train_samples)
-        if args.skip_train:
-            valid_dataloader = build_pretraining_data_loader(valid_ds, 0)
+        if args.dataset_type == 'nvgpt4':
+            train_dataloader, valid_dataloader, test_dataloader = build_nvgpt_dataloader()
         else:
-            valid_dataloader = build_pretraining_data_loader(
-                valid_ds, args.consumed_valid_samples)
-        test_dataloader = build_pretraining_data_loader(test_ds, 0)
+            # Build datasets.
+            train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
+                build_train_valid_test_datasets_provider)
+
+            # Build dataloders.
+            train_dataloader = build_pretraining_data_loader(
+                train_ds, args.consumed_train_samples)
+            if args.skip_train:
+                valid_dataloader = build_pretraining_data_loader(valid_ds, 0)
+            else:
+                valid_dataloader = build_pretraining_data_loader(
+                    valid_ds, args.consumed_valid_samples)
+            test_dataloader = build_pretraining_data_loader(test_ds, 0)
 
         # Flags to know if we need to do training/validation/testing.
         do_train = train_dataloader is not None and args.train_iters > 0
@@ -1103,16 +1248,34 @@ def build_train_valid_test_data_iterators(
     assert dl_type in ['single', 'cyclic']
 
     if train_dataloader is not None:
-        train_data_iterator = iter(train_dataloader) if dl_type == 'single' \
-                              else iter(cyclic_iter(train_dataloader))
+        if args.dataset_type == "nvgpt4":
+            train_data_iterator = iter(cyclic_iter(train_dataloader))
+        else:
+            train_data_iterator = iter(train_dataloader) if dl_type == 'single' \
+                                else iter(cyclic_iter(train_dataloader))
     else:
         train_data_iterator = None
 
+    if args.dataset_type == "nvgpt4":
+        import yaml
+
+        with open(args.valid_path[0]) as val_f:
+            val_config = yaml.safe_load(val_f)["splits"]["val"]["datasets"]
+
     if valid_dataloader is not None:
-        valid_data_iterator = iter(valid_dataloader) if dl_type == 'single' \
-                              else iter(cyclic_iter(valid_dataloader))
+        if args.dataset_type == "nvgpt4":
+            valid_data_iterator = [
+                iter(cyclic_iter(valid_dataloader[i]))
+                for i in range(len(valid_dataloader))
+            ]
+        else:
+            valid_data_iterator = iter(valid_dataloader) if dl_type == 'single' \
+                                else iter(cyclic_iter(valid_dataloader))
     else:
-        valid_data_iterator = None
+        if args.dataset_type == "nvgpt4":
+            valid_data_iterator = [None for i in range(len(val_config))]
+        else:
+            valid_data_iterator = None
 
     if test_dataloader is not None:
         test_data_iterator = iter(test_dataloader) if dl_type == 'single' \
@@ -1120,4 +1283,44 @@ def build_train_valid_test_data_iterators(
     else:
         test_data_iterator = None
 
-    return train_data_iterator, valid_data_iterator, test_data_iterator
+    return train_data_iterator, valid_data_iterator, test_data_iterator, train_dataloader
+
+
+def nvgpt4_datasets_provider(train_val_test_num_samples, worker_config=None):
+    args = get_args()
+    dname = args.data_path[0] if type(args.data_path) is list else args.data_path
+    train_dataset = get_train_dataset(
+        dname,
+        batch_size=args.micro_batch_size,
+        task_encoder=TaskEncoder(),
+        worker_config=worker_config,
+        virtual_epoch_length=1000,
+        max_samples_per_sequence=100,
+        shuffle_buffer_size=100,
+        handler=print_error_handler,
+        image_decode="pil",
+    )
+
+    val_datasets = get_val_datasets(
+        dname,
+        batch_size=args.micro_batch_size,
+        # This is the total number over all workers
+        # limit=args.eval_iters * get_num_microbatches(),
+        task_encoder=TaskEncoder(),
+        worker_config=worker_config,
+        handler=print_error_handler,
+        image_decode="pil",
+    )
+    val_datasets_without_source_datasets = [
+        # Limit the dataset to eval_iters * num_microbatches
+        LimitDataset(
+            # Repeat the inner dataset in case it's too short
+            RepeatDataset(val_ds, worker_config=worker_config),
+            length=args.eval_iters * get_num_microbatches(),
+            worker_config=worker_config,
+            reset_after_epoch=True,
+        )
+        for val_ds, _src_ds in val_datasets
+    ]
+
+    return train_dataset, val_datasets_without_source_datasets, None
