@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=8
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-clip-dropout-mr-wds
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-train-samples-new-withdocidx-mr"
+NAME="flamingo-2b-1node-COCO-overfit-clip-dropout-mr-wds"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -32,15 +32,15 @@ CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/checkpoint
 TENSORBOARD_DIR="${OUTPUT}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-OCR_train="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/OCR2/OCR_nvdata_train"
-OCR_valid="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/OCR2/OCR_nvdata_val"
+DATA_TRAIN="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
+DATA_VALID="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
 
-DATA_TRAIN="1.0000 ${OCR_train}"
-DATA_VALID="1.0000 ${OCR_valid}"
-
-VISUAL_ARCH="SAM_L"
-VISUAL_TYPE="sam"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
+VISUAL_ARCH="L_14"
+VISUAL_TYPE="vit"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
+# VISUAL_ARCH="SAM_L"
+# VISUAL_TYPE="sam"
+# VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -56,7 +56,7 @@ options=" \
     --rotary-percent 0.5 \
     --swiglu \
     --attention-dropout 0.0 \
-    --hidden-dropout 0.0 \
+    --hidden-dropout 0.1 \
     --exit-duration-in-mins 230 \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
@@ -67,13 +67,13 @@ options=" \
     --ds-seq-length 512 \
     --max-position-embeddings 4096 \
     --cyclic-train-iters 100000000 \
-    --train-samples 1048576 \
+    --train-samples 410000 \
     --micro-batch-size 1 \
     --global-batch-size 256 \
     --lr-decay-samples 25600000 \
     --lr-warmup-samples 83200 \
-    --lr 1e-4 \
-    --min-lr 5e-5 \
+    --lr 1e-5 \
+    --min-lr 2.5e-6 \
     --lr-decay-style cosine \
     --log-interval 10 \
     --eval-iters 10 \
@@ -88,7 +88,7 @@ options=" \
     --save ${FINETUNE_DIR} \
     --load ${CHECKPOINT_DIR} \
     --split 100,0,0 \
-    --clip-grad 1.0 \
+    --clip-grad 52.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
@@ -108,23 +108,23 @@ options=" \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
-    --img-h 1024 \
-    --img-w 1024 \
+    --img-h 224 \
+    --img-w 224 \
     --dataloader-type cyclic --no-data-sharding \
-    --SAM-randinit \
     --align-to-old \
+    --dataset-type nvgpt4 \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
-CUDA_VISIBLE_DEVICES=0 python -u -m debugpy --wait-for-client --listen 0.0.0.0:5678 ${SOURCE}/pretrain_flamingo.py ${options}
-# run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
+# python -u ${SOURCE}/pretrain_flamingo.py ${options}
+run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
-# DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
+DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-# srun -l --verbose \
-#     --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.09-py3-jbarker.sqsh \
-#     --container-mounts "/lustre" \
-#     --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
-#     sh -c "${run_cmd}"
+srun -l --verbose \
+    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
+    --container-mounts "/lustre" \
+    --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
+    sh -c "${run_cmd}"
 
-# set +x
+set +x

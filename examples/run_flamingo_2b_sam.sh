@@ -123,7 +123,7 @@ run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 srun -l --verbose \
-    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker-revilm.sqsh \
+    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
     --container-mounts "/lustre" \
     --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
     sh -c "${run_cmd}"
