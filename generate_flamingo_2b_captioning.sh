@@ -4,7 +4,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
-NAME="flamingo-2b-1node-COCO-overfit-clip336-mr"
+NAME="flamingo-2b-1node-COCO-overfit-clip-mr"
 CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
 
 dataset="GPT"
@@ -16,15 +16,14 @@ EVAL_PATH="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO/coco_test"
 # resolution=1024
 # VISUAL_ARCH="SAM_L"
 # VISUAL_TYPE="sam"
-resolution=336
-# resolution=224
+resolution=224
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
 VISUAL_DIR="${CHECKPOINT_DIR}/${VISUAL_TYPE}"
 
 iter=28000
 
-CUDA_VISIBLE_DEVICES=7 MASTER_PORT=44147 python generation/generate_samples_flamingo_nonparallel.py \
+CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flamingo_nonparallel.py \
        --use-flash-attn \
        --apply-layernorm-1p \
        --untie-embeddings-and-output-weights \
@@ -67,6 +66,6 @@ CUDA_VISIBLE_DEVICES=7 MASTER_PORT=44147 python generation/generate_samples_flam
        --load-iter ${iter} \
        --beam-search \
        --genfile ./generated_files/$NAME-$iter-bs-$dataset-$task-${resolution}px.jsonl \
-       --align-to-old \
        --with-space \
        --fp32SAM \
+       --align-to-old \
