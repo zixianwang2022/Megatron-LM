@@ -82,6 +82,25 @@ class RandomResizeLongEdge(CustomTransform):
 
         return matrix, dst_size, (self.__class__.__name__, new_size)
 
+class ResizeLongEdge(CustomTransform):
+    """Resizes the image's longer edge to a specific length size pixels."""
+
+    def __init__(self, size: int):
+        self._size = size
+
+    def apply_transform(self, matrix: np.ndarray, dst_size: np.ndarray) -> Tuple[Any, Any, Any]:
+        new_long = self._size
+        if dst_size[0] > dst_size[1]:  # h > w
+            new_w, new_h = int(new_long * dst_size[1] / dst_size[0]), new_long
+        else:  # w > h
+            new_w, new_h = new_long, int(new_long * dst_size[0] / dst_size[1])
+
+        new_size = (new_h, new_w)
+        matrix = self.scale(new_w / dst_size[1], new_h / dst_size[0]) @ matrix
+        dst_size = np.array(new_size, dtype=dst_size.dtype)
+
+        return matrix, dst_size, (self.__class__.__name__, new_size)
+
 
 class RandomPad(CustomTransform):
     """Pads the image to the given size, randomly choosing the position of the image within the new larger image.
@@ -103,6 +122,26 @@ class RandomPad(CustomTransform):
             top = 0
             left = 0
 
+            matrix = self.translate(left, top) @ matrix
+            dst_size = np.array(self._new_size, dtype=dst_size.dtype)
+            return matrix, dst_size, (self.__class__.__name__, (top, left))
+
+class Pad(CustomTransform):
+    """Pads the image to the given size with zeros.
+    If the image is already larger than the given size, it will not be padded in that direction(s)."""
+
+    def __init__(self, size: Tuple[int, int]):
+        self._new_size = size  # h, w
+
+    def apply_transform(self, matrix: np.ndarray, dst_size: np.ndarray) -> Tuple[Any, Any, Any]:
+        h_pad = max(self._new_size[0] - dst_size[0], 0)
+        w_pad = max(self._new_size[1] - dst_size[1], 0)
+
+        if h_pad == 0 and w_pad == 0:
+            return matrix, dst_size, (self.__name__, None)
+        else:
+            top = 0
+            left = 0
             matrix = self.translate(left, top) @ matrix
             dst_size = np.array(self._new_size, dtype=dst_size.dtype)
             return matrix, dst_size, (self.__class__.__name__, (top, left))
@@ -134,7 +173,12 @@ def _get_ocr_document_visual_transform(IMG_H=1024, IMG_W=1024):
 def _get_ocr_document_identity_transform(IMG_H=1024, IMG_W=1024):
     document_identity_transform = T.Compose(
         [
-            T.Resize((IMG_H, IMG_W)),
+            MergeTransform(
+                [
+                    ResizeLongEdge(max(IMG_H, IMG_W)),
+                    Pad((IMG_H, IMG_W)),
+                ]
+            )
         ]
     )
     return document_identity_transform
