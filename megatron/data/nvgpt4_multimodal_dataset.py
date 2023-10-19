@@ -95,7 +95,7 @@ class RandomPad(CustomTransform):
         w_pad = max(self._new_size[1] - dst_size[1], 0)
 
         if h_pad == 0 and w_pad == 0:
-            return matrix, dst_size, (self.__name__, None)
+            return matrix, dst_size, (self.__class__.__name__, None)
         else:
             # TODO: fix me
             # top = random.randint(0, h_pad)
