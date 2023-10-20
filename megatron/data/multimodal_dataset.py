@@ -50,6 +50,12 @@ def _transform_test(img_h, img_w):
 
 pixel_mean = [123.675, 116.28, 103.53]
 pixel_std = [58.395, 57.12, 57.375]
+# # clip preprocessing
+# clip_pixel_mean = [122.7709383 , 116.7460125 , 104.09373615]
+# clip_pixel_std = [68.5005327 ,  66.6321579 ,  70.32316305]
+# clip preprocessing
+clip_pixel_mean = [123.675, 116.28, 103.53]
+clip_pixel_std = [58.395, 57.12, 57.375]
 
 def _build_index_mappings(name, data_prefix, documents, sizes,
                           num_samples, seq_length, seed):

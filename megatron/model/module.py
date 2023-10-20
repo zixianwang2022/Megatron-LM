@@ -129,25 +129,41 @@ def conversion_helper(val, conversion):
 
 def fp32_to_float16(val, float16_convertor):
     """Convert fp32 `val` to fp16/bf16"""
-    def half_conversion(val):
-        val_typecheck = val
-        if isinstance(val_typecheck, (Parameter, Variable)):
-            val_typecheck = val.data
-        if isinstance(val_typecheck, _FLOAT_TYPES):
-            val = float16_convertor(val)
-        return val
+    def half_conversion(val_out):
+        def half_conversion_inner(val_in):
+            val_typecheck = val_in
+            if isinstance(val_typecheck, (Parameter, Variable)):
+                val_typecheck = val_in.data
+            if isinstance(val_typecheck, _FLOAT_TYPES):
+                val_in = float16_convertor(val_in)
+            return val_in
+
+        if isinstance(val_out, dict):
+            for k, v in val_out.items():
+                val_out[k] = half_conversion_inner(v)
+        else:
+            val_out = half_conversion_inner(val_out)
+        return val_out
     return conversion_helper(val, half_conversion)
 
 
 def float16_to_fp32(val):
     """Convert fp16/bf16 `val` to fp32"""
-    def float_conversion(val):
-        val_typecheck = val
-        if isinstance(val_typecheck, (Parameter, Variable)):
-            val_typecheck = val.data
-        if isinstance(val_typecheck, (_BF16_TYPES, _HALF_TYPES)):
-            val = val.float()
-        return val
+    def float_conversion(val_out):
+        def float_conversion_inner(val_in):
+            val_typecheck = val_in
+            if isinstance(val_typecheck, (Parameter, Variable)):
+                val_typecheck = val_in.data
+            if isinstance(val_typecheck, (_BF16_TYPES, _HALF_TYPES)):
+                val_in = val_in.float()
+            return val_in
+
+        if isinstance(val_out, dict):
+            for k, v in val_out.items():
+                val_out[k] = float_conversion_inner(v)
+        else:
+            val_out = float_conversion_inner(val_out)
+        return val_out
     return conversion_helper(val, float_conversion)
 
 

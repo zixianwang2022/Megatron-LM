@@ -16,6 +16,7 @@ from megatron.model.utils import (
     scaled_init_method_normal,
 )
 from megatron.model.module import MegatronModule
+from megatron.arguments import validate_visual_args_sam, validate_visual_args_clip
 
 from megatron import print_rank_0
 import torchvision.utils as vutils
@@ -415,3 +416,28 @@ class SAMViTBackbone(MegatronModule):
         torch.cuda.nvtx.range_pop()
         return hidden_states
 
+class HybridSAMCLIPBackbone(MegatronModule):
+    """Hybrid Vision Model with both SAM and CLIP."""
+
+    def __init__(self, config, pre_process=True, post_process=False):
+        # super(HybridSAMCLIPBackbone, self).__init__(share_word_embeddings=False)
+        args = get_args()
+        super().__init__(config=config, share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
+
+        validate_visual_args_sam(args)
+        self.sam_model = SAMViTBackbone(config, pre_process=pre_process, 
+                                   post_process=post_process)
+
+        validate_visual_args_clip(args)
+        self.clip_model = CLIPViTBackbone(config, pre_process=pre_process, 
+                                   post_process=post_process)
+
+    def forward(self, input_dict):
+ 
+        # SAM model
+        sam_hidden_states = self.sam_model(input_dict['sam'])
+
+        # CLIP model
+        clip_hidden_states = self.clip_model(input_dict['clip'])
+
+        return {'sam': sam_hidden_states, 'clip': clip_hidden_states}
