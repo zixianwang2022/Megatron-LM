@@ -16,7 +16,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-1node-COCO-overfit-sam-mr-wds"
+NAME="flamingo-2b-1node-COCO-overfit-sam-mr-wds-debug"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -118,15 +118,15 @@ options=" \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
-# CUDA_VISIBLE_DEVICES=0 python -u ${SOURCE}/pretrain_flamingo.py ${options}
-run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
+CUDA_VISIBLE_DEVICES=0 python -u -m debugpy --listen 0.0.0.0:5678 --wait-for-client ${SOURCE}/pretrain_flamingo.py ${options}
+# run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
-DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
+# DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-srun -l --verbose \
-   --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
-   --container-mounts "/lustre" \
-   --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
-   sh -c "${run_cmd}"
+# srun -l --verbose \
+#    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
+#    --container-mounts "/lustre" \
+#    --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
+#    sh -c "${run_cmd}"
 
-set +x
+# set +x

@@ -1,26 +1,31 @@
 #! /bin/bash
+echo "------ARGUMENTS LIST --------"
+for ARGUMENT in "$@"
+do
+   KEY=$(echo $ARGUMENT | cut -f1 -d=)
 
-DATA_PATH=$1
-CHECKPOINT_PATH=$2
-TENSORBOARD_DIR=$3
-TP_SIZE=$4
-PP_SIZE=$5
-NNODES=$6
+   KEY_LENGTH=${#KEY}
+   VALUE="${ARGUMENT:$KEY_LENGTH+1}"
+
+   export "$KEY"="$VALUE"
+   echo "$KEY=$VALUE"
+done
+echo "---------------------------------"
 
 GPUS_PER_NODE=8
 # Change for multinode config
 MASTER_ADDR=localhost
 MASTER_PORT=6000
 NODE_RANK=0
-WORLD_SIZE=$(($GPUS_PER_NODE*$NNODES))
+WORLD_SIZE=$(($GPUS_PER_NODE*$NUM_NODES))
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
 # Runs the "345M" parameter model
-DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NNODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port $MASTER_PORT"
+DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NUM_NODES"
 
 # Run for 100 iterations and save checkpoint at 50
-python -m torch.distributed.launch $DISTRIBUTED_ARGS \
+torchrun $DISTRIBUTED_ARGS \
        pretrain_gpt.py \
        --use-checkpoint-args \
        --use-checkpoint-opt_param-scheduler \
@@ -44,7 +49,6 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS \
        --data-path $DATA_PATH \
        --vocab-file /workspace/data/gpt3_data/gpt2-vocab.json \
        --merge-file /workspace/data/gpt3_data/gpt2-merges.txt \
-       --data-impl mmap \
        --split 949,50,1 \
        --distributed-backend nccl \
        --lr 0.00015 \
@@ -65,7 +69,7 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS \
 echo 50 > $CHECKPOINT_PATH/latest_checkpointed_iteration.txt
 
 # Resume from 50th iteration ckpt and continue to 100 iterations
-python -m torch.distributed.launch $DISTRIBUTED_ARGS \
+torchrun $DISTRIBUTED_ARGS \
        pretrain_gpt.py \
        --use-checkpoint-args \
        --use-checkpoint-opt_param-scheduler \
@@ -89,7 +93,6 @@ python -m torch.distributed.launch $DISTRIBUTED_ARGS \
        --data-path $DATA_PATH \
        --vocab-file /workspace/data/gpt3_data/gpt2-vocab.json \
        --merge-file /workspace/data/gpt3_data/gpt2-merges.txt \
-       --data-impl mmap \
        --split 949,50,1 \
        --distributed-backend nccl \
        --lr 0.00015 \

@@ -4,7 +4,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
-NAME="flamingo-2b-1node-COCO-overfit-clip-mr"
+NAME="flamingo-2b-1node-COCO-overfit-clip-dropout-mr-wds"
 CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
 
 dataset="GPT"
@@ -23,7 +23,7 @@ VISUAL_DIR="${CHECKPOINT_DIR}/${VISUAL_TYPE}"
 
 iter=28000
 
-CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flamingo_nonparallel.py \
+CUDA_VISIBLE_DEVICES=7 MASTER_PORT=44147 python generation/generate_samples_flamingo_nonparallel.py \
        --use-flash-attn \
        --apply-layernorm-1p \
        --untie-embeddings-and-output-weights \
@@ -66,6 +66,6 @@ CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flam
        --load-iter ${iter} \
        --beam-search \
        --genfile ./generated_files/$NAME-$iter-bs-$dataset-$task-${resolution}px.jsonl \
-       --with-space \
-       --fp32SAM \
        --align-to-old \
+       --fp32SAM \
+       #--with-space \ # DO NOT USE THIS WITH NVGPT4 DATALOADER TRAINED MODELS
