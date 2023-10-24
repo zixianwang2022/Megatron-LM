@@ -306,6 +306,7 @@ class CoreAttention(MegatronModule):
         if use_rel_pos:
             self.rel_pos_h = torch.nn.Parameter(torch.zeros(2 * self.input_size - 1, self.hidden_size_per_attention_head))
             self.rel_pos_w = torch.nn.Parameter(torch.zeros(2 * self.input_size - 1, self.hidden_size_per_attention_head))
+            # NOTE(jbarker): The multiplying term here is doing nothing. Need to figure out if/when it should be used
             q_coords = torch.arange(self.input_size)[:, None] * max(self.input_size / self.input_size, 1.0)
             k_coords = torch.arange(self.input_size)[None, :] * max(self.input_size / self.input_size, 1.0)
             self.relative_coords = ((q_coords - k_coords) + (self.input_size - 1) * max(self.input_size / self.input_size, 1.0)).long()
