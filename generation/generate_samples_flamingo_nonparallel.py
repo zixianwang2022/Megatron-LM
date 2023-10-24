@@ -145,7 +145,8 @@ def generate_samples_unconditional(model, visual_model):
         json_file = json.load(open(args.eval_path))
         for i in range(num_samples):
             record = json_file[i]
-            img_file = "/lustre/fsw/adlr/adlr-nlp/zhuoliny/" + record["image"]
+            #img_file = "/lustre/fsw/adlr/adlr-nlp/zhuoliny/" + record["image"]
+            img_file = "/lustre/fsw/portfolios/llmservice/projects/llmservice_nlp_fm/datasets/vqa/VQAv2/processing/" + record["image"]
             pixel_mean = [123.675, 116.28, 103.53]
             pixel_std = [58.395, 57.12, 57.375]
             img_sample = np.array(Image.open(img_file))
