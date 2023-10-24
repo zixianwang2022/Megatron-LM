@@ -16,7 +16,7 @@ VISUAL_ARCH="SAM_L"
 VISUAL_TYPE="sam"
 VISUAL_DIR="${CHECKPOINT_DIR}/${VISUAL_TYPE}"
 
-iter=30000
+iter=50000
 
 CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flamingo_nonparallel.py \
        --use-flash-attn \
@@ -61,5 +61,5 @@ CUDA_VISIBLE_DEVICES=0 MASTER_PORT=44140 python generation/generate_samples_flam
        --load-iter ${iter} \
        --genfile ./generated_files/$NAME-$iter-$dataset-$task-${resolution}px.jsonl \
        --align-to-old \
-       --with-space \
+       # --with-space \
        # --fp32SAM \
