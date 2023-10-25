@@ -2,7 +2,6 @@
 
 import enum
 
-
 class ModelType(enum.Enum):
     encoder_or_decoder = 1
     encoder_and_decoder = 2
