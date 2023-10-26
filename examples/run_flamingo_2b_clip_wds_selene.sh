@@ -115,8 +115,16 @@ options=" \
     --align-to-old \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
+# INTERACTIVE MULTI-GPU
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
+
+# INTERACTIVE SINGLE GPU
 # CUDA_VISIBLE_DEVICES=0 python -u ${SOURCE}/pretrain_flamingo.py ${options}
+
+# INTERACTIVE SINGLE GPU DEBUGGER
+# CUDA_VISIBLE_DEVICES=0 python -u -m debugpy --listen 0.0.0.0:5678 --wait-for-client ${SOURCE}/pretrain_flamingo.py ${options}
+
+# BATCH MODE
 run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
