@@ -19,28 +19,25 @@ SEQ_LEN=96
 NAME="flamingo-2b-1node-COCO-overfit-clip-mr-wds-latest-nvgpt4"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
-SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
-SOURCE="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source/megatron-lm"
+WORKSPACE="/lustre/fsw/portfolios/llmservice/users/jbarker/workspace"
+SOURCE="${WORKSPACE}/megatron-lm"
 
-OUTPUT="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
+OUTPUT="${WORKSPACE}/output/${NAME}"
 mkdir -p ${OUTPUT}/logs
 
 FINETUNE_DIR="${OUTPUT}"
 LOGS_DIR="${OUTPUT}/logs"
-CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/checkpoints/${LOAD_NAME}"
+CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing/nvllm-1.1t/checkpoints/${LOAD_NAME}"
 
 TENSORBOARD_DIR="${OUTPUT}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_TRAIN="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
-DATA_VALID="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
+DATA_TRAIN="${WORKSPACE}/data/coco.yaml"
+DATA_VALID="${WORKSPACE}/data/coco.yaml"
 
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
-# VISUAL_ARCH="SAM_L"
-# VISUAL_TYPE="sam"
-# VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
+VISUAL_LOAD_DIR="/lustre/fsw/portfolios/llmservice/users/zhuoliny/fswbackup/checkpoints/vit_L_14"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -79,7 +76,7 @@ options=" \
     --eval-iters 10 \
     --eval-interval 1000 \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
+    --tokenizer-model /lustre/fsw/portfolios/llmservice/projects/llmservice_nlp_fm/adlr-nlp-data/model/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_TRAIN} \
     --valid-path ${DATA_VALID} \
     --prompt-path ${PROMPT_PATH} \
@@ -115,16 +112,24 @@ options=" \
     --align-to-old \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
+# INTERACTIVE MULTI-GPU
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
-# CUDA_VISIBLE_DEVICES=0 python -u ${SOURCE}/pretrain_flamingo.py ${options}
-run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
-DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
+# INTERACTIVE SINGLE GPU
+CUDA_VISIBLE_DEVICES=0 python -u ${SOURCE}/pretrain_flamingo.py ${options}
 
-srun -l --verbose \
-   --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
-   --container-mounts "/lustre" \
-   --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
-   sh -c "${run_cmd}"
+# INTERACTIVE SINGLE GPU DEBUGGER
+# CUDA_VISIBLE_DEVICES=0 python -u -m debugpy --listen 0.0.0.0:5678 --wait-for-client ${SOURCE}/pretrain_flamingo.py ${options}
 
-set +x
+# BATCH MODE
+# run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
+
+# DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
+
+# srun -l --verbose \
+#    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
+#    --container-mounts "/lustre" \
+#    --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
+#    sh -c "${run_cmd}"
+
+# set +x
