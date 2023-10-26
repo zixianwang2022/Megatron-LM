@@ -9,14 +9,15 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=8
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-clip-mr-wds-latest-nvgpt4
+#SBATCH --gpus-per-node=8
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-clip-mr-wds-latest-nvgpt4-debug
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-1node-COCO-overfit-clip-mr-wds-latest-nvgpt4"
+NAME="flamingo-2b-1node-COCO-overfit-clip-mr-wds-latest-nvgpt4-debug"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 WORKSPACE="/lustre/fsw/portfolios/llmservice/users/jbarker/workspace"
@@ -129,7 +130,6 @@ DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 srun -l --verbose \
    --container-image /lustre/fsw/portfolios/llmservice/users/jbarker/workspace/containers/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
    --container-mounts "/lustre" \
-   --gpus 8 \
    --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
    sh -c "${run_cmd}"
 
