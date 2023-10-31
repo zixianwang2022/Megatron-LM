@@ -11,7 +11,7 @@ import types
 
 import torch.nn.functional as F
 from megatron.global_vars import set_retro_args, get_retro_args
-from tools.retro.utils import get_args_path as get_retro_args_path
+from megatron.core.models.retro.data.utils import get_args_path as get_retro_args_path
 
 from megatron.core.models.retro import RetroConfig
 from megatron.core.transformer import TransformerConfig
@@ -414,7 +414,7 @@ def _print_args(title, args):
 def _check_arg_is_not_none(args, arg):
     assert getattr(args, arg) is not None, '{} argument is None'.format(arg)
 
-def core_transformer_config_from_args(args):
+def core_transformer_config_from_args(args, config_class=None):
 
     # Translate args to core transformer configuration
     kw_args = {}
@@ -439,6 +439,10 @@ def core_transformer_config_from_args(args):
         kw_args['num_query_groups'] = args.num_query_groups
     else:
         kw_args['num_query_groups'] = None
+
+    # Custom config class.
+    if config_class is not None:
+        return config_class(**kwargs)
 
     # If using Retro, return Retro config.
     retro_args = get_retro_args()

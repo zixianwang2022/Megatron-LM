@@ -5,8 +5,8 @@ from megatron.core.models.gpt.gpt_layer_specs import (
     get_gpt_layer_local_spec,
     get_gpt_layer_with_transformer_engine_spec,
 )
-from megatron.core.models.retro.config import RetroConfig
-from megatron.core.models.retro.encoder_attention import (
+from megatron.core.models.retro.model.config import RetroConfig
+from megatron.core.models.retro.model.encoder_attention import (
     RetroEncoderBiasDropoutAdd,
     RetroEncoderCrossAttention,
     RetroEncoderLayerNorm,

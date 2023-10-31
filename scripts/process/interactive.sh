@@ -10,7 +10,9 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 ######## Command. ########
 
-NPROCS=8
+# tools/retro/main.py
+# megatron/core/models/retro/data/preprocess.py ${ARGS} \
+NPROCS=1 # 8
 CMD="\
     cd ${REPO_DIR} && \
     export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && \
@@ -20,7 +22,7 @@ CMD="\
     --node_rank ${NODE_RANK} \
     --master_addr ${MASTER_ADDR} \
     --master_port 6000 \
-    tools/retro/main.py ${ARGS} \
+    tools/retro/preprocess.py ${ARGS} \
 "
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "CMD = '$CMD'."

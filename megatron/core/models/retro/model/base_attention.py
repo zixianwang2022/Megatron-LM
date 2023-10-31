@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-from megatron.core.models.retro.config import RetroConfig
+from megatron.core.models.retro.model.config import RetroConfig
 from megatron.core.transformer.attention import CrossAttention, CrossAttentionSubmodules
 from megatron.core.transformer.enums import AttnMaskType
 from megatron.core.transformer.module import MegatronModule

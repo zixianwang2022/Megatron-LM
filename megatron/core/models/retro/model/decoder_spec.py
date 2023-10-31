@@ -6,12 +6,12 @@ from megatron.core.models.gpt.gpt_layer_specs import (
     get_gpt_layer_local_spec,
     get_gpt_layer_with_transformer_engine_spec,
 )
-from megatron.core.models.retro.config import RetroConfig
-from megatron.core.models.retro.decoder_attention import (
+from megatron.core.models.retro.model.config import RetroConfig
+from megatron.core.models.retro.model.decoder_attention import (
     RetroDecoderBiasDropoutAdd,
     RetroDecoderCrossAttention,
 )
-from megatron.core.models.retro.encoder_spec import get_retro_encoder_block_spec
+from megatron.core.models.retro.model.encoder_spec import get_retro_encoder_block_spec
 from megatron.core.tensor_parallel.layers import ColumnParallelLinear, RowParallelLinear
 from megatron.core.transformer import ModuleSpec
 from megatron.core.transformer.attention import CrossAttentionSubmodules
