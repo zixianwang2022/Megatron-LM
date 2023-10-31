@@ -185,7 +185,10 @@ def validate_args(args, defaults={}):
             args.visual_output_size = 1024
             args.v_jitter = 0
             args.crop_middle = False
-            args.quickgelu = True
+            if args.img_h == 336:
+                args.quickgelu = True
+            else:
+                args.quickgelu = False
         elif args.visual_arch == "G_14":
             args.visual_num_layers = 48
             args.visual_patch_dim = 14
