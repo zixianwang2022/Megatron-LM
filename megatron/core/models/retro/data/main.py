@@ -12,12 +12,12 @@ import json
 import os
 import torch
 
-from megatron import get_args, initialize_megatron, print_rank_0
-from megatron.global_vars import set_retro_args
-from tools.retro.db import build_db
-from tools.retro.index import add_to_index, build_index, train_index
-from tools.retro.query import query_pretraining_neighbors
-from tools.retro.utils import get_args_path
+# from megatron import get_args, initialize_megatron, print_rank_0
+# from megatron.global_vars import set_retro_args
+# from tools.retro.db import build_db
+# from tools.retro.index import add_to_index, build_index, train_index
+# from tools.retro.query import query_pretraining_neighbors
+# from tools.retro.utils import get_args_path
 
 
 def add_retro_args(parser):
