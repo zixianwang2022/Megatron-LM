@@ -1,23 +1,24 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import os
-import torch
+# >>>
+# import os
+# import torch
 
-from megatron import get_retro_args, print_rank_0
-from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
-from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
-from megatron.core.datasets.gpt_dataset import GPTDataset
-from megatron.training import (
-    build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
-    update_train_iters,
-)
-from tools.retro.db.utils import get_indexed_dataset_infos
-from tools.retro.utils import get_num_chunks_per_sample
+# from megatron import get_retro_args, print_rank_0
+# from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
+# from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
+# from megatron.core.datasets.gpt_dataset import GPTDataset
+# from megatron.training import (
+#     build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
+#     update_train_iters,
+# )
+# from tools.retro.db.utils import get_indexed_dataset_infos
+# from tools.retro.utils import get_num_chunks_per_sample
 
-from .utils import get_neighbor_dirname, get_query_workdir
+# from .utils import get_neighbor_dirname, get_query_workdir
 
-from pretrain_gpt import is_dataset_built_on_rank
-
+# from pretrain_gpt import is_dataset_built_on_rank
+# <<<
 
 
 class ChunkDataset(torch.utils.data.Dataset):

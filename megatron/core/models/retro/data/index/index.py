@@ -1,14 +1,16 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import abc
-import numpy as np
-import os
-import torch
+# >>>
+# import abc
+# import numpy as np
+# import os
+# import torch
 
-from megatron import get_retro_args
-from tools.retro.external_libs import faiss
+# from megatron import get_retro_args
+# from tools.retro.external_libs import faiss
 
-from .utils import get_index_dir
+# from .utils import get_index_dir
+# <<<
 
 
 class Index(abc.ABC):

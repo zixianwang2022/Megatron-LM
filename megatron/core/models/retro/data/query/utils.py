@@ -1,9 +1,11 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import hashlib
-import os
+# >>>
+# import hashlib
+# import os
 
-from megatron import get_retro_args
+# from megatron import get_retro_args
+# <<<
 
 
 def get_query_workdir():

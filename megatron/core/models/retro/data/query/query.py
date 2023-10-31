@@ -1,23 +1,25 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import numpy as np
-import os
-import psutil
-import time
-import torch
-from tqdm import tqdm
+# >>>
+# import numpy as np
+# import os
+# import psutil
+# import time
+# import torch
+# from tqdm import tqdm
 
-from megatron import get_retro_args, print_rank_0
-from tools.bert_embedding import BertEmbedder
-from tools.bert_embedding.utils import get_missing_blocks_by_rank
-from tools.retro.db.utils import \
-    get_merged_train_dataset as get_db_merged_train_dataset
-from tools.retro.external_libs import faiss, h5py
-from tools.retro.index.factory import IndexFactory
-from tools.retro.index.utils import get_index_dir
-from tools.retro.utils import GPTToTextDataset
+# from megatron import get_retro_args, print_rank_0
+# from tools.bert_embedding import BertEmbedder
+# from tools.bert_embedding.utils import get_missing_blocks_by_rank
+# from tools.retro.db.utils import \
+#     get_merged_train_dataset as get_db_merged_train_dataset
+# from tools.retro.external_libs import faiss, h5py
+# from tools.retro.index.factory import IndexFactory
+# from tools.retro.index.utils import get_index_dir
+# from tools.retro.utils import GPTToTextDataset
 
-from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
+# from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
+# <<<
 
 
 def get_index(ondisk=False):

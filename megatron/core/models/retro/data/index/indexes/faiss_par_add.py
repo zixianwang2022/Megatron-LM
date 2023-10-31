@@ -8,20 +8,22 @@ FaissBaseIndex. This allows 'add()' to scale out to very large datasets, since
 the vast majority of the computational effort is embarrassingly parallel.
 """
 
-import numpy as np
-import os
-import psutil
-import shutil
-import torch
-from tqdm import tqdm
+# >>>
+# import numpy as np
+# import os
+# import psutil
+# import shutil
+# import torch
+# from tqdm import tqdm
 
-from megatron import get_retro_args, print_rank_0
-from tools.bert_embedding import BertEmbedder
-from tools.bert_embedding.utils import get_missing_blocks_by_rank
-from tools.retro.external_libs import faiss, h5py
-from tools.retro.index.utils import get_added_codes_dir, get_added_code_paths
+# from megatron import get_retro_args, print_rank_0
+# from tools.bert_embedding import BertEmbedder
+# from tools.bert_embedding.utils import get_missing_blocks_by_rank
+# from tools.retro.external_libs import faiss, h5py
+# from tools.retro.index.utils import get_added_codes_dir, get_added_code_paths
 
-from .faiss_base import FaissBaseIndex
+# from .faiss_base import FaissBaseIndex
+# <<<
 
 
 class FaissParallelAddIndex(FaissBaseIndex):

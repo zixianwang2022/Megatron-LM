@@ -1,16 +1,18 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import numpy as np
-import os
-import torch
+# >>>
+# import numpy as np
+# import os
+# import torch
 
-from megatron import get_args, get_retro_args
-from tools.bert_embedding.utils import BlockPathMap
-from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
-from tools.retro.external_libs import h5py
+# from megatron import get_args, get_retro_args
+# from tools.bert_embedding.utils import BlockPathMap
+# from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
+# from tools.retro.external_libs import h5py
 
-from .chunk_dataset import get_chunk_dataset_map
-from .utils import get_neighbor_dirname
+# from .chunk_dataset import get_chunk_dataset_map
+# from .utils import get_neighbor_dirname
+# <<<
 
 
 class RetroDataset(torch.utils.data.Dataset):

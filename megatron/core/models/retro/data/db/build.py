@@ -1,38 +1,40 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-from collections import defaultdict
-from concurrent.futures import as_completed, ProcessPoolExecutor
-from functools import reduce
-import glob
-import json
-import numpy as np
-import os
-from pathlib import Path
-import threading
-import torch
-from tqdm import tqdm
-import types
+# >>>
+# from collections import defaultdict
+# from concurrent.futures import as_completed, ProcessPoolExecutor
+# from functools import reduce
+# import glob
+# import json
+# import numpy as np
+# import os
+# from pathlib import Path
+# import threading
+# import torch
+# from tqdm import tqdm
+# import types
 
-from megatron import get_retro_args, print_rank_0
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
-from megatron.tokenizer.tokenizer import (
-    _BertWordPieceTokenizer,
-    _GPT2BPETokenizer,
-)
-from tools.bert_embedding.utils import get_missing_blocks_by_rank
-from tools.retro.external_libs import h5py
-from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
+# from megatron import get_retro_args, print_rank_0
+# from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+# from megatron.tokenizer.tokenizer import (
+#     _BertWordPieceTokenizer,
+#     _GPT2BPETokenizer,
+# )
+# from tools.bert_embedding.utils import get_missing_blocks_by_rank
+# from tools.retro.external_libs import h5py
+# from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
-from .utils import (
-    get_indexed_dataset_infos,
-    get_indexed_dataset_infos_path,
-    get_individual_db_dir,
-    get_individual_chunk_db,
-    get_individual_doc_offsets,
-    get_merged_dataset,
-    get_merged_db_path_map,
-    save_indexed_dataset_infos,
-)
+# from .utils import (
+#     get_indexed_dataset_infos,
+#     get_indexed_dataset_infos_path,
+#     get_individual_db_dir,
+#     get_individual_chunk_db,
+#     get_individual_doc_offsets,
+#     get_merged_dataset,
+#     get_merged_db_path_map,
+#     save_indexed_dataset_infos,
+# )
+# <<<
 
 
 def init_indexed_dataset_infos():

@@ -1,15 +1,17 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import os
-import torch
-import types
+# >>>
+# import os
+# import torch
+# import types
 
-from megatron import get_retro_args
-from megatron.tokenizer.tokenizer import (
-    _BertWordPieceTokenizer,
-    _GPT2BPETokenizer,
-    _GPTSentencePieceTokenizer,
-)
+# from megatron import get_retro_args
+# from megatron.tokenizer.tokenizer import (
+#     _BertWordPieceTokenizer,
+#     _GPT2BPETokenizer,
+#     _GPTSentencePieceTokenizer,
+# )
+# <<<
 
 
 def get_args_path(workdir):

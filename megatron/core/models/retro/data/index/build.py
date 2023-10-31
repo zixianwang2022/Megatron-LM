@@ -1,28 +1,30 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import numpy as np
-import os
-import shutil
-import torch
-from tqdm import tqdm
+# >>>
+# import numpy as np
+# import os
+# import shutil
+# import torch
+# from tqdm import tqdm
 
-from megatron import get_retro_args, print_rank_0
-from tools.bert_embedding import DiskDataParallelBertEmbedder
-from tools.retro.db.utils import (
-    get_indexed_dataset_infos,
-    get_merged_sampled_dataset,
-    get_merged_train_dataset,
-)
-from tools.retro.external_libs import h5py
-from tools.retro.index.factory import IndexFactory
-from tools.retro.utils import GPTToTextDataset
+# from megatron import get_retro_args, print_rank_0
+# from tools.bert_embedding import DiskDataParallelBertEmbedder
+# from tools.retro.db.utils import (
+#     get_indexed_dataset_infos,
+#     get_merged_sampled_dataset,
+#     get_merged_train_dataset,
+# )
+# from tools.retro.external_libs import h5py
+# from tools.retro.index.factory import IndexFactory
+# from tools.retro.utils import GPTToTextDataset
 
-from .utils import (
-    get_training_data_block_dir,
-    get_training_data_block_paths,
-    get_training_data_merged_path,
-    get_training_data_root_dir,
-)
+# from .utils import (
+#     get_training_data_block_dir,
+#     get_training_data_block_paths,
+#     get_training_data_merged_path,
+#     get_training_data_root_dir,
+# )
+# <<<
 
 
 ##################################################

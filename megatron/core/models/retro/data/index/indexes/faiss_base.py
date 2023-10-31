@@ -7,20 +7,22 @@ instantiable, it is meant to be extended with optimizations in classes that
 inherit from this class (see FaissParAddIndex, for an example).
 """
 
-from datetime import timedelta
-import numpy as np
-import os
-import torch
-from tqdm import tqdm
+# >>>
+# from datetime import timedelta
+# import numpy as np
+# import os
+# import torch
+# from tqdm import tqdm
 
-from megatron import get_retro_args, print_rank_0
-from tools.bert_embedding import BertEmbedder
-from tools.retro.external_libs import faiss
-from tools.retro.index.index import Index
-from tools.retro.index.utils import (
-    get_training_data_merged_path,
-    num_samples_to_block_ranges,
-)
+# from megatron import get_retro_args, print_rank_0
+# from tools.bert_embedding import BertEmbedder
+# from tools.retro.external_libs import faiss
+# from tools.retro.index.index import Index
+# from tools.retro.index.utils import (
+#     get_training_data_merged_path,
+#     num_samples_to_block_ranges,
+# )
+# <<<
 
 
 class FaissBaseIndex(Index):

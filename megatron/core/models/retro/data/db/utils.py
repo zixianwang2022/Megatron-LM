@@ -1,18 +1,19 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-from collections import defaultdict
-import glob
-import json
-import numpy as np
-import os
-from tqdm import tqdm
+# >>>
+# from collections import defaultdict
+# import glob
+# import json
+# import numpy as np
+# import os
+# from tqdm import tqdm
 
-from megatron import get_retro_args, print_rank_0
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
-from tools.retro.external_libs import h5py
+# from megatron import get_retro_args, print_rank_0
+# from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+# from tools.retro.external_libs import h5py
 
-from .dataset import DBDataset
-
+# from .dataset import DBDataset
+# <<<
 
 def get_base_db_workdir():
     '''Sub-directory for DB data.'''

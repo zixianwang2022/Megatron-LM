@@ -1,6 +1,8 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-from .indexes import FaissBaseIndex, FaissParallelAddIndex
+# >>>
+# from .indexes import FaissBaseIndex, FaissParallelAddIndex
+# <<<
 
 
 class IndexFactory:
