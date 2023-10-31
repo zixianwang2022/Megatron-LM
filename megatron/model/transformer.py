@@ -17,7 +17,7 @@ from megatron.model.enums import AttnMaskType, LayerType, AttnType
 from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_emb
-from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu
+from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, quick_gelu
 
 try:
     from einops import rearrange
@@ -147,6 +147,8 @@ class ParallelMLP(MegatronModule):
 
         if args.openai_gelu:
             self.activation_func = openai_gelu
+        if args.quickgelu:
+            self.activation_func = quick_gelu
         elif args.onnx_safe:
             self.activation_func = erf_gelu
         elif args.swiglu and (not is_vit):
@@ -172,7 +174,7 @@ class ParallelMLP(MegatronModule):
             init_method=config.output_layer_init_method,
             bias=self.add_bias,
             input_is_parallel=True,
-            skip_bias_add=True
+            skip_bias_add=True,
         )
 
     def forward(self, hidden_states):
