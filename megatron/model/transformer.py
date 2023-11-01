@@ -147,7 +147,7 @@ class ParallelMLP(MegatronModule):
 
         if args.openai_gelu:
             self.activation_func = openai_gelu
-        if args.quickgelu:
+        elif args.quickgelu and is_vit:
             self.activation_func = quick_gelu
         elif args.onnx_safe:
             self.activation_func = erf_gelu
