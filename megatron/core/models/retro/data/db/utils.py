@@ -5,12 +5,11 @@ import json
 import numpy as np
 import os
 
-# >>>
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.external_libs import h5py
 
 from .dataset import DBDataset
-# <<<
+
 
 def get_base_db_workdir(env):
     '''Sub-directory for DB data.'''

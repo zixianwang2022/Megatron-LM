@@ -16,7 +16,7 @@ import types
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import core_transformer_config_from_args
 from megatron.core.models.retro.data.db import build_db
-# from megatron.core.models.retro.data.index import add_to_index, build_index, train_index
+from megatron.core.models.retro.data.index import add_to_index, train_index
 # from megatron.core.models.retro.data.query import query_neighbors
 from megatron.core.models.retro.data.preprocess import (
     RetroPreprocessingConfig,
