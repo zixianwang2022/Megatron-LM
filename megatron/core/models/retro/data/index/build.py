@@ -8,15 +8,15 @@
 # from tqdm import tqdm
 
 # from megatron import get_retro_args, print_rank_0
-# from tools.bert_embedding import DiskDataParallelBertEmbedder
-# from tools.retro.db.utils import (
+# from megatron.core.models.retro.data.db.utils import (
 #     get_indexed_dataset_infos,
 #     get_merged_sampled_dataset,
 #     get_merged_train_dataset,
 # )
-# from tools.retro.external_libs import h5py
-# from tools.retro.index.factory import IndexFactory
-# from tools.retro.utils import GPTToTextDataset
+# from megatron.core.models.retro.data.external_libs import h5py
+# from megatron.core.models.retro.data.index.factory import IndexFactory
+# from megatron.core.models.retro.data.utils import GPTToTextDataset
+# from tools.bert_embedding import DiskDataParallelBertEmbedder
 
 # from .utils import (
 #     get_training_data_block_dir,
@@ -34,7 +34,9 @@
 
 def get_empty_index_path():
     '''Path of empty index.'''
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
     index = IndexFactory.get_index(args.retro_index_type)
     empty_index_path = index.get_empty_index_path()
     return empty_index_path
@@ -50,7 +52,9 @@ def merge_embedding_blocks():
     if torch.distributed.get_rank() != 0:
         return
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # Get block, merged paths.
     load_fraction = args.retro_index_train_load_fraction
@@ -84,7 +88,9 @@ def embed_db():
     a single dataset for training the index.
     '''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     merged_train_data_path = get_training_data_merged_path()
     if os.path.exists(merged_train_data_path):
@@ -109,7 +115,9 @@ def embed_db():
 
 def train_on_embeddings():
     '''Train index on embedded DB chunks.'''
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
     index = IndexFactory.get_index(args.retro_index_type)
     index.train()
 
@@ -127,7 +135,9 @@ def remove_embeddings():
 def train_index():
     '''Train index on DB chunks.'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # Check if trained index already exists.
     if not os.path.isfile(get_empty_index_path()):
@@ -154,7 +164,9 @@ def train_index():
 def add_to_index():
     '''Add DB chunks to index.'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # Get index.
     index = IndexFactory.get_index(args.retro_index_type)

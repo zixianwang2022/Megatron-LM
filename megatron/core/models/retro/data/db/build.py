@@ -7,53 +7,57 @@
 # import glob
 # import json
 # import numpy as np
-# import os
+import os
 # from pathlib import Path
 # import threading
 # import torch
 # from tqdm import tqdm
-# import types
+import types
 
-# from megatron import get_retro_args, print_rank_0
-# from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+from megatron import print_rank_0
+from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+# from megatron.core.models.retro.data.external_libs import h5py
+# from megatron.core.models.retro.data.utils import get_gpt_tokenizer, get_bert_tokenizer
 # from megatron.tokenizer.tokenizer import (
 #     _BertWordPieceTokenizer,
 #     _GPT2BPETokenizer,
 # )
 # from tools.bert_embedding.utils import get_missing_blocks_by_rank
-# from tools.retro.external_libs import h5py
-# from tools.retro.utils import get_gpt_tokenizer, get_bert_tokenizer
 
-# from .utils import (
-#     get_indexed_dataset_infos,
-#     get_indexed_dataset_infos_path,
-#     get_individual_db_dir,
-#     get_individual_chunk_db,
-#     get_individual_doc_offsets,
-#     get_merged_dataset,
-#     get_merged_db_path_map,
-#     save_indexed_dataset_infos,
-# )
+from .utils import (
+    # get_indexed_dataset_infos,
+    # get_indexed_dataset_infos_path,
+    get_individual_db_dir,
+    # get_individual_chunk_db,
+    # get_individual_doc_offsets,
+    # get_merged_dataset,
+    # get_merged_db_path_map,
+    # save_indexed_dataset_infos,
+)
+# <<<
+
+# >>>
+from lutil import pax
 # <<<
 
 
-def init_indexed_dataset_infos():
+def init_indexed_dataset_infos(env):
     '''Gather meta-info about each indexed dataset.
 
     The returned info array allows for easy access to the configuration, and
     helps remove ambiguity.
     '''
 
-    args = get_retro_args()
+    data_blend = env.data_config.blend
 
-    assert len(args.data_path) % 2 == 0, \
+    assert len(data_blend) % 2 == 0, \
         "currently, only blended dataset is supported."
 
     # Dataset infos.
     infos = []
-    for i in range(0, len(args.data_path), 2):
-        ratio = float(args.data_path[i])
-        prefix = args.data_path[i + 1]
+    for i in range(0, len(data_blend), 2):
+        ratio = float(data_blend[i])
+        prefix = data_blend[i + 1]
         path = prefix + ".bin"
         name = os.path.basename(prefix)
         assert os.path.exists(path), "couldn't find '%s'." % path
@@ -62,7 +66,7 @@ def init_indexed_dataset_infos():
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            "db_dir" : get_individual_db_dir(name),
+            "db_dir" : get_individual_db_dir(env, name),
             "dataset" : MMapIndexedDataset(prefix),
         })
 
@@ -70,6 +74,7 @@ def init_indexed_dataset_infos():
 
 
 def build_partial_db(
+        env,
         dataset_idx,
         n_datasets,
         indexed_dataset,
@@ -87,8 +92,6 @@ def build_partial_db(
     iterates each document and extracts sequential 'chunk-length' sequences
     from each document.
     '''
-
-    args = get_retro_args()
 
     # Document start/end indexes.
     doc_range = block["range"]
@@ -140,8 +143,8 @@ def build_partial_db(
         doc_len = len(doc)
 
         # Chunk start/end indexes.
-        chunk_start_idxs = list(range(0, doc_len, args.retro_gpt_chunk_length))
-        chunk_end_idxs = [min(doc_len, s + args.retro_gpt_chunk_length)
+        chunk_start_idxs = list(range(0, doc_len, env.config.retro_gpt_chunk_length))
+        chunk_end_idxs = [min(doc_len, s + env.config.retro_gpt_chunk_length)
                           for s in chunk_start_idxs]
 
         # Re-tokenize each chunk to Bert/Wordpiece (empty bert -> 'invalid').
@@ -174,10 +177,13 @@ def build_partial_db(
     return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map
 
 
-def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
+def build_individual_db(
+        env,
+        dataset_idx,
+        n_datasets,
+        dataset_info,
+):
     '''Process a single indexed dataset & extract chunks.'''
-
-    args = get_retro_args()
 
     # Make directory.
     db_dir = dataset_info["db_dir"]
@@ -190,7 +196,7 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
         db_dir,
         len(indexed_dataset),
-        args.retro_doc_block_size,
+        env.config.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
             or f["chunks_valid"].shape[1] == 4)
 
@@ -280,16 +286,8 @@ def build_individual_db(dataset_idx, n_datasets, dataset_info, tokenizers):
     print_rank_0(" > finished saving individual db.")
 
 
-def build_individual_dbs(indexed_dataset_infos):
+def build_individual_dbs(env, indexed_dataset_infos):
     '''Iterate each indexed dataset & process its chunks.'''
-
-    args = get_retro_args()
-
-    # Tokenizers.
-    tokenizers = types.SimpleNamespace(
-        gpt=get_gpt_tokenizer(),
-        bert=get_bert_tokenizer(),
-    )
 
     # Build individual DBs.
     print_rank_0(" > build individual chunk dbs.")
@@ -303,14 +301,11 @@ def build_individual_dbs(indexed_dataset_infos):
         ))
 
         # Process single dataset.
-        build_individual_db(ds_idx, len(indexed_dataset_infos),
-                            ds_info, tokenizers)
+        build_individual_db(env, ds_idx, len(indexed_dataset_infos), ds_info)
 
 
-def update_chunk_counts(indexed_dataset_infos):
+def update_chunk_counts(env, indexed_dataset_infos):
     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
-
-    args = get_retro_args()
 
     if torch.distributed.get_rank() != 0:
         return
@@ -319,7 +314,7 @@ def update_chunk_counts(indexed_dataset_infos):
     data_ratio_sum = sum([ d["ratio"] for d in indexed_dataset_infos ])
 
     # Training split size (split at document level).
-    train_fraction = float(args.split.split(",")[0]) / 100
+    train_fraction = float(env.config.split.split(",")[0]) / 100
     assert train_fraction > 0 and train_fraction <= 1
 
     # Set n_chunks (including n_chunks_sampled for unambiguity).
@@ -344,7 +339,7 @@ def update_chunk_counts(indexed_dataset_infos):
                     (np.copy(f["chunks_valid"][:, 0]) < ds_info["n_docs_train"]) \
                     .sum().item()
 
-        ds_info["n_chunks_sampled"] = int(args.retro_index_ntrain *
+        ds_info["n_chunks_sampled"] = int(env.config.retro_index_ntrain *
                                           ds_info["ratio"] / data_ratio_sum)
 
         # Verify counts.
@@ -356,7 +351,7 @@ def update_chunk_counts(indexed_dataset_infos):
                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
 
 
-def merge_dbs(indexed_dataset_infos, db_type):
+def merge_dbs(env, indexed_dataset_infos, db_type):
     '''Merge individual DBs into single DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -470,7 +465,7 @@ def merge_dbs(indexed_dataset_infos, db_type):
         f.close()
 
 
-def build_db():
+def build_db(env):
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
@@ -478,22 +473,22 @@ def build_db():
     '''
 
     # Indexed dataset info.
-    indexed_dataset_infos = init_indexed_dataset_infos()
+    indexed_dataset_infos = init_indexed_dataset_infos(env)
 
     # Build dbs.
-    build_individual_dbs(indexed_dataset_infos)
+    build_individual_dbs(env, indexed_dataset_infos)
 
     # Single-process going forward.
     if torch.distributed.get_rank() != 0:
         return
 
     # Update n_chunks & save indexed dataset infos.
-    if not os.path.exists(get_indexed_dataset_infos_path()):
-        update_chunk_counts(indexed_dataset_infos)
-        save_indexed_dataset_infos(indexed_dataset_infos)
-    indexed_dataset_infos = get_indexed_dataset_infos()
+    if not os.path.exists(get_indexed_dataset_infos_path(env)):
+        update_chunk_counts(env, indexed_dataset_infos)
+        save_indexed_dataset_infos(env, indexed_dataset_infos)
+    indexed_dataset_infos = get_indexed_dataset_infos(env)
 
     # Merge dbs.
-    merge_dbs(indexed_dataset_infos, "sampled")
-    merge_dbs(indexed_dataset_infos, "train")
-    merge_dbs(indexed_dataset_infos, "valid")
+    merge_dbs(env, indexed_dataset_infos, "sampled")
+    merge_dbs(env, indexed_dataset_infos, "train")
+    merge_dbs(env, indexed_dataset_infos, "valid")

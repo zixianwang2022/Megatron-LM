@@ -9,7 +9,9 @@
 
 
 def get_query_workdir():
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
     return os.path.join(args.retro_workdir, "query")
 
 

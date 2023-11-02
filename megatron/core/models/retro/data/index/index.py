@@ -7,7 +7,7 @@
 # import torch
 
 # from megatron import get_retro_args
-# from tools.retro.external_libs import faiss
+# from megatron.core.models.retro.data.external_libs import faiss
 
 # from .utils import get_index_dir
 # <<<
@@ -33,7 +33,9 @@ class Index(abc.ABC):
         faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
 
     def get_empty_index_path(self):
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
         return os.path.join(
             get_index_dir(),
             "empty_%.3f.faissindex" % args.retro_index_train_load_fraction,
@@ -43,7 +45,9 @@ class Index(abc.ABC):
         return faiss.read_index(self.get_empty_index_path())
 
     def get_added_index_path(self):
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
         return os.path.join(
             get_index_dir(),
             "added_%.3f_%.3f.faissindex" % (

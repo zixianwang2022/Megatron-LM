@@ -5,28 +5,27 @@
 # import glob
 # import json
 # import numpy as np
-# import os
+import os
 # from tqdm import tqdm
 
 # from megatron import get_retro_args, print_rank_0
 # from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
-# from tools.retro.external_libs import h5py
+# from megatron.core.models.retro.data.external_libs import h5py
 
 # from .dataset import DBDataset
 # <<<
 
-def get_base_db_workdir():
+def get_base_db_workdir(env):
     '''Sub-directory for DB data.'''
-    args = get_retro_args()
-    return os.path.join(args.retro_workdir, "db")
+    return os.path.join(env.config.retro_workdir, "db")
 
 
-def get_indexed_dataset_infos_path():
+def get_indexed_dataset_infos_path(env):
     '''Path to indexed dataset meta-infos.'''
-    return os.path.join(get_base_db_workdir(), "indexed_dataset_infos.json")
+    return os.path.join(get_base_db_workdir(env), "indexed_dataset_infos.json")
 
 
-def save_indexed_dataset_infos(indexed_dataset_infos):
+def save_indexed_dataset_infos(env, indexed_dataset_infos):
     '''Save dataset order & meta-info.'''
 
     # Remove 'dataset' field.
@@ -37,15 +36,15 @@ def save_indexed_dataset_infos(indexed_dataset_infos):
         clean_infos.append(info)
 
     # Save.
-    with open(get_indexed_dataset_infos_path(), "w") as f:
+    with open(get_indexed_dataset_infos_path(env), "w") as f:
         json.dump(clean_infos, f, indent=4)
 
 
-def get_indexed_dataset_infos():
+def get_indexed_dataset_infos(env):
     '''Load indexed dataset meta-infos.'''
 
     # Load json.
-    path = get_indexed_dataset_infos_path()
+    path = get_indexed_dataset_infos_path(env)
     with open(path) as f:
         infos = json.load(f)
 
@@ -56,12 +55,12 @@ def get_indexed_dataset_infos():
     return infos
 
 
-def get_individual_db_dir(name):
+def get_individual_db_dir(env, name):
     '''Individual DB's directory.'''
-    return os.path.join(get_base_db_workdir(), "individual", name)
+    return os.path.join(get_base_db_workdir(env), "individual", name)
 
 
-def get_individual_chunk_db(ds_id, ds_info):
+def get_individual_chunk_db(env, ds_id, ds_info):
     '''Load individual dataset's chunk DB.'''
     db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
     # *Note*: convert to dataset, rather than copying to memory.
@@ -80,7 +79,7 @@ def get_individual_chunk_db(ds_id, ds_info):
     return db
 
 
-def get_individual_doc_offsets(ds_id, ds_info):
+def get_individual_doc_offsets(env, ds_id, ds_info):
     '''Load individual dataset's chunk DB.'''
     paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
     # *Note*: convert to dataset, rather than copying to memory.
@@ -101,9 +100,9 @@ def get_individual_doc_offsets(ds_id, ds_info):
     return doc_offsets
 
 
-def get_merged_db_path_map():
+def get_merged_db_path_map(env):
     '''Paths to merged datasets.'''
-    base_dir = get_base_db_workdir()
+    base_dir = get_base_db_workdir(env)
     return {
         "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
         "train" : os.path.join(base_dir, "merged", "train.hdf5"),
@@ -111,13 +110,11 @@ def get_merged_db_path_map():
     }
 
 
-def get_merged_dataset(db_type, indexed_dataset_infos=None):
+def get_merged_dataset(env, db_type, indexed_dataset_infos=None):
     '''Get merged dataset.'''
 
-    args = get_retro_args()
-
     if not indexed_dataset_infos:
-        indexed_dataset_infos = get_indexed_dataset_infos()
+        indexed_dataset_infos = get_indexed_dataset_infos(env)
 
     # Load chunks.
     db_path = get_merged_db_path_map()[db_type]
@@ -132,13 +129,13 @@ def get_merged_dataset(db_type, indexed_dataset_infos=None):
     return dataset
 
 
-def get_merged_sampled_dataset(indexed_dataset_infos=None):
-    return get_merged_dataset("sampled", indexed_dataset_infos)
+def get_merged_sampled_dataset(env, indexed_dataset_infos=None):
+    return get_merged_dataset(env, "sampled", indexed_dataset_infos)
 
 
-def get_merged_train_dataset(indexed_dataset_infos=None):
-    return get_merged_dataset("train", indexed_dataset_infos)
+def get_merged_train_dataset(env, indexed_dataset_infos=None):
+    return get_merged_dataset(env, "train", indexed_dataset_infos)
 
 
-def get_merged_valid_dataset(indexed_dataset_infos=None):
-    return get_merged_dataset("valid", indexed_dataset_infos)
+def get_merged_valid_dataset(env, indexed_dataset_infos=None):
+    return get_merged_dataset(env, "valid", indexed_dataset_infos)

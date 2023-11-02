@@ -15,13 +15,13 @@ inherit from this class (see FaissParAddIndex, for an example).
 # from tqdm import tqdm
 
 # from megatron import get_retro_args, print_rank_0
-# from tools.bert_embedding import BertEmbedder
-# from tools.retro.external_libs import faiss
-# from tools.retro.index.index import Index
-# from tools.retro.index.utils import (
+# from megatron.core.models.retro.data.external_libs import faiss
+# from megatron.core.models.retro.data.index.index import Index
+# from megatron.core.models.retro.data.index.utils import (
 #     get_training_data_merged_path,
 #     num_samples_to_block_ranges,
 # )
+# from tools.bert_embedding import BertEmbedder
 # <<<
 
 
@@ -30,7 +30,9 @@ class FaissBaseIndex(Index):
     def _train(self):
         '''Train index (rank 0's method).'''
 
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
 
         assert torch.distributed.get_rank() == 0
 
@@ -89,7 +91,9 @@ class FaissBaseIndex(Index):
 
         assert torch.distributed.get_rank() == 0
 
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
 
         dataset_sample_ranges = num_samples_to_block_ranges(len(text_dataset))
 

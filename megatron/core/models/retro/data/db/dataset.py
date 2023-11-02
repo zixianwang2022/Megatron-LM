@@ -7,8 +7,8 @@
 # from tqdm import tqdm
 
 # from megatron import get_args, print_rank_0
-# from tools.retro.external_libs import h5py
-# from tools.retro.utils import get_gpt_tokenizer
+# from megatron.core.models.retro.data.external_libs import h5py
+# from megatron.core.models.retro.data.utils import get_gpt_tokenizer
 # <<<
 
 

@@ -17,10 +17,10 @@ the vast majority of the computational effort is embarrassingly parallel.
 # from tqdm import tqdm
 
 # from megatron import get_retro_args, print_rank_0
+# from megatron.core.models.retro.data.external_libs import faiss, h5py
+# from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
 # from tools.bert_embedding import BertEmbedder
 # from tools.bert_embedding.utils import get_missing_blocks_by_rank
-# from tools.retro.external_libs import faiss, h5py
-# from tools.retro.index.utils import get_added_codes_dir, get_added_code_paths
 
 # from .faiss_base import FaissBaseIndex
 # <<<
@@ -36,7 +36,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
         via index.sa_encode(), and the resulting codes are saved to disk.
         '''
 
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
 
         # Embed block.
         embeddings = self.embed_text_dataset_block(
@@ -58,7 +60,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
     def encode(self, text_dataset):
         '''Encode text dataset, to be later added to index.'''
 
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
         codes_dir = get_added_codes_dir()
 
         # Index.
@@ -107,7 +111,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
         if os.path.exists(added_index_path):
             return
 
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
 
         # Index.
         print_rank_0("read empty index.")
@@ -144,7 +150,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
             return
         assert os.path.isfile(self.get_added_index_path())
 
-        args = get_retro_args()
+        # >>>
+        # args = get_retro_args()
+        # <<<
         if args.retro_index_delete_added_codes:
             raise Exception("remove?")
             shutil.rmtree(get_added_codes_dir(), ignore_errors=True)

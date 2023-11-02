@@ -9,14 +9,14 @@
 # from tqdm import tqdm
 
 # from megatron import get_retro_args, print_rank_0
+# from megatron.core.models.retro.data.db.utils import \
+#     get_merged_train_dataset as get_db_merged_train_dataset
+# from megatron.core.models.retro.data.external_libs import faiss, h5py
+# from megatron.core.models.retro.data.index.factory import IndexFactory
+# from megatron.core.models.retro.data.index.utils import get_index_dir
+# from megatron.core.models.retro.data.utils import GPTToTextDataset
 # from tools.bert_embedding import BertEmbedder
 # from tools.bert_embedding.utils import get_missing_blocks_by_rank
-# from tools.retro.db.utils import \
-#     get_merged_train_dataset as get_db_merged_train_dataset
-# from tools.retro.external_libs import faiss, h5py
-# from tools.retro.index.factory import IndexFactory
-# from tools.retro.index.utils import get_index_dir
-# from tools.retro.utils import GPTToTextDataset
 
 # from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
 # <<<
@@ -25,7 +25,9 @@
 def get_index(ondisk=False):
     '''Read index from disk.'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # Load index.
     index_wrapper = IndexFactory.get_index(args.retro_index_type)
@@ -60,7 +62,9 @@ def query_embeddings(db_dataset, index,
                      verbose=True):
     '''Query neighbors of a block of embeddings.'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # Query neighbor ids.
     if verbose: print_rank_0("search.")
@@ -142,7 +146,9 @@ def query_block_neighbors(db_dataset, query_dataset,
                           block):
     '''Query neighbors of a dataset block (i.e., range).'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
     n_chunks_per_sample = query_dataset.n_chunks_per_sample
 
     # Sample map.
@@ -178,7 +184,9 @@ def query_dataset_neighbors(db_dataset, query_dataset,
                             index, embedder):
     '''Query neighbors of each chunk within a dataset.'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     def validate(f):
         assert f["neighbors"].shape[1] == args.retro_query_num_neighbors_save, \
@@ -221,7 +229,9 @@ def query_dataset_neighbors(db_dataset, query_dataset,
 def query_pretraining_neighbors():
     '''Query pretraining datasets (train & valid).'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # Num threads.
     faiss.omp_set_num_threads(64)

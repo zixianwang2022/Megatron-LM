@@ -6,9 +6,9 @@
 # import torch
 
 # from megatron import get_args, get_retro_args
+# from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset
+# from megatron.core.models.retro.data.external_libs import h5py
 # from tools.bert_embedding.utils import BlockPathMap
-# from tools.retro.db.utils import get_merged_train_dataset as get_db_dataset
-# from tools.retro.external_libs import h5py
 
 # from .chunk_dataset import get_chunk_dataset_map
 # from .utils import get_neighbor_dirname
@@ -106,8 +106,10 @@ class RetroDataset(torch.utils.data.Dataset):
 def get_retro_datasets():
     '''Get train, valid, test retro datasets.'''
 
-    args = get_args()
-    retro_args = get_retro_args()
+    # >>>
+    # args = get_args()
+    # retro_args = get_retro_args()
+    # <<<
 
     # DB dataset.
     db_dataset = get_db_dataset()

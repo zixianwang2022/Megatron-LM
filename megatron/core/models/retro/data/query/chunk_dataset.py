@@ -8,12 +8,12 @@
 # from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 # from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
 # from megatron.core.datasets.gpt_dataset import GPTDataset
+# from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
+# from megatron.core.models.retro.data.utils import get_num_chunks_per_sample
 # from megatron.training import (
 #     build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
 #     update_train_iters,
 # )
-# from tools.retro.db.utils import get_indexed_dataset_infos
-# from tools.retro.utils import get_num_chunks_per_sample
 
 # from .utils import get_neighbor_dirname, get_query_workdir
 
@@ -69,7 +69,9 @@ class ChunkDataset(torch.utils.data.Dataset):
 def verify_indexed_dataset_order():
     '''Verify pretraining order same as DB order.'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # DB dataset prefixes.
     db_indexed_dataset_infos = get_indexed_dataset_infos()
@@ -100,7 +102,9 @@ def core_gpt_dataset_config_from_retro_args(args):
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
@@ -118,7 +122,9 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 def get_chunk_dataset_map():
     '''Get train, valid, test chunk datasets.'''
 
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
 
     # Update train iters.
     update_train_iters(args)
