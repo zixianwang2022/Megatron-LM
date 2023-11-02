@@ -1,10 +1,16 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
 import os
 import torch
-# import types
-# <<<
+
+
+def print_rank_0(message):
+    """If distributed is initialized, print only on rank 0."""
+    if torch.distributed.is_initialized():
+        if torch.distributed.get_rank() == 0:
+            print(message, flush=True)
+    else:
+        print(message, flush=True)
 
 
 def get_config_path(workdir):

@@ -1,44 +1,27 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# from collections import defaultdict
-# from concurrent.futures import as_completed, ProcessPoolExecutor
-# from functools import reduce
-# import glob
-# import json
-# import numpy as np
+from concurrent.futures import as_completed, ProcessPoolExecutor
+import glob
+import numpy as np
 import os
-# from pathlib import Path
-# import threading
-# import torch
-# from tqdm import tqdm
+import torch
+from tqdm import tqdm
 import types
 
-from megatron import print_rank_0
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
-# from megatron.core.models.retro.data.external_libs import h5py
-# from megatron.core.models.retro.data.utils import get_gpt_tokenizer, get_bert_tokenizer
-# from megatron.tokenizer.tokenizer import (
-#     _BertWordPieceTokenizer,
-#     _GPT2BPETokenizer,
-# )
-# from tools.bert_embedding.utils import get_missing_blocks_by_rank
+from megatron.core.models.retro.data.external_libs import h5py
+from megatron.core.models.retro.data.io import get_missing_blocks_by_rank
+from megatron.core.models.retro.data.utils import print_rank_0
 
 from .utils import (
-    # get_indexed_dataset_infos,
-    # get_indexed_dataset_infos_path,
+    get_indexed_dataset_infos,
+    get_indexed_dataset_infos_path,
     get_individual_db_dir,
-    # get_individual_chunk_db,
-    # get_individual_doc_offsets,
-    # get_merged_dataset,
-    # get_merged_db_path_map,
-    # save_indexed_dataset_infos,
+    get_individual_chunk_db,
+    get_individual_doc_offsets,
+    get_merged_db_path_map,
+    save_indexed_dataset_infos,
 )
-# <<<
-
-# >>>
-from lutil import pax
-# <<<
 
 
 def init_indexed_dataset_infos(env):
@@ -83,7 +66,6 @@ def build_partial_db(
         block,
         proc_id,
         n_procs,
-        tokenizers,
 ):
     '''Process a document index range of the indexed dataset.
 
@@ -138,7 +120,7 @@ def build_partial_db(
 
         # Remove EOD token.
         doc = indexed_dataset.get(doc_id)
-        if doc[-1].item() == tokenizers.gpt.eod:
+        if doc[-1].item() == env.gpt_tokenizer.eod:
             doc = doc[:-1]
         doc_len = len(doc)
 
@@ -158,8 +140,8 @@ def build_partial_db(
                 offset=chunk_start_idx,
                 length=chunk_end_idx - chunk_start_idx,
             )
-            text = tokenizers.gpt.detokenize(gpt_token_ids.tolist())
-            bert_token_ids = tokenizers.bert.tokenize(text)
+            text = env.gpt_tokenizer.detokenize(gpt_token_ids.tolist())
+            bert_token_ids = env.bert_tokenizer.tokenize(text)
 
             # 'Valid' for non-empty Bert chunks; 'invalid' otherwise.
             if len(bert_token_ids) == 0:
@@ -232,6 +214,7 @@ def build_individual_db(
                 for proc_id in range(n_procs): # not true process id
                     futures.append(executor.submit(
                         build_partial_db,
+                        env,
                         dataset_idx,
                         n_datasets,
                         indexed_dataset,
@@ -240,7 +223,6 @@ def build_individual_db(
                         block,
                         proc_id,
                         n_procs,
-                        tokenizers,
                     ))
                 partial_chunk_dbs = []
                 for future in as_completed(futures):
@@ -314,7 +296,7 @@ def update_chunk_counts(env, indexed_dataset_infos):
     data_ratio_sum = sum([ d["ratio"] for d in indexed_dataset_infos ])
 
     # Training split size (split at document level).
-    train_fraction = float(env.config.split.split(",")[0]) / 100
+    train_fraction = float(env.data_config.split.split(",")[0]) / 100
     assert train_fraction > 0 and train_fraction <= 1
 
     # Set n_chunks (including n_chunks_sampled for unambiguity).
@@ -380,7 +362,7 @@ def merge_dbs(env, indexed_dataset_infos, db_type):
             sum(m[n_docs_key] for m in indexed_dataset_infos)
 
     # DB path.
-    db_path = get_merged_db_path_map()[db_type]
+    db_path = get_merged_db_path_map(env)[db_type]
 
     # Delete existing chunk db if incorrect size.
     if os.path.exists(db_path):
@@ -425,9 +407,9 @@ def merge_dbs(env, indexed_dataset_infos, db_type):
         for ds_idx, ds_info in enumerate(indexed_dataset_infos):
             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
                   (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-            individual_chunk_db = get_individual_chunk_db(ds_idx, ds_info)
+            individual_chunk_db = get_individual_chunk_db(env, ds_idx, ds_info)
             individual_doc_offsets = None if n_docs_key is None else \
-                get_individual_doc_offsets(ds_idx, ds_info)
+                get_individual_doc_offsets(env, ds_idx, ds_info)
 
             if db_type == "valid":
                 individual_chunk_db = \

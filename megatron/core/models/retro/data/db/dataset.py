@@ -1,15 +1,8 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# import json
-# import numpy as np
-# import torch
-# from tqdm import tqdm
-
-# from megatron import get_args, print_rank_0
-# from megatron.core.models.retro.data.external_libs import h5py
-# from megatron.core.models.retro.data.utils import get_gpt_tokenizer
-# <<<
+import numpy as np
+import torch
+from tqdm import tqdm
 
 
 class DBDataset(torch.utils.data.Dataset):
