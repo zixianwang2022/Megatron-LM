@@ -38,6 +38,10 @@ class RetroPreprocessingConfig(TransformerConfig):
 
     Attributes:
 
+        retro_workdir (str): Retro working directory, which contains the
+            preprocessed data for for pretraining. This directory is built during
+            preprocessing (see tools/retro/README.md), and contains subdirectories
+            for the chunk database and pretraining neighbors.
         retro_tasks (str): Comma-separated list of tasks to run. Run entire
             preprocesing pipeline by using '--retro-tasks build'. Alternatively,
             run individual stages with tasks (in this order) 'db-build',
@@ -115,6 +119,7 @@ class RetroPreprocessingConfig(TransformerConfig):
     """
 
     # Basic.
+    retro_workdir: str = None
     retro_tasks: str = 'build'
     retro_block_size: int = 100000
     retro_doc_block_size: int = 100000

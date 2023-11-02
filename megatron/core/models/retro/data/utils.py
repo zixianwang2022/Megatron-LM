@@ -14,46 +14,52 @@ import types
 # <<<
 
 
-def get_args_path(workdir):
+def get_config_path(workdir):
     '''Argument copy stored within retro workdir.'''
-    return os.path.join(workdir, "args.json")
+    return os.path.join(workdir, "config.json")
 
 
 def get_num_chunks_per_sample():
     '''Compute seq_length // chunk_length.'''
-    args = get_retro_args()
-    sample_length = args.retro_gpt_seq_length
-    chunk_length = args.retro_gpt_chunk_length
+    # >>>
+    # args = get_retro_args()
+    # <<<
+    sample_length = config.retro_gpt_seq_length
+    chunk_length = config.retro_gpt_chunk_length
     assert sample_length % chunk_length == 0
     return sample_length // chunk_length
 
 
 def get_gpt_tokenizer():
     '''GPT (BPE) tokenizer.'''
-    args = get_retro_args()
-    tokenizer_type = args.retro_gpt_tokenizer_type
+    # >>>
+    # args = get_retro_args()
+    # <<<
+    tokenizer_type = config.retro_gpt_tokenizer_type
     if tokenizer_type == "GPT2BPETokenizer":
-        assert args.retro_gpt_vocab_file and args.retro_gpt_merge_file
+        assert config.retro_gpt_vocab_file and config.retro_gpt_merge_file
         return _GPT2BPETokenizer(
-            vocab_file=args.retro_gpt_vocab_file,
-            merge_file=args.retro_gpt_merge_file,
+            vocab_file=config.retro_gpt_vocab_file,
+            merge_file=config.retro_gpt_merge_file,
         )
     elif tokenizer_type == 'GPTSentencePieceTokenizer':
-        assert args.retro_gpt_tokenizer_model is not None
-        return _GPTSentencePieceTokenizer(args.retro_gpt_tokenizer_model)
+        assert config.retro_gpt_tokenizer_model is not None
+        return _GPTSentencePieceTokenizer(config.retro_gpt_tokenizer_model)
     else:
         raise Exception("unrecognized gpt tokenizer, '%s'." % tokenizer_type)
 
 
 def get_bert_tokenizer():
     '''Bert (Wordpiece) tokenizer.'''
-    args = get_retro_args()
+    # >>>
+    # args = get_retro_args()
+    # <<<
     lower_case = {
         "BertWordPieceLowerCase" : True,
         "BertWordPieceCase" : False,
-    }[args.retro_bert_tokenizer_type]
+    }[config.retro_bert_tokenizer_type]
     return _BertWordPieceTokenizer(
-        vocab_file=args.retro_bert_vocab_file,
+        vocab_file=config.retro_bert_vocab_file,
         lower_case=lower_case,
     )
 

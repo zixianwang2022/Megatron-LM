@@ -11,7 +11,7 @@ import types
 
 import torch.nn.functional as F
 from megatron.global_vars import set_retro_args, get_retro_args
-from megatron.core.models.retro.data.utils import get_args_path as get_retro_args_path
+from megatron.core.models.retro.data.utils import get_config_path as get_retro_config_path
 
 from megatron.core.models.retro import RetroConfig
 from megatron.core.transformer import TransformerConfig
@@ -414,11 +414,65 @@ def _print_args(title, args):
 def _check_arg_is_not_none(args, arg):
     assert getattr(args, arg) is not None, '{} argument is None'.format(arg)
 
+
+# >>>
+# def core_transformer_config_from_args(args, config_class=None):
+
+#     # Translate args to core transformer configuration
+#     kw_args = {}
+#     for f in dataclasses.fields(TransformerConfig):
+#         # >>>
+#         if f.name == "retro_workdir":
+#             raise Exception("hi.")
+#         # <<<
+#         if hasattr(args, f.name):
+#             kw_args[f.name] = getattr(args, f.name)
+#     kw_args['persist_layer_norm'] = not args.no_persist_layer_norm
+#     kw_args['layernorm_zero_centered_gamma'] = args.apply_layernorm_1p
+#     kw_args['layernorm_epsilon'] = args.norm_epsilon
+#     kw_args['deallocate_pipeline_outputs'] = True
+#     kw_args['pipeline_dtype'] = args.params_dtype
+#     kw_args['batch_p2p_comm'] = not args.overlap_p2p_comm
+#     kw_args['num_moe_experts'] = args.num_experts
+#     if args.swiglu:
+#         kw_args['activation_func'] = F.silu
+#         kw_args['gated_linear_unit'] = True
+#         kw_args['bias_gelu_fusion'] = False
+#     if args.init_method_xavier_uniform:
+#         kw_args['init_method'] = torch.nn.init.xavier_uniform_
+#         kw_args['scaled_init_method'] = torch.nn.init.xavier_uniform_
+#     if args.group_query_attention:
+#         kw_args['num_query_groups'] = args.num_query_groups
+#     else:
+#         kw_args['num_query_groups'] = None
+
+#     # Custom config class.
+#     if config_class is not None:
+#         return config_class(**kw_args)
+
+#     # If using Retro, return Retro config.
+#     retro_args = get_retro_args()
+#     if retro_args:
+#         kw_args['retro_preprocess'] = retro_args
+#         return RetroConfig(**kw_args)
+
+#     # Return Transformer config.
+#     return TransformerConfig(**kw_args)
 def core_transformer_config_from_args(args, config_class=None):
 
-    # Translate args to core transformer configuration
+    # Config class.
     kw_args = {}
-    for f in dataclasses.fields(TransformerConfig):
+    retro_args = get_retro_args()
+    if config_class:
+        pass
+    elif retro_args:
+        kw_args['retro_preprocess'] = retro_args
+        config_class = RetroConfig
+    else:
+        config_class = TransformerConfig
+
+    # Translate args to core transformer configuration
+    for f in dataclasses.fields(config_class):
         if hasattr(args, f.name):
             kw_args[f.name] = getattr(args, f.name)
     kw_args['persist_layer_norm'] = not args.no_persist_layer_norm
@@ -440,18 +494,9 @@ def core_transformer_config_from_args(args, config_class=None):
     else:
         kw_args['num_query_groups'] = None
 
-    # Custom config class.
-    if config_class is not None:
-        return config_class(**kw_args)
-
-    # If using Retro, return Retro config.
-    retro_args = get_retro_args()
-    if retro_args:
-        kw_args['retro_preprocess'] = retro_args
-        return RetroConfig(**kw_args)
-
-    # Return Transformer config.
-    return TransformerConfig(**kw_args)
+    # Return config.
+    return config_class(**kw_args)
+# <<<
 
 
 def _add_transformer_engine_args(parser):

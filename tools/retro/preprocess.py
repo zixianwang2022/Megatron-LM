@@ -8,18 +8,18 @@ Stages (see argument '--retro-tasks'):
 - Query pretraining neighbors.
 """
 
-# from dataclasses import dataclass
-# import json
-# import os
-# import torch
+import json
+import os
+import torch
+import types
 
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import core_transformer_config_from_args
-# from megatron.global_vars import set_retro_args
-# from megatron.core.models.retro.data.db import build_db
+from megatron.global_vars import set_retro_args
+from megatron.core.models.retro.data.db import build_db
 # from megatron.core.models.retro.data.index import add_to_index, build_index, train_index
 # from megatron.core.models.retro.data.query import query_pretraining_neighbors
-# from megatron.core.models.retro.data.utils import get_args_path
+from megatron.core.models.retro.data.utils import get_config_path
 # from megatron.core.transformer import TransformerConfig
 
 from config import RetroPreprocessingConfig
@@ -43,19 +43,27 @@ def add_retro_args(parser):
     return parser
 
 
-def save_args(args):
-    '''Save copy of args within retro workdir.'''
+def save_config(config):
+    '''Save copy of config within retro workdir.'''
 
     def default_dump(obj):
         if isinstance(obj, torch.dtype):
             return str(obj)
+        elif isinstance(obj, (
+                types.FunctionType,
+                types.LambdaType,
+                types.MethodType,
+                types.BuiltinFunctionType,
+                types.BuiltinMethodType,
+        )):
+            return f"<{obj.__name__}>"
         else:
             raise Exception("specialize for <%s>." % type(obj).__name__)
 
     if torch.distributed.get_rank() == 0:
-        args_path = get_args_path(args.retro_workdir)
-        with open(args_path, "w") as f:
-            json.dump(vars(args), f, indent=4, default=default_dump)
+        config_path = get_config_path(config.retro_workdir)
+        with open(config_path, "w") as f:
+            json.dump(vars(config), f, indent=4, default=default_dump)
 
     torch.distributed.barrier()
 
@@ -65,56 +73,16 @@ if __name__ == "__main__":
     # Initalize Megatron.
     initialize_megatron(extra_args_provider=add_retro_args)
 
-    args = get_args()
-    config = core_transformer_config_from_args(args, config_class=RetroPreprocessingConfig)
+    # Retro preprocessing config.
+    config = core_transformer_config_from_args(get_args(), config_class=RetroPreprocessingConfig)
 
-    pax("args, config")
-    config = get_retro_config()
-    pax("config")
-
-    # >>>
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    add_retro_args(parser)
-
-    for action in parser._action_groups[0]._actions:
-        if "HelpAction" in type(action).__name__:
-            continue
-        # print("        %s (%s): %s" % (
-        #     ", ".join(o.replace("--", "") for o in action.option_strings),
-        #     "str" if action.type is None else action.type.__name__,
-        #     action.help,
-        # ))
-        print("    %s: %s = %s" % (
-            ", ".join(o.replace("--", "") for o in action.option_strings),
-            "str" if action.type is None else action.type.__name__,
-            f"'{action.default}'" if isinstance(action.default, str) else action.default, # "None" if action.default is None else action.default,
-        ))
-        # pax("action")
-
-    exit()
-
-    pax("parser", {
-        "_action_groups" : parser._action_groups,
-        "_action_groups / 0" : parser._action_groups[0],
-        "0 / _actions" : parser._action_groups[0]._actions,
-        # "1 / _actions" : parser._action_groups[1]._actions,
-        # "2 / _actions" : parser._action_groups[2]._actions,
-    })
-
-    config = get_retro_config()
-
-    pax("args, config")
-    # <<<
-
-    # Save/set retro args.
-    os.makedirs(args.retro_workdir, exist_ok=True)
-    save_args(args)
-    set_retro_args(args)
+    # Save/set retro config.
+    os.makedirs(config.retro_workdir, exist_ok=True)
+    save_config(config)
+    set_retro_args(config)
 
     # Select task to run.
-    for task in args.retro_tasks:
+    for task in config.retro_tasks:
 
         print_rank_0("start '%s'." % task)
 
