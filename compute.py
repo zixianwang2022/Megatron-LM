@@ -11,7 +11,8 @@ ocr_output, gt_output = [], []
 f = open(args.input)
 
 for s in f:
-    ocr_output.append(s[1:-1])
+    #ocr_output.append(s[1:-1]) # NOTE(jbarker): This is correct for mmap dataloader
+    ocr_output.append(s[:-2]) # NOTE(jbarker): This is correct for nvgpt4
 
 ff = open(args.gt)
 

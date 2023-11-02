@@ -48,6 +48,10 @@ def gelu_impl(x):
 def openai_gelu(x):
     return gelu_impl(x)
 
+@torch.jit.script
+def quick_gelu(x):
+    return x * torch.sigmoid(1.702 * x)
+
 #This is actually Python equivalent of torch.nn.functional.gelu(), also with type hints for ONNX exporter
 @torch.jit.script
 def erf_gelu(x):

@@ -145,7 +145,8 @@ def generate_samples_unconditional(model, visual_model):
         json_file = json.load(open(args.eval_path))
         for i in range(num_samples):
             record = json_file[i]
-            img_file = "/lustre/fsw/adlr/adlr-nlp/zhuoliny/" + record["image"]
+            #img_file = "/lustre/fsw/adlr/adlr-nlp/zhuoliny/" + record["image"]
+            img_file = "/lustre/fsw/portfolios/llmservice/projects/llmservice_nlp_fm/datasets/vqa/VQAv2/processing/" + record["image"]
             pixel_mean = [123.675, 116.28, 103.53]
             pixel_std = [58.395, 57.12, 57.375]
             img_sample = np.array(Image.open(img_file))
@@ -179,9 +180,14 @@ def generate_samples_unconditional(model, visual_model):
             H, W = int(raw_h * ratio + 0.5), int(raw_w * ratio + 0.5)
             image_transform = _transform_test(H, W)
             img = image_transform(img_sample)
-            img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - pixel_mean) / pixel_std
+            # NOTE(jbarker): nvgpt4 for OCR pads images before mean and std norm
+            # the old dataloader does it the other way round
+            # need to make this consistent
+            #img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - pixel_mean) / pixel_std
+            img = torch.Tensor(np.array(img)).permute(2, 0, 1)
             delta_h, delta_w = args.img_h - H, args.img_w - W
             img2 = torch.nn.functional.pad(img, (0, delta_w, 0, delta_h))
+            img2 = (img2 - pixel_mean) / pixel_std
             if args.task == 'captioning':
                 _test.append(int(img_file.split("_")[-1].split(".")[0]))
             else:
@@ -229,7 +235,8 @@ def generate_samples_unconditional(model, visual_model):
             elif args.task == "none":
                 sentences = ["Can you briefly explain what you see in the image?"]
 
-            prompt=sentences[0] #np.random.randint(len(sentences))]
+            prompt=sentences[0]
+            # prompt=sentences[np.random.randint(len(sentences))]
 
             if args.with_space:
                 prompt += " "

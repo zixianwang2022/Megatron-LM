@@ -4,7 +4,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 
-NAME="flamingo-2b-1node-COCO-overfit-clip336-mr"
+NAME="flamingo-2b-1node-COCO-overfit-clip-dropout-mr-wds"
 CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/${NAME}"
 
 dataset="GPT"
@@ -16,8 +16,7 @@ EVAL_PATH="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO/coco_test"
 # resolution=1024
 # VISUAL_ARCH="SAM_L"
 # VISUAL_TYPE="sam"
-resolution=336
-# resolution=224
+resolution=224
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
 VISUAL_DIR="${CHECKPOINT_DIR}/${VISUAL_TYPE}"
@@ -68,5 +67,5 @@ CUDA_VISIBLE_DEVICES=7 MASTER_PORT=44147 python generation/generate_samples_flam
        --beam-search \
        --genfile ./generated_files/$NAME-$iter-bs-$dataset-$task-${resolution}px.jsonl \
        --align-to-old \
-       --with-space \
        --fp32SAM \
+       #--with-space \ # DO NOT USE THIS WITH NVGPT4 DATALOADER TRAINED MODELS

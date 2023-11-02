@@ -75,9 +75,9 @@ def validate_visual_args(args):
             args.v_jitter = 0
             args.crop_middle = False
             if args.img_h == 336:
-                args.quickgelu = False
-            else:
                 args.quickgelu = True
+            else:
+                args.quickgelu = False
         elif args.visual_arch == "G_14":
             args.visual_num_layers = 48
             args.visual_patch_dim = 14
@@ -118,7 +118,6 @@ def validate_visual_args(args):
     return args
 
 def validate_visual_args_sam(args):
-    # visual_arch = args.visual_arch
 
     args.visual_path = args.visual_path_sam
     args.visual_arch = args.visual_arch_sam
@@ -126,12 +125,10 @@ def validate_visual_args_sam(args):
     args.img_h, args.img_w = args.img_h_sam, args.img_w_sam
 
     args = validate_visual_args(args)
-    # args.visual_arch = visual_arch
 
     return args
 
 def validate_visual_args_clip(args):
-    # visual_arch = args.visual_arch
 
     args.visual_path = args.visual_path_clip
     args.visual_arch = args.visual_arch_clip
@@ -139,7 +136,6 @@ def validate_visual_args_clip(args):
     args.img_h, args.img_w = args.img_h_clip, args.img_w_clip
 
     args = validate_visual_args(args)
-    # args.visual_arch = visual_arch
 
     return args 
 

@@ -41,7 +41,7 @@ from megatron.data.multimodal_dataset import (
     clip_pixel_mean,
     clip_pixel_std
 )
-
+import re
 
 # # ocr caption from Karan
 # def target_transform(captions):
@@ -56,7 +56,7 @@ class RandomResize(CustomTransform):
         self._min_scale = min_scale
         self._max_scale = max_scale
         self._max_size = max_size
-    
+
     def apply_transform(self, matrix: np.ndarray, dst_size: np.ndarray) -> Tuple[Any, Any, Any]:
         scale = random.uniform(self._min_scale, self._max_scale)
         new_size = tuple(int(x * scale) for x in dst_size)
@@ -64,10 +64,10 @@ class RandomResize(CustomTransform):
         if max(new_size) > self._max_size:
             scale = self._max_size / max(new_size)
             new_size = tuple(int(x * scale) for x in dst_size)
-        
+
         matrix = self.scale(scale, scale) @ matrix
         dst_size = np.array(new_size, dtype=dst_size.dtype)
-        
+
         return matrix, dst_size, (self.__class__.__name__, scale)
 
 
@@ -77,7 +77,7 @@ class RandomResizeLongEdge(CustomTransform):
     def __init__(self, min_size: int, max_size: int):
         self._min_size = min_size
         self._max_size = max_size
-    
+
     def apply_transform(self, matrix: np.ndarray, dst_size: np.ndarray) -> Tuple[Any, Any, Any]:
         new_long = random.randint(self._min_size, self._max_size)
         if dst_size[0] > dst_size[1]:  # h > w
@@ -88,7 +88,7 @@ class RandomResizeLongEdge(CustomTransform):
         new_size = (new_h, new_w)
         matrix = self.scale(new_w / dst_size[1], new_h / dst_size[0]) @ matrix
         dst_size = np.array(new_size, dtype=dst_size.dtype)
-        
+
         return matrix, dst_size, (self.__class__.__name__, new_size)
 
 
@@ -98,13 +98,13 @@ class RandomPad(CustomTransform):
 
     def __init__(self, size: Tuple[int, int]):
         self._new_size = size  # h, w
-    
+
     def apply_transform(self, matrix: np.ndarray, dst_size: np.ndarray) -> Tuple[Any, Any, Any]:
         h_pad = max(self._new_size[0] - dst_size[0], 0)
         w_pad = max(self._new_size[1] - dst_size[1], 0)
 
         if h_pad == 0 and w_pad == 0:
-            return matrix, dst_size, (self.__name__, None)
+            return matrix, dst_size, (self.__class__.__name__, None)
         else:
             # TODO: fix me
             # top = random.randint(0, h_pad)
@@ -140,6 +140,20 @@ def _get_ocr_document_visual_transform(IMG_H=1024, IMG_W=1024):
         ]
     )
     return document_visual_transform
+
+def _get_ocr_document_identity_transform(IMG_H=1024, IMG_W=1024):
+    long_edge = max(IMG_H, IMG_W)
+    document_identity_transform = T.Compose(
+        [
+            MergeTransform(
+                [
+                    RandomResizeLongEdge(long_edge, long_edge),
+                    RandomPad((long_edge, long_edge)),
+                ]
+            )
+        ]
+    )
+    return document_identity_transform
 
 def _get_ocr_paragraph_visual_transform(IMG_H=1024, IMG_W=1024):
     paragraph_visual_transform = T.Compose(
@@ -247,7 +261,7 @@ class Tokenizer:
                 Tokenizer.splitter = splitter
         else:
             Tokenizer.splitter = IdentitySplitter()
-    
+
     def __call__(self, text: str, padded: bool = True): # -> torch.Tensor:
 
         sentence = Tokenizer.splitter.tokenize(text)[0]
@@ -296,9 +310,9 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
                 self.pixel_mean = torch.Tensor(clip_pixel_mean).view(-1, 1, 1)
                 self.pixel_std = torch.Tensor(clip_pixel_std).view(-1, 1, 1)
 
-        self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.img_h, self.img_w)
-        self.ocr_paragraph_visual_transform = _get_ocr_paragraph_visual_transform(self.img_h, self.img_w)
-
+        self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.args.img_h, self.args.img_w)
+        self.ocr_document_identity_transform = _get_ocr_document_identity_transform(self.args.img_h, self.args.img_w)
+        self.ocr_paragraph_visual_transform = _get_ocr_paragraph_visual_transform(self.args.img_h, self.args.img_w)
 
     def get_clip_image(self, img, cur_h, cur_w):
         ratio = float(max(self.img_h_clip, self.img_w_clip)) / max(cur_h, cur_w)
@@ -347,7 +361,7 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
 
         if isinstance(sample, OCRSample):
             yield self.encode_ocr(sample)
-        
+
         elif isinstance(sample, CaptioningSample):
             yield self.encode_captioning(sample)
 
@@ -415,7 +429,7 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
     def encode_vqa(self, sample: VQASample):
         sample_augmentation = hasattr(sample, '__subflavor__') and sample.__subflavor__.lower().startswith("augmentation")
         img = self.get_visual_transform(np.array(sample.image), sample_augmentation=sample_augmentation)
-        
+
         question_token = self.tokenizer(sample.context)
         if isinstance(sample.answers, list):
             answer_list = sample.answers
@@ -456,6 +470,8 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
             visual_transform = self.ocr_document_visual_transform
         elif sample.__subflavor__ == "paragraph":
             visual_transform = self.ocr_paragraph_visual_transform
+        elif sample.__subflavor__ == "no_augmentation":
+            visual_transform = self.ocr_document_identity_transform
         else:
             raise ValueError(f"Unknown subflavor {sample.__subflavor__}")
 

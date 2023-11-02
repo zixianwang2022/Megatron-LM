@@ -122,7 +122,7 @@ run_cmd="${SCRIPTS_DIR}/bind.sh --cpu=${SCRIPTS_DIR}/dgxa100_ccx.sh --mem=${SCRI
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 srun -l \
-    --container-image gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-revilm \
+    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
     --container-mounts "/lustre" \
     --output=${LOGS_DIR}/%x_%j_$DATETIME.log sh -c "${run_cmd}"
 
