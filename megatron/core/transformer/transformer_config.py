@@ -15,7 +15,7 @@ from ..utils import init_method_normal, scaled_init_method_normal
 class TransformerConfig(ModelParallelConfig):
     """Configuration object for megatron-core transformers.
 
-        Attributes:
+    Attributes:
 
         # model architecture
         num_layers (int): Number of transformer layers in a transformer block.
@@ -71,7 +71,7 @@ class TransformerConfig(ModelParallelConfig):
                                           This should be true if apply_query_key_layer_scaling is true.
 
         # fusion
-        bias_gelu_fustion (bool): If true, fuses bias and gelu. Defaults to False.
+        bias_gelu_fusion (bool): If true, fuses bias and gelu. Defaults to False.
         masked_softmax_fusion (bool): If true, uses softmax fusion.
         persist_layer_norm (bool): If true, uses the persistent fused layer norm kernel.
                                    This kernel only supports a fixed set of hidden sizes.
@@ -182,7 +182,7 @@ class TransformerConfig(ModelParallelConfig):
     fp8_wgrad: bool = True
 
     # experimental section (TODO: move to apt. section above once stable)
-    normalization: bool = "LayerNorm"  # alt value supported by TE: "RMSNorm"
+    normalization: str = "LayerNorm"  # alt value supported by TE: "RMSNorm"
 
     def __post_init__(self):
         """ Python dataclass method that is used to modify attributes after initialization.

@@ -124,8 +124,8 @@ ARGS=" \
     --retro-index-ntrain ${RETRO_INDEX_NTRAIN} \
     --retro-index-train-load-fraction ${RETRO_INDEX_TRAIN_LOAD_FRACTION} \
     --retro-index-add-load-fraction ${RETRO_INDEX_ADD_LOAD_FRACTION} \
-    --retro-index-no-delete-training-embeddings \
-    --retro-index-no-delete-added-codes \
+    --no-retro-index-delete-training-embeddings \
+    --no-retro-index-delete-added-codes \
     --retro-query-num-neighbors-query ${RETRO_QUERY_NUM_NEIGHBORS_QUERY} \
     --retro-query-num-neighbors-save ${RETRO_QUERY_NUM_NEIGHBORS_SAVE} \
     --retro-query-ef-search ${RETRO_QUERY_EF_SEARCH} \

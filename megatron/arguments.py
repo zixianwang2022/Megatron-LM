@@ -442,7 +442,7 @@ def core_transformer_config_from_args(args, config_class=None):
 
     # Custom config class.
     if config_class is not None:
-        return config_class(**kwargs)
+        return config_class(**kw_args)
 
     # If using Retro, return Retro config.
     retro_args = get_retro_args()
