@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --partition=luna
 
-DATA_PATH=/workspace/data/flamingo_data/ocr_ft.yaml
+DATA_PATH=/workspace/data/flamingo_data
 CHECKPOINT_PATH=/workspace/checkpoints
 TENSORBOARD_DIR=/workspace/tensorboard_logs
 SCRIPTS_DIR=/workspace/debug

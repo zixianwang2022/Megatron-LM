@@ -82,9 +82,9 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --save $CHECKPOINT_PATH \
     --load $CHECKPOINT_PATH \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model /workspace/data/flamingo_data/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
-    --data-path ${DATA_PATH} \
-    --valid-path ${DATA_PATH} \
+    --tokenizer-model ${DATA_PATH}/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
+    --data-path ${DATA_PATH}/captioning_ft.yaml \
+    --valid-path ${DATA_PATH}/captioning_ft.yaml \
     --prompt-path GPT4-prompts.json \
     --dset-config dataset.yaml \
     --split 100,0,0 \
@@ -97,6 +97,7 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --add-BOS \
     --visual-arch "SAM_L" \
     --visual-type "sam" \
+    --visual-path ${DATA_PATH}/SAM_L_16 \
     --log-params-norm \
     --log-num-zeros-in-grad \
     --log-validation-ppl-to-tensorboard \
