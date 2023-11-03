@@ -1,9 +1,11 @@
 #! /bin/bash
 
-DATA_PATH=/lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/ocr_ft.yaml
+# These paths should be modified by user to use their source code and output dir
 CHECKPOINT_PATH=/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/flamingo_ocr_2b_SAM_test/checkpoints
 TENSORBOARD_DIR=/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/flamingo_ocr_2b_SAM_test/tensorboard_logs
 SCRIPTS_DIR=/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source/megatron-lm-flamingo-tests
+
+DATA_PATH=/lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/ocr_ft.yaml
 
 USE_CORE=0
 USE_TE=0
