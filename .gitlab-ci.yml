@@ -101,7 +101,7 @@ train.flamingo_ocr.2b_tp1_pp1_1node_50steps:
     MAX_STEPS: 50
     TIME_LIMIT: "20:00"
     TEST_LEVEL: MR_TESTS
-    PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker
+    PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
 
 train.flamingo_captioning.2b_tp1_pp1_1node_50steps:
   <<: *selene-test-launcher
@@ -115,7 +115,7 @@ train.flamingo_captioning.2b_tp1_pp1_1node_50steps:
     MAX_STEPS: 50
     TIME_LIMIT: "20:00"
     TEST_LEVEL: MR_TESTS
-    PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker
+    PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
 
 train.te_gpt3.345m_tp2_pp2_1node_50steps:
   <<: *selene-test-launcher
