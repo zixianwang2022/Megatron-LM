@@ -47,8 +47,6 @@ set +x
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NUM_NODES"
 
-DATA_PATH=/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/captioning_ft.yaml
-
 torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     pretrain_flamingo.py \
     --use-flash-attn \
@@ -85,8 +83,8 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --load $CHECKPOINT_PATH \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
-    --data-path $DATA_PATH \
-    --valid-path $DATA_PATH \
+    --data-path ${DATA_PATH} \
+    --valid-path ${DATA_PATH} \
     --prompt-path GPT4-prompts.json \
     --dset-config dataset.yaml \
     --split 100,0,0 \
@@ -127,5 +125,5 @@ echo "-------------------- THE FINAL FINETUNE SCRIPT COMMAND THAT WILL BE RUN --
 echo "$command"
 echo "------------------------------------------------------------------------------"
 
-echo "$command" > $SCRIPTS_DIR/finetune_flamingo_2b_captioning_SAM_test.sh
+echo "$command" > $SCRIPTS_DIR/finetune_flamingo_distributed_test.sh
 eval $command
