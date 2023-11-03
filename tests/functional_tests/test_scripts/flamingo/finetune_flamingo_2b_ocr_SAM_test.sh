@@ -127,5 +127,5 @@ echo "-------------------- THE FINAL FINETUNE SCRIPT COMMAND THAT WILL BE RUN --
 echo "$command"
 echo "------------------------------------------------------------------------------"
 
-echo "$command" > $SCRIPTS_DIR/finetune_flamingo_2b_ocr_wds_test.sh
+echo "$command" > $SCRIPTS_DIR/finetune_flamingo_2b_ocr_SAM_test.sh
 eval $command
