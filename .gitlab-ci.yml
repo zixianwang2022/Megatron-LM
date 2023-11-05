@@ -86,13 +86,28 @@ formatting:
       when: always
     - if: $CI_MERGE_REQUEST_APPROVED && $TEST_LEVEL =~ $TESTS_TO_RUN_AFTER_MERGE_REQ_APPROVED
       when: always
+  allow_failure: false
+  retry: 2
+
+.flamingo_test_launcher: &flamingo-test-launcher
+  tags:
+    - ssh_selene_runner
+  stage: test
+  script: &selene-test-launcher-script
+    - echo "Running selene test"
+    - pwd
+    - run_cmd="bash tests/functional_tests/shell_test_utils/run_selene_test_launcher_script.sh RUN_MODEL=$RUN_MODEL TP_SIZE=$TP_SIZE PP_SIZE=$PP_SIZE VP_SIZE=$VP_SIZE NUM_NODES=$NUM_NODES SELENE_ADLR_CI_PATH=$SELENE_ADLR_CI_PATH CI_PIPELINE_ID=$CI_PIPELINE_ID RUN_NAME=$RUN_NAME MAX_STEPS=$MAX_STEPS PYTORCH_IMAGE=$PYTORCH_IMAGE DATA_DIR=$DATA_DIR USE_CORE=$USE_CORE USE_TE=$USE_TE TIME_LIMIT=$TIME_LIMIT"
+    - echo "$run_cmd"
+    - ${run_cmd}
+    - echo "Completed the job"
+  rules:
     - if: '$CI_COMMIT_REF_NAME == "jbarker/flamingo-clip"'
       when: always
   allow_failure: false
   retry: 2
 
 train.flamingoocr.2b_tp1_pp1_1node_50steps:
-  <<: *selene-test-launcher
+  <<: *flamingo-test-launcher
   variables:
     <<: [*VARS]
     RUN_MODEL: flamingoocr
@@ -106,7 +121,7 @@ train.flamingoocr.2b_tp1_pp1_1node_50steps:
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
 
 train.flamingocaptioning.2b_tp1_pp1_1node_50steps:
-  <<: *selene-test-launcher
+  <<: *flamingo-test-launcher
   variables:
     <<: [*VARS]
     RUN_MODEL: flamingocaptioning
