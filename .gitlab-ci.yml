@@ -86,7 +86,7 @@ formatting:
       when: always
     - if: $CI_MERGE_REQUEST_APPROVED && $TEST_LEVEL =~ $TESTS_TO_RUN_AFTER_MERGE_REQ_APPROVED
       when: always
-    - if: '$CI_COMMIT_BRANCH == "jbarker/flamingo-clip"'
+    - if: '$CI_COMMIT_REF_NAME == "jbarker/flamingo-clip"'
       when: always
   allow_failure: false
   retry: 2
