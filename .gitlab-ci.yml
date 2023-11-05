@@ -86,6 +86,8 @@ formatting:
       when: always
     - if: $CI_MERGE_REQUEST_APPROVED && $TEST_LEVEL =~ $TESTS_TO_RUN_AFTER_MERGE_REQ_APPROVED
       when: always
+    - if: '$CI_COMMIT_BRANCH == "jbarker/flamingo-clip"'
+      when: always
   allow_failure: false
   retry: 2
 
@@ -100,7 +102,7 @@ train.flamingoocr.2b_tp1_pp1_1node_50steps:
     NUM_NODES: 1
     MAX_STEPS: 50
     TIME_LIMIT: "20:00"
-    TEST_LEVEL: MR_TESTS
+    TEST_LEVEL: FLAMINGO_TESTS
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
 
 train.flamingocaptioning.2b_tp1_pp1_1node_50steps:
@@ -114,7 +116,7 @@ train.flamingocaptioning.2b_tp1_pp1_1node_50steps:
     NUM_NODES: 1
     MAX_STEPS: 50
     TIME_LIMIT: "20:00"
-    TEST_LEVEL: MR_TESTS
+    TEST_LEVEL: FLAMINGO_TESTS
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
 
 train.te_gpt3.345m_tp2_pp2_1node_50steps:
