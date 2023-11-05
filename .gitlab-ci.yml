@@ -103,6 +103,8 @@ formatting:
   rules:
     - if: '$CI_COMMIT_REF_NAME == "jbarker/flamingo-clip"'
       when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "jbarker/flamingo-clip"'
+      when: always
   allow_failure: false
   retry: 2
 
