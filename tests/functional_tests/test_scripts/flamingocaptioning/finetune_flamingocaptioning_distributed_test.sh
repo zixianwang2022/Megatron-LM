@@ -95,9 +95,12 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --init-method-std 0.014 \
     --add-gated-xattn \
     --add-BOS \
-    --visual-arch "SAM_L" \
-    --visual-type "sam" \
-    --visual-path ${DATA_PATH}/SAM_L_16 \
+    --visual-arch ${VISUAL_ARCH} \
+    --visual-type ${VISUAL_TYPE} \
+    --visual-path ${VISUAL_PATH} \
+    ${SAM_RANDINIT:+--SAM-randinit} \
+    --img-h ${IMG_H}
+    --img-w ${IMG_W}
     --log-params-norm \
     --log-num-zeros-in-grad \
     --log-validation-ppl-to-tensorboard \
@@ -110,10 +113,7 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
-    --img-h 1024 \
-    --img-w 1024 \
     --dataloader-type cyclic --no-data-sharding \
-    --SAM-randinit \
     --align-to-old \
     --transformer-impl $TRANSFORMER_IMPL \
     --dataset-type nvgpt4 \
