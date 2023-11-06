@@ -122,7 +122,7 @@ train.flamingoocr.tp1_pp1_1node_50steps_2b_SAM:
     TIME_LIMIT: "20:00"
     TEST_LEVEL: FLAMINGO_TESTS
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
-    ADDITIONAL_PARAMS: "--visual-arch SAM_L --visual-type sam --visual-path ${DATA_PATH}/SAM_L_16 --img-h 1024 --img-w 1024 --SAM-randinit"
+    ADDITIONAL_PARAMS: "--visual-arch SAM_L --visual-type sam --visual-path /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/SAM_L_16 --img-h 1024 --img-w 1024 --SAM-randinit"
 
 train.flamingocaptioning.tp1_pp1_1node_50steps_2b_SAM:
   <<: *flamingo-test-launcher
@@ -138,7 +138,7 @@ train.flamingocaptioning.tp1_pp1_1node_50steps_2b_SAM:
     TIME_LIMIT: "20:00"
     TEST_LEVEL: FLAMINGO_TESTS
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
-    ADDITIONAL_PARAMS: "--visual-arch SAM_L --visual-type sam --visual-path ${DATA_PATH}/SAM_L_16 --img-h 1024 --img-w 1024 --SAM-randinit"
+    ADDITIONAL_PARAMS: "--visual-arch SAM_L --visual-type sam --visual-path /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/SAM_L_16 --img-h 1024 --img-w 1024 --SAM-randinit"
 
 train.flamingocaptioning.tp1_pp1_1node_50steps_2b_CLIP224:
   <<: *flamingo-test-launcher
@@ -154,7 +154,7 @@ train.flamingocaptioning.tp1_pp1_1node_50steps_2b_CLIP224:
     TIME_LIMIT: "20:00"
     TEST_LEVEL: FLAMINGO_TESTS
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
-    ADDITIONAL_PARAMS: "--visual-arch L_14 --visual-type vit --visual-path ${DATA_PATH}/vit_L_14 --img-h 224 --img-w 224"
+    ADDITIONAL_PARAMS: "--visual-arch L_14 --visual-type vit --visual-path /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/vit_L_14 --img-h 224 --img-w 224"
 
 train.flamingocaptioning.tp1_pp1_1node_50steps_2b_CLIP336:
   <<: *flamingo-test-launcher
@@ -170,7 +170,7 @@ train.flamingocaptioning.tp1_pp1_1node_50steps_2b_CLIP336:
     TIME_LIMIT: "20:00"
     TEST_LEVEL: FLAMINGO_TESTS
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
-    ADDITIONAL_PARAMS: "--visual-arch L_14 --visual-type vit --visual-path ${DATA_PATH}/vit_L_14_336px --img-h 336 --img-w 336"
+    ADDITIONAL_PARAMS: "--visual-arch L_14 --visual-type vit --visual-path /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/vit_L_14_336px --img-h 336 --img-w 336"
 
 train.te_gpt3.345m_tp2_pp2_1node_50steps:
   <<: *selene-test-launcher

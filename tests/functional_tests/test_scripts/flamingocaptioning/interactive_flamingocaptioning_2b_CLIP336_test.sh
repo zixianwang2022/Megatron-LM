@@ -17,13 +17,9 @@ MAX_STEPS=50
 NUM_NODES=1
 TP_SIZE=1
 PP_SIZE=1
-VISUAL_ARCH="L_14"
-VISUAL_TYPE="vit"
-VISUAL_PATH=${DATA_PATH}/vit_L_14
-IMG_H=224
-IMG_W=224
+export ADDITIONAL_PARAMS="--visual-arch L_14 --visual-type vit --visual-path /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/vit_L_14_336px --img-h 336 --img-w 336"
 
-bash ./tests/functional_tests/test_scripts/flamingocaptioning/finetune_flamingocaptioning_distributed_test.sh DATA_PATH=$DATA_PATH CHECKPOINT_PATH=$CHECKPOINT_PATH TENSORBOARD_DIR=$TENSORBOARD_DIR SCRIPTS_DIR=$SCRIPTS_DIR USE_TE=$USE_TE TP_SIZE=$TP_SIZE PP_SIZE=$PP_SIZE VP_SIZE=$VP_SIZE NUM_NODES=$NUM_NODES MAX_STEPS=$MAX_STEPS USE_CORE=$USE_CORE MBS=$MBS GBS=$GBS VISUAL_ARCH=$VISUAL_ARCH VISUAL_TYPE=$VISUAL_TYPE VISUAL_PATH=$VISUAL_PATH IMG_H=$IMG_H IMG_W=$IMG_W
+bash ./tests/functional_tests/test_scripts/flamingocaptioning/finetune_flamingocaptioning_distributed_test.sh DATA_PATH=$DATA_PATH CHECKPOINT_PATH=$CHECKPOINT_PATH TENSORBOARD_DIR=$TENSORBOARD_DIR SCRIPTS_DIR=$SCRIPTS_DIR USE_TE=$USE_TE TP_SIZE=$TP_SIZE PP_SIZE=$PP_SIZE VP_SIZE=$VP_SIZE NUM_NODES=$NUM_NODES MAX_STEPS=$MAX_STEPS USE_CORE=$USE_CORE MBS=$MBS GBS=$GBS
 
 python tests/functional_tests/python_test_utils/get_test_results_from_tensorboard_logs.py /lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/output/flamingocaptioning_2b_CLIP336_test/tensorboard_logs flamingocaptioning_2b_CLIP336_test
 
