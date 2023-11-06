@@ -503,7 +503,7 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         else:
             img_clip = None
         img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - self.pixel_mean) / self.pixel_std
-        img = torch.nn.functional.pad(img, (0, self.img_h - img.shape[1], 0, self.img_w - img.shape[2]))
+        img = torch.nn.functional.pad(img, (0, self.img_w - img.shape[2], 0, self.img_h - img.shape[1]))
 
         # randomly select a prompt
         prompt_idx = np.random.randint(len(self.manual_prompts["OCR"]["raw"]))
