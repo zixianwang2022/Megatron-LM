@@ -11,8 +11,8 @@ ln -s $DATA_PATH /workspace/data/flamingo_data
 
 USE_CORE=0
 USE_TE=0
-MBS=1
-GBS=8
+MBS=4
+GBS=32
 MAX_STEPS=50
 NUM_NODES=1
 TP_SIZE=1
