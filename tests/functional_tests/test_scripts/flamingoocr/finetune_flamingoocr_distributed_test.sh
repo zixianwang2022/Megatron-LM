@@ -118,7 +118,8 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --transformer-impl $TRANSFORMER_IMPL \
     --dataset-type nvgpt4 \
     ${USE_MCORE:+--use-mcore-models} \
-    --tensorboard-dir ${TENSORBOARD_DIR}"
+    --tensorboard-dir ${TENSORBOARD_DIR} \
+    ${ADDITIONAL_PARAMS:+$ADDITIONAL_PARAMS}"
 
 command="$command $torch_run_cmd"
 echo "-------------------- THE FINAL FINETUNE SCRIPT COMMAND THAT WILL BE RUN ------------"
