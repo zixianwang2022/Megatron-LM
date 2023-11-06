@@ -44,10 +44,10 @@ IMG_W_SAM=1024
 
 VISUAL_ARCH_CLIP="L_14"
 VISUAL_TYPE_CLIP="vit"
-VISUAL_LOAD_DIR_CLIP="/lustre/fsw/portfolios/llmservice/users/guilinl/checkpoint/vision/vit_L_14"
+VISUAL_LOAD_DIR_CLIP="/lustre/fsw/portfolios/llmservice/projects/llmservice_nlp_fm/checkpoints/vit_L_14_336px"
 VISUAL_SAVE_DIR_CLIP="${FINETUNE_DIR}/${VISUAL_TYPE}"
-IMG_H_CLIP=224
-IMG_W_CLIP=224
+IMG_H_CLIP=336
+IMG_W_CLIP=336
 
 PROMPT_PATH="${DIR}/GPT4-prompts-augment.json"
 DATASET_CONFIG="${DIR}/dataset.yaml"
