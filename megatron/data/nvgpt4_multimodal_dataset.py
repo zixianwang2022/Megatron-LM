@@ -310,9 +310,9 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
                 self.pixel_mean = torch.Tensor(clip_pixel_mean).view(-1, 1, 1)
                 self.pixel_std = torch.Tensor(clip_pixel_std).view(-1, 1, 1)
 
-        self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.args.img_h, self.args.img_w)
-        self.ocr_document_identity_transform = _get_ocr_document_identity_transform(self.args.img_h, self.args.img_w)
-        self.ocr_paragraph_visual_transform = _get_ocr_paragraph_visual_transform(self.args.img_h, self.args.img_w)
+        self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.img_h, self.img_w)
+        self.ocr_document_identity_transform = _get_ocr_document_identity_transform(self.img_h, self.img_w)
+        self.ocr_paragraph_visual_transform = _get_ocr_paragraph_visual_transform(self.img_h, self.img_w)
 
     def get_clip_image(self, img, cur_h, cur_w):
         ratio = float(max(self.img_h_clip, self.img_w_clip)) / max(cur_h, cur_w)
