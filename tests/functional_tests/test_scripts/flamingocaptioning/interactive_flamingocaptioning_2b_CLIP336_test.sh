@@ -17,7 +17,7 @@ MAX_STEPS=50
 NUM_NODES=1
 TP_SIZE=1
 PP_SIZE=1
-export ADDITIONAL_PARAMS="--visual-arch L_14 --visual-type vit --visual-path /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/vit_L_14_336px --img-h 336 --img-w 336"
+export ADDITIONAL_PARAMS="--load /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/gpt3-2b-multi-1.1t-gtc --visual-arch L_14 --visual-type vit --visual-path /lustre/fsw/adlr/adlr-nlp/adlr_ci/megatron/data/flamingo_data/vit_L_14_336px --img-h 336 --img-w 336"
 
 bash ./tests/functional_tests/test_scripts/flamingocaptioning/finetune_flamingocaptioning_distributed_test.sh DATA_PATH=$DATA_PATH CHECKPOINT_PATH=$CHECKPOINT_PATH TENSORBOARD_DIR=$TENSORBOARD_DIR SCRIPTS_DIR=$SCRIPTS_DIR USE_TE=$USE_TE TP_SIZE=$TP_SIZE PP_SIZE=$PP_SIZE VP_SIZE=$VP_SIZE NUM_NODES=$NUM_NODES MAX_STEPS=$MAX_STEPS USE_CORE=$USE_CORE MBS=$MBS GBS=$GBS
 

@@ -80,7 +80,6 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --eval-interval 1000 \
     --save-interval 50 \
     --save $CHECKPOINT_PATH \
-    --load $CHECKPOINT_PATH \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model ${DATA_PATH}/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_PATH}/captioning_ft.yaml \
