@@ -998,6 +998,10 @@ def evaluate_and_print_results(prefix, forward_step_func,
 
         with open(args.valid_path[0]) as val_f:
             val_config = yaml.safe_load(val_f)["splits"]["val"]["datasets"]
+    else:
+        # NOTE(jbarker): Hack to get old dataloader working again
+        # after nvgpt4 integration
+        data_iterators = [data_iterators]
 
     for i, data_iterator in enumerate(data_iterators):
         total_loss_dict, collected_non_loss_data = evaluate(
