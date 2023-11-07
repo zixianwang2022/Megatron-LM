@@ -12,6 +12,7 @@ import torch
 import megatron
 from megatron import update_num_microbatches
 from megatron.core import mpu, tensor_parallel
+from megatron.model.module import Float16Module
 from .global_vars import get_args
 from .utils import (unwrap_model,
                     print_rank_0)
@@ -643,6 +644,9 @@ def load_visual_checkpoint(model, load_arg='load', strict=True, load_iter=None):
             if isinstance(model, torch.nn.parallel.DistributedDataParallel) or \
                 isinstance(model, megatron.model.distributed.DistributedDataParallel):
                 model_component = model.module
+
+                if  isinstance(model_component, Float16Module):
+                    model_component = model_component.module
             else:
                 model_component = model
 
