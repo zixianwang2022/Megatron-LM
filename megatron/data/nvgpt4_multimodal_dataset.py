@@ -293,16 +293,11 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         if self.args.use_hybrid_visual_backbones:
             self.img_h, self.img_w = self.args.img_h_sam, self.args.img_w_sam
             self.img_h_clip, self.img_w_clip = self.args.img_h_clip, self.args.img_w_clip
-
-            self.pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
-            self.pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
-            self.clip_pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
-            self.clip_pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
         else:
             self.img_h, self.img_w = self.args.img_h, self.args.img_w
 
-            self.pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
-            self.pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
+        self.pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
+        self.pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
 
         self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.img_h, self.img_w)
         self.ocr_document_identity_transform = _get_ocr_document_identity_transform(self.img_h, self.img_w)
@@ -313,7 +308,7 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         H, W = int(cur_h * ratio + 0.5), int(cur_w * ratio + 0.5)
 
         img_clip = img.resize((W, H), resample=Image.BICUBIC)
-        img_clip = (torch.Tensor(np.array(img_clip)).permute(2, 0, 1) - self.clip_pixel_mean) / self.clip_pixel_std
+        img_clip = (torch.Tensor(np.array(img_clip)).permute(2, 0, 1) - self.pixel_mean) / self.pixel_std
         delta_h, delta_w = self.img_h_clip - H, self.img_w_clip - W
         img_clip = torch.nn.functional.pad(img_clip, (0, delta_w, 0, delta_h))
 
