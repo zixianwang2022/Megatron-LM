@@ -2,6 +2,7 @@ import sys
 import traceback
 import dataclasses
 import random
+import re
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple, TypedDict, Union, Generator
 
@@ -13,7 +14,16 @@ import torch
 from torchvision import transforms as T
 
 import nvgpt4
-from nvgpt4.data import Batch, DefaultTaskEncoder, OCRSample, SkipSample, CaptioningSample, VQASample, TextSample, ImageSample
+from nvgpt4.data import (
+    Batch,
+    DefaultTaskEncoder,
+    OCRSample,
+    SkipSample,
+    CaptioningSample,
+    VQASample,
+    TextSample,
+    ImageSample
+)
 from nvgpt4.data import get_loader, get_train_dataset, get_val_dataset
 from nvgpt4.data import CaptioningSample, DefaultTaskEncoder, batch_list, batch_stack
 from nvgpt4.transforms import MergeTransform, CustomTransform
@@ -22,17 +32,14 @@ from megatron import mpu, get_args
 from megatron.tokenizer import build_tokenizer
 from megatron.utils import get_ltor_masks_and_position_ids
 from megatron.initialize import initialize_megatron
-from megatron.data.multimodal_dataset import _transform_train, _transform_train_aug, _transform_test, pixel_mean, pixel_std
+from megatron.data.multimodal_dataset import (
+    _transform_train,
+    _transform_train_aug,
+    _transform_test,
+    pixel_mean,
+    pixel_std
+)
 import re
-# try:
-#     import nltk
-#     nltk_available = True
-# except ImportError:
-#     nltk_available = False
-
-# # standard values for mean and std.
-# IMAGE_MEAN = (0.48145466, 0.4578275, 0.40821073)
-# IMAGE_STD = (0.26862954, 0.26130258, 0.27577711)
 
 # # ocr caption from Karan
 # def target_transform(captions):
@@ -179,6 +186,7 @@ class ImageTaskSample:
     img: torch.Tensor
     text: np.ndarray
     prompt_len: np.int64
+    img_clip: Optional[torch.Tensor] = None
 
 
 # Typing for the resulting batch data after encode_batch()
@@ -192,6 +200,8 @@ class ImageTaskBatch(Batch):
     text: torch.Tensor
     # (n, 1)
     prompt_len: torch.Tensor
+    # (n, c, h, w)
+    img_clip: Optional[torch.Tensor] = None
     # # (n, seq_len)
     # input_ids: torch.Tensor
     # # (n, seq_len)
@@ -280,17 +290,34 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
 
         self.txt_to_token_dict = {}
 
-        self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.args.img_h, self.args.img_w)
-        self.ocr_document_identity_transform = _get_ocr_document_identity_transform(self.args.img_h, self.args.img_w)
-        self.ocr_paragraph_visual_transform = _get_ocr_paragraph_visual_transform(self.args.img_h, self.args.img_w)
+        if self.args.use_hybrid_visual_backbones:
+            self.img_h, self.img_w = self.args.img_h_sam, self.args.img_w_sam
+            self.img_h_clip, self.img_w_clip = self.args.img_h_clip, self.args.img_w_clip
+        else:
+            self.img_h, self.img_w = self.args.img_h, self.args.img_w
 
         self.pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
         self.pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
 
+        self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.img_h, self.img_w)
+        self.ocr_document_identity_transform = _get_ocr_document_identity_transform(self.img_h, self.img_w)
+        self.ocr_paragraph_visual_transform = _get_ocr_paragraph_visual_transform(self.img_h, self.img_w)
+
+    def get_clip_image(self, img, cur_h, cur_w):
+        ratio = float(max(self.img_h_clip, self.img_w_clip)) / max(cur_h, cur_w)
+        H, W = int(cur_h * ratio + 0.5), int(cur_w * ratio + 0.5)
+
+        img_clip = img.resize((W, H), resample=Image.BICUBIC)
+        img_clip = (torch.Tensor(np.array(img_clip)).permute(2, 0, 1) - self.pixel_mean) / self.pixel_std
+        delta_h, delta_w = self.img_h_clip - H, self.img_w_clip - W
+        img_clip = torch.nn.functional.pad(img_clip, (0, delta_w, 0, delta_h))
+
+        return img_clip
+
     def get_visual_transform(self, img_sample, sample_augmentation=False):
 
         raw_h, raw_w = img_sample.shape[0], img_sample.shape[1]
-        ratio = float(max(self.args.img_h, self.args.img_w)) / max(raw_h, raw_w)
+        ratio = float(max(self.img_h, self.img_w)) / max(raw_h, raw_w)
         H, W = int(raw_h * ratio + 0.5), int(raw_w * ratio + 0.5)
 
         # if the sample needs augmentation or not
@@ -303,14 +330,19 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         else:
             visual_transform = _transform_test(H, W)
 
-        # visual_transform = self.get_visual_transform(sample_augmentation, H, W)
         img = visual_transform(img_sample)
 
+        if self.args.use_hybrid_visual_backbones:
+            img_clip = self.get_clip_image(img, H, W)
+
         img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - self.pixel_mean) / self.pixel_std
-        delta_h, delta_w = self.args.img_h - H, self.args.img_w - W
+        delta_h, delta_w = self.img_h - H, self.img_w - W
         img = torch.nn.functional.pad(img, (0, delta_w, 0, delta_h))
 
-        return img
+        if self.args.use_hybrid_visual_backbones:
+            return img, img_clip
+        else:
+            return img
 
     def encode_sample(self, sample: Union[
         nvgpt4.data.CaptioningSample, nvgpt4.data.OCRSample, nvgpt4.data.InterleavedSample]
@@ -330,6 +362,7 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
 
         # elif isinstance(sample, ImageSample):
         #     yield None
+
         else:
             raise NotImplementedError('Dataset format not supported')
             yield None
@@ -364,13 +397,23 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         text_sample = self.tokenizer.pad(text_sample, seq_len)
         text_sample = text_sample[:seq_len]
 
-        return ImageTaskSample(
-            __key__=sample.__key__,
-            __subflavor__=sample.__subflavor__,
-            img=img,
-            text=text_sample,
-            prompt_len=prompt_len
-        )
+        if self.args.use_hybrid_visual_backbones:
+            return ImageTaskSample(
+                __key__=sample.__key__,
+                __subflavor__=sample.__subflavor__,
+                img=img[0],
+                img_clip=img[1],
+                text=text_sample,
+                prompt_len=prompt_len
+            )
+        else:
+            return ImageTaskSample(
+                __key__=sample.__key__,
+                __subflavor__=sample.__subflavor__,
+                img=img,
+                text=text_sample,
+                prompt_len=prompt_len
+            )
 
     def encode_vqa(self, sample: VQASample):
         sample_augmentation = hasattr(sample, '__subflavor__') and sample.__subflavor__.lower().startswith("augmentation")
@@ -393,13 +436,23 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         text_sample = self.tokenizer.pad(text_sample, seq_len)
         text_sample = text_sample[:seq_len]
 
-        return ImageTaskSample(
-            __key__=sample.__key__,
-            __subflavor__=sample.__subflavor__,
-            img=img,
-            text=text_sample,
-            prompt_len=prompt_len
-        )
+        if self.args.use_hybrid_visual_backbones:
+            return ImageTaskSample(
+                __key__=sample.__key__,
+                __subflavor__=sample.__subflavor__,
+                img=img[0],
+                img_clip=img[1],
+                text=text_sample,
+                prompt_len=prompt_len
+            )
+        else:
+            return ImageTaskSample(
+                __key__=sample.__key__,
+                __subflavor__=sample.__subflavor__,
+                img=img,
+                text=text_sample,
+                prompt_len=prompt_len
+            )
 
     def encode_ocr(self, sample: OCRSample) -> ImageTaskSample:
         if sample.__subflavor__ == "document":
@@ -434,7 +487,12 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
             text = match.group(1)
 
         img = visual_transform(sample.image)
+        if self.args.use_hybrid_visual_backbones:
+            img_clip = self.get_clip_image(img, img.height, img.width)
+        else:
+            img_clip = None
         img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - self.pixel_mean) / self.pixel_std
+        img = torch.nn.functional.pad(img, (0, self.img_w - img.shape[2], 0, self.img_h - img.shape[1]))
 
         # randomly select a prompt
         prompt_idx = np.random.randint(len(self.manual_prompts["OCR"]["raw"]))
@@ -455,19 +513,30 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
             __key__=sample.__key__,
             __subflavor__=sample.__subflavor__,
             img=img,
+            img_clip=img_clip,
             text=text_sample,
             prompt_len=prompt_len
         )
 
     def batch(self, samples: List[ImageTaskSample]) -> ImageTaskBatch:
 
-        batch = ImageTaskBatch(
-            __keys__=[s.__key__ for s in samples],
-            __subflavor__=[s.__subflavor__ for s in samples],
-            img=torch.stack([s.img for s in samples]),
-            text=torch.from_numpy(np.stack([s.text for s in samples], axis=0).astype(np.int64)),
-            prompt_len=torch.from_numpy(np.array([s.prompt_len for s in samples], dtype=np.int64))
-        )
+        if self.args.use_hybrid_visual_backbones:
+            batch = ImageTaskBatch(
+                __keys__=[s.__key__ for s in samples],
+                __subflavor__=[s.__subflavor__ for s in samples],
+                img=torch.stack([s.img for s in samples]),
+                img_clip=torch.stack([s.img_clip for s in samples]),
+                text=torch.from_numpy(np.stack([s.text for s in samples], axis=0).astype(np.int64)),
+                prompt_len=torch.from_numpy(np.array([s.prompt_len for s in samples], dtype=np.int64))
+            )
+        else:
+            batch = ImageTaskBatch(
+                __keys__=[s.__key__ for s in samples],
+                __subflavor__=[s.__subflavor__ for s in samples],
+                img=torch.stack([s.img for s in samples]),
+                text=torch.from_numpy(np.stack([s.text for s in samples], axis=0).astype(np.int64)),
+                prompt_len=torch.from_numpy(np.array([s.prompt_len for s in samples], dtype=np.int64))
+            )
 
         return batch
 

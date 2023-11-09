@@ -17,7 +17,11 @@ from megatron.core.enums import ModelType
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from megatron.utils import average_losses_across_data_parallel_group
-from megatron.model.vision.vit_backbone import CLIPViTBackbone, SAMViTBackbone
+from megatron.model.vision.vit_backbone import (
+    CLIPViTBackbone,
+    SAMViTBackbone,
+    HybridSAMCLIPBackbone
+)
 from megatron.data.blendable_dataset import BlendableDataset
 from megatron.arguments import core_transformer_config_from_args
 
@@ -35,11 +39,15 @@ def model_provider(pre_process=True, post_process=True):
     )
     return model
 
-def visual_model_provider(visual_arch, pre_process=True, post_process=False):
+def visual_model_provider(visual_arch, pre_process=True, post_process=False,
+                            use_hybrid_visual_backbones=False):
     """Build the visual model."""
     print_rank_0('building visual model ...')
     config = core_transformer_config_from_args(get_args())
-    if visual_arch.startswith("SAM"):
+    if use_hybrid_visual_backbones:
+        visual_model = HybridSAMCLIPBackbone(config, pre_process=pre_process,
+                                    post_process=post_process)
+    elif visual_arch.startswith("SAM"):
         visual_model = SAMViTBackbone(config, pre_process=pre_process,
                                     post_process=post_process)
     else:
@@ -79,15 +87,26 @@ def get_batch(data_iterator, visual_model):
     # with torch.no_grad() if args.freeze_ViT else nullcontext():
     # Unpack.
     tokens_ = data_text.long()
-    img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
 
+    if args.use_hybrid_visual_backbones:
+        img_raw = data_img['img'].reshape(-1, 3, args.img_h_sam, args.img_w_sam)
+
+        data_img_clip = tensor_parallel.broadcast_data(["img_clip"], data, torch.float32)
+        img_raw_clip = data_img_clip['img_clip'].reshape(-1, 3, args.img_h_clip, args.img_w_clip)
+        img_raw = {'sam': img_raw, 'clip': img_raw_clip}
+    else:
+        img_raw = data_img['img'].reshape(-1, 3, args.img_h, args.img_w)
     if img_raw is None:
         img_tokens = None
     else:
         torch.cuda.nvtx.range_push("visual_model forward")
-        img_tokens = visual_model(img_raw).transpose(0, 1).contiguous()
+        img_tokens = visual_model(img_raw)
+        if args.use_hybrid_visual_backbones:
+            img_tokens['sam'] = img_tokens['sam'].transpose(0, 1).contiguous()
+            img_tokens['clip'] = img_tokens['clip'].transpose(0, 1).contiguous()
+        else:
+            img_tokens = img_tokens.transpose(0, 1).contiguous()
         torch.cuda.nvtx.range_pop()
-
     torch.cuda.nvtx.range_push("index tokens")
     tokenizer = get_tokenizer()
     tokens = tokens_[:, :args.seq_length].contiguous()

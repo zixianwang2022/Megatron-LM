@@ -18,6 +18,7 @@ from megatron.model.fused_softmax import FusedScaleMaskSoftmax
 from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_emb
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, quick_gelu
+from megatron.arguments import validate_visual_args_sam, validate_visual_args_clip
 
 try:
     from einops import rearrange
@@ -898,10 +899,14 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
     def __init__(self, config,
                  layer_number, layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
-                 drop_path_rate=0.):
+                 drop_path_rate=0.,
+                 is_hybrid_visual_backbone=False,
+                 is_sam=False):
 
         args = get_args()
         super(ParallelGatedXattnFusedTransformerLayer, self).__init__()
+        self.is_hybrid_visual_backbone = is_hybrid_visual_backbone
+        self.is_sam = is_sam
 
         self.layer_number = layer_number
         self.layer_type = layer_type
@@ -987,11 +992,20 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         # Layer norm at the beginning of the transformer layer.
         layernorm_output = self.input_layernorm(hidden_states)
 
+        # hybrid SAM and CLIP feature for cross attention
+        if vision_inputs is not None and self.is_hybrid_visual_backbone:
+            if self.is_sam:
+                vision_input = vision_inputs['sam']
+            else:
+                vision_input = vision_inputs['clip']
+        else:
+            vision_input = vision_inputs
+
         # Cross attention.
         attention_output, attention_bias = \
             self.inter_attention(layernorm_output,   # lm output (Q)
                                  None, # media_mask
-                                 encoder_output=vision_inputs) # Vision input (KV)
+                                 encoder_output=vision_input) # Vision input (KV)
         # residual connection
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
@@ -1864,12 +1878,24 @@ class ParallelTransformer(MegatronModule):
                             use_rel_pos=self.use_rel_pos,
                             window_size=self.window_size if layer_number % 6 != 0 else 0)
                 elif args.add_gated_xattn and (layer_number % args.xattn_everyk == 1 or args.xattn_everyk == 1):
+                    is_sam = False
+                    if args.use_hybrid_visual_backbones:
+                        xattn_id = (layer_number // args.xattn_everyk)
+                        if (xattn_id - 1) % (args.xattn_sam_num + args.xattn_clip_num) < args.xattn_clip_num:
+                            validate_visual_args_clip(args)
+                            print('clip')
+                        else:
+                            is_sam = True
+                            validate_visual_args_sam(args)
+                            print('sam')
                     return ParallelGatedXattnFusedTransformerLayer(
                             config,
                             layer_number,
                             layer_type=current_layer_type,
                             self_attn_mask_type=self_attn_mask_type,
-                            drop_path_rate=self.drop_path_rates[layer_number - 1])
+                            drop_path_rate=self.drop_path_rates[layer_number - 1],
+                            is_hybrid_visual_backbone=args.use_hybrid_visual_backbones,
+                            is_sam=is_sam)
                 else:
                     return ParallelTransformerLayer(
                         config,
