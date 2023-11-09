@@ -668,7 +668,7 @@ def _add_network_size_args(parser):
                        help='Output hidden size for visual model.')
 
     group.add_argument('--use-hybrid-visual-backbones', action='store_true',
-                       help='Disable Norm in last layer.')
+                       help='Use hybrid vision backbones.')
     group.add_argument('--visual-path-sam', type=str, default=None,
                        help='Path for pretrained visual model.')
     group.add_argument('--visual-arch-sam', type=str, default=None,

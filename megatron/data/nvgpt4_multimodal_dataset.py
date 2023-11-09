@@ -519,7 +519,7 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         )
 
     def batch(self, samples: List[ImageTaskSample]) -> ImageTaskBatch:
-        
+
         if self.args.use_hybrid_visual_backbones:
             batch = ImageTaskBatch(
                 __keys__=[s.__key__ for s in samples],
