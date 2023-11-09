@@ -65,6 +65,7 @@ def validate_visual_args(args):
             args.visual_num_attention_heads = 12
             args.visual_output_size = 768
             args.quickgelu = True
+            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
         elif args.visual_arch == "L_14":
             args.visual_num_layers = 24
             args.visual_patch_dim = 14
@@ -78,6 +79,7 @@ def validate_visual_args(args):
                 args.quickgelu = True
             else:
                 args.quickgelu = False
+            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
         elif args.visual_arch == "G_14":
             args.visual_num_layers = 48
             args.visual_patch_dim = 14
@@ -86,6 +88,7 @@ def validate_visual_args(args):
             args.visual_num_attention_heads = 16
             args.visual_output_size = 1664
             args.quickgelu = False
+            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
         elif args.visual_arch == "SAM_B":
             args.visual_num_layers = 12
             args.visual_patch_dim = 16
