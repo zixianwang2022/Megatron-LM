@@ -463,7 +463,6 @@ def setup_model_and_optimizer(model_provider_func,
             else:
                 load_visual_checkpoint(visual_model[0].module.module.clip_model)
         else:
-            # model = unwrap_model(model)
             load_visual_checkpoint(unwrap_model(visual_model[0]))
         print_rank_0("Loaded pretrained ViT model.")
 

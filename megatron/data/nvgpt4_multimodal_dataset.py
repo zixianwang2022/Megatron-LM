@@ -37,9 +37,7 @@ from megatron.data.multimodal_dataset import (
     _transform_train_aug,
     _transform_test,
     pixel_mean,
-    pixel_std,
-    clip_pixel_mean,
-    clip_pixel_std
+    pixel_std
 )
 import re
 
@@ -298,17 +296,13 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
 
             self.pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
             self.pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
-            self.clip_pixel_mean = torch.Tensor(clip_pixel_mean).view(-1, 1, 1)
-            self.clip_pixel_std = torch.Tensor(clip_pixel_std).view(-1, 1, 1)
+            self.clip_pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
+            self.clip_pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
         else:
             self.img_h, self.img_w = self.args.img_h, self.args.img_w
 
-            if self.args.visual_arch.startswith('SAM') or self.args.use_sam_normalization:
-                self.pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
-                self.pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
-            else:
-                self.pixel_mean = torch.Tensor(clip_pixel_mean).view(-1, 1, 1)
-                self.pixel_std = torch.Tensor(clip_pixel_std).view(-1, 1, 1)
+            self.pixel_mean = torch.Tensor(pixel_mean).view(-1, 1, 1)
+            self.pixel_std = torch.Tensor(pixel_std).view(-1, 1, 1)
 
         self.ocr_document_visual_transform = _get_ocr_document_visual_transform(self.img_h, self.img_w)
         self.ocr_document_identity_transform = _get_ocr_document_identity_transform(self.img_h, self.img_w)
