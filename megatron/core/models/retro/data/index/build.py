@@ -8,22 +8,22 @@ from tqdm import tqdm
 
 # >>>
 # from megatron import get_retro_args, print_rank_0
-# from megatron.core.models.retro.data.db.utils import (
-#     get_indexed_dataset_infos,
-#     get_merged_sampled_dataset,
-#     get_merged_train_dataset,
-# )
+from megatron.core.models.retro.data.db.utils import (
+    # get_indexed_dataset_infos,
+    get_merged_sampled_dataset,
+    # get_merged_train_dataset,
+)
 # from megatron.core.models.retro.data.external_libs import h5py
-# from megatron.core.models.retro.data.utils import GPTToTextDataset
+from megatron.core.models.retro.data.utils import GPTToTextDataset
 # from tools.bert_embedding import DiskDataParallelBertEmbedder
 
 from .factory import IndexFactory
-# from .utils import (
-#     get_training_data_block_dir,
-#     get_training_data_block_paths,
-#     get_training_data_merged_path,
-#     get_training_data_root_dir,
-# )
+from .utils import (
+    # get_training_data_block_dir,
+    # get_training_data_block_paths,
+    get_training_data_merged_path,
+    # get_training_data_root_dir,
+)
 # <<<
 
 
@@ -35,7 +35,7 @@ from .factory import IndexFactory
 def get_empty_index_path(env):
     '''Path of empty index.'''
     index = IndexFactory.get_index(env.config.retro_index_type)
-    empty_index_path = index.get_empty_index_path()
+    empty_index_path = index.get_empty_index_path(env)
     return empty_index_path
 
 
@@ -87,13 +87,16 @@ def embed_db(env):
 
     # Get db dataset.
     gpt_dataset = get_merged_sampled_dataset(env)
-    text_dataset = GPTToTextDataset(gpt_dataset)
+    text_dataset = GPTToTextDataset(gpt_dataset, env.tokenizers.gpt)
 
     # Embed dataset.
-    embedder = DiskDataParallelBertEmbedder(env.config.retro_bert_batch_size,
-                                            env.config.retro_bert_max_chunk_length,
-                                            env.config.retro_block_size,
-                                            env.config.bert_embedder_type)
+    # >>>
+    # embedder = DiskDataParallelBertEmbedder(env.config.retro_bert_batch_size,
+    embedder = env.embedders.disk(env.config.retro_bert_batch_size,
+                                  env.config.retro_bert_max_chunk_length,
+                                  env.config.retro_block_size,
+                                  env.config.bert_embedder_type)
+    # <<<
     embedder.embed_text_dataset("index",
                                 get_training_data_block_dir(env),
                                 text_dataset)

@@ -8,21 +8,21 @@ FaissBaseIndex. This allows 'add()' to scale out to very large datasets, since
 the vast majority of the computational effort is embarrassingly parallel.
 """
 
-# >>>
-# import numpy as np
-# import os
-# import psutil
-# import shutil
-# import torch
-# from tqdm import tqdm
+import numpy as np
+import os
+import psutil
+import shutil
+import torch
+from tqdm import tqdm
 
+# >>>
 # from megatron import get_retro_args, print_rank_0
 # from megatron.core.models.retro.data.external_libs import faiss, h5py
 # from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
 # from tools.bert_embedding import BertEmbedder
 # from tools.bert_embedding.utils import get_missing_blocks_by_rank
 
-# from .faiss_base import FaissBaseIndex
+from .faiss_base import FaissBaseIndex
 # <<<
 
 
@@ -69,9 +69,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
         index = self.get_empty_index()
 
         # Bert embedder.
-        embedder = BertEmbedder(args.retro_bert_batch_size,
-                                args.retro_bert_max_chunk_length,
-                                args.bert_embedder_type)
+        embedder = BertEmbedder(env.config.retro_bert_batch_size,
+                                env.config.retro_bert_max_chunk_length,
+                                env.config.bert_embedder_type)
 
         # Missing code blocks.
         def validate(f):
@@ -79,7 +79,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         n_missing_blocks, missing_code_blocks = get_missing_blocks_by_rank(
             codes_dir,
             len(text_dataset),
-            args.retro_block_size,
+            env.config.retro_block_size,
             validate=validate,
         )
 
@@ -131,7 +131,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             ))
             with h5py.File(code_path) as f:
 
-                nload = int(args.retro_index_add_load_fraction*f["data"].shape[0])
+                nload = int(env.config.retro_index_add_load_fraction*f["data"].shape[0])
                 offset = int(os.path.basename(code_path).split("-")[0])
                 xids = np.arange(offset, offset + nload)
                 codes = np.copy(f["data"][:nload])
@@ -153,7 +153,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         # >>>
         # args = get_retro_args()
         # <<<
-        if args.retro_index_delete_added_codes:
+        if env.config.retro_index_delete_added_codes:
             raise Exception("remove?")
             shutil.rmtree(get_added_codes_dir(), ignore_errors=True)
 

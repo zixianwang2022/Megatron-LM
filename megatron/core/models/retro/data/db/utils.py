@@ -113,14 +113,17 @@ def get_merged_dataset(env, db_type, indexed_dataset_infos=None):
         indexed_dataset_infos = get_indexed_dataset_infos(env)
 
     # Load chunks.
-    db_path = get_merged_db_path_map()[db_type]
+    db_path = get_merged_db_path_map(env)[db_type]
     f = h5py.File(db_path, "r")
     chunks = f["chunks"]
 
     # DB dataset.
     indexed_datasets = [ info["dataset"] for info in indexed_dataset_infos ]
-    dataset = DBDataset(db_path, indexed_datasets, chunks,
-                        args.retro_gpt_chunk_length)
+    # >>>
+    # dataset = DBDataset(db_path, indexed_datasets, chunks,
+    #                     env.config.retro_gpt_chunk_length)
+    dataset = DBDataset(env, db_path, indexed_datasets, chunks)
+    # <<<
 
     return dataset
 

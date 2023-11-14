@@ -1,15 +1,14 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# import abc
-# import numpy as np
-# import os
-# import torch
+import abc
+import os
+import torch
 
+# >>>
 # from megatron import get_retro_args
 # from megatron.core.models.retro.data.external_libs import faiss
 
-# from .utils import get_index_dir
+from .utils import get_index_dir
 # <<<
 
 
@@ -32,32 +31,26 @@ class Index(abc.ABC):
         assert isinstance(v, bool)
         faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
 
-    def get_empty_index_path(self):
-        # >>>
-        # args = get_retro_args()
-        # <<<
+    def get_empty_index_path(self, env):
         return os.path.join(
-            get_index_dir(),
-            "empty_%.3f.faissindex" % args.retro_index_train_load_fraction,
+            get_index_dir(env),
+            "empty_%.3f.faissindex" % env.config.retro_index_train_load_fraction,
         )
 
-    def get_empty_index(self):
-        return faiss.read_index(self.get_empty_index_path())
+    def get_empty_index(self, env):
+        return faiss.read_index(self.get_empty_index_path(env))
 
-    def get_added_index_path(self):
-        # >>>
-        # args = get_retro_args()
-        # <<<
+    def get_added_index_path(self, env):
         return os.path.join(
-            get_index_dir(),
+            get_index_dir(env),
             "added_%.3f_%.3f.faissindex" % (
-                args.retro_index_train_load_fraction,
-                args.retro_index_add_load_fraction,
+                env.config.retro_index_train_load_fraction,
+                env.config.retro_index_add_load_fraction,
             ),
         )
 
-    def get_added_index(self):
-        return faiss.read_index(self.get_added_index_path())
+    def get_added_index(self, env):
+        return faiss.read_index(self.get_added_index_path(env))
 
     @abc.abstractmethod
     def train(self, *args):

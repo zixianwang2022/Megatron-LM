@@ -19,8 +19,10 @@ from megatron.core.models.retro.data.db import build_db
 from megatron.core.models.retro.data.index import add_to_index, train_index
 # from megatron.core.models.retro.data.query import query_neighbors
 from megatron.core.models.retro.data.preprocess import (
+    RetroEmbedders,
     RetroPreprocessingConfig,
     RetroPreprocessingEnv,
+    RetroTokenizers,
 )
 from megatron.core.models.retro.data.utils import get_config_path
 # from megatron.core.transformer import TransformerConfig
@@ -117,8 +119,25 @@ if __name__ == "__main__":
     env = RetroPreprocessingEnv(
         config = config,
         data_config = core_gpt_dataset_config_from_args(args),
-        gpt_tokenizer = get_gpt_tokenizer(config),
-        bert_tokenizer = get_bert_tokenizer(config),
+        embedders = RetroEmbedders(
+            # disk_ty = DiskDataParallelBertEmbedder,
+            # mem_ty = BertEmbedder,
+            disk = DiskDataParallelBertEmbedder(
+                batch_size = env.config.retro_bert_batch_size,
+                max_bert_seq_length = env.config.retro_bert_max_chunk_length,
+                block_size = env.config.retro_block_size,
+                embedder_type = env.config.bert_embedder_type,
+            ),
+            mem = BertEmbedder(
+                batch_size = env.config.retro_bert_batch_size,
+                max_bert_seq_length = env.config.retro_bert_max_chunk_length,
+                embedder_type = env.config.bert_embedder_type,
+            ),
+        ),
+        tokenizers = RetroTokenizers(
+            gpt = get_gpt_tokenizer(config),
+            bert = get_bert_tokenizer(config),
+        ),
     )
 
     # Save/set retro config.

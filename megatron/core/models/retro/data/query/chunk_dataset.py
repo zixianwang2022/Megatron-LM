@@ -78,8 +78,8 @@ def verify_indexed_dataset_order():
     db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
 
     # Verify order & prefixes.
-    assert len(args.data_path) >= 2, "blended dataset supported only."
-    pretraining_prefixes = args.data_path[1:None:2]
+    assert len(env.config.data_path) >= 2, "blended dataset supported only."
+    pretraining_prefixes = env.config.data_path[1:None:2]
 
     if len(db_prefixes) != len(pretraining_prefixes):
         raise Exception("inconsistent dataset count between db & pretraining.")
@@ -90,12 +90,12 @@ def verify_indexed_dataset_order():
 def core_gpt_dataset_config_from_retro_args(args):
     return GPTDatasetConfig(
         is_built_on_rank=is_dataset_built_on_rank,
-        random_seed=args.retro_gpt_seed,
-        sequence_length=args.retro_gpt_seq_length,
-        blend=args.retro_gpt_data_path,
-        split=args.retro_gpt_split,
-        path_to_cache=args.data_cache_path,
-        return_document_ids=args.retro_return_doc_ids
+        random_seed=env.config.retro_gpt_seed,
+        sequence_length=env.config.retro_gpt_seq_length,
+        blend=env.config.retro_gpt_data_path,
+        split=env.config.retro_gpt_split,
+        path_to_cache=env.config.data_cache_path,
+        return_document_ids=env.config.retro_return_doc_ids
     )
 
 
@@ -129,8 +129,8 @@ def get_chunk_dataset_map():
     # Update train iters.
     update_train_iters(args)
 
-    args.iteration = 0
-    args.consumed_train_samples = 0
+    env.config.iteration = 0
+    env.config.consumed_train_samples = 0
 
     # Verify indexed dataset order.
     verify_indexed_dataset_order()
@@ -150,7 +150,7 @@ def get_chunk_dataset_map():
     chunk_dataset_map = {
         key : {
             "neighbor_dir" : get_neighbor_dirname(key, sample_ds),
-            "data" : ChunkDataset(sample_ds, args.retro_gpt_chunk_length),
+            "data" : ChunkDataset(sample_ds, env.config.retro_gpt_chunk_length),
         }
         for key, sample_ds in sample_dataset_map.items() if sample_ds
     }

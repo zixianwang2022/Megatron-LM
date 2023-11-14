@@ -1,17 +1,18 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 from dataclasses import dataclass
-from typing import Any
 
 from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
 
 from .config import RetroPreprocessingConfig
+from .embedders import RetroEmbedders
+from .tokenizers import RetroTokenizers
 
 
 @dataclass
 class RetroPreprocessingEnv:
 
-    config: RetroPreprocessingConfig = None
-    data_config: GPTDatasetConfig = None
-    gpt_tokenizer: Any = None
-    bert_tokenizer: Any = None
+    config: RetroPreprocessingConfig # = None
+    data: GPTDatasetConfig # = None
+    embedders: RetroEmbedders # = None
+    tokenizers: RetroTokenizers # = None

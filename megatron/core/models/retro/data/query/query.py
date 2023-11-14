@@ -30,7 +30,7 @@ def get_index(ondisk=False):
     # <<<
 
     # Load index.
-    index_wrapper = IndexFactory.get_index(args.retro_index_type)
+    index_wrapper = IndexFactory.get_index(env.config.retro_index_type)
     index_dir = get_index_dir()
     added_index_path = index_wrapper.get_added_index_path()
     if ondisk:
@@ -40,9 +40,9 @@ def get_index(ondisk=False):
 
     # Search parameters.
     faiss.ParameterSpace().set_index_parameter(index, "efSearch",
-                                               args.retro_query_ef_search)
+                                               env.config.retro_query_ef_search)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe",
-                                               args.retro_query_nprobe)
+                                               env.config.retro_query_nprobe)
 
     return index
 
@@ -71,13 +71,13 @@ def query_embeddings(db_dataset, index,
     t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_neighbor_ids = \
-        index.search(embeddings, args.retro_query_num_neighbors_query)
+        index.search(embeddings, env.config.retro_query_num_neighbors_query)
     if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
 
     # Filter banned neighbor ids.
     if verbose: print_rank_0("filter banned neighbor ids.")
     filtered_neighbor_ids = np.full(
-        shape=(len(query_neighbor_ids), args.retro_query_num_neighbors_save),
+        shape=(len(query_neighbor_ids), env.config.retro_query_num_neighbors_save),
         fill_value=-1,
         dtype="int64",
     )
@@ -98,9 +98,9 @@ def query_embeddings(db_dataset, index,
         filtered_row = [ i for i in query_row
                          if tuple(db_dataset.doc_tuples[i].tolist())
                          not in sample_doc_tuples ]
-        filtered_row = filtered_row[:args.retro_query_num_neighbors_save]
+        filtered_row = filtered_row[:env.config.retro_query_num_neighbors_save]
         filtered_row += \
-            [-1] * (args.retro_query_num_neighbors_save - len(filtered_row))
+            [-1] * (env.config.retro_query_num_neighbors_save - len(filtered_row))
         filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
 
     return query_neighbor_ids, filtered_neighbor_ids
@@ -189,15 +189,15 @@ def query_dataset_neighbors(db_dataset, query_dataset,
     # <<<
 
     def validate(f):
-        assert f["neighbors"].shape[1] == args.retro_query_num_neighbors_save, \
+        assert f["neighbors"].shape[1] == env.config.retro_query_num_neighbors_save, \
             "neighbors.shape == %s; num_neighbors_target == %d." % (
                 str(f["neighbors"].shape),
-                args.retro_num_neighbors_target,
+                env.config.retro_num_neighbors_target,
             )
     n_missing_blocks, missing_neighbor_blocks = get_missing_blocks_by_rank(
         neighbor_dir,
         len(query_dataset),
-        args.retro_block_size,
+        env.config.retro_block_size,
         validate=validate,
     )
 
@@ -250,9 +250,9 @@ def query_pretraining_neighbors():
     query_dataset_map = get_query_dataset_map()
 
     # Bert embedder.
-    embedder = BertEmbedder(args.retro_bert_batch_size,
-                            args.retro_bert_max_chunk_length,
-                            args.bert_embedder_type)
+    embedder = BertEmbedder(env.config.retro_bert_batch_size,
+                            env.config.retro_bert_max_chunk_length,
+                            env.config.bert_embedder_type)
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")

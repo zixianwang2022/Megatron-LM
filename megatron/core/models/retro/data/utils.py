@@ -29,12 +29,12 @@ def get_num_chunks_per_sample(config):
 class GPTToTextDataset(torch.utils.data.Dataset):
     '''Dataset to convert GPT tokens to text.'''
 
-    def __init__(self, gpt_dataset):
+    def __init__(self, gpt_dataset, gpt_tokenizer):
 
         super().__init__()
 
         self.gpt_dataset = gpt_dataset
-        self.gpt_tokenizer = get_gpt_tokenizer()
+        self.gpt_tokenizer = gpt_tokenizer
 
     def __len__(self):
         return len(self.gpt_dataset)

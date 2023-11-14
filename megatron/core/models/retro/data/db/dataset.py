@@ -14,7 +14,7 @@ class DBDataset(torch.utils.data.Dataset):
         [dataset_idx, doc_id, start_idx, end_idx, bert_length])
     '''
 
-    def __init__(self, db_path, indexed_datasets, chunks, max_chunk_length):
+    def __init__(self, env, db_path, indexed_datasets, chunks):
 
         assert chunks.shape[1] == 5, "expected 5 columns (dataset_idx, " \
         "doc_idx, token_start_idx, token_end_idx, bert_chunk_length); " \
@@ -25,8 +25,8 @@ class DBDataset(torch.utils.data.Dataset):
         self.chunks = chunks
         self.doc_chunk_map = None
 
-        self.max_chunk_length = max_chunk_length
-        self.eod_token_id = get_gpt_tokenizer().eod
+        self.max_chunk_length = env.config.retro_gpt_chunk_length
+        self.eod_token_id = env.tokenizers.gpt.eod
 
     def __len__(self):
         return self.chunks.shape[0]

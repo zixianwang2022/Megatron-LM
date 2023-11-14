@@ -7,16 +7,15 @@ instantiable, it is meant to be extended with optimizations in classes that
 inherit from this class (see FaissParAddIndex, for an example).
 """
 
-# >>>
-# from datetime import timedelta
-# import numpy as np
-# import os
-# import torch
-# from tqdm import tqdm
+import numpy as np
+import os
+import torch
+from tqdm import tqdm
 
+# >>>
 # from megatron import get_retro_args, print_rank_0
 # from megatron.core.models.retro.data.external_libs import faiss
-# from megatron.core.models.retro.data.index.index import Index
+from megatron.core.models.retro.data.index.index import Index
 # from megatron.core.models.retro.data.index.utils import (
 #     get_training_data_merged_path,
 #     num_samples_to_block_ranges,
@@ -53,11 +52,11 @@ class FaissBaseIndex(Index):
 	    merged_path,
             dtype = "f4",
 	    mode = "r",
-        ).reshape((-1, args.hidden_size))
+        ).reshape((-1, env.config.hidden_size))
 
         # Init index.
-        index = faiss.index_factory(args.retro_index_nfeats,
-                                    args.retro_index_str)
+        index = faiss.index_factory(env.config.retro_index_nfeats,
+                                    env.config.retro_index_str)
 
         # Move to GPU.
         print("> move faiss index to gpu.")
@@ -101,9 +100,9 @@ class FaissBaseIndex(Index):
         faiss.omp_set_num_threads(64)
 
         # Bert embedder.
-        embedder = BertEmbedder(args.retro_bert_batch_size,
-                                args.retro_bert_max_chunk_length,
-                                args.bert_embedder_type)
+        embedder = BertEmbedder(env.config.retro_bert_batch_size,
+                                env.config.retro_bert_max_chunk_length,
+                                env.config.bert_embedder_type)
 
         # Empty/added index paths.
         empty_index_path = self.get_empty_index_path()
