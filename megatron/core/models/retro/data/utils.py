@@ -21,6 +21,10 @@ def print_rank_0(message):
         print(message, flush=True)
 
 
+def extract_data_config(env):
+    return env.gpt_datasets.train[0].config
+
+
 def get_config_path(project_dir):
     '''Config copy stored within retro project dir.'''
     return os.path.join(project_dir, "config.json")
@@ -32,6 +36,9 @@ def get_num_chunks_per_sample(config):
     chunk_length = config.retro_gpt_chunk_length
     assert sample_length % chunk_length == 0
     return sample_length // chunk_length
+
+
+# def get_num_train_samples
 
 
 class GPTToTextDataset(torch.utils.data.Dataset):

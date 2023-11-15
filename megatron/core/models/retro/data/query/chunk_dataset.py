@@ -2,25 +2,17 @@
 
 import torch
 
-# >>>
-# from megatron import get_retro_args, print_rank_0
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
 from megatron.core.datasets.gpt_dataset import GPTDataset
-# from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
+from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
 from megatron.core.models.retro.data.utils import (
+    extract_data_config,
     get_num_chunks_per_sample,
     print_rank_0,
 )
-# from megatron.training import (
-#     build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
-#     update_train_iters,
-# )
 
-# from .utils import get_neighbor_dirname, get_query_dir
-
-# from pretrain_gpt import is_dataset_built_on_rank
-# <<<
+from .utils import get_neighbor_dir
 
 
 class ChunkDataset(torch.utils.data.Dataset):
@@ -31,16 +23,27 @@ class ChunkDataset(torch.utils.data.Dataset):
     chunks (e.g., length num_samples * num_chunks_per_sample).
     '''
 
-    def __init__(self, sample_dataset, chunk_length):
+    # >>>
+    # def __init__(self, env, sample_dataset, chunk_length):
+
+    #     super().__init__()
+
+    #     self.sample_dataset = sample_dataset
+
+    #     self.chunk_length = chunk_length
+    #     self.n_chunks_per_sample = get_num_chunks_per_sample(env.config)
+    #     self.n_samples = len(sample_dataset)
+    #     self.n_chunks = self.n_samples * self.n_chunks_per_sample
+    def __init__(self, config, sample_dataset):
 
         super().__init__()
 
         self.sample_dataset = sample_dataset
-
-        self.chunk_length = chunk_length
-        self.n_chunks_per_sample = get_num_chunks_per_sample()
+        self.chunk_length = config.retro_gpt_chunk_length
+        self.n_chunks_per_sample = get_num_chunks_per_sample(config)
         self.n_samples = len(sample_dataset)
         self.n_chunks = self.n_samples * self.n_chunks_per_sample
+    # <<<
 
     def __len__(self):
         return self.n_chunks
@@ -68,20 +71,22 @@ class ChunkDataset(torch.utils.data.Dataset):
         }
 
 
-def verify_indexed_dataset_order():
+def verify_indexed_dataset_order(env):
     '''Verify pretraining order same as DB order.'''
 
-    # >>>
-    # args = get_retro_args()
-    # <<<
-
     # DB dataset prefixes.
-    db_indexed_dataset_infos = get_indexed_dataset_infos()
+    db_indexed_dataset_infos = get_indexed_dataset_infos(env)
     db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
 
     # Verify order & prefixes.
-    assert len(env.config.data_path) >= 2, "blended dataset supported only."
-    pretraining_prefixes = env.config.data_path[1:None:2]
+    blend = extract_data_config(env).blend
+    assert len(blend) >= 2, "blended dataset supported only."
+    pretraining_prefixes = blend[1:None:2]
+
+    # >>>
+    # from lutil import pax
+    # pax("blend, pretraining_prefixes")
+    # <<<
 
     if len(db_prefixes) != len(pretraining_prefixes):
         raise Exception("inconsistent dataset count between db & pretraining.")
@@ -133,6 +138,7 @@ def train_valid_test_datasets_provider(data_config, train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
+# >>>
 # def get_chunk_dataset_map(env):
 #     '''Get train, valid, test chunk datasets.'''
 
@@ -174,15 +180,22 @@ def get_chunk_dataset_map(env):
     env.config.consumed_train_samples = 0
 
     # Verify indexed dataset order.
-    verify_indexed_dataset_order()
+    verify_indexed_dataset_order(env)
 
     # Info dict.
     chunk_dataset_map = {
         key : {
-            "neighbor_dir" : get_neighbor_dirname(key, sample_ds),
-            "data" : ChunkDataset(sample_ds, env.config.retro_gpt_chunk_length),
+            "neighbor_dir" : get_neighbor_dir(env, key, sample_ds),
+            "data" : ChunkDataset(env.config, sample_ds),
+            "total_num_chunks" : total_num_samples * get_num_chunks_per_sample(env.config),
         }
-        for key, sample_ds in sample_dataset_map.items() if sample_ds
+        for key, (sample_ds, total_num_samples) in vars(env.gpt_datasets).items() if sample_ds
     }
 
+    # >>>
+    # from lutil import pax
+    # pax(chunk_dataset_map)
+    # <<<
+
     return chunk_dataset_map
+# <<<

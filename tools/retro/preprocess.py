@@ -36,7 +36,8 @@ from megatron.tokenizer.tokenizer import (
     _GPTSentencePieceTokenizer,
 )
 from megatron.training import (
-    build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
+    build_train_valid_test_datasets,
+    get_train_valid_test_num_samples,
     update_train_iters,
 )
 from pretrain_gpt import is_dataset_built_on_rank
@@ -78,11 +79,13 @@ def get_bert_embedders(config):
     )
 
 
-def get_gpt_datasets(config, return_document_ids):
+def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
 
-    # Reset iterations.
-    config.iteration = 0
-    config.consumed_train_samples = 0
+    # >>>
+    # # Reset iterations.
+    # config.iteration = 0
+    # config.consumed_train_samples = 0
+    # <<<
 
     # Dataset config.
     data_config = core_gpt_dataset_config_from_retro_preprocessing_config(
@@ -93,19 +96,30 @@ def get_gpt_datasets(config, return_document_ids):
 
     # Datasets.
     print_rank_0(" > datasets.")
-    train_ds, valid_ds, test_ds = build_pretraining_train_valid_test_datasets(
+    train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         lambda n : train_valid_test_datasets_provider(data_config, n))
 
+    num_train_samples, num_valid_samples, num_test_samples = \
+        get_train_valid_test_num_samples()
+    num_train_iters, num_valid_iters, num_test_iters = train_valid_test_num_iters
+
+    def get_max_samples(num_samples, num_iters):
+        return max(num_samples, num_iters * config.retro_gpt_global_batch_size)
+
     datasets = RetroGPTDatasets(
-        train = train_ds,
-        valid = valid_ds,
-        test = test_ds,
+        train = (train_ds, get_max_samples(num_train_samples, num_train_iters)),
+        valid = (valid_ds, get_max_samples(num_valid_samples, num_valid_iters)),
+        test = (test_ds, get_max_samples(num_test_samples, num_test_iters)),
     )
 
     # >>>
     # pax("config, data_config, datasets", {
-    #     f"datasets / {k}" : (len(d) if d else None)
+    #     f"datasets / {k}" : "%s, %d" % (len(d[0]) if d[0] else None, d[1])
     #     for k,d in vars(datasets).items()
+    # }, "num_train_samples, num_valid_samples, num_test_samples", {
+    #     "train_iters" : get_args().train_iters,
+    #     "valid_iters" : get_args().eval_iters,
+    #     # "test_iters" : get_args().test_iters,
     # })
     # <<<
 
@@ -159,7 +173,11 @@ def get_retro_preprocessing_env():
     env = RetroPreprocessingEnv(
         config = config,
         bert_embedders = get_bert_embedders(config),
-        gpt_datasets = get_gpt_datasets(config, return_document_ids=True),
+        gpt_datasets = get_gpt_datasets(
+            config,
+            return_document_ids=True,
+            train_valid_test_num_iters = (args.train_iters, args.eval_iters, args.eval_iters),
+        ),
         tokenizers = get_tokenizers(config),
     )
 

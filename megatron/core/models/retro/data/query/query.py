@@ -174,13 +174,21 @@ def query_block_neighbors(db_dataset, query_dataset,
     f.close()
 
 
-def query_dataset_neighbors(db_dataset, query_dataset,
+def query_dataset_neighbors(db_dataset, query_dataset, total_num_chunks,
                             prefix, neighbor_dir,
                             index, embedder):
     '''Query neighbors of each chunk within a dataset.'''
 
     # >>>
-    # args = get_retro_args()
+    from lutil import pax
+    pax({
+        "neighbor_dir" : neighbor_dir,
+        "query_dataset" : type(query_dataset).__name__,
+        "query_dataset / len" : len(query_dataset),
+        "total_num_chunks" : total_num_chunks,
+        # "num_samples" : num_samples,
+        # "block_size" : env.config.retro_block_size,
+    })
     # <<<
 
     def validate(f):
@@ -241,18 +249,13 @@ def query_neighbors(env):
     query_dataset_map = get_query_dataset_map(env)
 
     # Bert embedder.
-    # >>>
-    # embedder = BertEmbedder(env.config.retro_bert_batch_size,
-    #                         env.config.retro_bert_max_chunk_length,
-    #                         env.config.bert_embedder_type)
-    embedder = env.embedders.mem
-    # <<<
+    embedder = env.bert_embedders.mem
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")
     for prefix, info in query_dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
-        query_dataset_neighbors(db_dataset, info["data"],
+        query_dataset_neighbors(db_dataset, info["data"], info["total_num_chunks"],
                                 prefix, info["neighbor_dir"],
                                 index, embedder)

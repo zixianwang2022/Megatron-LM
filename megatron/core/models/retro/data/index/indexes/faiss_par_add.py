@@ -61,7 +61,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         index = self.get_empty_index(env)
 
         # Bert embedder.
-        embedder = env.embedders.mem
+        embedder = env.bert_embedders.mem
 
         # Missing code blocks.
         def validate(f):

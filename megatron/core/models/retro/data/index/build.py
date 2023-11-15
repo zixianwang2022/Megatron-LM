@@ -85,7 +85,7 @@ def embed_db(env):
     text_dataset = GPTToTextDataset(gpt_dataset, env.tokenizers.gpt)
 
     # Embed dataset.
-    embedder = env.embedders.disk
+    embedder = env.bert_embedders.disk
     embedder.embed_text_dataset("index",
                                 get_training_data_block_dir(env),
                                 text_dataset)

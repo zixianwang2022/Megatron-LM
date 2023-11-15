@@ -11,6 +11,7 @@ import types
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
+    extract_data_config,
     get_missing_blocks_by_rank,
     print_rank_0,
 )
@@ -33,7 +34,7 @@ def init_indexed_dataset_infos(env):
     helps remove ambiguity.
     '''
 
-    data_blend = env.data_config.blend
+    data_blend = extract_data_config(env).blend
 
     assert len(data_blend) % 2 == 0, \
         "currently, only blended dataset is supported."
@@ -59,10 +60,7 @@ def init_indexed_dataset_infos(env):
 
 
 def build_partial_db(
-        # >>>
-        # env,
         config,
-        # <<<
         dataset_idx,
         n_datasets,
         indexed_dataset,
@@ -219,15 +217,12 @@ def build_individual_db(
                 for proc_id in range(n_procs): # not true process id
                     futures.append(executor.submit(
                         build_partial_db,
-                        # >>>
-                        # env,
                         types.SimpleNamespace(
                             chunk_length = env.config.retro_gpt_chunk_length,
                             gpt_eod = env.tokenizers.gpt.eod,
                             gpt_detokenize = env.tokenizers.gpt.detokenize,
                             bert_tokenize = env.tokenizers.bert.tokenize,
                         ),
-                        # <<<
                         dataset_idx,
                         n_datasets,
                         indexed_dataset,
@@ -309,7 +304,7 @@ def update_chunk_counts(env, indexed_dataset_infos):
     data_ratio_sum = sum([ d["ratio"] for d in indexed_dataset_infos ])
 
     # Training split size (split at document level).
-    train_fraction = float(env.data_config.split.split(",")[0]) / 100
+    train_fraction = float(extract_data_config(env).split.split(",")[0]) / 100
     assert train_fraction > 0 and train_fraction <= 1
 
     # Set n_chunks (including n_chunks_sampled for unambiguity).
