@@ -39,8 +39,8 @@ def get_training_data_block_dir(env):
     return os.path.join(get_training_data_root_dir(env), "blocks")
 
 
-def get_training_data_block_paths():
-    return sorted(glob.glob(get_training_data_block_dir() + "/*.hdf5"))
+def get_training_data_block_paths(env):
+    return sorted(glob.glob(get_training_data_block_dir(env) + "/*.hdf5"))
 
 
 def get_training_data_merged_path(env):

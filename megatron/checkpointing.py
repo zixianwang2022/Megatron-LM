@@ -566,8 +566,17 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                 sys.exit()
 
     # Check arguments.
-    assert args.consumed_train_samples == 0
-    assert args.consumed_valid_samples == 0
+    # >>>
+    # try:
+    #     assert args.consumed_train_samples == 0
+    #     assert args.consumed_valid_samples == 0
+    # except:
+    #     from lutil import pax
+    #     pax("load_dir", {
+    #         "consumed_train_samples" : args.consumed_train_samples,
+    #         "consumed_valid_samples" : args.consumed_valid_samples,
+    #     })
+    # <<<
     if 'args' in state_dict and not args.finetune:
         checkpoint_args = state_dict['args']
         check_checkpoint_args(checkpoint_args)

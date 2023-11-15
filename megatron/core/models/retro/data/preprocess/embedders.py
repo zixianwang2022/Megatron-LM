@@ -18,9 +18,5 @@ class Embedder(abc.ABC):
 @dataclass
 class RetroEmbedders:
 
-    # >>>
-    # disk_ty: Callable # = None
-    # mem_ty: Callable # = None
     disk: Embedder
     mem: Embedder
-    # <<<

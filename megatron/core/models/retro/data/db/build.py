@@ -57,7 +57,10 @@ def init_indexed_dataset_infos(env):
 
 
 def build_partial_db(
-        env,
+        # >>>
+        # env,
+        config,
+        # <<<
         dataset_idx,
         n_datasets,
         indexed_dataset,
@@ -120,13 +123,13 @@ def build_partial_db(
 
         # Remove EOD token.
         doc = indexed_dataset.get(doc_id)
-        if doc[-1].item() == env.gpt_tokenizer.eod:
+        if doc[-1].item() == config.gpt_eod:
             doc = doc[:-1]
         doc_len = len(doc)
 
         # Chunk start/end indexes.
-        chunk_start_idxs = list(range(0, doc_len, env.config.retro_gpt_chunk_length))
-        chunk_end_idxs = [min(doc_len, s + env.config.retro_gpt_chunk_length)
+        chunk_start_idxs = list(range(0, doc_len, config.chunk_length))
+        chunk_end_idxs = [min(doc_len, s + config.chunk_length)
                           for s in chunk_start_idxs]
 
         # Re-tokenize each chunk to Bert/Wordpiece (empty bert -> 'invalid').
@@ -140,8 +143,8 @@ def build_partial_db(
                 offset=chunk_start_idx,
                 length=chunk_end_idx - chunk_start_idx,
             )
-            text = env.gpt_tokenizer.detokenize(gpt_token_ids.tolist())
-            bert_token_ids = env.bert_tokenizer.tokenize(text)
+            text = config.gpt_detokenize(gpt_token_ids.tolist())
+            bert_token_ids = config.bert_tokenize(text)
 
             # 'Valid' for non-empty Bert chunks; 'invalid' otherwise.
             if len(bert_token_ids) == 0:
@@ -214,7 +217,15 @@ def build_individual_db(
                 for proc_id in range(n_procs): # not true process id
                     futures.append(executor.submit(
                         build_partial_db,
-                        env,
+                        # >>>
+                        # env,
+                        types.SimpleNamespace(
+                            chunk_length = env.config.retro_gpt_chunk_length,
+                            gpt_eod = env.tokenizers.gpt.eod,
+                            gpt_detokenize = env.tokenizers.gpt.detokenize,
+                            bert_tokenize = env.tokenizers.bert.tokenize,
+                        ),
+                        # <<<
                         dataset_idx,
                         n_datasets,
                         indexed_dataset,

@@ -13,6 +13,7 @@ from megatron import get_args, get_tokenizer, print_rank_0
 from megatron import core
 from megatron.arguments import core_transformer_config_from_args
 from megatron.core.enums import ModelType
+from megatron.core.models.retro.data.io import get_missing_blocks_by_rank
 from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.model import BertModel
 from megatron.training import setup_model_and_optimizer
@@ -20,7 +21,6 @@ from megatron.training import setup_model_and_optimizer
 from .dataset import BertEmbeddingDataset
 from .external_libs import h5py
 from .huggingface import HuggingfaceEmbedder
-from .utils import get_missing_blocks_by_rank
 
 
 def model_provider(pre_process=True, post_process=True):

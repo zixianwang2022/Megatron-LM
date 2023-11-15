@@ -33,6 +33,7 @@ from megatron.tokenizer.tokenizer import (
     _GPTSentencePieceTokenizer,
 )
 from pretrain_gpt import core_gpt_dataset_config_from_args
+from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
 
 from config_utils import add_config_args
 
@@ -120,18 +121,16 @@ if __name__ == "__main__":
         config = config,
         data_config = core_gpt_dataset_config_from_args(args),
         embedders = RetroEmbedders(
-            # disk_ty = DiskDataParallelBertEmbedder,
-            # mem_ty = BertEmbedder,
             disk = DiskDataParallelBertEmbedder(
-                batch_size = env.config.retro_bert_batch_size,
-                max_bert_seq_length = env.config.retro_bert_max_chunk_length,
-                block_size = env.config.retro_block_size,
-                embedder_type = env.config.bert_embedder_type,
+                batch_size = config.retro_bert_batch_size,
+                max_bert_seq_length = config.retro_bert_max_chunk_length,
+                block_size = config.retro_block_size,
+                embedder_type = "megatron",
             ),
             mem = BertEmbedder(
-                batch_size = env.config.retro_bert_batch_size,
-                max_bert_seq_length = env.config.retro_bert_max_chunk_length,
-                embedder_type = env.config.bert_embedder_type,
+                batch_size = config.retro_bert_batch_size,
+                max_bert_seq_length = config.retro_bert_max_chunk_length,
+                embedder_type = "megatron",
             ),
         ),
         tokenizers = RetroTokenizers(

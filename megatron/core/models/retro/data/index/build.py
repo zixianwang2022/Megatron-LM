@@ -11,16 +11,16 @@ from tqdm import tqdm
 from megatron.core.models.retro.data.db.utils import (
     # get_indexed_dataset_infos,
     get_merged_sampled_dataset,
-    # get_merged_train_dataset,
+    get_merged_train_dataset,
 )
-# from megatron.core.models.retro.data.external_libs import h5py
+from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import GPTToTextDataset
 # from tools.bert_embedding import DiskDataParallelBertEmbedder
 
 from .factory import IndexFactory
 from .utils import (
-    # get_training_data_block_dir,
-    # get_training_data_block_paths,
+    get_training_data_block_dir,
+    get_training_data_block_paths,
     get_training_data_merged_path,
     # get_training_data_root_dir,
 )
@@ -92,10 +92,11 @@ def embed_db(env):
     # Embed dataset.
     # >>>
     # embedder = DiskDataParallelBertEmbedder(env.config.retro_bert_batch_size,
-    embedder = env.embedders.disk(env.config.retro_bert_batch_size,
-                                  env.config.retro_bert_max_chunk_length,
-                                  env.config.retro_block_size,
-                                  env.config.bert_embedder_type)
+    # embedder = env.embedders.disk(env.config.retro_bert_batch_size,
+    #                               env.config.retro_bert_max_chunk_length,
+    #                               env.config.retro_block_size,
+    #                               env.config.bert_embedder_type)
+    embedder = env.embedders.disk
     # <<<
     embedder.embed_text_dataset("index",
                                 get_training_data_block_dir(env),
@@ -108,7 +109,7 @@ def embed_db(env):
 def train_on_embeddings(env):
     '''Train index on embedded DB chunks.'''
     index = IndexFactory.get_index(env.config.retro_index_type)
-    index.train()
+    index.train(env)
 
 
 def remove_embeddings(env):
@@ -146,22 +147,18 @@ def train_index(env):
 ##################################################
 
 
-def add_to_index():
+def add_to_index(env):
     '''Add DB chunks to index.'''
-
-    # >>>
-    # args = get_retro_args()
-    # <<<
 
     # Get index.
     index = IndexFactory.get_index(env.config.retro_index_type)
 
     # Get text dataset.
-    gpt_dataset = get_merged_train_dataset()
-    text_dataset = GPTToTextDataset(gpt_dataset)
+    gpt_dataset = get_merged_train_dataset(env)
+    text_dataset = GPTToTextDataset(gpt_dataset, env.tokenizers.gpt)
 
     # Add to index.
-    output_index_path = index.add(text_dataset)
+    output_index_path = index.add(env, text_dataset)
 
     return output_index_path
 
@@ -171,7 +168,7 @@ def add_to_index():
 ##################################################
 
 
-def build_index():
+def build_index(env):
     '''Build index.
 
     Building index involves sequentially running stages above:
@@ -180,7 +177,7 @@ def build_index():
     '''
 
     # Train index.
-    train_index()
+    train_index(env)
 
     # Add to index.
-    add_to_index()
+    add_to_index(env)

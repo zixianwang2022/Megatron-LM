@@ -32,9 +32,9 @@ RETRO_QUERY_NPROBE=64
 ######## Task (e.g., db, index, query). ########
 
 # RETRO_TASKS="db-build"
-RETRO_TASKS="index-train"
-# RETRO_TASKS="index-add"
-# RETRO_TASKS="query-pretraining-neighbors"
+# RETRO_TASKS="index-train"
+RETRO_TASKS="index-add"
+# RETRO_TASKS="query-neighbors"
 
 ######## Data. ########
 
@@ -131,6 +131,8 @@ ARGS=" \
     --retro-query-ef-search ${RETRO_QUERY_EF_SEARCH} \
     --retro-query-nprobe ${RETRO_QUERY_NPROBE} \
 "
+
+ARGS+=" --retro-block-size 10000"
 
 ######## Command. ########
 

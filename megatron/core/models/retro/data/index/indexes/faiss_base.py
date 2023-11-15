@@ -14,24 +14,20 @@ from tqdm import tqdm
 
 # >>>
 # from megatron import get_retro_args, print_rank_0
-# from megatron.core.models.retro.data.external_libs import faiss
+from megatron.core.models.retro.data.external_libs import faiss
 from megatron.core.models.retro.data.index.index import Index
-# from megatron.core.models.retro.data.index.utils import (
-#     get_training_data_merged_path,
-#     num_samples_to_block_ranges,
-# )
+from megatron.core.models.retro.data.index.utils import (
+    get_training_data_merged_path,
+    # num_samples_to_block_ranges,
+)
 # from tools.bert_embedding import BertEmbedder
 # <<<
 
 
 class FaissBaseIndex(Index):
 
-    def _train(self):
+    def _train(self, env):
         '''Train index (rank 0's method).'''
-
-        # >>>
-        # args = get_retro_args()
-        # <<<
 
         assert torch.distributed.get_rank() == 0
 
@@ -40,14 +36,18 @@ class FaissBaseIndex(Index):
         faiss.omp_set_num_threads(64)
         # faiss.omp_set_num_threads(128)
 
-        empty_index_path = self.get_empty_index_path()
+        empty_index_path = self.get_empty_index_path(env)
 
         # Index already exists? -> return.
         if os.path.isfile(empty_index_path):
             return
 
         # Load data.
-        merged_path = get_training_data_merged_path()
+        merged_path = get_training_data_merged_path(env)
+        # >>>
+        # from lutil import pax
+        # pax("merged_path")
+        # <<<
         inp = np.memmap(
 	    merged_path,
             dtype = "f4",
@@ -76,16 +76,16 @@ class FaissBaseIndex(Index):
         # Save index.
         faiss.write_index(index, empty_index_path)
 
-    def train(self):
+    def train(self, env):
         '''Train index.'''
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            self._train()
+            self._train(env)
 
         torch.distributed.barrier()
 
-    def _add(self, text_dataset):
+    def _add(self, env, text_dataset):
         '''Add to index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
@@ -128,15 +128,15 @@ class FaissBaseIndex(Index):
         # Write index.
         faiss.write_index(index, added_index_path)
 
-    def add(self, text_dataset):
+    def add(self, env, text_dataset):
         '''Add to index.'''
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            self._add(text_dataset)
+            self._add(env, text_dataset)
 
         # Wait for rank 0.
         torch.distributed.barrier()
 
         # Get output index path, for return.
-        return self.get_added_index_path()
+        return self.get_added_index_path(env)

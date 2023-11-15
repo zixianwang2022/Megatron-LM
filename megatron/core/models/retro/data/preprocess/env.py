@@ -13,6 +13,6 @@ from .tokenizers import RetroTokenizers
 class RetroPreprocessingEnv:
 
     config: RetroPreprocessingConfig # = None
-    data: GPTDatasetConfig # = None
+    data_config: GPTDatasetConfig # = None
     embedders: RetroEmbedders # = None
     tokenizers: RetroTokenizers # = None

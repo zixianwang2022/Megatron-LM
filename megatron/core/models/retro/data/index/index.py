@@ -6,7 +6,7 @@ import torch
 
 # >>>
 # from megatron import get_retro_args
-# from megatron.core.models.retro.data.external_libs import faiss
+from megatron.core.models.retro.data.external_libs import faiss
 
 from .utils import get_index_dir
 # <<<

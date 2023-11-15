@@ -16,11 +16,11 @@ import torch
 from tqdm import tqdm
 
 # >>>
-# from megatron import get_retro_args, print_rank_0
-# from megatron.core.models.retro.data.external_libs import faiss, h5py
-# from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
+from megatron.core.models.retro.data.external_libs import faiss, h5py
+from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
+from megatron.core.models.retro.data.io import get_missing_blocks_by_rank
+from megatron.core.models.retro.data.utils import print_rank_0
 # from tools.bert_embedding import BertEmbedder
-# from tools.bert_embedding.utils import get_missing_blocks_by_rank
 
 from .faiss_base import FaissBaseIndex
 # <<<
@@ -57,21 +57,21 @@ class FaissParallelAddIndex(FaissBaseIndex):
         with h5py.File(block["path"], "w") as f:
             f.create_dataset("data", data=codes)
 
-    def encode(self, text_dataset):
+    def encode(self, env, text_dataset):
         '''Encode text dataset, to be later added to index.'''
 
-        # >>>
-        # args = get_retro_args()
-        # <<<
-        codes_dir = get_added_codes_dir()
+        codes_dir = get_added_codes_dir(env)
 
         # Index.
-        index = self.get_empty_index()
+        index = self.get_empty_index(env)
 
         # Bert embedder.
-        embedder = BertEmbedder(env.config.retro_bert_batch_size,
-                                env.config.retro_bert_max_chunk_length,
-                                env.config.bert_embedder_type)
+        # >>>
+        # embedder = BertEmbedder(env.config.retro_bert_batch_size,
+        #                         env.config.retro_bert_max_chunk_length,
+        #                         env.config.bert_embedder_type)
+        embedder = env.embedders.mem
+        # <<<
 
         # Missing code blocks.
         def validate(f):
@@ -144,29 +144,26 @@ class FaissParallelAddIndex(FaissBaseIndex):
         print_rank_0("write added index.")
         faiss.write_index(index, added_index_path)
 
-    def remove_codes(self):
+    def remove_codes(self, env):
         '''Remove added codes after adding to index.'''
         if torch.distributed.get_rank() != 0:
             return
         assert os.path.isfile(self.get_added_index_path())
 
-        # >>>
-        # args = get_retro_args()
-        # <<<
         if env.config.retro_index_delete_added_codes:
             raise Exception("remove?")
-            shutil.rmtree(get_added_codes_dir(), ignore_errors=True)
+            shutil.rmtree(get_added_codes_dir(env), ignore_errors=True)
 
-    def add(self, text_dataset):
+    def add(self, env, text_dataset):
 
         # Encode chunks.
-        self.encode(text_dataset)
+        self.encode(env, text_dataset)
 
         # Add codes to index.
-        self.add_codes()
+        self.add_codes(env)
 
         # Wait for (single-process) adding to complete.
         torch.distributed.barrier()
 
         # Remove codes.
-        self.remove_codes()
+        self.remove_codes(env)
