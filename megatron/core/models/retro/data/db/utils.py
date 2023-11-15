@@ -11,14 +11,14 @@ from megatron.core.models.retro.data.external_libs import h5py
 from .dataset import DBDataset
 
 
-def get_base_db_workdir(env):
+def get_base_db_dir(env):
     '''Sub-directory for DB data.'''
-    return os.path.join(env.config.retro_workdir, "db")
+    return os.path.join(env.config.retro_project_dir, "db")
 
 
 def get_indexed_dataset_infos_path(env):
     '''Path to indexed dataset meta-infos.'''
-    return os.path.join(get_base_db_workdir(env), "indexed_dataset_infos.json")
+    return os.path.join(get_base_db_dir(env), "indexed_dataset_infos.json")
 
 
 def save_indexed_dataset_infos(env, indexed_dataset_infos):
@@ -53,7 +53,7 @@ def get_indexed_dataset_infos(env):
 
 def get_individual_db_dir(env, name):
     '''Individual DB's directory.'''
-    return os.path.join(get_base_db_workdir(env), "individual", name)
+    return os.path.join(get_base_db_dir(env), "individual", name)
 
 
 def get_individual_chunk_db(env, ds_id, ds_info):
@@ -98,7 +98,7 @@ def get_individual_doc_offsets(env, ds_id, ds_info):
 
 def get_merged_db_path_map(env):
     '''Paths to merged datasets.'''
-    base_dir = get_base_db_workdir(env)
+    base_dir = get_base_db_dir(env)
     return {
         "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
         "train" : os.path.join(base_dir, "merged", "train.hdf5"),

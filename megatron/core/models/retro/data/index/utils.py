@@ -9,7 +9,7 @@ def get_index_dir(env):
 
     # Directory path.
     index_dir_path = os.path.join(
-        env.config.retro_workdir,
+        env.config.retro_project_dir,
         "index",
         env.config.retro_index_type,
         env.config.retro_index_str,
@@ -32,7 +32,7 @@ def num_samples_to_block_ranges(env, num_samples):
 
 
 def get_training_data_root_dir(env):
-    return os.path.join(env.config.retro_workdir, "index", "train_emb")
+    return os.path.join(env.config.retro_project_dir, "index", "train_emb")
 
 
 def get_training_data_block_dir(env):

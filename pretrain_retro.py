@@ -29,6 +29,7 @@ def core_model_provider(pre_process=True, post_process=True):
     # >>>
     # config = core_transformer_config_from_args(args)
     config = core_transformer_config_from_args(args, RetroConfig)
+    pax("config")
     # <<<
 
     # NOTE: Experimental customization feature

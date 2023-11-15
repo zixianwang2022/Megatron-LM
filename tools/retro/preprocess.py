@@ -30,7 +30,6 @@ from megatron.core.models.retro.data.query import (
     train_valid_test_datasets_provider,
 )
 from megatron.core.models.retro.data.utils import get_config_path
-# from megatron.global_vars import set_retro_args
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
@@ -195,9 +194,9 @@ def save_config(config):
     '''Save copy of config within retro project dir.'''
 
     if torch.distributed.get_rank() == 0:
-        config_path = get_config_path(config.retro_workdir)
+        config_path = get_config_path(config.retro_project_dir)
         config_subset = {k:v for k,v in vars(config).items() if k.startswith("retro_gpt")}
-        pax("config_subset")
+        config_subset["retro_block_size"] = config.retro_block_size
         with open(config_path, "w") as f:
             json.dump(config_subset, f, indent=4)
 
@@ -210,11 +209,11 @@ if __name__ == "__main__":
     # Initalize Megatron.
     initialize_megatron(extra_args_provider=add_retro_args)
 
-    # Retro preprocessing env.
+    # Retro env.
     env = get_retro_preprocessing_env()
 
-    # Save/set retro config.
-    os.makedirs(env.config.retro_workdir, exist_ok=True)
+    # Save retro config.
+    os.makedirs(env.config.retro_project_dir, exist_ok=True)
     save_config(env.config)
     # >>>
     # set_retro_args(config)
@@ -230,12 +229,12 @@ if __name__ == "__main__":
         "query-neighbors" : [ "query-neighbors" ],
     }
     tasks = []
-    for task in config.retro_tasks:
+    for task in env.config.retro_tasks:
         tasks.extend(task_remap[task])
-    config.retro_tasks = tasks
+    env.config.retro_tasks = tasks
 
     # Select task to run.
-    for task in config.retro_tasks:
+    for task in tasks:
 
         print_rank_0("start '%s'." % task)
 

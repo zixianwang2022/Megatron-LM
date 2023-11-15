@@ -21,9 +21,9 @@ def print_rank_0(message):
         print(message, flush=True)
 
 
-def get_config_path(workdir):
-    '''Argument copy stored within retro workdir.'''
-    return os.path.join(workdir, "config.json")
+def get_config_path(project_dir):
+    '''Config copy stored within retro project dir.'''
+    return os.path.join(project_dir, "config.json")
 
 
 def get_num_chunks_per_sample(config):
@@ -110,13 +110,13 @@ def load_data(paths):
     return data_map
 
 
-def get_missing_blocks(workdir, n_samples, block_size,
+def get_missing_blocks(project_dir, n_samples, block_size,
                        validate=lambda f : None):
     '''Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
     is to divide a range (size n_samples) into a sequence of blocks. Each
-    block corresponds to a file within 'workdir' with name
+    block corresponds to a file within 'project_dir' with name
     '{start_idx}-{end_idx}.hdf5'. This method checks for the existence of
     these files, and returns a list of the ones that are missing.
     '''
@@ -131,7 +131,7 @@ def get_missing_blocks(workdir, n_samples, block_size,
     all_blocks = [{
         "range" : r,
         "path" : os.path.join(
-            workdir,
+            project_dir,
             "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
         )
     } for r in block_ranges]
@@ -173,7 +173,7 @@ def get_missing_blocks(workdir, n_samples, block_size,
     return missing_blocks
 
 
-def get_missing_blocks_by_rank(workdir, n_samples, block_size,
+def get_missing_blocks_by_rank(project_dir, n_samples, block_size,
                                validate=lambda f : None):
     '''Divide missing blocks evenly across all ranks.
 
@@ -183,7 +183,7 @@ def get_missing_blocks_by_rank(workdir, n_samples, block_size,
     downstream operation.
     '''
 
-    missing_blocks = get_missing_blocks(workdir, n_samples, block_size,
+    missing_blocks = get_missing_blocks(project_dir, n_samples, block_size,
                                         validate)
 
     # This rank's missing files.

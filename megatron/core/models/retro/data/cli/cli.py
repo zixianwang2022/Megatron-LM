@@ -31,7 +31,7 @@ def shorten_str(s, n):
 
 class retro:
 
-    args = None
+    config = None
 
     ##############################################
     # initialize.
@@ -46,15 +46,15 @@ class retro:
         }[dtype_str]
 
     @classmethod
-    def init_megatron(cls, workdir):
+    def init_megatron(cls, project_dir):
         '''Custom initialization of Megatron.'''
 
-        # Load args.
-        args_path = get_args_path(workdir)
-        assert os.path.exists(args_path), "args.json not found in workdir."
-        with open(args_path) as f:
-            cls.args = types.SimpleNamespace(**json.load(f))
-            cls.args.retro_workdir = workdir # just in case workdir moved
+        # Load config.
+        config_path = get_config_path(project_dir)
+        assert os.path.exists(config_path), "config.json not found in project dir."
+        with open(config_path) as f:
+            cls.config = types.SimpleNamespace(**json.load(f))
+            cls.args.retro_project_dir = project_dir # just in case project_dir moved
             cls.args.rank = 0 # override env
             cls.args.world_size = 1 # override env
             cls.args.params_dtype = cls.parse_dtype_str(cls.args.params_dtype)
@@ -67,11 +67,11 @@ class retro:
         _compile_dependencies()
 
     @classmethod
-    def init(cls, workdir):
+    def init(cls, project_dir):
         '''Initialize Megatron, tokenizers, and datasets.'''
 
         # Load args.
-        cls.init_megatron(workdir)
+        cls.init_megatron(project_dir)
 
         cls.tokenizers = types.SimpleNamespace(
             gpt=get_gpt_tokenizer(),

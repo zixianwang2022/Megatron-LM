@@ -17,7 +17,7 @@ from megatron.core.models.retro.data.utils import (
 #     update_train_iters,
 # )
 
-# from .utils import get_neighbor_dirname, get_query_workdir
+# from .utils import get_neighbor_dirname, get_query_dir
 
 # from pretrain_gpt import is_dataset_built_on_rank
 # <<<

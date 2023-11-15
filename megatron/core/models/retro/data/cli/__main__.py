@@ -1,10 +1,8 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# import os
+import os
 
-# from . import retro
-# <<<
+from . import retro
 
 
 if __name__ == "__main__":
