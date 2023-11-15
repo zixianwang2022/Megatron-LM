@@ -1,15 +1,17 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# import os
-# import torch
+import torch
 
+# >>>
 # from megatron import get_retro_args, print_rank_0
-# from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
-# from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
-# from megatron.core.datasets.gpt_dataset import GPTDataset
+from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
+from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
+from megatron.core.datasets.gpt_dataset import GPTDataset
 # from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
-# from megatron.core.models.retro.data.utils import get_num_chunks_per_sample
+from megatron.core.models.retro.data.utils import (
+    get_num_chunks_per_sample,
+    print_rank_0,
+)
 # from megatron.training import (
 #     build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
 #     update_train_iters,
@@ -87,24 +89,36 @@ def verify_indexed_dataset_order():
         raise Exception("inconsistent dataset order between db & pretraining.")
 
 
-def core_gpt_dataset_config_from_retro_args(args):
+# >>>
+# def core_gpt_dataset_config_from_retro_args(args):
+#     return GPTDatasetConfig(
+#         is_built_on_rank=is_dataset_built_on_rank,
+#         random_seed=env.config.retro_gpt_seed,
+#         sequence_length=env.config.retro_gpt_seq_length,
+#         blend=env.config.retro_gpt_data_path,
+#         split=env.config.retro_gpt_split,
+#         path_to_cache=env.config.data_cache_path,
+#         return_document_ids=env.config.retro_return_doc_ids
+#     )
+def core_gpt_dataset_config_from_retro_preprocessing_config(
+    config,
+    is_dataset_built_on_rank,
+    return_document_ids,
+):
     return GPTDatasetConfig(
         is_built_on_rank=is_dataset_built_on_rank,
-        random_seed=env.config.retro_gpt_seed,
-        sequence_length=env.config.retro_gpt_seq_length,
-        blend=env.config.retro_gpt_data_path,
-        split=env.config.retro_gpt_split,
-        path_to_cache=env.config.data_cache_path,
-        return_document_ids=env.config.retro_return_doc_ids
+        random_seed=config.retro_gpt_seed,
+        sequence_length=config.retro_gpt_seq_length,
+        blend=config.retro_gpt_data_path,
+        split=config.retro_gpt_split,
+        path_to_cache=config.retro_gpt_data_cache_path,
+        return_document_ids=return_document_ids,
     )
+# <<<
 
 
-def train_valid_test_datasets_provider(train_val_test_num_samples):
+def train_valid_test_datasets_provider(data_config, train_val_test_num_samples):
     """Build train, valid, and test datasets."""
-
-    # >>>
-    # args = get_retro_args()
-    # <<<
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
@@ -112,39 +126,55 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
         GPTDataset,
         train_val_test_num_samples,
-        core_gpt_dataset_config_from_retro_args(args)
+        data_config,
     ).build()
     print_rank_0("> finished creating pretrained GPT datasets ...")
 
     return train_ds, valid_ds, test_ds
 
 
-def get_chunk_dataset_map():
+# def get_chunk_dataset_map(env):
+#     '''Get train, valid, test chunk datasets.'''
+
+#     # Update train iters.
+#     update_train_iters(args)
+
+#     env.config.iteration = 0
+#     env.config.consumed_train_samples = 0
+
+#     # Verify indexed dataset order.
+#     verify_indexed_dataset_order()
+
+#     # Datasets.
+#     print_rank_0(" > datasets.")
+#     train_ds, valid_ds, test_ds = build_pretraining_train_valid_test_datasets(
+#         train_valid_test_datasets_provider)
+
+#     sample_dataset_map = {
+#         "train" : train_ds,
+#         "valid" : valid_ds,
+#         "test" : test_ds,
+#     }
+
+#     # Info dict.
+#     chunk_dataset_map = {
+#         key : {
+#             "neighbor_dir" : get_neighbor_dirname(key, sample_ds),
+#             "data" : ChunkDataset(sample_ds, env.config.retro_gpt_chunk_length),
+#         }
+#         for key, sample_ds in sample_dataset_map.items() if sample_ds
+#     }
+
+#     return chunk_dataset_map
+def get_chunk_dataset_map(env):
     '''Get train, valid, test chunk datasets.'''
 
-    # >>>
-    # args = get_retro_args()
-    # <<<
-
-    # Update train iters.
-    update_train_iters(args)
-
+    # Reset iteration.
     env.config.iteration = 0
     env.config.consumed_train_samples = 0
 
     # Verify indexed dataset order.
     verify_indexed_dataset_order()
-
-    # Datasets.
-    print_rank_0(" > datasets.")
-    train_ds, valid_ds, test_ds = build_pretraining_train_valid_test_datasets(
-        train_valid_test_datasets_provider)
-
-    sample_dataset_map = {
-        "train" : train_ds,
-        "valid" : valid_ds,
-        "test" : test_ds,
-    }
 
     # Info dict.
     chunk_dataset_map = {

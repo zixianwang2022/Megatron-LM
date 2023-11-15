@@ -1,8 +1,20 @@
 #!/bin/bash
 
 set -u
+unset NCCL_DEBUG
 
-# unset NCCL_DEBUG
+######## Task (e.g., db, index, query). ########
+
+# if [ "$#" != 1 ]; then
+#     echo "expected 1 arg, found ${#}."
+#     exit 1
+# fi
+# RETRO_TASKS=$1
+
+# RETRO_TASKS="db-build"
+# RETRO_TASKS="index-train"
+# RETRO_TASKS="index-add"
+RETRO_TASKS="query-neighbors"
 
 ######## Megatron, Retro dirs. ########
 
@@ -22,19 +34,15 @@ DATA_BLEND=" \
 # RETRO_INDEX_STR="IVF4096_HNSW4,Flat"
 RETRO_INDEX_STR="OPQ8_32,IVF4096_HNSW4,PQ8"
 RETRO_INDEX_NTRAIN=31250
-RETRO_GPT_TRAIN_SAMPLES=100000
-RETRO_GPT_LR_DECAY_SAMPLES=99000
+# RETRO_GPT_TRAIN_SAMPLES=100000
+# RETRO_GPT_LR_DECAY_SAMPLES=99000
+# RETRO_GPT_LR_WARMUP_SAMPLES=1000
+RETRO_GPT_TRAIN_SAMPLES=65000
+RETRO_GPT_LR_DECAY_SAMPLES=64000
 RETRO_GPT_LR_WARMUP_SAMPLES=1000
 RETRO_QUERY_EF_SEARCH=4
 RETRO_QUERY_NPROBE=64
 # <<<
-
-######## Task (e.g., db, index, query). ########
-
-# RETRO_TASKS="db-build"
-# RETRO_TASKS="index-train"
-RETRO_TASKS="index-add"
-# RETRO_TASKS="query-neighbors"
 
 ######## Data. ########
 

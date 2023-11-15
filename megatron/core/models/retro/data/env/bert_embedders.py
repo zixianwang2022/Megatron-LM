@@ -16,7 +16,7 @@ class Embedder(abc.ABC):
         pass
 
 @dataclass
-class RetroEmbedders:
+class RetroBertEmbedders:
 
     disk: Embedder
     mem: Embedder

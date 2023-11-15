@@ -1,38 +1,33 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# import numpy as np
-# import os
-# import psutil
-# import time
-# import torch
-# from tqdm import tqdm
+import numpy as np
+import os
+import psutil
+import time
+import torch
+from tqdm import tqdm
 
-# from megatron import get_retro_args, print_rank_0
-# from megatron.core.models.retro.data.db.utils import \
-#     get_merged_train_dataset as get_db_merged_train_dataset
-# from megatron.core.models.retro.data.external_libs import faiss, h5py
-# from megatron.core.models.retro.data.index.factory import IndexFactory
-# from megatron.core.models.retro.data.index.utils import get_index_dir
-# from megatron.core.models.retro.data.utils import GPTToTextDataset
-# from tools.bert_embedding import BertEmbedder
-# from tools.bert_embedding.utils import get_missing_blocks_by_rank
+from megatron.core.models.retro.data.db.utils import \
+    get_merged_train_dataset as get_db_merged_train_dataset
+from megatron.core.models.retro.data.external_libs import faiss, h5py
+from megatron.core.models.retro.data.index.factory import IndexFactory
+from megatron.core.models.retro.data.index.utils import get_index_dir
+from megatron.core.models.retro.data.utils import (
+    get_missing_blocks_by_rank,
+    GPTToTextDataset,
+    print_rank_0,
+)
 
-# from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
-# <<<
+from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
 
 
-def get_index(ondisk=False):
+def get_index(env, ondisk=False):
     '''Read index from disk.'''
-
-    # >>>
-    # args = get_retro_args()
-    # <<<
 
     # Load index.
     index_wrapper = IndexFactory.get_index(env.config.retro_index_type)
-    index_dir = get_index_dir()
-    added_index_path = index_wrapper.get_added_index_path()
+    index_dir = get_index_dir(env)
+    added_index_path = index_wrapper.get_added_index_path(env)
     if ondisk:
         index = faiss.read_index(added_index_path, faiss.IO_FLAG_MMAP)
     else:
@@ -226,33 +221,32 @@ def query_dataset_neighbors(db_dataset, query_dataset,
         torch.distributed.barrier()
 
 
-def query_pretraining_neighbors():
+def query_neighbors(env):
     '''Query pretraining datasets (train & valid).'''
-
-    # >>>
-    # args = get_retro_args()
-    # <<<
 
     # Num threads.
     faiss.omp_set_num_threads(64)
 
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")
-    db_dataset = get_db_merged_train_dataset()
+    db_dataset = get_db_merged_train_dataset(env)
     db_dataset.load_doc_tuples()
 
     # Load index.
     print_rank_0(" > get index.")
-    index = get_index()
+    index = get_index(env)
 
     # Load datasets.
     print_rank_0(" > get dataset map.")
-    query_dataset_map = get_query_dataset_map()
+    query_dataset_map = get_query_dataset_map(env)
 
     # Bert embedder.
-    embedder = BertEmbedder(env.config.retro_bert_batch_size,
-                            env.config.retro_bert_max_chunk_length,
-                            env.config.bert_embedder_type)
+    # >>>
+    # embedder = BertEmbedder(env.config.retro_bert_batch_size,
+    #                         env.config.retro_bert_max_chunk_length,
+    #                         env.config.bert_embedder_type)
+    embedder = env.embedders.mem
+    # <<<
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")

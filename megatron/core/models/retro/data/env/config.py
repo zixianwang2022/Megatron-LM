@@ -62,7 +62,9 @@ class RetroPreprocessingConfig(TransformerConfig):
             1) a single data path, 2) multiple datasets in the form:
             dataset1-weight dataset1-path dataset2-weight dataset2-path ... It is
             used with --split when a single dataset used for all three: train,
-            valid and test. It is exclusive to the other --*-data-path args
+            valid and test. It is exclusive to the other --*-data-path args.
+        retro_gpt_data_cache_path (str): Path to a directory to hold cached index
+            files.
         retro_gpt_split (str): Comma-separated list of proportions for training,
             validation, and test split. For example the split `90,5,5` will use
             90%% of data for training, 5%% for validation and 5%% for test.
@@ -127,6 +129,7 @@ class RetroPreprocessingConfig(TransformerConfig):
     # GPT.
     retro_gpt_seed: int = 1234
     retro_gpt_data_path: list = None
+    retro_gpt_data_cache_path: str = None
     retro_gpt_split: str = '969,30,1'
     retro_gpt_eval_interval: int = None
     retro_gpt_eval_iters: int = None

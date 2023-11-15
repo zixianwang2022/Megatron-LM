@@ -44,8 +44,10 @@ def get_training_data_block_paths(env):
 
 
 def get_training_data_merged_path(env):
-    return os.path.join(get_training_data_root_dir(env),
-                        "train_%.3f.bin" % env.config.retro_index_train_load_fraction)
+    return os.path.join(
+        get_training_data_root_dir(env),
+        "train_%.3f.bin" % env.config.retro_index_train_load_fraction,
+    )
 
 
 def get_added_codes_dir(env):

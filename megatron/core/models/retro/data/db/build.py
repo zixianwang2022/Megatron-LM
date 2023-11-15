@@ -10,8 +10,10 @@ import types
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.external_libs import h5py
-from megatron.core.models.retro.data.io import get_missing_blocks_by_rank
-from megatron.core.models.retro.data.utils import print_rank_0
+from megatron.core.models.retro.data.utils import (
+    get_missing_blocks_by_rank,
+    print_rank_0,
+)
 
 from .utils import (
     get_indexed_dataset_infos,

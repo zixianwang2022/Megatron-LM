@@ -6,25 +6,20 @@ import shutil
 import torch
 from tqdm import tqdm
 
-# >>>
-# from megatron import get_retro_args, print_rank_0
 from megatron.core.models.retro.data.db.utils import (
-    # get_indexed_dataset_infos,
     get_merged_sampled_dataset,
     get_merged_train_dataset,
 )
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import GPTToTextDataset
-# from tools.bert_embedding import DiskDataParallelBertEmbedder
 
 from .factory import IndexFactory
 from .utils import (
     get_training_data_block_dir,
     get_training_data_block_paths,
     get_training_data_merged_path,
-    # get_training_data_root_dir,
+    get_training_data_root_dir,
 )
-# <<<
 
 
 ##################################################
@@ -90,14 +85,7 @@ def embed_db(env):
     text_dataset = GPTToTextDataset(gpt_dataset, env.tokenizers.gpt)
 
     # Embed dataset.
-    # >>>
-    # embedder = DiskDataParallelBertEmbedder(env.config.retro_bert_batch_size,
-    # embedder = env.embedders.disk(env.config.retro_bert_batch_size,
-    #                               env.config.retro_bert_max_chunk_length,
-    #                               env.config.retro_block_size,
-    #                               env.config.bert_embedder_type)
     embedder = env.embedders.disk
-    # <<<
     embedder.embed_text_dataset("index",
                                 get_training_data_block_dir(env),
                                 text_dataset)
@@ -117,9 +105,9 @@ def remove_embeddings(env):
     torch.distributed.barrier()
     if torch.distributed.get_rank() != 0:
         return
-    empty_index_path = get_empty_index_path()
+    empty_index_path = get_empty_index_path(env)
     assert os.path.isfile(empty_index_path)
-    shutil.rmtree(get_training_data_root_dir(), ignore_errors=True)
+    shutil.rmtree(get_training_data_root_dir(env), ignore_errors=True)
 
 
 def train_index(env):
