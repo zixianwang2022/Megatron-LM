@@ -21,7 +21,8 @@ RETRO_TASKS="query-neighbors"
 ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee"
 
 REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
-RETRO_WORKDIR="${ROOT_DIR}/retro/workdirs/wiki-tiny-2xb"
+# RETRO_WORKDIR="${ROOT_DIR}/retro/workdirs/wiki-tiny-2xb"
+RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/wiki-tiny-2xb"
 CORPUS_ROOT="${ROOT_DIR}/corpus-530b"
 DATA_BLEND=" \
   0.5 \
@@ -112,7 +113,7 @@ ARGS=" \
     --bert-embedder-type megatron \
     --output-bert-embeddings \
     \
-    --retro-workdir ${RETRO_WORKDIR} \
+    --retro-project-dir ${RETRO_PROJECT_DIR} \
     --retro-tasks ${RETRO_TASKS} \
     --retro-return-doc-ids \
     --retro-bert-vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \

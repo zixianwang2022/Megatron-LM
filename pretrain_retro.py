@@ -26,7 +26,10 @@ def core_model_provider(pre_process=True, post_process=True):
     """Build the model using Megatron-Core."""
 
     args = get_args()
-    config = core_transformer_config_from_args(args)
+    # >>>
+    # config = core_transformer_config_from_args(args)
+    config = core_transformer_config_from_args(args, RetroConfig)
+    # <<<
 
     # NOTE: Experimental customization feature
     if args.spec is not None:

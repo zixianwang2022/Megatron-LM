@@ -164,30 +164,45 @@ def get_retro_preprocessing_env():
         tokenizers = get_tokenizers(config),
     )
 
+    return env
 
+
+# >>>
+# def save_config(config):
+#     '''Save copy of config within retro workdir.'''
+
+#     def default_dump(obj):
+#         if isinstance(obj, torch.dtype):
+#             return str(obj)
+#         elif isinstance(obj, (
+#                 types.FunctionType,
+#                 types.LambdaType,
+#                 types.MethodType,
+#                 types.BuiltinFunctionType,
+#                 types.BuiltinMethodType,
+#         )):
+#             return f"<{obj.__name__}>"
+#         else:
+#             raise Exception("specialize for <%s>." % type(obj).__name__)
+
+#     if torch.distributed.get_rank() == 0:
+#         config_path = get_config_path(config.retro_workdir)
+#         with open(config_path, "w") as f:
+#             json.dump(vars(config), f, indent=4, default=default_dump)
+
+#     torch.distributed.barrier()
 def save_config(config):
-    '''Save copy of config within retro workdir.'''
-
-    def default_dump(obj):
-        if isinstance(obj, torch.dtype):
-            return str(obj)
-        elif isinstance(obj, (
-                types.FunctionType,
-                types.LambdaType,
-                types.MethodType,
-                types.BuiltinFunctionType,
-                types.BuiltinMethodType,
-        )):
-            return f"<{obj.__name__}>"
-        else:
-            raise Exception("specialize for <%s>." % type(obj).__name__)
+    '''Save copy of config within retro project dir.'''
 
     if torch.distributed.get_rank() == 0:
         config_path = get_config_path(config.retro_workdir)
+        config_subset = {k:v for k,v in vars(config).items() if k.startswith("retro_gpt")}
+        pax("config_subset")
         with open(config_path, "w") as f:
-            json.dump(vars(config), f, indent=4, default=default_dump)
+            json.dump(config_subset, f, indent=4)
 
     torch.distributed.barrier()
+# <<<
 
 
 if __name__ == "__main__":
@@ -199,8 +214,8 @@ if __name__ == "__main__":
     env = get_retro_preprocessing_env()
 
     # Save/set retro config.
-    os.makedirs(config.retro_workdir, exist_ok=True)
-    save_config(config)
+    os.makedirs(env.config.retro_workdir, exist_ok=True)
+    save_config(env.config)
     # >>>
     # set_retro_args(config)
     # <<<

@@ -2,7 +2,10 @@
 
 import torch
 
-from .global_vars import get_args, get_retro_args
+# >>>
+# from .global_vars import get_args, get_retro_args
+from .global_vars import get_args
+# <<<
 from .global_vars import get_current_global_batch_size
 from .global_vars import get_num_microbatches
 from .global_vars import get_signal_handler

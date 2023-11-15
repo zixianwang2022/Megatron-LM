@@ -13,8 +13,9 @@ class RetroConfig(TransformerConfig):
 
     Attributes:
 
-        retro_preprocess (SimpleNamespace): Retro preprocess arguments.
-        retro_workdir (str): Retro working directory, which contains the
+        retro_preprocessing_config (SimpleNamespace): Retro preprocessing
+            config.
+        retro_project_dir (str): Retro working directory, which contains the
             preprocessed data for for pretraining. This directory is built during
             preprocessing (see tools/retro/README.md), and contains subdirectories
             for the chunk database and pretraining neighbors.
@@ -33,8 +34,14 @@ class RetroConfig(TransformerConfig):
     """
 
     # Retro.
-    retro_preprocess: types.SimpleNamespace = None
-    retro_workdir: str = None
+    # >>>
+    # retro_preprocess: types.SimpleNamespace = None
+    retro_preprocessing_config: types.SimpleNamespace = None
+    # <<<
+    # >>>
+    # retro_workdir: str = None
+    retro_project_dir: str = None
+    # <<<
     retro_encoder_num_layers: int = 2
     retro_encoder_hidden_dropout: float = 0.1
     retro_encoder_attention_dropout: float = 0.1

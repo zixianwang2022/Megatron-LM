@@ -10,7 +10,9 @@ import torch
 import types
 
 import torch.nn.functional as F
-from megatron.global_vars import set_retro_args, get_retro_args
+# >>>
+# from megatron.global_vars import set_retro_args, get_retro_args
+# <<<
 from megatron.core.models.retro.data.utils import get_config_path as get_retro_config_path
 
 from megatron.core.models.retro import RetroConfig
@@ -59,12 +61,14 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     return args
 
 def validate_args(args, defaults={}):
+
     # Tensor model parallel size.
     args.tensor_model_parallel_size = min(
         args.tensor_model_parallel_size, args.world_size)
     assert args.world_size % args.tensor_model_parallel_size == 0, 'world size'\
         ' ({}) is not divisible by tensor model parallel size ({})'.format(
             args.world_size, args.tensor_model_parallel_size)
+
     # Pipeline model parallel size.
     args.pipeline_model_parallel_size = min(
         args.pipeline_model_parallel_size,
@@ -74,6 +78,7 @@ def validate_args(args, defaults={}):
         if args.standalone_embedding_stage else
         args.pipeline_model_parallel_size
     )
+
     # Checks.
     model_parallel_size = args.pipeline_model_parallel_size * \
                           args.tensor_model_parallel_size
@@ -101,7 +106,6 @@ def validate_args(args, defaults={}):
 
     if args.tp_comm_overlap:
         assert args.sequence_parallel == True, 'Tensor parallel communication/GEMM overlap can happen only when sequence parallelism is enabled'
-
 
     # Deprecated arguments
     assert args.batch_size is None, '--batch-size argument is no longer ' \
@@ -365,12 +369,23 @@ def validate_args(args, defaults={}):
         retro_args_path = get_retro_args_path(args.retro_workdir)
         assert os.path.exists(retro_args_path), "retro workdir missing args.json"
         with open(retro_args_path) as f:
-            retro_args = types.SimpleNamespace(**json.load(f))
-            retro_args.retro_return_doc_ids = args.retro_return_doc_ids
+            # >>>
+            # retro_args = types.SimpleNamespace(**json.load(f))
+            retro_preprocessing_config = types.SimpleNamespace(**json.load(f))
+            pax("retro_preprocessing_config")
+            # <<<
+            # >>>
+            # retro_args.retro_return_doc_ids = args.retro_return_doc_ids
+            # <<<
             retro_args.retro_gpt_retrieved_length = \
                 args.retro_num_retrieved_chunks * \
                 retro_args.retro_gpt_chunk_length
             set_retro_args(retro_args)
+    # >>>
+    else:
+        retro_preprocessing_config = None
+    args.retro_preprocessing_config = retro_preprocessing_config
+    # <<<
 
     # Legacy RoPE arguments
     if args.use_rotary_position_embeddings:
@@ -396,9 +411,14 @@ def validate_args(args, defaults={}):
 
     # Print arguments.
     _print_args("arguments", args)
-    retro_args = get_retro_args()
-    if retro_args and args != retro_args:
-        _print_args("retro arguments", types.SimpleNamespace(**{k:v for k,v in vars(retro_args).items() if k.startswith("retro")}, rank=args.rank))
+    # >>>
+    # retro_args = get_retro_args()
+    # if retro_args and args != retro_args:
+    #     _print_args("retro arguments", types.SimpleNamespace(**{k:v for k,v in vars(retro_args).items() if k.startswith("retro")}, rank=args.rank))
+    # +++
+    if retro_preprocessing_config is not None:
+        _print_args("retro config", retro_preprocessing_config)
+    # <<<
 
     return args
 
@@ -426,14 +446,20 @@ def core_transformer_config_from_args(args, config_class=None):
 
     # Config class.
     kw_args = {}
-    retro_args = get_retro_args()
-    if config_class:
-        pass
-    elif retro_args:
-        kw_args['retro_preprocess'] = retro_args
-        config_class = RetroConfig
-    else:
-        config_class = TransformerConfig
+    # >>>
+    # retro_args = get_retro_args()
+    # if config_class:
+    #     pass
+    # elif retro_args:
+    #     kw_args['retro_preprocess'] = retro_args
+    #     config_class = RetroConfig
+    # else:
+    #     config_class = TransformerConfig
+    # <<<
+
+    # >>>
+    config_class = config_class or TransformerConfig
+    # <<<
 
     # Translate args to core transformer configuration
     for f in dataclasses.fields(config_class):
@@ -524,12 +550,16 @@ def _add_inference_args(parser):
 def _add_retro_args(parser):
     group = parser.add_argument_group(title='retro')
 
-    group.add_argument('--retro-workdir', default=None,
-                       help='Retro working directory, which contains the '
-                       'preprocessed data for for pretraining. This directory '
+    # >>>
+    # group.add_argument('--retro-workdir', default=None,
+    #                    help='Retro working directory, which contains the '
+    group.add_argument('--retro-project-dir', default=None,
+                       help='Retro project directory, which contains the '
+                       'preprocessed data for pretraining. This directory '
                        'is built during preprocessing (see '
                        'tools/retro/README.md), and contains subdirectories '
                        'for the chunk database and pretraining neighbors.')
+    # <<<
     group.add_argument('--retro-add-retriever',
                        action='store_true', default=False,
                        help='Add a retriever to the transformer, for use in '
