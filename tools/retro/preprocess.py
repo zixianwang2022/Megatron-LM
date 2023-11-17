@@ -46,13 +46,8 @@ from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
 
 from config_utils import add_config_args
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def add_retro_args(parser):
-
     group = parser.add_argument_group(title="Retro preprocessing")
     add_config_args(group, RetroPreprocessingConfig)
 
@@ -162,28 +157,6 @@ def get_tokenizers(config):
     )
 
 
-# >>>
-# def get_retro_preprocessing_env():
-
-#     # Arguments.
-#     args = get_args()
-#     update_train_iters(args)
-
-#     # Retro env.
-#     config = core_transformer_config_from_args(
-#         args, config_class=RetroPreprocessingConfig)
-#     env = RetroPreprocessingEnv(
-#         config = config,
-#         bert_embedders = get_bert_embedders(config),
-#         gpt_datasets = get_gpt_datasets(
-#             config,
-#             return_document_ids=True,
-#             train_valid_test_num_iters = (args.train_iters, args.eval_iters, args.eval_iters),
-#         ),
-#         tokenizers = get_tokenizers(config),
-#     )
-
-#     return env
 def get_retro_preprocessing_config():
 
     # Arguments.
@@ -203,10 +176,7 @@ def get_retro_preprocessing_config():
     )
     config.retro_tokenizers = get_tokenizers(config)
 
-    # pax("config")
-
     return config
-# <<<
 
 
 def save_config(config):
