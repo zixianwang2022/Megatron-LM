@@ -24,11 +24,13 @@ from megatron.core.models.retro.data.config import (
     RetroTokenizers,
 )
 from megatron.core.models.retro.data.query import (
-    core_gpt_dataset_config_from_retro_preprocessing_config,
     query_neighbors,
     train_valid_test_datasets_provider,
 )
-from megatron.core.models.retro.data.utils import get_config_path
+from megatron.core.models.retro.data.utils import (
+    core_gpt_dataset_config_from_retro_preprocessing_config,
+    get_config_path,
+)
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
@@ -212,7 +214,10 @@ def save_config(config):
 
     if torch.distributed.get_rank() == 0:
         config_path = get_config_path(config.retro_project_dir)
-        config_subset = {k:v for k,v in vars(config).items() if k.startswith("retro_gpt")}
+        config_subset = {
+            k:v for k,v in vars(config).items()
+            if k.startswith("retro_gpt") and k != "retro_gpt_datasets"
+        }
         config_subset["retro_block_size"] = config.retro_block_size
         with open(config_path, "w") as f:
             json.dump(config_subset, f, indent=4)

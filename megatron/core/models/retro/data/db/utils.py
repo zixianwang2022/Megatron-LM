@@ -7,6 +7,7 @@ import os
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.external_libs import h5py
+from megatron.core.models.retro.data.utils import get_gpt_data_dir
 
 from .dataset import DBDataset
 
@@ -36,6 +37,12 @@ def save_indexed_dataset_infos(config, indexed_dataset_infos):
         json.dump(clean_infos, f, indent=4)
 
 
+def load_indexed_datasets(config, indexed_dataset_infos):
+    data_dir = get_gpt_data_dir(config)
+    for info in indexed_dataset_infos:
+        info["dataset"] = MMapIndexedDataset(os.path.join(data_dir, info["prefix"]))
+
+
 def get_indexed_dataset_infos(config):
     '''Load indexed dataset meta-infos.'''
 
@@ -44,9 +51,8 @@ def get_indexed_dataset_infos(config):
     with open(path) as f:
         infos = json.load(f)
 
-    # Add indexed datasets.
-    for info in infos:
-        info["dataset"] = MMapIndexedDataset(info["prefix"])
+    # Load indexed datasets.
+    load_indexed_datasets(config, infos)
 
     return infos
 

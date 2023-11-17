@@ -8,10 +8,13 @@ import torch
 from tqdm import tqdm
 import types
 
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+# >>>
+# from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+# <<<
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     extract_data_config,
+    get_gpt_data_dir,
     get_missing_blocks_by_rank,
     print_rank_0,
 )
@@ -23,6 +26,7 @@ from .utils import (
     get_individual_chunk_db,
     get_individual_doc_offsets,
     get_merged_db_path_map,
+    load_indexed_datasets,
     save_indexed_dataset_infos,
 )
 
@@ -75,31 +79,35 @@ def init_indexed_dataset_infos(config):
     helps remove ambiguity.
     '''
 
-    data_dir = get_data_dir(config)
+    data_dir = get_gpt_data_dir(config)
     data_blend = config.retro_gpt_data_path
     assert len(data_blend) % 2 == 0, "currently, only blended dataset is supported."
 
-    pax("data_dir, data_blend")
-
     # Dataset infos.
     infos = []
-    for i in range(0, len(blend), 2):
-        ratio = float(blend[i])
-        prefix = blend[i + 1]
+    for i in range(0, len(data_blend), 2):
+        ratio = float(data_blend[i])
+        prefix = data_blend[i + 1]
         path = prefix + ".bin"
         name = os.path.basename(prefix)
-        assert os.path.exists(path), "couldn't find '%s'." % path
+        assert os.path.exists(os.path.join(data_dir, path)), \
+            "couldn't find '%s'." % path
         infos.append({
             "ratio" : ratio,
             "prefix" : prefix,
             "path" : path,
             "name" : name,
             "db_dir" : get_individual_db_dir(config, name),
-            "dataset" : MMapIndexedDataset(prefix),
+            # >>>
+            # "dataset" : MMapIndexedDataset(os.path.join(data_dir, prefix)),
+            # <<<
         })
 
+    # Load indexed datasets.
+    load_indexed_datasets(config, infos)
+
     # >>>
-    pax("infos")
+    # pax("data_dir, data_blend, infos")
     # <<<
 
     return infos

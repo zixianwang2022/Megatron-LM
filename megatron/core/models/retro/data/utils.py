@@ -8,6 +8,7 @@ import torch
 from tqdm import tqdm
 
 from megatron.core import parallel_state
+from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
 
 from .external_libs import h5py
 
@@ -38,7 +39,28 @@ def get_num_chunks_per_sample(config):
     return sample_length // chunk_length
 
 
-# def get_num_train_samples
+def get_gpt_data_dir(config):
+    return os.path.join(config.retro_project_dir, "data")
+
+
+def core_gpt_dataset_config_from_retro_preprocessing_config(
+    config,
+    is_dataset_built_on_rank,
+    return_document_ids,
+):
+    data_dir = get_gpt_data_dir(config)
+    blend = list(config.retro_gpt_data_path)
+    for i in range(len(blend) - 1, -1, -2):
+        blend[i] = os.path.join(data_dir, blend[i])
+    return GPTDatasetConfig(
+        is_built_on_rank=is_dataset_built_on_rank,
+        random_seed=config.retro_gpt_seed,
+        sequence_length=config.retro_gpt_seq_length,
+        blend=blend,
+        split=config.retro_gpt_split,
+        path_to_cache=config.retro_gpt_data_cache_path,
+        return_document_ids=return_document_ids,
+    )
 
 
 class GPTToTextDataset(torch.utils.data.Dataset):
@@ -60,61 +82,63 @@ class GPTToTextDataset(torch.utils.data.Dataset):
         return {"text": text}
 
 
-def save_data(data_map, *args):
-    '''Save map of numpy arrays to hdf5 file.'''
-    # >>>
-    raise Exception("hi.")
-    # <<<
+# >>>
+# def save_data(data_map, *args):
+#     '''Save map of numpy arrays to hdf5 file.'''
+#     # >>>
+#     raise Exception("hi.")
+#     # <<<
 
-    # Parse args.
-    if len(args) == 1:
-        path = args[0]
-    elif len(args) == 2:
-        dir_path, file_name = args
-        path = os.path.join(dir_path, file_name)
-    else:
-        raise Exception("specialize for len(args) == %d." % len(args))
+#     # Parse args.
+#     if len(args) == 1:
+#         path = args[0]
+#     elif len(args) == 2:
+#         dir_path, file_name = args
+#         path = os.path.join(dir_path, file_name)
+#     else:
+#         raise Exception("specialize for len(args) == %d." % len(args))
 
-    # Save data.
-    if not os.path.isfile(path):
-        f = h5py.File(path, "w")
-        for k, v in data_map.items():
-            f.create_dataset(k, data=v)
-        f.close()
+#     # Save data.
+#     if not os.path.isfile(path):
+#         f = h5py.File(path, "w")
+#         for k, v in data_map.items():
+#             f.create_dataset(k, data=v)
+#         f.close()
 
-    return path
+#     return path
 
 
-def load_data(paths):
-    '''Load multiple hdf5 files to single numpy array.'''
-    # >>>
-    raise Exception("hi.")
-    # <<<
+# def load_data(paths):
+#     '''Load multiple hdf5 files to single numpy array.'''
+#     # >>>
+#     raise Exception("hi.")
+#     # <<<
 
-    # Read data shapes.
-    shape_map = defaultdict(lambda : (0, None))
-    for p in paths:
-        f = h5py.File(p, "r")
-        for k in f.keys():
-            shape = tuple(f[k].shape)
-            shape_map[k] = (shape_map[k][0] + shape[0], shape[1])
-        f.close()
+#     # Read data shapes.
+#     shape_map = defaultdict(lambda : (0, None))
+#     for p in paths:
+#         f = h5py.File(p, "r")
+#         for k in f.keys():
+#             shape = tuple(f[k].shape)
+#             shape_map[k] = (shape_map[k][0] + shape[0], shape[1])
+#         f.close()
 
-    # Allocate output array.
-    data_map = { k : np.empty(s, dtype="f4") for k, s in shape_map.items() }
-    start_map = { k : 0 for k in shape_map }
+#     # Allocate output array.
+#     data_map = { k : np.empty(s, dtype="f4") for k, s in shape_map.items() }
+#     start_map = { k : 0 for k in shape_map }
 
-    # Load files.
-    for pi, p in enumerate(tqdm(paths, "load data")):
-        f = h5py.File(p, "r")
-        for k in f.keys():
-            i0 = start_map[k]
-            i1 = i0 + len(f[k])
-            data_map[k][i0:i1] = f[k]
-            start_map[k] += len(f[k])
-        f.close()
+#     # Load files.
+#     for pi, p in enumerate(tqdm(paths, "load data")):
+#         f = h5py.File(p, "r")
+#         for k in f.keys():
+#             i0 = start_map[k]
+#             i1 = i0 + len(f[k])
+#             data_map[k][i0:i1] = f[k]
+#             start_map[k] += len(f[k])
+#         f.close()
 
-    return data_map
+#     return data_map
+# <<<
 
 
 def get_missing_blocks(project_dir, n_samples, block_size,
