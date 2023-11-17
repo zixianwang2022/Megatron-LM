@@ -188,11 +188,6 @@ def query_dataset_neighbors(config, db_dataset,
         validate=validate,
     )
 
-    # >>>
-    from lutil import pax
-    pax("n_missing_blocks, missing_neighbor_blocks")
-    # <<<
-
     # Query each block.
     for block_index, block in enumerate(missing_neighbor_blocks):
 

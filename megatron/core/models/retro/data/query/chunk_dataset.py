@@ -6,9 +6,6 @@ from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegat
 from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
 from megatron.core.models.retro.data.utils import (
-    # >>>
-    # extract_data_config,
-    # <<<
     get_num_chunks_per_sample,
     print_rank_0,
 )
@@ -73,11 +70,6 @@ class ChunkDataset(torch.utils.data.Dataset):
 #     assert len(blend) >= 2, "blended dataset supported only."
 #     pretraining_prefixes = blend[1:None:2]
 
-#     # >>>
-#     from lutil import pax
-#     pax("db_prefixes, blend, pretraining_prefixes")
-#     # <<<
-
 #     if len(db_prefixes) != len(pretraining_prefixes):
 #         raise Exception("inconsistent dataset count between db & pretraining.")
 #     if db_prefixes != pretraining_prefixes:
@@ -123,10 +115,5 @@ def get_chunk_dataset_map(config):
         for key, (sample_ds, total_num_samples) in vars(config.retro_gpt_datasets).items()
         if sample_ds
     }
-
-    # >>>
-    # from lutil import pax
-    # pax("chunk_dataset_map")
-    # <<<
 
     return chunk_dataset_map
