@@ -54,9 +54,9 @@ class RetroPreprocessingConfig(TransformerConfig):
         retro_gpt_eval_interval (int): GPT evaluation interval.
         retro_gpt_eval_iters (int): GPT evaluation iterations.
         retro_gpt_tokenizer_type (str): GPT tokenizer type.
+        retro_gpt_tokenizer_model (str): GPT tokenizer model file.
         retro_gpt_vocab_file (str): GPT vocab file.
         retro_gpt_merge_file (str): GPT merge file.
-        retro_gpt_tokenizer_model (str): GPT tokenizer model file.
         retro_gpt_seq_length (int): GPT sequence length.
         retro_gpt_global_batch_size (int): GPT global batch size.
         retro_gpt_chunk_length (int): GPT chunk length.
@@ -117,9 +117,9 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_gpt_eval_interval: int = None
     retro_gpt_eval_iters: int = None
     retro_gpt_tokenizer_type: str = None
+    retro_gpt_tokenizer_model: str = None
     retro_gpt_vocab_file: str = None
     retro_gpt_merge_file: str = None
-    retro_gpt_tokenizer_model: str = None
     retro_gpt_seq_length: int = None
     retro_gpt_global_batch_size: int = None
     retro_gpt_chunk_length: int = 64
