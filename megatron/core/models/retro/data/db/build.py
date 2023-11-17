@@ -36,6 +36,8 @@ def init_indexed_dataset_infos(env):
 
     data_blend = extract_data_config(env).blend
 
+    pax("data_blend")
+
     assert len(data_blend) % 2 == 0, \
         "currently, only blended dataset is supported."
 

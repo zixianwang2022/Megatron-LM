@@ -14,6 +14,10 @@ from megatron.core.models.retro.data.utils import (
 
 from .utils import get_neighbor_dir
 
+# >>>
+from lutil import pax
+# <<<
+
 
 class ChunkDataset(torch.utils.data.Dataset):
     '''Pretraining chunk dataset wraps a standard GPT dataset.
@@ -84,7 +88,6 @@ def verify_indexed_dataset_order(env):
     pretraining_prefixes = blend[1:None:2]
 
     # >>>
-    # from lutil import pax
     # pax("blend, pretraining_prefixes")
     # <<<
 
@@ -110,6 +113,13 @@ def core_gpt_dataset_config_from_retro_preprocessing_config(
     is_dataset_built_on_rank,
     return_document_ids,
 ):
+    data_dir = get_data_dir(config)
+    blend = list(config.retro_gpt_data_path)
+    for i in range(len(blend) - 1, -1, -2):
+        blend[i] = os.path.join(config.retro_project_dir
+    # >>>
+    pax({"data_path": config.retro_gpt_data_path})
+    # <<<
     return GPTDatasetConfig(
         is_built_on_rank=is_dataset_built_on_rank,
         random_seed=config.retro_gpt_seed,
@@ -193,7 +203,6 @@ def get_chunk_dataset_map(env):
     }
 
     # >>>
-    # from lutil import pax
     # pax(chunk_dataset_map)
     # <<<
 

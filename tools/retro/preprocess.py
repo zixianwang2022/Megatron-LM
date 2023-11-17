@@ -94,6 +94,8 @@ def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
         return_document_ids=return_document_ids,
     )
 
+    pax("data_config")
+
     # Datasets.
     print_rank_0(" > datasets.")
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
@@ -113,14 +115,14 @@ def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
     )
 
     # >>>
-    # pax("config, data_config, datasets", {
-    #     f"datasets / {k}" : "%s, %d" % (len(d[0]) if d[0] else None, d[1])
-    #     for k,d in vars(datasets).items()
-    # }, "num_train_samples, num_valid_samples, num_test_samples", {
-    #     "train_iters" : get_args().train_iters,
-    #     "valid_iters" : get_args().eval_iters,
-    #     # "test_iters" : get_args().test_iters,
-    # })
+    pax("config, data_config, datasets", {
+        f"datasets / {k}" : "%s, %d" % (len(d[0]) if d[0] else None, d[1])
+        for k,d in vars(datasets).items()
+    }, "num_train_samples, num_valid_samples, num_test_samples", {
+        "train_iters" : get_args().train_iters,
+        "valid_iters" : get_args().eval_iters,
+        # "test_iters" : get_args().test_iters,
+    })
     # <<<
 
     return datasets

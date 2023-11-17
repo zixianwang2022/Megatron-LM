@@ -11,10 +11,10 @@ unset NCCL_DEBUG
 # fi
 # RETRO_TASKS=$1
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="query-neighbors"
+# RETRO_TASKS="query-neighbors"
 
 ######## Megatron, Retro dirs. ########
 
@@ -22,13 +22,11 @@ ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee"
 
 REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
 RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/wiki-tiny-2xb"
-CORPUS_ROOT="${ROOT_DIR}/corpus-530b"
-DATA_BLEND=" \
-  0.5 \
-  ${CORPUS_ROOT}/wiki-tiny-0/ds-0 \
-  0.5 \
-  ${CORPUS_ROOT}/wiki-tiny-1/ds-1 \
-"
+# CORPUS_ROOT="${ROOT_DIR}/corpus-530b"
+# DATA_BLEND=" \
+#   0.5 ${CORPUS_ROOT}/wiki-tiny-0/ds-0 \
+#   0.5 ${CORPUS_ROOT}/wiki-tiny-1/ds-1 \
+# "
 
 # <<<
 # RETRO_INDEX_STR="IVF4096_HNSW4,Flat"
@@ -55,7 +53,11 @@ RETRO_INDEX_ADD_LOAD_FRACTION=1.0
 
 RETRO_GPT_SEED=1234
 RETRO_GPT_SPLIT="98,2,0"
-RETRO_GPT_DATA_PATH=${DATA_BLEND}
+# RETRO_GPT_DATA_PATH=${DATA_BLEND}
+RETRO_GPT_DATA_PATH=" \
+  0.5 wiki-tiny-0/ds-0 \
+  0.5 wiki-tiny-1/ds-1 \
+"
 # RETRO_GPT_DATA_IMPL=mmap
 RETRO_GPT_DATALOADER_TYPE=cyclic # single
 RETRO_GPT_EVAL_INTERVAL=2000
@@ -75,6 +77,7 @@ RETRO_QUERY_NUM_NEIGHBORS_QUERY=200 RETRO_QUERY_NUM_NEIGHBORS_SAVE=20
 # --DDP-impl local \
 # --data-impl ${RETRO_GPT_DATA_IMPL} \
 # --retro-gpt-data-impl ${RETRO_GPT_DATA_IMPL} \
+# --data-path ${RETRO_GPT_DATA_PATH} \
 ARGS=" \
     --distributed-timeout-minutes 600 \
     --tensor-model-parallel-size 1 \
@@ -89,7 +92,7 @@ ARGS=" \
     --load ${ROOT_DIR}/bert-23/checkpoints \
     --exit-on-missing-checkpoint \
     --no-load-optim \
-    --data-path ${RETRO_GPT_DATA_PATH} \
+    --data-path [null] \
     --tokenizer-type BertWordPieceLowerCase \
     --vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
     --split ${RETRO_GPT_SPLIT} \
