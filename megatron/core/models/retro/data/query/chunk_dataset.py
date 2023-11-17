@@ -6,7 +6,9 @@ from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegat
 from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
 from megatron.core.models.retro.data.utils import (
-    extract_data_config,
+    # >>>
+    # extract_data_config,
+    # <<<
     get_num_chunks_per_sample,
     print_rank_0,
 )
@@ -58,29 +60,32 @@ class ChunkDataset(torch.utils.data.Dataset):
         }
 
 
-def verify_indexed_dataset_order(config):
-    '''Verify pretraining order same as DB order.'''
+# >>>
+# def verify_indexed_dataset_order(config):
+#     '''Verify pretraining order same as DB order.'''
 
-    # DB dataset prefixes.
-    db_indexed_dataset_infos = get_indexed_dataset_infos(config)
-    db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
+#     # DB dataset prefixes.
+#     db_indexed_dataset_infos = get_indexed_dataset_infos(config)
+#     db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
 
-    # Verify order & prefixes.
-    blend = extract_data_config(config).blend
-    assert len(blend) >= 2, "blended dataset supported only."
-    pretraining_prefixes = blend[1:None:2]
+#     # Verify order & prefixes.
+#     blend = extract_data_config(config).blend
+#     assert len(blend) >= 2, "blended dataset supported only."
+#     pretraining_prefixes = blend[1:None:2]
 
-    # >>>
-    pax("blend, pretraining_prefixes")
-    # <<<
+#     # >>>
+#     from lutil import pax
+#     pax("db_prefixes, blend, pretraining_prefixes")
+#     # <<<
 
-    if len(db_prefixes) != len(pretraining_prefixes):
-        raise Exception("inconsistent dataset count between db & pretraining.")
-    if db_prefixes != pretraining_prefixes:
-        raise Exception("inconsistent dataset order between db & pretraining.")
+#     if len(db_prefixes) != len(pretraining_prefixes):
+#         raise Exception("inconsistent dataset count between db & pretraining.")
+#     if db_prefixes != pretraining_prefixes:
+#         raise Exception("inconsistent dataset order between db & pretraining.")
+# <<<
 
 
-def train_valid_test_datasets_provider(data_config, train_val_test_num_samples):
+def train_valid_test_datasets_provider(data_config, train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
 
     print_rank_0('> building train, validation, and test datasets '
@@ -88,7 +93,7 @@ def train_valid_test_datasets_provider(data_config, train_val_test_num_samples):
     
     train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
         GPTDataset,
-        train_val_test_num_samples,
+        train_valid_test_num_samples,
         data_config,
     ).build()
     print_rank_0("> finished creating pretrained GPT datasets ...")
@@ -96,15 +101,17 @@ def train_valid_test_datasets_provider(data_config, train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
-def get_chunk_dataset_map(config, gpt_datasets):
+def get_chunk_dataset_map(config):
     '''Get train, valid, test chunk datasets.'''
 
     # Reset iteration.
     config.iteration = 0
     config.consumed_train_samples = 0
 
-    # Verify indexed dataset order.
-    verify_indexed_dataset_order(config)
+    # >>>
+    # # Verify indexed dataset order.
+    # verify_indexed_dataset_order(config)
+    # <<<
 
     # Info dict.
     chunk_dataset_map = {
@@ -113,11 +120,13 @@ def get_chunk_dataset_map(config, gpt_datasets):
             "data" : ChunkDataset(config, sample_ds),
             "total_num_chunks" : total_num_samples * get_num_chunks_per_sample(config),
         }
-        for key, (sample_ds, total_num_samples) in vars(gpt_datasets).items() if sample_ds
+        for key, (sample_ds, total_num_samples) in vars(config.retro_gpt_datasets).items()
+        if sample_ds
     }
 
     # >>>
-    pax("gpt_datasets, chunk_dataset_map")
+    # from lutil import pax
+    # pax("chunk_dataset_map")
     # <<<
 
     return chunk_dataset_map

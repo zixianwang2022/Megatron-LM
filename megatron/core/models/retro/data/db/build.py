@@ -8,9 +8,6 @@ import torch
 from tqdm import tqdm
 import types
 
-# >>>
-# from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
-# <<<
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     extract_data_config,
@@ -35,43 +32,6 @@ from lutil import pax
 # <<<
 
 
-# >>>
-# def init_indexed_dataset_infos(env):
-#     '''Gather meta-info about each indexed dataset.
-
-#     The returned info array allows for easy access to the configuration, and
-#     helps remove ambiguity.
-#     '''
-
-#     data_blend = extract_data_config(env).blend
-
-#     # pax({"data config": extract_data_config(env)}, "data_blend")
-
-#     assert len(data_blend) % 2 == 0, \
-#         "currently, only blended dataset is supported."
-
-#     # Dataset infos.
-#     infos = []
-#     for i in range(0, len(data_blend), 2):
-#         ratio = float(data_blend[i])
-#         prefix = data_blend[i + 1]
-#         path = prefix + ".bin"
-#         name = os.path.basename(prefix)
-#         assert os.path.exists(path), "couldn't find '%s'." % path
-#         infos.append({
-#             "ratio" : ratio,
-#             "prefix" : prefix,
-#             "path" : path,
-#             "name" : name,
-#             "db_dir" : get_individual_db_dir(env, name),
-#             "dataset" : MMapIndexedDataset(prefix),
-#         })
-
-#     # >>>
-#     pax("infos")
-#     # <<<
-
-#     return infos
 def init_indexed_dataset_infos(config):
     '''Gather meta-info about each indexed dataset.
 
@@ -98,20 +58,12 @@ def init_indexed_dataset_infos(config):
             "path" : path,
             "name" : name,
             "db_dir" : get_individual_db_dir(config, name),
-            # >>>
-            # "dataset" : MMapIndexedDataset(os.path.join(data_dir, prefix)),
-            # <<<
         })
 
     # Load indexed datasets.
     load_indexed_datasets(config, infos)
 
-    # >>>
-    # pax("data_dir, data_blend, infos")
-    # <<<
-
     return infos
-# <<<
 
 
 def build_partial_db(
