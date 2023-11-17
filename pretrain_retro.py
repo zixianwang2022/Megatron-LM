@@ -29,10 +29,15 @@ def core_model_provider(pre_process=True, post_process=True):
     """Build the model using Megatron-Core."""
 
     args = get_args()
-    # >>>
-    # config = core_transformer_config_from_args(args)
     config = core_transformer_config_from_args(args, RetroConfig)
-    pax("config")
+
+    # >>>
+    # from lutil import pax
+    # pax("config", {
+    #     "retro config" : {k:v for k,v in vars(config).items()
+    #                       if k.startswith("retro_")},
+    #     "init_method" : config.init_method,
+    # })
     # <<<
 
     # NOTE: Experimental customization feature

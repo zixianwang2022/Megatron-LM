@@ -40,11 +40,6 @@ class RetroConfig(TransformerConfig):
     """
 
     # Retro.
-    # >>>
-    # retro_preprocessing_config (SimpleNamespace): Retro preprocessing
-    #     config.
-    # retro_preprocessing_config: types.SimpleNamespace = None
-    # <<<
     retro_project_dir: str = None
     retro_block_size: int = None
     retro_chunk_length: int = None
@@ -57,6 +52,8 @@ class RetroConfig(TransformerConfig):
     retro_verify_neighbor_count: bool = True
 
     def __post_init__(self):
+
+        super().__post_init__()
 
         # Pre-compute 
         self.retro_retrieved_length = self.retro_num_retrieved_chunks * self.retro_chunk_length
