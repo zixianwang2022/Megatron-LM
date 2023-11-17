@@ -1,10 +1,10 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# import numpy as np
-# import os
-# import torch
+import numpy as np
+import os
+import torch
 
+# >>>
 # from megatron import get_args, get_retro_args
 # from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset
 # from megatron.core.models.retro.data.external_libs import h5py

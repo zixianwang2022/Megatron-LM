@@ -15,7 +15,9 @@ import torch.nn.functional as F
 # <<<
 from megatron.core.models.retro.data.utils import get_config_path as get_retro_config_path
 
-from megatron.core.models.retro import RetroConfig
+# >>>
+# from megatron.core.models.retro import RetroConfig
+# <<<
 from megatron.core.transformer import TransformerConfig
 
 
@@ -60,7 +62,55 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
 
     return args
 
+
+# >>>
+def load_retro_args(args):
+    """Load predefined args from Retro config (if applicable).
+
+    ? ? ?
+    """
+    if args.retro_add_retriever:
+
+        assert args.retro_project_dir is not None, \
+            "`--retro-project-dir` must be set to use Retro."
+
+        # Retro config path.
+        retro_config_path = get_retro_config_path(args.retro_project_dir)
+        assert os.path.exists(retro_config_path), \
+            "retro project dir missing config.json."
+
+        # Load retro config.
+        with open(retro_config_path) as f:
+
+            # Parse config.
+            retro_config = types.SimpleNamespace(**json.load(f))
+
+            # Update args.
+            args.data_cache_path = retro_config.retro_gpt_data_cache_path
+            args.data_path = retro_config.retro_gpt_data_path
+            args.eval_interval = retro_config.retro_gpt_eval_interval
+            args.eval_iters = retro_config.retro_gpt_eval_iters
+            args.global_batch_size = retro_config.retro_gpt_global_batch_size
+            args.merge_file = retro_config.retro_gpt_merge_file
+            args.seed = retro_config.retro_gpt_seed
+            args.seq_length = retro_config.retro_gpt_seq_length
+            args.max_position_embeddings = retro_config.retro_gpt_seq_length
+            args.split = retro_config.retro_gpt_split
+            args.tokenizer_model = retro_config.retro_gpt_tokenizer_model
+            args.tokenizer_type = retro_config.retro_gpt_tokenizer_type
+            args.vocab_file = retro_config.retro_gpt_vocab_file
+
+            args.retro_block_size = retro_config.retro_block_size
+            args.retro_chunk_length = retro_config.retro_gpt_chunk_length
+# <<<
+
+
 def validate_args(args, defaults={}):
+
+    # >>>
+    # Load saved args from Retro (if applicable).
+    load_retro_args(args)
+    # <<<
 
     # Tensor model parallel size.
     args.tensor_model_parallel_size = min(
@@ -369,28 +419,6 @@ def validate_args(args, defaults={}):
         assert args.pipeline_model_parallel_size == 1, \
             "retro currently does not support pipeline parallelism."
 
-        # Load retro args.
-        retro_args_path = get_retro_args_path(args.retro_workdir)
-        assert os.path.exists(retro_args_path), "retro workdir missing args.json"
-        with open(retro_args_path) as f:
-            # >>>
-            # retro_args = types.SimpleNamespace(**json.load(f))
-            retro_preprocessing_config = types.SimpleNamespace(**json.load(f))
-            pax("retro_preprocessing_config")
-            # <<<
-            # >>>
-            # retro_args.retro_return_doc_ids = args.retro_return_doc_ids
-            # <<<
-            retro_args.retro_gpt_retrieved_length = \
-                args.retro_num_retrieved_chunks * \
-                retro_args.retro_gpt_chunk_length
-            set_retro_args(retro_args)
-    # >>>
-    else:
-        retro_preprocessing_config = None
-    args.retro_preprocessing_config = retro_preprocessing_config
-    # <<<
-
     # Legacy RoPE arguments
     if args.use_rotary_position_embeddings:
         args.position_embedding_type = 'rope'
@@ -415,14 +443,6 @@ def validate_args(args, defaults={}):
 
     # Print arguments.
     _print_args("arguments", args)
-    # >>>
-    # retro_args = get_retro_args()
-    # if retro_args and args != retro_args:
-    #     _print_args("retro arguments", types.SimpleNamespace(**{k:v for k,v in vars(retro_args).items() if k.startswith("retro")}, rank=args.rank))
-    # +++
-    if retro_preprocessing_config is not None:
-        _print_args("retro config", retro_preprocessing_config)
-    # <<<
 
     return args
 
@@ -586,8 +606,10 @@ def _add_retro_args(parser):
     group.add_argument("--retro-num-retrieved-chunks", type=int, default=2,
                        help='Number of chunks to retrieve from the retrieval '
                        'database.')
-    group.add_argument("--retro-return-doc-ids", action="store_true",
-                       help="Turn this on when preprocessing retro data.")
+    # >>>
+    # group.add_argument("--retro-return-doc-ids", action="store_true",
+    #                    help="Turn this on when preprocessing retro data.")
+    # <<<
     group.add_argument("--retro-no-verify-neighbor-count", action="store_false",
                        dest="retro_verify_neighbor_count",
                        help="Skip verifying that len(GPT dataset) == len(saved "

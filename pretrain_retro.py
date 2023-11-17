@@ -5,7 +5,10 @@
 from functools import partial
 import torch
 
-from megatron import get_args, get_retro_args
+# >>>
+# from megatron import get_args, get_retro_args
+from megatron import get_args
+# <<<
 from megatron import get_timers
 from megatron import get_tokenizer
 from megatron import print_rank_0
@@ -14,10 +17,10 @@ from megatron.core import tensor_parallel
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.enums import ModelType
-from megatron.core.models.retro import get_retro_decoder_block_spec, RetroModel
+from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
+from megatron.core.models.retro.data.query import get_retro_datasets
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
-from tools.retro.query.retro_dataset import get_retro_datasets
 
 from pretrain_gpt import loss_func, model_provider as default_model_provider
 

@@ -2,3 +2,4 @@
 
 from .chunk_dataset import train_valid_test_datasets_provider
 from .query import query_neighbors
+from .retro_dataset import get_retro_datasets
