@@ -5,6 +5,11 @@
 from dataclasses import dataclass
 from megatron.core.transformer import TransformerConfig
 
+# >>>
+from .bert_embedders import RetroBertEmbedders
+from .gpt_datasets import RetroGPTDatasets
+from .tokenizers import RetroTokenizers
+# <<<
 
 @dataclass
 class RetroPreprocessingConfig(TransformerConfig):
@@ -146,6 +151,13 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_query_nprobe: int = 65536
     retro_query_num_neighbors_query: int = 200
     retro_query_num_neighbors_save: int = 20
+
+    # >>>
+    # Tools.
+    retro_bert_embedders: RetroBertEmbedders = None
+    retro_gpt_datasets: RetroGPTDatasets = None
+    retro_tokenizers: RetroTokenizers = None
+    # <<<
 
     def __post_init__(self):
 

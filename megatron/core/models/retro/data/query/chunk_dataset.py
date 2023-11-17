@@ -3,7 +3,6 @@
 import torch
 
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
-from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
 from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
 from megatron.core.models.retro.data.utils import (
@@ -14,10 +13,6 @@ from megatron.core.models.retro.data.utils import (
 
 from .utils import get_neighbor_dir
 
-# >>>
-from lutil import pax
-# <<<
-
 
 class ChunkDataset(torch.utils.data.Dataset):
     '''Pretraining chunk dataset wraps a standard GPT dataset.
@@ -27,17 +22,6 @@ class ChunkDataset(torch.utils.data.Dataset):
     chunks (e.g., length num_samples * num_chunks_per_sample).
     '''
 
-    # >>>
-    # def __init__(self, env, sample_dataset, chunk_length):
-
-    #     super().__init__()
-
-    #     self.sample_dataset = sample_dataset
-
-    #     self.chunk_length = chunk_length
-    #     self.n_chunks_per_sample = get_num_chunks_per_sample(env.config)
-    #     self.n_samples = len(sample_dataset)
-    #     self.n_chunks = self.n_samples * self.n_chunks_per_sample
     def __init__(self, config, sample_dataset):
 
         super().__init__()
@@ -47,7 +31,6 @@ class ChunkDataset(torch.utils.data.Dataset):
         self.n_chunks_per_sample = get_num_chunks_per_sample(config)
         self.n_samples = len(sample_dataset)
         self.n_chunks = self.n_samples * self.n_chunks_per_sample
-    # <<<
 
     def __len__(self):
         return self.n_chunks
@@ -75,7 +58,7 @@ class ChunkDataset(torch.utils.data.Dataset):
         }
 
 
-def verify_indexed_dataset_order(env):
+def verify_indexed_dataset_order(config):
     '''Verify pretraining order same as DB order.'''
 
     # DB dataset prefixes.
@@ -88,48 +71,13 @@ def verify_indexed_dataset_order(env):
     pretraining_prefixes = blend[1:None:2]
 
     # >>>
-    # pax("blend, pretraining_prefixes")
+    pax("blend, pretraining_prefixes")
     # <<<
 
     if len(db_prefixes) != len(pretraining_prefixes):
         raise Exception("inconsistent dataset count between db & pretraining.")
     if db_prefixes != pretraining_prefixes:
         raise Exception("inconsistent dataset order between db & pretraining.")
-
-
-# >>>
-# def core_gpt_dataset_config_from_retro_args(args):
-#     return GPTDatasetConfig(
-#         is_built_on_rank=is_dataset_built_on_rank,
-#         random_seed=env.config.retro_gpt_seed,
-#         sequence_length=env.config.retro_gpt_seq_length,
-#         blend=env.config.retro_gpt_data_path,
-#         split=env.config.retro_gpt_split,
-#         path_to_cache=env.config.data_cache_path,
-#         return_document_ids=env.config.retro_return_doc_ids
-#     )
-def core_gpt_dataset_config_from_retro_preprocessing_config(
-    config,
-    is_dataset_built_on_rank,
-    return_document_ids,
-):
-    data_dir = get_data_dir(config)
-    blend = list(config.retro_gpt_data_path)
-    for i in range(len(blend) - 1, -1, -2):
-        blend[i] = os.path.join(config.retro_project_dir
-    # >>>
-    pax({"data_path": config.retro_gpt_data_path})
-    # <<<
-    return GPTDatasetConfig(
-        is_built_on_rank=is_dataset_built_on_rank,
-        random_seed=config.retro_gpt_seed,
-        sequence_length=config.retro_gpt_seq_length,
-        blend=config.retro_gpt_data_path,
-        split=config.retro_gpt_split,
-        path_to_cache=config.retro_gpt_data_cache_path,
-        return_document_ids=return_document_ids,
-    )
-# <<<
 
 
 def train_valid_test_datasets_provider(data_config, train_val_test_num_samples):
@@ -148,63 +96,28 @@ def train_valid_test_datasets_provider(data_config, train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
-# >>>
-# def get_chunk_dataset_map(env):
-#     '''Get train, valid, test chunk datasets.'''
-
-#     # Update train iters.
-#     update_train_iters(args)
-
-#     env.config.iteration = 0
-#     env.config.consumed_train_samples = 0
-
-#     # Verify indexed dataset order.
-#     verify_indexed_dataset_order()
-
-#     # Datasets.
-#     print_rank_0(" > datasets.")
-#     train_ds, valid_ds, test_ds = build_pretraining_train_valid_test_datasets(
-#         train_valid_test_datasets_provider)
-
-#     sample_dataset_map = {
-#         "train" : train_ds,
-#         "valid" : valid_ds,
-#         "test" : test_ds,
-#     }
-
-#     # Info dict.
-#     chunk_dataset_map = {
-#         key : {
-#             "neighbor_dir" : get_neighbor_dirname(key, sample_ds),
-#             "data" : ChunkDataset(sample_ds, env.config.retro_gpt_chunk_length),
-#         }
-#         for key, sample_ds in sample_dataset_map.items() if sample_ds
-#     }
-
-#     return chunk_dataset_map
-def get_chunk_dataset_map(env):
+def get_chunk_dataset_map(config, gpt_datasets):
     '''Get train, valid, test chunk datasets.'''
 
     # Reset iteration.
-    env.config.iteration = 0
-    env.config.consumed_train_samples = 0
+    config.iteration = 0
+    config.consumed_train_samples = 0
 
     # Verify indexed dataset order.
-    verify_indexed_dataset_order(env)
+    verify_indexed_dataset_order(config)
 
     # Info dict.
     chunk_dataset_map = {
         key : {
-            "neighbor_dir" : get_neighbor_dir(env, key, sample_ds),
-            "data" : ChunkDataset(env.config, sample_ds),
-            "total_num_chunks" : total_num_samples * get_num_chunks_per_sample(env.config),
+            "neighbor_dir" : get_neighbor_dir(config, key, sample_ds),
+            "data" : ChunkDataset(config, sample_ds),
+            "total_num_chunks" : total_num_samples * get_num_chunks_per_sample(config),
         }
-        for key, (sample_ds, total_num_samples) in vars(env.gpt_datasets).items() if sample_ds
+        for key, (sample_ds, total_num_samples) in vars(gpt_datasets).items() if sample_ds
     }
 
     # >>>
-    # pax(chunk_dataset_map)
+    pax("gpt_datasets, chunk_dataset_map")
     # <<<
 
     return chunk_dataset_map
-# <<<

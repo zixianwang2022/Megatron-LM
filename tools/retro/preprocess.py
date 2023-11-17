@@ -21,7 +21,9 @@ from megatron.core.models.retro.data.env import (
     RetroBertEmbedders,
     RetroGPTDatasets,
     RetroPreprocessingConfig,
-    RetroPreprocessingEnv,
+    # >>>
+    # RetroPreprocessingEnv,
+    # <<<
     RetroTokenizers,
 )
 from megatron.core.models.retro.data.query import (
@@ -94,8 +96,6 @@ def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
         return_document_ids=return_document_ids,
     )
 
-    pax("data_config")
-
     # Datasets.
     print_rank_0(" > datasets.")
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
@@ -115,14 +115,14 @@ def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
     )
 
     # >>>
-    pax("config, data_config, datasets", {
-        f"datasets / {k}" : "%s, %d" % (len(d[0]) if d[0] else None, d[1])
-        for k,d in vars(datasets).items()
-    }, "num_train_samples, num_valid_samples, num_test_samples", {
-        "train_iters" : get_args().train_iters,
-        "valid_iters" : get_args().eval_iters,
-        # "test_iters" : get_args().test_iters,
-    })
+    # pax("config, data_config, datasets", {
+    #     f"datasets / {k}" : "%s, %d" % (len(d[0]) if d[0] else None, d[1])
+    #     for k,d in vars(datasets).items()
+    # }, "num_train_samples, num_valid_samples, num_test_samples", {
+    #     "train_iters" : get_args().train_iters,
+    #     "valid_iters" : get_args().eval_iters,
+    #     # "test_iters" : get_args().test_iters,
+    # })
     # <<<
 
     return datasets
@@ -163,53 +163,53 @@ def get_tokenizers(config):
     )
 
 
-def get_retro_preprocessing_env():
+# >>>
+# def get_retro_preprocessing_env():
+
+#     # Arguments.
+#     args = get_args()
+#     update_train_iters(args)
+
+#     # Retro env.
+#     config = core_transformer_config_from_args(
+#         args, config_class=RetroPreprocessingConfig)
+#     env = RetroPreprocessingEnv(
+#         config = config,
+#         bert_embedders = get_bert_embedders(config),
+#         gpt_datasets = get_gpt_datasets(
+#             config,
+#             return_document_ids=True,
+#             train_valid_test_num_iters = (args.train_iters, args.eval_iters, args.eval_iters),
+#         ),
+#         tokenizers = get_tokenizers(config),
+#     )
+
+#     return env
+def get_retro_preprocessing_config():
 
     # Arguments.
     args = get_args()
     update_train_iters(args)
 
-    # Retro env.
+    # Retro config.
     config = core_transformer_config_from_args(
         args, config_class=RetroPreprocessingConfig)
-    env = RetroPreprocessingEnv(
-        config = config,
-        bert_embedders = get_bert_embedders(config),
-        gpt_datasets = get_gpt_datasets(
-            config,
-            return_document_ids=True,
-            train_valid_test_num_iters = (args.train_iters, args.eval_iters, args.eval_iters),
-        ),
-        tokenizers = get_tokenizers(config),
+
+    # Add tools.
+    config.retro_bert_embedders = get_bert_embedders(config)
+    config.retro_gpt_datasets = get_gpt_datasets(
+        config,
+        return_document_ids=True,
+        train_valid_test_num_iters = (args.train_iters, args.eval_iters, args.eval_iters),
     )
+    config.retro_tokenizers = get_tokenizers(config)
 
-    return env
+    # pax("config")
+
+    return config
+# <<<
 
 
-# >>>
-# def save_config(config):
-#     '''Save copy of config within retro workdir.'''
-
-#     def default_dump(obj):
-#         if isinstance(obj, torch.dtype):
-#             return str(obj)
-#         elif isinstance(obj, (
-#                 types.FunctionType,
-#                 types.LambdaType,
-#                 types.MethodType,
-#                 types.BuiltinFunctionType,
-#                 types.BuiltinMethodType,
-#         )):
-#             return f"<{obj.__name__}>"
-#         else:
-#             raise Exception("specialize for <%s>." % type(obj).__name__)
-
-#     if torch.distributed.get_rank() == 0:
-#         config_path = get_config_path(config.retro_workdir)
-#         with open(config_path, "w") as f:
-#             json.dump(vars(config), f, indent=4, default=default_dump)
-
-#     torch.distributed.barrier()
 def save_config(config):
     '''Save copy of config within retro project dir.'''
 
@@ -221,7 +221,6 @@ def save_config(config):
             json.dump(config_subset, f, indent=4)
 
     torch.distributed.barrier()
-# <<<
 
 
 if __name__ == "__main__":
@@ -229,8 +228,13 @@ if __name__ == "__main__":
     # Initalize Megatron.
     initialize_megatron(extra_args_provider=add_retro_args)
 
-    # Retro env.
-    env = get_retro_preprocessing_env()
+    # >>>
+    # # Retro env.
+    # env = get_retro_preprocessing_env()
+
+    # Retro config.
+    config = get_retro_preprocessing_config()
+    # <<<
 
     # Save retro config.
     os.makedirs(env.config.retro_project_dir, exist_ok=True)

@@ -26,7 +26,48 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
+# >>>
+from lutil import pax
+# <<<
 
+
+# >>>
+# def init_indexed_dataset_infos(env):
+#     '''Gather meta-info about each indexed dataset.
+
+#     The returned info array allows for easy access to the configuration, and
+#     helps remove ambiguity.
+#     '''
+
+#     data_blend = extract_data_config(env).blend
+
+#     # pax({"data config": extract_data_config(env)}, "data_blend")
+
+#     assert len(data_blend) % 2 == 0, \
+#         "currently, only blended dataset is supported."
+
+#     # Dataset infos.
+#     infos = []
+#     for i in range(0, len(data_blend), 2):
+#         ratio = float(data_blend[i])
+#         prefix = data_blend[i + 1]
+#         path = prefix + ".bin"
+#         name = os.path.basename(prefix)
+#         assert os.path.exists(path), "couldn't find '%s'." % path
+#         infos.append({
+#             "ratio" : ratio,
+#             "prefix" : prefix,
+#             "path" : path,
+#             "name" : name,
+#             "db_dir" : get_individual_db_dir(env, name),
+#             "dataset" : MMapIndexedDataset(prefix),
+#         })
+
+#     # >>>
+#     pax("infos")
+#     # <<<
+
+#     return infos
 def init_indexed_dataset_infos(env):
     '''Gather meta-info about each indexed dataset.
 
@@ -34,18 +75,17 @@ def init_indexed_dataset_infos(env):
     helps remove ambiguity.
     '''
 
-    data_blend = extract_data_config(env).blend
+    data_dir = get_data_dir(env.config)
+    data_blend = env.config.retro_gpt_data_path
+    assert len(data_blend) % 2 == 0, "currently, only blended dataset is supported."
 
-    pax("data_blend")
-
-    assert len(data_blend) % 2 == 0, \
-        "currently, only blended dataset is supported."
+    pax("data_dir, data_blend")
 
     # Dataset infos.
     infos = []
-    for i in range(0, len(data_blend), 2):
-        ratio = float(data_blend[i])
-        prefix = data_blend[i + 1]
+    for i in range(0, len(blend), 2):
+        ratio = float(blend[i])
+        prefix = blend[i + 1]
         path = prefix + ".bin"
         name = os.path.basename(prefix)
         assert os.path.exists(path), "couldn't find '%s'." % path
@@ -58,7 +98,12 @@ def init_indexed_dataset_infos(env):
             "dataset" : MMapIndexedDataset(prefix),
         })
 
+    # >>>
+    pax("infos")
+    # <<<
+
     return infos
+# <<<
 
 
 def build_partial_db(
