@@ -26,7 +26,7 @@ from megatron.core.models.retro.data.index.utils import (
 
 class FaissBaseIndex(Index):
 
-    def _train(self, env):
+    def _train(self, config):
         '''Train index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
@@ -36,14 +36,14 @@ class FaissBaseIndex(Index):
         faiss.omp_set_num_threads(64)
         # faiss.omp_set_num_threads(128)
 
-        empty_index_path = self.get_empty_index_path(env)
+        empty_index_path = self.get_empty_index_path(config)
 
         # Index already exists? -> return.
         if os.path.isfile(empty_index_path):
             return
 
         # Load data.
-        merged_path = get_training_data_merged_path(env)
+        merged_path = get_training_data_merged_path(config)
         # >>>
         # from lutil import pax
         # pax("merged_path")
@@ -52,11 +52,11 @@ class FaissBaseIndex(Index):
 	    merged_path,
             dtype = "f4",
 	    mode = "r",
-        ).reshape((-1, env.config.hidden_size))
+        ).reshape((-1, config.hidden_size))
 
         # Init index.
-        index = faiss.index_factory(env.config.retro_index_nfeats,
-                                    env.config.retro_index_str)
+        index = faiss.index_factory(config.retro_index_nfeats,
+                                    config.retro_index_str)
 
         # Move to GPU.
         print("> move faiss index to gpu.")
@@ -76,16 +76,16 @@ class FaissBaseIndex(Index):
         # Save index.
         faiss.write_index(index, empty_index_path)
 
-    def train(self, env):
+    def train(self, config):
         '''Train index.'''
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            self._train(env)
+            self._train(config)
 
         torch.distributed.barrier()
 
-    def _add(self, env, text_dataset):
+    def _add(self, config, text_dataset):
         '''Add to index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
@@ -100,9 +100,9 @@ class FaissBaseIndex(Index):
         faiss.omp_set_num_threads(64)
 
         # Bert embedder.
-        embedder = BertEmbedder(env.config.retro_bert_batch_size,
-                                env.config.retro_bert_max_chunk_length,
-                                env.config.bert_embedder_type)
+        embedder = BertEmbedder(config.retro_bert_batch_size,
+                                config.retro_bert_max_chunk_length,
+                                config.bert_embedder_type)
 
         # Empty/added index paths.
         empty_index_path = self.get_empty_index_path()
@@ -128,15 +128,15 @@ class FaissBaseIndex(Index):
         # Write index.
         faiss.write_index(index, added_index_path)
 
-    def add(self, env, text_dataset):
+    def add(self, config, text_dataset):
         '''Add to index.'''
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
-            self._add(env, text_dataset)
+            self._add(config, text_dataset)
 
         # Wait for rank 0.
         torch.distributed.barrier()
 
         # Get output index path, for return.
-        return self.get_added_index_path(env)
+        return self.get_added_index_path(config)

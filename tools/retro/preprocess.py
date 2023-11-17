@@ -17,13 +17,10 @@ from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import core_transformer_config_from_args
 from megatron.core.models.retro.data.db import build_db
 from megatron.core.models.retro.data.index import add_to_index, train_index
-from megatron.core.models.retro.data.env import (
+from megatron.core.models.retro.data.config import (
     RetroBertEmbedders,
     RetroGPTDatasets,
     RetroPreprocessingConfig,
-    # >>>
-    # RetroPreprocessingEnv,
-    # <<<
     RetroTokenizers,
 )
 from megatron.core.models.retro.data.query import (
@@ -228,17 +225,12 @@ if __name__ == "__main__":
     # Initalize Megatron.
     initialize_megatron(extra_args_provider=add_retro_args)
 
-    # >>>
-    # # Retro env.
-    # env = get_retro_preprocessing_env()
-
     # Retro config.
     config = get_retro_preprocessing_config()
-    # <<<
 
     # Save retro config.
-    os.makedirs(env.config.retro_project_dir, exist_ok=True)
-    save_config(env.config)
+    os.makedirs(config.retro_project_dir, exist_ok=True)
+    save_config(config)
     # >>>
     # set_retro_args(config)
     # <<<
@@ -253,9 +245,9 @@ if __name__ == "__main__":
         "query-neighbors" : [ "query-neighbors" ],
     }
     tasks = []
-    for task in env.config.retro_tasks:
+    for task in config.retro_tasks:
         tasks.extend(task_remap[task])
-    env.config.retro_tasks = tasks
+    config.retro_tasks = tasks
 
     # Select task to run.
     for task in tasks:
@@ -264,17 +256,17 @@ if __name__ == "__main__":
 
         # DB (i.e., chunk db).
         if task == "db-build":
-            build_db(env)
+            build_db(config)
 
         # Index.
         elif task == "index-train":
-            train_index(env)
+            train_index(config)
         elif task == "index-add":
-            add_to_index(env)
+            add_to_index(config)
 
         # Query.
         elif task == "query-neighbors":
-            query_neighbors(env)
+            query_neighbors(config)
 
         else:
             raise Exception("specialize for task '%s'." % task)

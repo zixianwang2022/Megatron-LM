@@ -21,13 +21,13 @@ from megatron.core.models.retro.data.utils import (
 from .chunk_dataset import get_chunk_dataset_map as get_query_dataset_map
 
 
-def get_index(env, ondisk=False):
+def get_index(config, ondisk=False):
     '''Read index from disk.'''
 
     # Load index.
-    index_wrapper = IndexFactory.get_index(env.config.retro_index_type)
-    index_dir = get_index_dir(env)
-    added_index_path = index_wrapper.get_added_index_path(env)
+    index_wrapper = IndexFactory.get_index(config.retro_index_type)
+    index_dir = get_index_dir(config)
+    added_index_path = index_wrapper.get_added_index_path(config)
     if ondisk:
         index = faiss.read_index(added_index_path, faiss.IO_FLAG_MMAP)
     else:
@@ -35,41 +35,26 @@ def get_index(env, ondisk=False):
 
     # Search parameters.
     faiss.ParameterSpace().set_index_parameter(index, "efSearch",
-                                               env.config.retro_query_ef_search)
+                                               config.retro_query_ef_search)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe",
-                                               env.config.retro_query_nprobe)
+                                               config.retro_query_nprobe)
 
     return index
 
 
-# >>>
-# def embed_block(gpt_dataset, block, embedder):
-#     '''Embed block of chunks.'''
-#     text_block_dataset = torch.utils.data.Subset(
-#         GPTToTextDataset(gpt_dataset),
-#         range(*block["range"]),
-#     )
-#     return embedder.embed_text_dataset(text_block_dataset)
-def embed_block(env, gpt_dataset, block):
+def embed_block(config, gpt_dataset, block):
     '''Embed block of chunks.'''
     text_block_dataset = torch.utils.data.Subset(
-        GPTToTextDataset(gpt_dataset, env.tokenizers.gpt),
+        GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt),
         range(*block["range"]),
     )
-    return env.bert_embedders.mem.embed_text_dataset(text_block_dataset)
-# <<<
+    return config.retro_bert_embedders.mem.embed_text_dataset(text_block_dataset)
 
 
-# >>>
-# def query_embeddings(db_dataset, index,
-#                      embeddings, chunk_id_range,
-#                      sample_map, n_chunks_per_sample,
-#                      verbose=True):
-def query_embeddings(env, db_dataset, index,
+def query_embeddings(config, db_dataset, index,
                      embeddings, chunk_id_range,
                      sample_map, n_chunks_per_sample,
                      verbose=True):
-# <<<
     '''Query neighbors of a block of embeddings.'''
 
     # Query neighbor ids.
@@ -77,13 +62,13 @@ def query_embeddings(env, db_dataset, index,
     t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_neighbor_ids = \
-        index.search(embeddings, env.config.retro_query_num_neighbors_query)
+        index.search(embeddings, config.retro_query_num_neighbors_query)
     if verbose: print_rank_0("  time : %.3f sec." % (time.time() - t))
 
     # Filter banned neighbor ids.
     if verbose: print_rank_0("filter banned neighbor ids.")
     filtered_neighbor_ids = np.full(
-        shape=(len(query_neighbor_ids), env.config.retro_query_num_neighbors_save),
+        shape=(len(query_neighbor_ids), config.retro_query_num_neighbors_save),
         fill_value=-1,
         dtype="int64",
     )
@@ -104,22 +89,17 @@ def query_embeddings(env, db_dataset, index,
         filtered_row = [ i for i in query_row
                          if tuple(db_dataset.doc_tuples[i].tolist())
                          not in sample_doc_tuples ]
-        filtered_row = filtered_row[:env.config.retro_query_num_neighbors_save]
+        filtered_row = filtered_row[:config.retro_query_num_neighbors_save]
         filtered_row += \
-            [-1] * (env.config.retro_query_num_neighbors_save - len(filtered_row))
+            [-1] * (config.retro_query_num_neighbors_save - len(filtered_row))
         filtered_neighbor_ids[chunk_id-min_chunk_id] = filtered_row
 
     return query_neighbor_ids, filtered_neighbor_ids
 
 
-# >>>
-# def query_embedding_block(db_dataset, index,
-#                           embeddings, chunk_id_range,
-#                           sample_map, n_chunks_per_sample):
-def query_embedding_block(env, db_dataset, index,
+def query_embedding_block(config, db_dataset, index,
                           embeddings, chunk_id_range,
                           sample_map, n_chunks_per_sample):
-# <<<
 
     query_neighbor_ids = []
     filtered_neighbor_ids = []
@@ -137,18 +117,11 @@ def query_embedding_block(env, db_dataset, index,
             chunk_id_range[0] + partial_start_idx,
             chunk_id_range[0] + partial_end_idx,
         )
-        # >>>
-        # partial_query_neighbor_ids, partial_filtered_neighbor_ids = \
-        #     query_embeddings(db_dataset, index,
-        #                      partial_embeddings, partial_chunk_id_range,
-        #                      sample_map, n_chunks_per_sample,
-        #                      verbose=False)
         partial_query_neighbor_ids, partial_filtered_neighbor_ids = \
-            query_embeddings(env, db_dataset, index,
+            query_embeddings(config, db_dataset, index,
                              partial_embeddings, partial_chunk_id_range,
                              sample_map, n_chunks_per_sample,
                              verbose=False)
-        # <<<
         query_neighbor_ids.append(partial_query_neighbor_ids)
         filtered_neighbor_ids.append(partial_filtered_neighbor_ids)
 
@@ -159,13 +132,8 @@ def query_embedding_block(env, db_dataset, index,
     return query_neighbor_ids, filtered_neighbor_ids
 
 
-# >>>
-# def query_block_neighbors(db_dataset, query_dataset,
-#                           index, embedder,
-#                           block):
-def query_block_neighbors(env, db_dataset, query_dataset,
+def query_block_neighbors(config, db_dataset, query_dataset,
                           index, block):
-# <<<
     '''Query neighbors of a dataset block (i.e., range).'''
 
     n_chunks_per_sample = query_dataset.n_chunks_per_sample
@@ -182,19 +150,14 @@ def query_block_neighbors(env, db_dataset, query_dataset,
         }
 
     # Embed block.
-    # >>>
-    # embeddings = embed_block(query_dataset, block, embedder)
-    embeddings = embed_block(env, query_dataset, block)
-    # <<<
+    embeddings = embed_block(config, query_dataset, block)
 
     # Query embeddings.
     _, filtered_neighbor_ids = query_embedding_block(
-        # >>>
-        env,
-        # <<<
-        db_dataset, index,
+        config, db_dataset, index,
         embeddings, block["range"],
-        sample_map, n_chunks_per_sample)
+        sample_map, n_chunks_per_sample,
+    )
 
     # Save neighbors.
     print_rank_0("save neighbors.")
@@ -204,33 +167,16 @@ def query_block_neighbors(env, db_dataset, query_dataset,
     f.close()
 
 
-# >>>
-# def query_dataset_neighbors(db_dataset, query_dataset,
-#                             prefix, neighbor_dir,
-#                             index, embedder):
-def query_dataset_neighbors(env, db_dataset,
+def query_dataset_neighbors(config, db_dataset,
                             query_dataset, total_num_chunks,
                             prefix, neighbor_dir, index):
-# <<<
     '''Query neighbors of each chunk within a dataset.'''
 
-    # >>>
-    # from lutil import pax
-    # pax({
-    #     "neighbor_dir" : neighbor_dir,
-    #     "query_dataset" : type(query_dataset).__name__,
-    #     "query_dataset / len" : len(query_dataset),
-    #     "total_num_chunks" : total_num_chunks,
-    #     # "num_samples" : num_samples,
-    #     # "block_size" : env.config.retro_block_size,
-    # })
-    # <<<
-
     def validate(f):
-        assert f["neighbors"].shape[1] == env.config.retro_query_num_neighbors_save, \
+        assert f["neighbors"].shape[1] == config.retro_query_num_neighbors_save, \
             "neighbors.shape == %s; num_neighbors_target == %d." % (
                 str(f["neighbors"].shape),
-                env.config.retro_num_neighbors_target,
+                config.retro_num_neighbors_target,
             )
     n_missing_blocks, missing_neighbor_blocks = get_missing_blocks_by_rank(
         neighbor_dir,
@@ -238,19 +184,9 @@ def query_dataset_neighbors(env, db_dataset,
         # len(query_dataset),
         total_num_chunks,
         # <<<
-        env.config.retro_block_size,
+        config.retro_block_size,
         validate=validate,
     )
-
-    # >>>
-    # from lutil import pax
-    # pax("missing_neighbor_blocks, n_missing_blocks")
-    # <<<
-
-    # >>>
-    # # Bert embedder.
-    # embedder = env.bert_embedders.mem
-    # <<<
 
     # Query each block.
     for block_index, block in enumerate(missing_neighbor_blocks):
@@ -268,20 +204,14 @@ def query_dataset_neighbors(env, db_dataset,
             ))
 
             # Query block neighbors.
-            # >>>
-            # query_block_neighbors(db_dataset, query_dataset,
-            #                       index, embedder,
-            #                       block)
-            query_block_neighbors(env, db_dataset, query_dataset,
-                                  index, block)
-            # <<<
+            query_block_neighbors(config, db_dataset, query_dataset, index, block)
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")
         torch.distributed.barrier()
 
 
-def query_neighbors(env):
+def query_neighbors(config):
     '''Query pretraining datasets (train & valid).'''
 
     # Num threads.
@@ -289,32 +219,22 @@ def query_neighbors(env):
 
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")
-    db_dataset = get_db_merged_train_dataset(env)
+    db_dataset = get_db_merged_train_dataset(config)
     db_dataset.load_doc_tuples()
 
     # Load index.
     print_rank_0(" > get index.")
-    index = get_index(env)
+    index = get_index(config)
 
     # Load datasets.
     print_rank_0(" > get dataset map.")
-    query_dataset_map = get_query_dataset_map(env)
-
-    # >>>
-    # # Bert embedder.
-    # embedder = env.bert_embedders.mem
-    # <<<
+    query_dataset_map = get_query_dataset_map(config)
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")
     for prefix, info in query_dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
                      (prefix, len(info["data"])))
-        # >>>
-        # query_dataset_neighbors(db_dataset, info["data"],
-        #                         prefix, info["neighbor_dir"],
-        #                         index, embedder)
-        query_dataset_neighbors(env, db_dataset,
+        query_dataset_neighbors(config, db_dataset,
                                 info["data"], info["total_num_chunks"],
                                 prefix, info["neighbor_dir"], index)
-        # <<<

@@ -21,8 +21,8 @@ def print_rank_0(message):
         print(message, flush=True)
 
 
-def extract_data_config(env):
-    return env.gpt_datasets.train[0].config
+def extract_data_config(config):
+    return config.retro_gpt_datasets.train[0].config
 
 
 def get_config_path(project_dir):

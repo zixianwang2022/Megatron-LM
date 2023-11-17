@@ -31,26 +31,26 @@ class Index(abc.ABC):
         assert isinstance(v, bool)
         faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
 
-    def get_empty_index_path(self, env):
+    def get_empty_index_path(self, config):
         return os.path.join(
-            get_index_dir(env),
-            "empty_%.3f.faissindex" % env.config.retro_index_train_load_fraction,
+            get_index_dir(config),
+            "empty_%.3f.faissindex" % config.retro_index_train_load_fraction,
         )
 
-    def get_empty_index(self, env):
-        return faiss.read_index(self.get_empty_index_path(env))
+    def get_empty_index(self, config):
+        return faiss.read_index(self.get_empty_index_path(config))
 
-    def get_added_index_path(self, env):
+    def get_added_index_path(self, config):
         return os.path.join(
-            get_index_dir(env),
+            get_index_dir(config),
             "added_%.3f_%.3f.faissindex" % (
-                env.config.retro_index_train_load_fraction,
-                env.config.retro_index_add_load_fraction,
+                config.retro_index_train_load_fraction,
+                config.retro_index_add_load_fraction,
             ),
         )
 
-    def get_added_index(self, env):
-        return faiss.read_index(self.get_added_index_path(env))
+    def get_added_index(self, config):
+        return faiss.read_index(self.get_added_index_path(config))
 
     @abc.abstractmethod
     def train(self, *args):

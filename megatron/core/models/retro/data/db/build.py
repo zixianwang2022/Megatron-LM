@@ -68,15 +68,15 @@ from lutil import pax
 #     # <<<
 
 #     return infos
-def init_indexed_dataset_infos(env):
+def init_indexed_dataset_infos(config):
     '''Gather meta-info about each indexed dataset.
 
     The returned info array allows for easy access to the configuration, and
     helps remove ambiguity.
     '''
 
-    data_dir = get_data_dir(env.config)
-    data_blend = env.config.retro_gpt_data_path
+    data_dir = get_data_dir(config)
+    data_blend = config.retro_gpt_data_path
     assert len(data_blend) % 2 == 0, "currently, only blended dataset is supported."
 
     pax("data_dir, data_blend")
@@ -94,7 +94,7 @@ def init_indexed_dataset_infos(env):
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            "db_dir" : get_individual_db_dir(env, name),
+            "db_dir" : get_individual_db_dir(config, name),
             "dataset" : MMapIndexedDataset(prefix),
         })
 
@@ -210,7 +210,7 @@ def build_partial_db(
 
 
 def build_individual_db(
-        env,
+        config,
         dataset_idx,
         n_datasets,
         dataset_info,
@@ -228,7 +228,7 @@ def build_individual_db(
     n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
         db_dir,
         len(indexed_dataset),
-        env.config.retro_doc_block_size,
+        config.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
             or f["chunks_valid"].shape[1] == 4)
 
@@ -265,10 +265,10 @@ def build_individual_db(
                     futures.append(executor.submit(
                         build_partial_db,
                         types.SimpleNamespace(
-                            chunk_length = env.config.retro_gpt_chunk_length,
-                            gpt_eod = env.tokenizers.gpt.eod,
-                            gpt_detokenize = env.tokenizers.gpt.detokenize,
-                            bert_tokenize = env.tokenizers.bert.tokenize,
+                            chunk_length = config.retro_gpt_chunk_length,
+                            gpt_eod = config.retro_tokenizers.gpt.eod,
+                            gpt_detokenize = config.retro_tokenizers.gpt.detokenize,
+                            bert_tokenize = config.retro_tokenizers.bert.tokenize,
                         ),
                         dataset_idx,
                         n_datasets,
@@ -323,7 +323,7 @@ def build_individual_db(
     print_rank_0(" > finished saving individual db.")
 
 
-def build_individual_dbs(env, indexed_dataset_infos):
+def build_individual_dbs(config, indexed_dataset_infos):
     '''Iterate each indexed dataset & process its chunks.'''
 
     # Build individual DBs.
@@ -338,10 +338,10 @@ def build_individual_dbs(env, indexed_dataset_infos):
         ))
 
         # Process single dataset.
-        build_individual_db(env, ds_idx, len(indexed_dataset_infos), ds_info)
+        build_individual_db(config, ds_idx, len(indexed_dataset_infos), ds_info)
 
 
-def update_chunk_counts(env, indexed_dataset_infos):
+def update_chunk_counts(config, indexed_dataset_infos):
     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -351,7 +351,7 @@ def update_chunk_counts(env, indexed_dataset_infos):
     data_ratio_sum = sum([ d["ratio"] for d in indexed_dataset_infos ])
 
     # Training split size (split at document level).
-    train_fraction = float(extract_data_config(env).split.split(",")[0]) / 100
+    train_fraction = float(extract_data_config(config).split.split(",")[0]) / 100
     assert train_fraction > 0 and train_fraction <= 1
 
     # Set n_chunks (including n_chunks_sampled for unambiguity).
@@ -376,7 +376,7 @@ def update_chunk_counts(env, indexed_dataset_infos):
                     (np.copy(f["chunks_valid"][:, 0]) < ds_info["n_docs_train"]) \
                     .sum().item()
 
-        ds_info["n_chunks_sampled"] = int(env.config.retro_index_ntrain *
+        ds_info["n_chunks_sampled"] = int(config.retro_index_ntrain *
                                           ds_info["ratio"] / data_ratio_sum)
 
         # Verify counts.
@@ -388,7 +388,7 @@ def update_chunk_counts(env, indexed_dataset_infos):
                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
 
 
-def merge_dbs(env, indexed_dataset_infos, db_type):
+def merge_dbs(config, indexed_dataset_infos, db_type):
     '''Merge individual DBs into single DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -417,7 +417,7 @@ def merge_dbs(env, indexed_dataset_infos, db_type):
             sum(m[n_docs_key] for m in indexed_dataset_infos)
 
     # DB path.
-    db_path = get_merged_db_path_map(env)[db_type]
+    db_path = get_merged_db_path_map(config)[db_type]
 
     # Delete existing chunk db if incorrect size.
     if os.path.exists(db_path):
@@ -462,9 +462,9 @@ def merge_dbs(env, indexed_dataset_infos, db_type):
         for ds_idx, ds_info in enumerate(indexed_dataset_infos):
             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
                   (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-            individual_chunk_db = get_individual_chunk_db(env, ds_idx, ds_info)
+            individual_chunk_db = get_individual_chunk_db(config, ds_idx, ds_info)
             individual_doc_offsets = None if n_docs_key is None else \
-                get_individual_doc_offsets(env, ds_idx, ds_info)
+                get_individual_doc_offsets(config, ds_idx, ds_info)
 
             if db_type == "valid":
                 individual_chunk_db = \
@@ -502,7 +502,7 @@ def merge_dbs(env, indexed_dataset_infos, db_type):
         f.close()
 
 
-def build_db(env):
+def build_db(config):
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
@@ -510,22 +510,22 @@ def build_db(env):
     '''
 
     # Indexed dataset info.
-    indexed_dataset_infos = init_indexed_dataset_infos(env)
+    indexed_dataset_infos = init_indexed_dataset_infos(config)
 
     # Build dbs.
-    build_individual_dbs(env, indexed_dataset_infos)
+    build_individual_dbs(config, indexed_dataset_infos)
 
     # Single-process going forward.
     if torch.distributed.get_rank() != 0:
         return
 
     # Update n_chunks & save indexed dataset infos.
-    if not os.path.exists(get_indexed_dataset_infos_path(env)):
-        update_chunk_counts(env, indexed_dataset_infos)
-        save_indexed_dataset_infos(env, indexed_dataset_infos)
-    indexed_dataset_infos = get_indexed_dataset_infos(env)
+    if not os.path.exists(get_indexed_dataset_infos_path(config)):
+        update_chunk_counts(config, indexed_dataset_infos)
+        save_indexed_dataset_infos(config, indexed_dataset_infos)
+    indexed_dataset_infos = get_indexed_dataset_infos(config)
 
     # Merge dbs.
-    merge_dbs(env, indexed_dataset_infos, "sampled")
-    merge_dbs(env, indexed_dataset_infos, "train")
-    merge_dbs(env, indexed_dataset_infos, "valid")
+    merge_dbs(config, indexed_dataset_infos, "sampled")
+    merge_dbs(config, indexed_dataset_infos, "train")
+    merge_dbs(config, indexed_dataset_infos, "valid")

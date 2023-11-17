@@ -52,16 +52,16 @@ class FaissParallelAddIndex(FaissBaseIndex):
         with h5py.File(block["path"], "w") as f:
             f.create_dataset("data", data=codes)
 
-    def encode(self, env, text_dataset):
+    def encode(self, config, text_dataset):
         '''Encode text dataset, to be later added to index.'''
 
-        codes_dir = get_added_codes_dir(env)
+        codes_dir = get_added_codes_dir(config)
 
         # Index.
-        index = self.get_empty_index(env)
+        index = self.get_empty_index(config)
 
         # Bert embedder.
-        embedder = env.bert_embedders.mem
+        embedder = config.retro_bert_embedders.mem
 
         # Missing code blocks.
         def validate(f):
@@ -69,7 +69,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         n_missing_blocks, missing_code_blocks = get_missing_blocks_by_rank(
             codes_dir,
             len(text_dataset),
-            env.config.retro_block_size,
+            config.retro_block_size,
             validate=validate,
         )
 
@@ -92,23 +92,23 @@ class FaissParallelAddIndex(FaissBaseIndex):
             print_rank_0(" > waiting for other ranks to finish block.")
             torch.distributed.barrier()
 
-    def add_codes(self, env):
+    def add_codes(self, config):
 
         if torch.distributed.get_rank() != 0:
             return
 
-        added_index_path = self.get_added_index_path(env)
+        added_index_path = self.get_added_index_path(config)
         if os.path.exists(added_index_path):
             return
 
         # Index.
         print_rank_0("read empty index.")
-        index = self.get_empty_index(env)
+        index = self.get_empty_index(config)
         index_ivf = faiss.extract_index_ivf(index)
 
         # Add codes.
         print_rank_0("add codes.")
-        code_paths = get_added_code_paths(env)
+        code_paths = get_added_code_paths(config)
         pbar = tqdm(code_paths)
         for code_path in pbar:
             pbar.set_description("add codes, mem %.3f gb, %.1f%%" % (
@@ -117,7 +117,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             ))
             with h5py.File(code_path) as f:
 
-                nload = int(env.config.retro_index_add_load_fraction*f["data"].shape[0])
+                nload = int(config.retro_index_add_load_fraction*f["data"].shape[0])
                 offset = int(os.path.basename(code_path).split("-")[0])
                 xids = np.arange(offset, offset + nload)
                 codes = np.copy(f["data"][:nload])
@@ -130,26 +130,26 @@ class FaissParallelAddIndex(FaissBaseIndex):
         print_rank_0("write added index.")
         faiss.write_index(index, added_index_path)
 
-    def remove_codes(self, env):
+    def remove_codes(self, config):
         '''Remove added codes after adding to index.'''
         if torch.distributed.get_rank() != 0:
             return
-        assert os.path.isfile(self.get_added_index_path(env))
+        assert os.path.isfile(self.get_added_index_path(config))
 
-        if env.config.retro_index_delete_added_codes:
+        if config.retro_index_delete_added_codes:
             raise Exception("remove?")
-            shutil.rmtree(get_added_codes_dir(env), ignore_errors=True)
+            shutil.rmtree(get_added_codes_dir(config), ignore_errors=True)
 
-    def add(self, env, text_dataset):
+    def add(self, config, text_dataset):
 
         # Encode chunks.
-        self.encode(env, text_dataset)
+        self.encode(config, text_dataset)
 
         # Add codes to index.
-        self.add_codes(env)
+        self.add_codes(config)
 
         # Wait for (single-process) adding to complete.
         torch.distributed.barrier()
 
         # Remove codes.
-        self.remove_codes(env)
+        self.remove_codes(config)

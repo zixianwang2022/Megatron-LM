@@ -62,11 +62,11 @@ def verify_indexed_dataset_order(config):
     '''Verify pretraining order same as DB order.'''
 
     # DB dataset prefixes.
-    db_indexed_dataset_infos = get_indexed_dataset_infos(env)
+    db_indexed_dataset_infos = get_indexed_dataset_infos(config)
     db_prefixes = [ info["prefix"] for info in db_indexed_dataset_infos ]
 
     # Verify order & prefixes.
-    blend = extract_data_config(env).blend
+    blend = extract_data_config(config).blend
     assert len(blend) >= 2, "blended dataset supported only."
     pretraining_prefixes = blend[1:None:2]
 
