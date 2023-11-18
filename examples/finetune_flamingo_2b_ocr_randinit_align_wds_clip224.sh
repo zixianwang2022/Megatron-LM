@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=8
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr-wds-sam
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr-wds-clip224
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-train-samples-new-withdocidx-mr-wds-sam"
+NAME="flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-train-samples-new-withdocidx-mr-wds-clip224"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -35,9 +35,9 @@ mkdir -p ${TENSORBOARD_DIR}
 DATA_TRAIN="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/ocr.yaml"
 DATA_VALID="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/ocr.yaml"
 
-VISUAL_ARCH="SAM_L"
-VISUAL_TYPE="sam"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
+VISUAL_ARCH="L_14"
+VISUAL_TYPE="vit"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/checkpoints/vit_L_14"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -104,10 +104,9 @@ options=" \
     --finetune \
     --perceiver-type none \
     --freeze-LM \
-    --img-h 1024 \
-    --img-w 1024 \
+    --img-h 224 \
+    --img-w 224 \
     --dataloader-type cyclic --no-data-sharding \
-    --SAM-randinit \
     --align-to-old \
     --dataset-type nvgpt4 \
     --tensorboard-dir ${TENSORBOARD_DIR}"

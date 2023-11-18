@@ -777,9 +777,6 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     if visual_model:
         visual_model.train()
 
-    # if visual_model:
-    #     visual_model.train()
-
     # Tracking loss.
     total_loss_dict = {}
 
@@ -975,6 +972,9 @@ def evaluate(forward_step_func,
     # Move model back to the train mode.
     for model_module in model:
         model_module.train()
+
+    if visual_model:
+        visual_model.train()
 
     for key in total_loss_dict:
         total_loss_dict[key] /= args.eval_iters * eval_num_microbatches

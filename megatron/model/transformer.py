@@ -147,7 +147,7 @@ class ParallelMLP(MegatronModule):
 
         if args.openai_gelu:
             self.activation_func = openai_gelu
-        if args.quickgelu:
+        if args.quickgelu and is_vit:
             self.activation_func = quick_gelu
         elif args.onnx_safe:
             self.activation_func = erf_gelu
@@ -1862,7 +1862,7 @@ class ParallelTransformer(MegatronModule):
                             drop_path_rate=self.drop_path_rates[layer_number - 1],
                             is_vit=self.is_vit,
                             use_rel_pos=self.use_rel_pos,
-                            window_size=self.window_size if layer_number % 6 != 0 else 0)
+                            window_size=self.window_size if layer_number % args.global_attn_freq != 0 else 0)
                 elif args.add_gated_xattn and (layer_number % args.xattn_everyk == 1 or args.xattn_everyk == 1):
                     return ParallelGatedXattnFusedTransformerLayer(
                             config,

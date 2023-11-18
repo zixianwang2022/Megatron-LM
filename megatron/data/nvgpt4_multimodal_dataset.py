@@ -408,6 +408,8 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
             visual_transform = self.ocr_paragraph_visual_transform
         elif sample.__subflavor__ == "no_augmentation":
             visual_transform = self.ocr_document_identity_transform
+        elif sample.__subflavor__ in ["revilm_matching_aug_train", "revilm_matching_aug_val"]:
+            visual_transform = None
         else:
             raise ValueError(f"Unknown subflavor {sample.__subflavor__}")
 
@@ -433,8 +435,13 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
         if match:
             text = match.group(1)
 
-        img = visual_transform(sample.image)
-        img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - self.pixel_mean) / self.pixel_std
+        if sample.__subflavor__ == "revilm_matching_aug_train":
+            img = self.get_visual_transform(np.array(sample.image), sample_augmentation=True)
+        elif sample.__subflavor__ == "revilm_matching_aug_val":
+            img = self.get_visual_transform(np.array(sample.image), sample_augmentation=False)
+        else:
+            img = visual_transform(sample.image)
+            img = (torch.Tensor(np.array(img)).permute(2, 0, 1) - self.pixel_mean) / self.pixel_std
 
         # randomly select a prompt
         prompt_idx = np.random.randint(len(self.manual_prompts["OCR"]["raw"]))

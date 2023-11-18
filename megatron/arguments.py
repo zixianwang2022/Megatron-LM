@@ -189,6 +189,7 @@ def validate_args(args, defaults={}):
                 args.quickgelu = True
             else:
                 args.quickgelu = False
+            args.global_attn_freq = 1
         elif args.visual_arch == "G_14":
             args.visual_num_layers = 48
             args.visual_patch_dim = 14
@@ -207,14 +208,16 @@ def validate_args(args, defaults={}):
             args.window_size = 14
             args.quickgelu = False
         elif args.visual_arch == "SAM_L":
+            args.window_size = 16
             args.visual_num_layers = 24 #6
             args.visual_patch_dim = 16
             args.visual_hidden_size = 1024
             args.visual_ffn_hidden_size = 4096
             args.visual_num_attention_heads = 16
             args.visual_output_size = 256
-            args.window_size = 14
             args.quickgelu = False
+            args.global_attn_freq = 6
+            args.window_size = 14
 
         if args.save:
             args.visual_save = args.save + "/" + args.visual_type
