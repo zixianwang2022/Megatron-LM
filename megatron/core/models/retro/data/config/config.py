@@ -51,6 +51,8 @@ class RetroPreprocessingConfig(TransformerConfig):
         retro_gpt_split (str): Comma-separated list of proportions for training,
             validation, and test split. For example the split `90,5,5` will use
             90%% of data for training, 5%% for validation and 5%% for test.
+        retro_gpt_train_samples (int): Total number of samples to train over all
+            training runs.
         retro_gpt_eval_interval (int): GPT evaluation interval.
         retro_gpt_eval_iters (int): GPT evaluation iterations.
         retro_gpt_tokenizer_type (str): GPT tokenizer type.
@@ -114,6 +116,7 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_gpt_data_path: list = None
     retro_gpt_data_cache_path: str = None
     retro_gpt_split: str = '969,30,1'
+    retro_gpt_train_samples: int = None
     retro_gpt_eval_interval: int = None
     retro_gpt_eval_iters: int = None
     retro_gpt_tokenizer_type: str = None

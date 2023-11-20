@@ -78,6 +78,7 @@ RETRO_QUERY_NUM_NEIGHBORS_QUERY=200 RETRO_QUERY_NUM_NEIGHBORS_SAVE=20
 # --data-impl ${RETRO_GPT_DATA_IMPL} \
 # --retro-gpt-data-impl ${RETRO_GPT_DATA_IMPL} \
 # --data-path ${RETRO_GPT_DATA_PATH} \
+# --retro-return-doc-ids \
 ARGS=" \
     --distributed-timeout-minutes 600 \
     --tensor-model-parallel-size 1 \
@@ -117,7 +118,6 @@ ARGS=" \
     \
     --retro-project-dir ${RETRO_PROJECT_DIR} \
     --retro-tasks ${RETRO_TASKS} \
-    --retro-return-doc-ids \
     --retro-bert-vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
     --retro-bert-tokenizer-type BertWordPieceLowerCase \
     --retro-gpt-seed ${RETRO_GPT_SEED} \
@@ -131,6 +131,7 @@ ARGS=" \
     --retro-gpt-eval-iters ${RETRO_GPT_EVAL_ITERS} \
     --retro-gpt-split ${RETRO_GPT_SPLIT} \
     --retro-gpt-data-path ${RETRO_GPT_DATA_PATH} \
+    --retro-gpt-train-samples ${RETRO_GPT_TRAIN_SAMPLES} \
     --retro-index-str ${RETRO_INDEX_STR} \
     --retro-index-ntrain ${RETRO_INDEX_NTRAIN} \
     --retro-index-train-load-fraction ${RETRO_INDEX_TRAIN_LOAD_FRACTION} \

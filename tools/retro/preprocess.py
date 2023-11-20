@@ -95,18 +95,35 @@ def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         lambda n : train_valid_test_datasets_provider(data_config, n))
 
+    # >>>
+    # num_train_samples, num_valid_samples, num_test_samples = \
+    #     get_train_valid_test_num_samples()
+    # num_train_iters, num_valid_iters, num_test_iters = train_valid_test_num_iters
+
+    # from lutil import pax
+    # pax("num_train_samples, num_valid_samples, num_test_samples")
+
+    # def get_max_samples(num_samples, num_iters):
+    #     return max(num_samples, num_iters * config.retro_gpt_global_batch_size)
+
+    # datasets = RetroGPTDatasets(
+    #     train = (train_ds, get_max_samples(num_train_samples, num_train_iters)),
+    #     valid = (valid_ds, get_max_samples(num_valid_samples, num_valid_iters)),
+    #     test = (test_ds, get_max_samples(num_test_samples, num_test_iters)),
+    # )
+    # +++
     num_train_samples, num_valid_samples, num_test_samples = \
         get_train_valid_test_num_samples()
-    num_train_iters, num_valid_iters, num_test_iters = train_valid_test_num_iters
-
-    def get_max_samples(num_samples, num_iters):
-        return max(num_samples, num_iters * config.retro_gpt_global_batch_size)
 
     datasets = RetroGPTDatasets(
-        train = (train_ds, get_max_samples(num_train_samples, num_train_iters)),
-        valid = (valid_ds, get_max_samples(num_valid_samples, num_valid_iters)),
-        test = (test_ds, get_max_samples(num_test_samples, num_test_iters)),
+        train = (train_ds, num_train_samples),
+        valid = (valid_ds, num_valid_samples),
+        test = (test_ds, num_test_samples),
     )
+
+    # from lutil import pax
+    # pax("num_train_samples, num_valid_samples, num_test_samples, datasets")
+    # <<<
 
     # >>>
     # pax("config, data_config, datasets", {
@@ -161,7 +178,9 @@ def get_retro_preprocessing_config():
 
     # Arguments.
     args = get_args()
-    update_train_iters(args)
+    # >>>
+    # update_train_iters(args)
+    # <<<
 
     # Retro config.
     config = core_transformer_config_from_args(
@@ -190,7 +209,7 @@ def save_config(config):
         }
         config_subset["retro_block_size"] = config.retro_block_size
         with open(config_path, "w") as f:
-            json.dump(config_subset, f, indent=4)
+            json.dump(config_subset, f, indent=4, sort_keys=True)
 
     torch.distributed.barrier()
 

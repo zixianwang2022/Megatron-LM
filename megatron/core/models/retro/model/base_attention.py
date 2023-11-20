@@ -41,5 +41,5 @@ class BaseRetroCrossAttention(MegatronModule):
         )
 
         self.retro_num_neighbors = config.retro_num_neighbors
-        self.retro_chunk_length = config.retro_preprocess.retro_gpt_chunk_length
-        self.retro_retrieved_length = config.retro_preprocess.retro_gpt_retrieved_length
+        self.retro_chunk_length = config.retro_chunk_length
+        self.retro_retrieved_length = config.retro_retrieved_length

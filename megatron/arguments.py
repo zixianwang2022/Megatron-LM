@@ -91,14 +91,29 @@ def load_retro_args(args):
             args.eval_interval = retro_config.retro_gpt_eval_interval
             args.eval_iters = retro_config.retro_gpt_eval_iters
             args.global_batch_size = retro_config.retro_gpt_global_batch_size
+            args.max_position_embeddings = retro_config.retro_gpt_seq_length
             args.merge_file = retro_config.retro_gpt_merge_file
             args.seed = retro_config.retro_gpt_seed
             args.seq_length = retro_config.retro_gpt_seq_length
-            args.max_position_embeddings = retro_config.retro_gpt_seq_length
             args.split = retro_config.retro_gpt_split
             args.tokenizer_model = retro_config.retro_gpt_tokenizer_model
             args.tokenizer_type = retro_config.retro_gpt_tokenizer_type
+            args.train_samples = retro_config.retro_gpt_train_samples
             args.vocab_file = retro_config.retro_gpt_vocab_file
+
+            # >>>
+            # RETRO_GPT_TRAIN_SAMPLES=65000
+            # RETRO_GPT_LR_DECAY_SAMPLES=64000
+            # RETRO_GPT_LR_WARMUP_SAMPLES=1000
+            # ... RETRO_GPT_SEED=1234
+            # ... RETRO_GPT_SPLIT="98,2,0"
+            # ... RETRO_GPT_DATA_PATH="0.5 wiki-tiny-0/ds-0 0.5 wiki-tiny-1/ds-1"
+            # ... RETRO_GPT_EVAL_INTERVAL=2000
+            # ... RETRO_GPT_EVAL_ITERS=100
+            # ... RETRO_GPT_SEQ_LENGTH=2048
+            # ... RETRO_GPT_GLOBAL_BATCH_SIZE=256
+            # ... RETRO_GPT_CHUNK_LENGTH=64
+            # <<<
 
             args.retro_block_size = retro_config.retro_block_size
             args.retro_chunk_length = retro_config.retro_gpt_chunk_length
@@ -410,6 +425,10 @@ def validate_args(args, defaults={}):
 
     # Retro checks.
     if args.retro_add_retriever:
+
+        # Train samples should be auto-loaded.
+        assert args.train_samples is not None, \
+            "args.train_samples should be auto-loaded from the retro config."
 
         # Sequence parallelism unsupported.
         assert not args.sequence_parallel, \

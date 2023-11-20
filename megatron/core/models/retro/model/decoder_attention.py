@@ -216,7 +216,7 @@ class RetroDecoderBiasDropoutAdd(MegatronModule):
         self, config: RetroConfig,
     ):
         super().__init__(config=config)
-        self.retro_chunk_length = config.retro_preprocess.retro_gpt_chunk_length
+        self.retro_chunk_length = config.retro_chunk_length
 
     @classmethod
     def _forward(
