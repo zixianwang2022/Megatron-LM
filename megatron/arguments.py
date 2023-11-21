@@ -55,6 +55,93 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
 
     return args
 
+def validate_visual_args(args):
+    if args.visual_path:
+        if args.visual_arch == "B_32":
+            args.visual_num_layers = 12
+            args.visual_patch_dim = 32
+            args.visual_hidden_size = 768
+            args.visual_ffn_hidden_size = 3072
+            args.visual_num_attention_heads = 12
+            args.visual_output_size = 768
+            args.quickgelu = True
+            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
+        elif args.visual_arch == "L_14":
+            args.visual_num_layers = 24
+            args.visual_patch_dim = 14
+            args.visual_hidden_size = 1024
+            args.visual_ffn_hidden_size = 4096
+            args.visual_num_attention_heads = 16
+            args.visual_output_size = 1024
+            args.v_jitter = 0
+            args.crop_middle = False
+            if args.img_h == 336:
+                args.quickgelu = True
+            else:
+                args.quickgelu = False
+            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
+        elif args.visual_arch == "G_14":
+            args.visual_num_layers = 48
+            args.visual_patch_dim = 14
+            args.visual_hidden_size = 1664
+            args.visual_ffn_hidden_size = 8192
+            args.visual_num_attention_heads = 16
+            args.visual_output_size = 1664
+            args.quickgelu = False
+            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
+        elif args.visual_arch == "SAM_B":
+            args.visual_num_layers = 12
+            args.visual_patch_dim = 16
+            args.visual_hidden_size = 768
+            args.visual_ffn_hidden_size = 3072
+            args.visual_num_attention_heads = 12
+            args.visual_output_size = 256
+            args.window_size = 14
+            args.quickgelu = False
+        elif args.visual_arch == "SAM_L":
+            args.visual_num_layers = 24 #6
+            args.visual_patch_dim = 16
+            args.visual_hidden_size = 1024
+            args.visual_ffn_hidden_size = 4096
+            args.visual_num_attention_heads = 16
+            args.visual_output_size = 256
+            args.window_size = 14
+            args.quickgelu = False
+
+        if args.save:
+            args.visual_save = args.save + "/" + args.visual_type
+            if os.path.exists(args.visual_save):
+                args.visual_path = args.visual_save
+
+        if args.visual_output_size != args.hidden_size:
+            args.affine = True
+        else:
+            args.affine = False
+
+    return args
+
+def validate_visual_args_sam(args):
+
+    args.visual_path = args.visual_path_sam
+    args.visual_arch = args.visual_arch_sam
+    args.visual_type = args.visual_type_sam
+    args.img_h, args.img_w = args.img_h_sam, args.img_w_sam
+
+    args = validate_visual_args(args)
+
+    return args
+
+def validate_visual_args_clip(args):
+
+    args.visual_path = args.visual_path_clip
+    args.visual_arch = args.visual_arch_clip
+    args.visual_type = args.visual_type_clip
+    args.img_h, args.img_w = args.img_h_clip, args.img_w_clip
+
+    args = validate_visual_args(args)
+
+    return args 
+
 def validate_args(args, defaults={}):
     # Tensor model parallel size.
     args.tensor_model_parallel_size = min(
@@ -167,67 +254,11 @@ def validate_args(args, defaults={}):
                 print('accumulate and all-reduce gradients in fp32 for '
                       'bfloat16 data type.', flush=True)
 
-    if args.visual_path:
-        if args.visual_arch == "B_32":
-            args.visual_num_layers = 12
-            args.visual_patch_dim = 32
-            args.visual_hidden_size = 768
-            args.visual_ffn_hidden_size = 3072
-            args.visual_num_attention_heads = 12
-            args.visual_output_size = 768
-            args.quickgelu = True
-        elif args.visual_arch == "L_14":
-            args.visual_num_layers = 24
-            args.visual_patch_dim = 14
-            args.visual_hidden_size = 1024
-            args.visual_ffn_hidden_size = 4096
-            args.visual_num_attention_heads = 16
-            args.visual_output_size = 1024
-            args.v_jitter = 0
-            args.crop_middle = False
-            if args.img_h == 336:
-                args.quickgelu = True
-            else:
-                args.quickgelu = False
-            args.global_attn_freq = 1
-        elif args.visual_arch == "G_14":
-            args.visual_num_layers = 48
-            args.visual_patch_dim = 14
-            args.visual_hidden_size = 1664
-            args.visual_ffn_hidden_size = 8192
-            args.visual_num_attention_heads = 16
-            args.visual_output_size = 1664
-            args.quickgelu = False
-        elif args.visual_arch == "SAM_B":
-            args.visual_num_layers = 12
-            args.visual_patch_dim = 16
-            args.visual_hidden_size = 768
-            args.visual_ffn_hidden_size = 3072
-            args.visual_num_attention_heads = 12
-            args.visual_output_size = 256
-            args.window_size = 14
-            args.quickgelu = False
-        elif args.visual_arch == "SAM_L":
-            args.window_size = 16
-            args.visual_num_layers = 24 #6
-            args.visual_patch_dim = 16
-            args.visual_hidden_size = 1024
-            args.visual_ffn_hidden_size = 4096
-            args.visual_num_attention_heads = 16
-            args.visual_output_size = 256
-            args.quickgelu = False
-            args.global_attn_freq = 6
-            args.window_size = 14
-
-        if args.save:
-            args.visual_save = args.save + "/" + args.visual_type
-            if os.path.exists(args.visual_save):
-                args.visual_path = args.visual_save
-
-        if args.visual_output_size != args.hidden_size:
-            args.affine = True
-        else:
-            args.affine = False
+    if args.use_hybrid_visual_backbones:
+        args = validate_visual_args_clip(args)
+        args = validate_visual_args_sam(args)
+    else:
+        args = validate_visual_args(args)
 
     if args.save:
         if os.path.exists(args.save + "/latest_checkpointed_iteration.txt"):
@@ -638,6 +669,36 @@ def _add_network_size_args(parser):
                        help='Visual model type. [vit, sam]')
     group.add_argument('--visual-hidden_size', type=int, default=None,
                        help='Output hidden size for visual model.')
+
+    group.add_argument('--use-hybrid-visual-backbones', action='store_true',
+                       help='Use hybrid vision backbones.')
+    group.add_argument('--visual-path-sam', type=str, default=None,
+                       help='Path for pretrained visual model.')
+    group.add_argument('--visual-arch-sam', type=str, default=None,
+                       help='Visual model architecture. [B/32, L/14, G/14, SAM_B, SAM_L]')
+    group.add_argument('--visual-type-sam', type=str, default=None,
+                       help='Visual model type. [vit, sam]')
+    group.add_argument('--img-h-sam', type=int, default=1024,
+                       help='image height for vision backbone')
+    group.add_argument('--img-w-sam', type=int, default=1024,
+                       help='image width for vision backbone')
+    group.add_argument('--xattn-sam-num', type=int, default=1,
+                       help='frequency of sam feature for xattn')
+    group.add_argument('--visual-path-clip', type=str, default=None,
+                       help='Path for pretrained visual model.')
+    group.add_argument('--visual-arch-clip', type=str, default=None,
+                       help='Visual model architecture. [B/32, L/14, G/14, SAM_B, SAM_L]')
+    group.add_argument('--visual-type-clip', type=str, default=None,
+                       help='Visual model type. [vit, sam]')
+    group.add_argument('--img-h-clip', type=int, default=224,
+                       help='image height for vision backbone')
+    group.add_argument('--img-w-clip', type=int, default=224,
+                       help='image width for vision backbone')
+    group.add_argument('--xattn-clip-num', type=int, default=2,
+                       help='frequency of clip feature for xattn')
+
+    group.add_argument('--use-sam-normalization', action='store_true')
+
     group.add_argument('--num-attention-heads', type=int, default=None,
                        help='Number of transformer attention heads.')
     group.add_argument('--kv-channels', type=int, default=None,

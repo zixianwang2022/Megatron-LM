@@ -47,8 +47,6 @@ set +x
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NUM_NODES"
 
-DATA_PATH=/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/ocr_ft.yaml
-
 torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     pretrain_flamingo.py \
     --use-flash-attn \
@@ -82,11 +80,10 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --eval-interval 1000 \
     --save-interval 50 \
     --save $CHECKPOINT_PATH \
-    --load $CHECKPOINT_PATH \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
-    --data-path $DATA_PATH \
-    --valid-path $DATA_PATH \
+    --tokenizer-model ${DATA_PATH}/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
+    --data-path ${DATA_PATH}/captioning_ft.yaml \
+    --valid-path ${DATA_PATH}/captioning_ft.yaml \
     --prompt-path GPT4-prompts.json \
     --dset-config dataset.yaml \
     --split 100,0,0 \
@@ -97,9 +94,6 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --init-method-std 0.014 \
     --add-gated-xattn \
     --add-BOS \
-    --visual-arch "SAM_L" \
-    --visual-type "sam" \
-    --visual-path /lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16 \
     --log-params-norm \
     --log-num-zeros-in-grad \
     --log-validation-ppl-to-tensorboard \
@@ -112,20 +106,18 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
-    --img-h 1024 \
-    --img-w 1024 \
     --dataloader-type cyclic --no-data-sharding \
-    --SAM-randinit \
     --align-to-old \
     --transformer-impl $TRANSFORMER_IMPL \
     --dataset-type nvgpt4 \
     ${USE_MCORE:+--use-mcore-models} \
-    --tensorboard-dir ${TENSORBOARD_DIR}"
+    --tensorboard-dir ${TENSORBOARD_DIR} \
+    ${ADDITIONAL_PARAMS:+$ADDITIONAL_PARAMS}"
 
 command="$command $torch_run_cmd"
 echo "-------------------- THE FINAL FINETUNE SCRIPT COMMAND THAT WILL BE RUN ------------"
 echo "$command"
 echo "------------------------------------------------------------------------------"
 
-echo "$command" > $SCRIPTS_DIR/finetune_flamingo_2b_ocr_wds_test.sh
+echo "$command" > $SCRIPTS_DIR/finetune_flamingo_distributed_test.sh
 eval $command

@@ -15,6 +15,7 @@ from .module import MegatronModule
 from .transformer import ParallelTransformer, ParallelAffineLayer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
+from megatron.arguments import validate_visual_args_sam, validate_visual_args_clip
 
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
@@ -339,6 +340,7 @@ class PerceiverResampler(MegatronModule):
         self.init_method = config.init_method
         self.output_layer_init_method = config.output_layer_init_method
 
+        assert args.perceiver_type != "self-attn" and args.perceiver_type != "cross-attn"
         if args.perceiver_type == "self-attn":
             self.encoder = ParallelOCRPerceiverResampler(
                     config,
@@ -352,10 +354,29 @@ class PerceiverResampler(MegatronModule):
                     self.output_layer_init_method,
             )
         else:
-            if args.affine:
-                self.affine = ParallelAffineLayer(config)
+            if args.use_hybrid_visual_backbones:
+                affine = []
+                self.has_affine_dict = {'sam': False, 'clip': False}
+
+                args = validate_visual_args_sam(args)
+                if args.affine:
+                    self.has_affine_dict['sam'] = True
+                    affine.append(ParallelAffineLayer(config))
+
+                args = validate_visual_args_clip(args)
+                if args.affine:
+                    self.has_affine_dict['clip'] = True
+                    affine.append(ParallelAffineLayer(config))
+
+                if len(affine) > 0:
+                    self.affine = torch.nn.ModuleList(affine)
+                else:
+                    self.affine = None
             else:
-                self.affine = None
+                if args.affine:
+                    self.affine = ParallelAffineLayer(config)
+                else:
+                    self.affine = None
             self.encoder = None
         self._encoder_key = 'encoder'
 
@@ -415,10 +436,23 @@ class PerceiverResampler(MegatronModule):
             encoder_output = self.encoder(vision_inputs,
                 inference_params=inference_params)
         else:
-            if self.affine:
-                encoder_output = self.affine(vision_inputs)
+            if isinstance(vision_inputs, dict):
+                if self.has_affine_dict['sam']:
+                    encoder_output_sam = self.affine[0](vision_inputs['sam'])
+                else:
+                    encoder_output_sam = vision_inputs['sam']
+                
+                if self.has_affine_dict['clip']:
+                    encoder_output_clip = self.affine[-1](vision_inputs['clip'])
+                else:
+                    encoder_output_clip = vision_inputs['clip']
+
+                encoder_output = {'sam': encoder_output_sam, 'clip': encoder_output_clip}
             else:
-                encoder_output = vision_inputs
+                if self.affine:
+                    encoder_output = self.affine(vision_inputs)
+                else:
+                    encoder_output = vision_inputs
 
         return encoder_output
 

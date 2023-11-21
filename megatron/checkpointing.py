@@ -9,11 +9,14 @@ import numpy as np
 
 import torch
 
+import megatron
 from megatron import update_num_microbatches
 from megatron.core import mpu, tensor_parallel
+from megatron.model.module import Float16Module
 from .global_vars import get_args
 from .utils import (unwrap_model,
                     print_rank_0)
+from megatron.arguments import validate_visual_args_sam, validate_visual_args_clip
 
 
 _CHECKPOINT_VERSION = None
@@ -224,22 +227,8 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
     print_rank_0('saving checkpoint at iteration {:7d} to {}'.format(
         iteration, args.save))
 
-    if visual_model:
-        visual_model = unwrap_model(visual_model)
-        print_rank_0('saving visual checkpoint at iteration {:7d} to {}'.format(
-            iteration, args.visual_save))
-
     # Collect rng state across data parallel ranks.
     rng_state = get_rng_state()
-
-    # Checkpoint name.
-    checkpoint_name = get_checkpoint_name(args.save, iteration)
-
-    if visual_model:
-        visual_checkpoint_name = get_checkpoint_name(args.visual_save, iteration)
-        visual_state_dict = {}
-    else:
-        visual_checkpoint_name = None
 
     if (
         not torch.distributed.is_initialized() or (
@@ -273,6 +262,10 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
         dataloader_save_dict['train_data_path'] = args.train_data_path
         torch.save(dataloader_save_dict, data_state_save_name)
 
+
+    # Checkpoint name.
+    checkpoint_name = get_checkpoint_name(args.save, iteration)
+
     # Save distributed optimizer's custom parameter state.
     if args.use_distributed_optimizer:
         optim_checkpoint_name = \
@@ -296,11 +289,6 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
                 mpu.set_virtual_pipeline_model_parallel_rank(i)
                 state_dict['model%d' % i] = \
                     model[i].state_dict_for_save_checkpoint()
-        if visual_model:
-            visual_state_dict['args'] = args
-            visual_state_dict['checkpoint_version'] = 3.0
-            visual_state_dict['iteration'] = iteration
-            visual_state_dict['model'] = visual_model.state_dict_for_save_checkpoint()
 
         # Optimizer stuff.
         if not args.no_save_optim:
@@ -313,15 +301,60 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
         # RNG states.
         if not args.no_save_rng:
             state_dict["rng_state"] = rng_state
-            if visual_model:
-                visual_state_dict["rng_state"] = rng_state
 
         # Save.
         ensure_directory_exists(checkpoint_name)
         torch.save(state_dict, checkpoint_name)
-        if visual_model:
-            ensure_directory_exists(visual_checkpoint_name)
-            torch.save(visual_state_dict, visual_checkpoint_name)
+
+    # save vision backbone
+    if visual_model:
+
+        def save_visual_checkpoint(v_model, v_checkpoint_name, v_save):
+            print_rank_0('saving visual checkpoint at iteration {:7d} to {}'.format(
+                iteration, args.visual_save))
+
+            visual_state_dict = {}
+
+            # Collect args, model, RNG.
+            if not torch.distributed.is_initialized() \
+            or mpu.get_data_parallel_rank() == 0:
+
+                visual_state_dict['args'] = args
+                visual_state_dict['checkpoint_version'] = 3.0
+                visual_state_dict['iteration'] = iteration
+                visual_state_dict['model'] = v_model.state_dict_for_save_checkpoint()
+
+            # RNG states.
+            if not args.no_save_rng:
+                visual_state_dict["rng_state"] = rng_state
+            
+            #save
+            ensure_directory_exists(v_checkpoint_name)
+            torch.save(visual_state_dict, v_checkpoint_name)
+            print_rank_0('  successfully saved vision checkpoint at iteration {:7d} to {}' \
+                        .format(iteration, v_save))
+
+        visual_model = unwrap_model(visual_model)
+        if args.use_hybrid_visual_backbones:
+            # saving SAM TODO: check if visual model optimzer is need or not
+            args = validate_visual_args_sam(args)
+            visual_checkpoint_name = get_checkpoint_name(args.visual_save, iteration)
+            if hasattr(visual_model.module, 'sam_model'):
+                save_visual_checkpoint(visual_model.module.sam_model, visual_checkpoint_name, args.visual_save)
+            else:
+                save_visual_checkpoint(visual_model.module.module.sam_model, visual_checkpoint_name, args.visual_save)
+
+            # saving CLIP
+            args = validate_visual_args_clip(args)
+            visual_checkpoint_name = get_checkpoint_name(args.visual_save, iteration)
+            if hasattr(visual_model.module, 'clip_model'):
+                save_visual_checkpoint(visual_model.module.clip_model, visual_checkpoint_name, args.visual_save)
+            else:
+                save_visual_checkpoint(visual_model.module.module.clip_model, visual_checkpoint_name, args.visual_save)
+        else:
+            visual_checkpoint_name = get_checkpoint_name(args.visual_save, iteration)
+            save_visual_checkpoint(visual_model, visual_checkpoint_name, args.visual_save)
+
 
     # Wait so everyone is done (necessary)
     if torch.distributed.is_initialized():
@@ -337,9 +370,19 @@ def save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
         with open(tracker_filename, 'w') as f:
             f.write(str(iteration))
         if visual_model:
-            tracker_filename = get_checkpoint_tracker_filename(args.visual_save)
-            with open(tracker_filename, 'w') as f:
-                f.write(str(iteration))
+            if args.use_hybrid_visual_backbones:
+                args = validate_visual_args_sam(args)
+                tracker_filename = get_checkpoint_tracker_filename(args.visual_save)
+                with open(tracker_filename, 'w') as f:
+                    f.write(str(iteration))
+                args = validate_visual_args_clip(args)
+                tracker_filename = get_checkpoint_tracker_filename(args.visual_save)
+                with open(tracker_filename, 'w') as f:
+                    f.write(str(iteration))
+            else:
+                tracker_filename = get_checkpoint_tracker_filename(args.visual_save)
+                with open(tracker_filename, 'w') as f:
+                    f.write(str(iteration))
 
     # Wait so everyone is done (not necessary)
     if torch.distributed.is_initialized():
@@ -563,7 +606,8 @@ def load_visual_checkpoint(model, load_arg='load', strict=True, load_iter=None):
     args = get_args()
     load_dir = args.visual_path
 
-    model = unwrap_model(model)
+    # move to train.py
+    # model = unwrap_model(model)
 
     state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False, load_iter=load_iter)
 
@@ -596,21 +640,22 @@ def load_visual_checkpoint(model, load_arg='load', strict=True, load_iter=None):
         else:
             model.load_state_dict(state_dict['model'], strict=strict)
 
-        if args.SAM_randinit and args.no_load_optim:
-            if (args.fp16 or args.bf16) and (not args.fp32SAM):
-                model.module.module.neck[0].reset_parameters()
-                model.module.module.neck[2].reset_parameters()
-                model.module.module.neck[1].bias.data.zero_()
-                model.module.module.neck[1].weight.data.fill_(1.)
-                model.module.module.neck[3].bias.data.zero_()
-                model.module.module.neck[3].weight.data.fill_(1.)
+        if args.SAM_randinit and args.no_load_optim and args.visual_arch.startswith('SAM'):
+            if isinstance(model, torch.nn.parallel.DistributedDataParallel) or \
+                isinstance(model, megatron.model.distributed.DistributedDataParallel):
+                model_component = model.module
+
+                if  isinstance(model_component, Float16Module):
+                    model_component = model_component.module
             else:
-                model.module.neck[0].reset_parameters()
-                model.module.neck[2].reset_parameters()
-                model.module.neck[1].bias.data.zero_()
-                model.module.neck[1].weight.data.fill_(1.)
-                model.module.neck[3].bias.data.zero_()
-                model.module.neck[3].weight.data.fill_(1.)
+                model_component = model
+
+            model_component.neck[0].reset_parameters()
+            model_component.neck[2].reset_parameters()
+            model_component.neck[1].bias.data.zero_()
+            model_component.neck[1].weight.data.fill_(1.)
+            model_component.neck[3].bias.data.zero_()
+            model_component.neck[3].weight.data.fill_(1.)
 
     except KeyError:
         try:  # Backward compatible with older checkpoints

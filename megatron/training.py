@@ -55,6 +55,8 @@ from megatron.data.nvgpt4_multimodal_dataset import (
     TaskEncoder,
     print_error_handler
 )
+from megatron.arguments import validate_visual_args_sam, validate_visual_args_clip
+
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -289,7 +291,8 @@ def get_model(model_provider_func, model_type=ModelType.encoder_or_decoder, visu
                 model = model_provider_func(
                     visual_arch,
                     pre_process=pre_process,
-                    post_process=post_process
+                    post_process=post_process,
+                    use_hybrid_visual_backbones=args.use_hybrid_visual_backbones
                 )
             else:
                 model = model_provider_func(
@@ -447,7 +450,20 @@ def setup_model_and_optimizer(model_provider_func,
         args.iteration = 0
 
     if visual_model:
-        load_visual_checkpoint(visual_model[0])
+        if args.use_hybrid_visual_backbones:
+            validate_visual_args_sam(args)
+            if hasattr(visual_model[0].module, 'sam_model'):
+                load_visual_checkpoint(visual_model[0].module.sam_model)
+            else:
+                load_visual_checkpoint(visual_model[0].module.module.sam_model)
+
+            validate_visual_args_clip(args)
+            if hasattr(visual_model[0].module, 'clip_model'):
+                load_visual_checkpoint(visual_model[0].module.clip_model)
+            else:
+                load_visual_checkpoint(visual_model[0].module.module.clip_model)
+        else:
+            load_visual_checkpoint(unwrap_model(visual_model[0]))
         print_rank_0("Loaded pretrained ViT model.")
 
     # We only support local DDP with multiple micro-batches.
@@ -998,6 +1014,10 @@ def evaluate_and_print_results(prefix, forward_step_func,
 
         with open(args.valid_path[0]) as val_f:
             val_config = yaml.safe_load(val_f)["splits"]["val"]["datasets"]
+    else:
+        # NOTE(jbarker): Hack to get old dataloader working again
+        # after nvgpt4 integration
+        data_iterators = [data_iterators]
 
     for i, data_iterator in enumerate(data_iterators):
         total_loss_dict, collected_non_loss_data = evaluate(
