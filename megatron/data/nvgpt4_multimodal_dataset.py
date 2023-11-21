@@ -461,8 +461,6 @@ class TaskEncoder(DefaultTaskEncoder[OCRSample, OCRSample, ImageTaskBatch, dict]
             visual_transform = self.ocr_paragraph_visual_transform
         elif sample.__subflavor__ == "no_augmentation":
             visual_transform = self.ocr_document_identity_transform
-        elif sample.__subflavor__ in ["revilm_matching_aug_train", "revilm_matching_aug_val"]:
-            visual_transform = None
         else:
             raise ValueError(f"Unknown subflavor {sample.__subflavor__}")
 
