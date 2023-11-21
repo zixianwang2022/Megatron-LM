@@ -7,7 +7,10 @@ import os
 import torch
 from tqdm import tqdm
 import types
+from typing import List, Tuple
 
+from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     extract_data_config,
@@ -27,12 +30,8 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
-# >>>
-from lutil import pax
-# <<<
 
-
-def init_indexed_dataset_infos(config):
+def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
     '''Gather meta-info about each indexed dataset.
 
     The returned info array allows for easy access to the configuration, and
@@ -57,26 +56,26 @@ def init_indexed_dataset_infos(config):
             "prefix" : prefix,
             "path" : path,
             "name" : name,
-            "db_dir" : get_individual_db_dir(config, name),
+            "db_dir" : get_individual_db_dir(config.retro_project_dir, name),
         })
 
     # Load indexed datasets.
-    load_indexed_datasets(config, infos)
+    load_indexed_datasets(config.retro_project_dir, infos)
 
     return infos
 
 
 def build_partial_db(
-        config,
-        dataset_idx,
-        n_datasets,
-        indexed_dataset,
-        block_id,
-        n_blocks,
-        block,
-        proc_id,
-        n_procs,
-):
+    config: RetroPreprocessingConfig,
+    dataset_idx: int,
+    n_datasets: int,
+    indexed_dataset: MMapIndexedDataset,
+    block_id: int,
+    n_blocks: int,
+    block: dict,
+    proc_id: int,
+    n_procs: int,
+) -> Tuple[int, list, list, dict]:
     '''Process a document index range of the indexed dataset.
 
     The chunk database is built in parallel blocks, since de-tokenizing &
@@ -170,11 +169,11 @@ def build_partial_db(
 
 
 def build_individual_db(
-        config,
-        dataset_idx,
-        n_datasets,
-        dataset_info,
-):
+    config: RetroPreprocessingConfig,
+    dataset_idx: int,
+    n_datasets: int,
+    dataset_info: dict,
+) -> None:
     '''Process a single indexed dataset & extract chunks.'''
 
     # Make directory.
@@ -283,7 +282,10 @@ def build_individual_db(
     print_rank_0(" > finished saving individual db.")
 
 
-def build_individual_dbs(config, indexed_dataset_infos):
+def build_individual_dbs(
+    config: RetroPreprocessingConfig,
+    indexed_dataset_infos: List[dict],
+) -> None:
     '''Iterate each indexed dataset & process its chunks.'''
 
     # Build individual DBs.
@@ -348,7 +350,7 @@ def update_chunk_counts(config, indexed_dataset_infos):
                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
 
 
-def merge_dbs(config, indexed_dataset_infos, db_type):
+def merge_dbs(project_dir, indexed_dataset_infos, db_type):
     '''Merge individual DBs into single DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -377,7 +379,7 @@ def merge_dbs(config, indexed_dataset_infos, db_type):
             sum(m[n_docs_key] for m in indexed_dataset_infos)
 
     # DB path.
-    db_path = get_merged_db_path_map(config)[db_type]
+    db_path = get_merged_db_path_map(project_dir)[db_type]
 
     # Delete existing chunk db if incorrect size.
     if os.path.exists(db_path):
@@ -422,9 +424,9 @@ def merge_dbs(config, indexed_dataset_infos, db_type):
         for ds_idx, ds_info in enumerate(indexed_dataset_infos):
             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
                   (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-            individual_chunk_db = get_individual_chunk_db(config, ds_idx, ds_info)
+            individual_chunk_db = get_individual_chunk_db(project_dir, ds_idx, ds_info)
             individual_doc_offsets = None if n_docs_key is None else \
-                get_individual_doc_offsets(config, ds_idx, ds_info)
+                get_individual_doc_offsets(project_dir, ds_idx, ds_info)
 
             if db_type == "valid":
                 individual_chunk_db = \
@@ -469,6 +471,8 @@ def build_db(config):
     chunks, and save to a 'DB' (hdf5 file).
     '''
 
+    project_dir = config.retro_project_dir
+
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos(config)
 
@@ -480,12 +484,12 @@ def build_db(config):
         return
 
     # Update n_chunks & save indexed dataset infos.
-    if not os.path.exists(get_indexed_dataset_infos_path(config)):
+    if not os.path.exists(get_indexed_dataset_infos_path(project_dir)):
         update_chunk_counts(config, indexed_dataset_infos)
-        save_indexed_dataset_infos(config, indexed_dataset_infos)
-    indexed_dataset_infos = get_indexed_dataset_infos(config)
+        save_indexed_dataset_infos(project_dir, indexed_dataset_infos)
+    indexed_dataset_infos = get_indexed_dataset_infos(project_dir)
 
     # Merge dbs.
-    merge_dbs(config, indexed_dataset_infos, "sampled")
-    merge_dbs(config, indexed_dataset_infos, "train")
-    merge_dbs(config, indexed_dataset_infos, "valid")
+    merge_dbs(project_dir, indexed_dataset_infos, "sampled")
+    merge_dbs(project_dir, indexed_dataset_infos, "train")
+    merge_dbs(project_dir, indexed_dataset_infos, "valid")

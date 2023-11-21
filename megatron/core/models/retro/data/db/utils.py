@@ -112,11 +112,8 @@ def get_merged_db_path_map(project_dir):
     }
 
 
-# >>>
-# def get_merged_dataset(project_dir, db_type, indexed_dataset_infos=None):
 def get_merged_dataset(project_dir, chunk_length, eod_token_id,
                        db_type, indexed_dataset_infos=None):
-# <<<
     '''Get merged dataset.'''
 
     if not indexed_dataset_infos:
@@ -129,10 +126,6 @@ def get_merged_dataset(project_dir, chunk_length, eod_token_id,
 
     # DB dataset.
     indexed_datasets = [ info["dataset"] for info in indexed_dataset_infos ]
-    # >>>
-    # dataset = DBDataset(db_path, indexed_datasets, chunks,
-    #                     config.retro_gpt_chunk_length)
-    # dataset = DBDataset(config, db_path, indexed_datasets, chunks)
     dataset = DBDataset(
         db_path=db_path,
         indexed_datasets=indexed_datasets,
@@ -140,9 +133,6 @@ def get_merged_dataset(project_dir, chunk_length, eod_token_id,
         chunk_length=chunk_length,
         eod_token_id=eod_token_id,
     )
-    #     self.max_chunk_length = config.retro_chunk_length
-    #     self.eod_token_id = config.retro_tokenizers.gpt.eod
-    # <<<
 
     return dataset
 

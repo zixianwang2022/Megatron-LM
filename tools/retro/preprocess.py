@@ -69,7 +69,10 @@ def get_bert_embedders(config):
     )
 
 
-def get_gpt_datasets(config, train_valid_test_num_iters):
+# >>>
+# def get_gpt_datasets(config, train_valid_test_num_iters):
+def get_gpt_datasets(config):
+# <<<
 
     # >>>
     # # Reset iterations.
@@ -92,9 +95,9 @@ def get_gpt_datasets(config, train_valid_test_num_iters):
         get_train_valid_test_num_samples()
 
     datasets = RetroGPTDatasets(
-        train = (train_ds, num_train_samples),
-        valid = (valid_ds, num_valid_samples),
-        test = (test_ds, num_test_samples),
+        train=(train_ds, num_train_samples),
+        valid=(valid_ds, num_valid_samples),
+        test=(test_ds, num_test_samples),
     )
 
     # >>>
@@ -160,11 +163,7 @@ def get_retro_preprocessing_config():
 
     # Add tools.
     config.retro_bert_embedders = get_bert_embedders(config)
-    config.retro_gpt_datasets = get_gpt_datasets(
-        config,
-        return_document_ids=True,
-        train_valid_test_num_iters = (args.train_iters, args.eval_iters, args.eval_iters),
-    )
+    config.retro_gpt_datasets = get_gpt_datasets(config)
     config.retro_tokenizers = get_tokenizers(config)
 
     return config

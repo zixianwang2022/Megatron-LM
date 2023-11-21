@@ -168,7 +168,7 @@ def query_block_neighbors(config, db_dataset, query_dataset,
 
 
 def query_dataset_neighbors(config, db_dataset,
-                            query_dataset, total_num_chunks,
+                            query_dataset, num_active_chunks,
                             prefix, neighbor_dir, index):
     '''Query neighbors of each chunk within a dataset.'''
 
@@ -180,10 +180,7 @@ def query_dataset_neighbors(config, db_dataset,
             )
     n_missing_blocks, missing_neighbor_blocks = get_missing_blocks_by_rank(
         neighbor_dir,
-        # >>>
-        # len(query_dataset),
-        total_num_chunks,
-        # <<<
+        num_active_chunks,
         config.retro_block_size,
         validate=validate,
     )
@@ -219,7 +216,11 @@ def query_neighbors(config):
 
     # Load chunk db dataset.
     print_rank_0("load chunk db dataset.")
-    db_dataset = get_db_merged_train_dataset(config)
+    db_dataset = get_db_merged_train_dataset(
+        project_dir=config.retro_project_dir,
+        chunk_length=config.retro_gpt_chunk_length,
+        eod_token_id=config.retro_tokenizers.gpt.eod,
+    )
     db_dataset.load_doc_tuples()
 
     # Load index.
@@ -228,13 +229,18 @@ def query_neighbors(config):
 
     # Load datasets.
     print_rank_0(" > get dataset map.")
-    query_dataset_map = get_query_dataset_map(config)
+    query_dataset_map = get_query_dataset_map(
+        project_dir=config.retro_project_dir,
+        gpt_datasets=config.retro_gpt_datasets,
+        sample_length=config.retro_gpt_seq_length,
+        chunk_length=config.retro_gpt_chunk_length,
+    )
 
     # Query each (i.e., train, valid, test) dataset.
     print_rank_0(" > query.")
     for prefix, info in query_dataset_map.items():
         print_rank_0(" > query '%s' dataset ... %d samples." %
-                     (prefix, len(info["data"])))
+                     (prefix, info["num_active_chunks"]))
         query_dataset_neighbors(config, db_dataset,
-                                info["data"], info["total_num_chunks"],
+                                info["dataset"], info["num_active_chunks"],
                                 prefix, info["neighbor_dir"], index)

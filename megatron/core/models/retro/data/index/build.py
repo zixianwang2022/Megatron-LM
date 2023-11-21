@@ -81,7 +81,12 @@ def embed_db(config):
         return
 
     # Get db dataset.
-    gpt_dataset = get_merged_sampled_dataset(config)
+    gpt_dataset = get_merged_sampled_dataset(
+        project_dir=config.retro_project_dir,
+        chunk_length=config.retro_gpt_chunk_length,
+        eod_token_id=config.retro_tokenizers.gpt.eod,
+    )
+
     text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
 
     # Embed dataset.
@@ -142,7 +147,11 @@ def add_to_index(config):
     index = IndexFactory.get_index(config.retro_index_type)
 
     # Get text dataset.
-    gpt_dataset = get_merged_train_dataset(config)
+    gpt_dataset = get_merged_train_dataset(
+        project_dir=config.retro_project_dir,
+        chunk_length=config.retro_gpt_chunk_length,
+        eod_token_id=config.retro_tokenizers.gpt.eod,
+    )
     text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
 
     # Add to index.
