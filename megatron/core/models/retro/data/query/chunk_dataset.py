@@ -21,13 +21,20 @@ class ChunkDataset(torch.utils.data.Dataset):
     chunks (e.g., length num_samples * num_chunks_per_sample).
     '''
 
-    def __init__(self, config, sample_dataset):
+    # >>>
+    # def __init__(self, config, sample_dataset):
+    def __init__(self, sample_dataset, sample_length, chunk_length):
+    # <<<
 
         super().__init__()
 
         self.sample_dataset = sample_dataset
-        self.chunk_length = config.retro_gpt_chunk_length
-        self.n_chunks_per_sample = get_num_chunks_per_sample(config)
+        # >>>
+        # self.chunk_length = config.retro_gpt_chunk_length
+        # self.n_chunks_per_sample = get_num_chunks_per_sample(config)
+        self.chunk_length = chunk_length
+        self.n_chunks_per_sample = get_num_chunks_per_sample(sample_length, chunk_length)
+        # <<<
         self.n_samples = len(sample_dataset)
         self.n_chunks = self.n_samples * self.n_chunks_per_sample
 
@@ -93,12 +100,18 @@ def train_valid_test_datasets_provider(data_config, train_valid_test_num_samples
     return train_ds, valid_ds, test_ds
 
 
-def get_chunk_dataset_map(config):
+# >>>
+# def get_chunk_dataset_map(config):
+# def get_chunk_dataset_map(config, gpt_datasets):
+def get_chunk_dataset_map(project_dir, gpt_datasets, sample_length, chunk_length):
+# <<<
     '''Get train, valid, test chunk datasets.'''
 
     # Reset iteration.
-    config.iteration = 0
-    config.consumed_train_samples = 0
+    # >>>
+    # config.iteration = 0
+    # config.consumed_train_samples = 0
+    # <<<
 
     # >>>
     # # Verify indexed dataset order.
@@ -108,11 +121,17 @@ def get_chunk_dataset_map(config):
     # Info dict.
     chunk_dataset_map = {
         key : {
-            "neighbor_dir" : get_neighbor_dir(config, key, sample_ds),
-            "data" : ChunkDataset(config, sample_ds),
-            "total_num_chunks" : total_num_samples * get_num_chunks_per_sample(config),
+            "neighbor_dir" : get_neighbor_dir(project_dir, key, sample_ds),
+            # >>>
+            # "data" : ChunkDataset(config, sample_ds),
+            "data" : ChunkDataset(sample_ds, sample_length, chunk_length),
+            # <<<
+            "total_num_chunks" : total_num_samples * get_num_chunks_per_sample(sample_length, chunk_length),
         }
-        for key, (sample_ds, total_num_samples) in vars(config.retro_gpt_datasets).items()
+        # >>>
+        # for key, (sample_ds, total_num_samples) in vars(config.retro_gpt_datasets).items()
+        for key, (sample_ds, total_num_samples) in vars(gpt_datasets).items()
+        # <<<
         if sample_ds
     }
 

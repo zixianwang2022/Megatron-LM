@@ -13,7 +13,10 @@ import torch.nn.functional as F
 # >>>
 # from megatron.global_vars import set_retro_args, get_retro_args
 # <<<
-from megatron.core.models.retro.data.utils import get_config_path as get_retro_config_path
+from megatron.core.models.retro.data.utils import (
+    get_config_path as get_retro_config_path,
+    get_gpt_data_dir as get_retro_data_dir,
+)
 
 # >>>
 # from megatron.core.models.retro import RetroConfig
@@ -85,9 +88,27 @@ def load_retro_args(args):
             # Parse config.
             retro_config = types.SimpleNamespace(**json.load(f))
 
+            # Retro data path is relative to data path (via hard or soft links).
+            data_dir = get_retro_data_dir(args.retro_project_dir)
+            data_path = list(retro_config.retro_gpt_data_path)
+            if len(data_path) % 2 == 0:
+                for i in range(len(data_path) - 1, -1, -2):
+                    data_path[i] = os.path.join(data_dir, data_path[i])
+            else:
+                assert len(data_path) == 1
+                data_path[0] = os.path.join(data_dir, data_path[0])
+
+            # >>>
+            # from lutil import pax
+            # pax("data_dir, data_path")
+            # <<<
+
             # Update args.
             args.data_cache_path = retro_config.retro_gpt_data_cache_path
-            args.data_path = retro_config.retro_gpt_data_path
+            # >>>
+            # args.data_path = retro_config.retro_gpt_data_path
+            args.data_path = data_path
+            # <<<
             args.eval_interval = retro_config.retro_gpt_eval_interval
             args.eval_iters = retro_config.retro_gpt_eval_iters
             args.global_batch_size = retro_config.retro_gpt_global_batch_size

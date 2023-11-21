@@ -31,25 +31,40 @@ def get_config_path(project_dir):
     return os.path.join(project_dir, "config.json")
 
 
-def get_num_chunks_per_sample(config):
+# >>>
+# def get_num_chunks_per_sample(config):
+#     '''Compute seq_length // chunk_length.'''
+#     sample_length = config.retro_gpt_seq_length
+#     chunk_length = config.retro_gpt_chunk_length
+#     assert sample_length % chunk_length == 0
+#     return sample_length // chunk_length
+def get_num_chunks_per_sample(sample_length, chunk_length):
     '''Compute seq_length // chunk_length.'''
-    sample_length = config.retro_gpt_seq_length
-    chunk_length = config.retro_gpt_chunk_length
     assert sample_length % chunk_length == 0
     return sample_length // chunk_length
+# <<<
 
 
-def get_gpt_data_dir(config):
-    return os.path.join(config.retro_project_dir, "data")
+# >>>
+# def get_gpt_data_dir(config):
+#     return os.path.join(config.retro_project_dir, "data")
+def get_gpt_data_dir(project_dir):
+    return os.path.join(project_dir, "data")
+# <<<
 
 
 def core_gpt_dataset_config_from_retro_preprocessing_config(
     config,
     is_dataset_built_on_rank,
-    return_document_ids,
+    # >>>
+    # return_document_ids,
+    # <<<
 ):
-    data_dir = get_gpt_data_dir(config)
+    data_dir = get_gpt_data_dir(config.retro_project_dir)
+    # >>>
     blend = list(config.retro_gpt_data_path)
+    # blend = list(config.data_path)
+    # <<<
     for i in range(len(blend) - 1, -1, -2):
         blend[i] = os.path.join(data_dir, blend[i])
     return GPTDatasetConfig(
@@ -59,7 +74,10 @@ def core_gpt_dataset_config_from_retro_preprocessing_config(
         blend=blend,
         split=config.retro_gpt_split,
         path_to_cache=config.retro_gpt_data_cache_path,
-        return_document_ids=return_document_ids,
+        # >>>
+        # return_document_ids=return_document_ids,
+        return_document_ids=True,
+        # <<<
     )
 
 

@@ -103,6 +103,14 @@ class RetroPreprocessingConfig(TransformerConfig):
             after the index's returned neighbors. If longer than target value,
             neighbors truncated; and if shorter than target value, neighbors are
             padded with -1's.
+        retro_bert_embedders (RetroBertEmbedders): Set of Bert embedders used for
+            embedding chunks. Contains entries: 1) 'mem' for an in-memory
+            embedder, and 2) 'disk' for an embedder that saves results in blocks
+            to disk.
+        retro_gpt_datasets (RetroGPTDatasets): GPT datasets for 'train', 'valid',
+            and 'test'.
+        retro_tokenizers (RetroTokenizers): GPT ('gpt') and Bert ('bert')
+            tokenizers.
     """
 
     # Basic.

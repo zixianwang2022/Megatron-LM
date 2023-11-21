@@ -17,19 +17,36 @@ from megatron.core import tensor_parallel
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.enums import ModelType
-from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
+from megatron.core.models.retro.data.config import RetroGPTDatasets, RetroTokenizers
 from megatron.core.models.retro.data.query import get_retro_datasets
+from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
+from pretrain_gpt import (
+    loss_func,
+    model_provider as default_model_provider,
+    train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
+)
+# >>>
+# from tools.retro.utils import get_gpt_datasets
+# <<<
 
-from pretrain_gpt import loss_func, model_provider as default_model_provider
+# >>>
+from lutil import pax
+# <<<
+
+
+def get_config():
+    config = core_transformer_config_from_args(get_args(), RetroConfig)
+    config.retro_tokenizers = RetroTokenizers(gpt=get_tokenizer())
+    return config
 
 
 def core_model_provider(pre_process=True, post_process=True):
     """Build the model using Megatron-Core."""
 
     args = get_args()
-    config = core_transformer_config_from_args(args, RetroConfig)
+    config = get_config()
 
     # >>>
     # from lutil import pax
@@ -155,14 +172,38 @@ def forward_step(data_iterator, model):
     return output_tensor, partial(loss_func, loss_mask)
 
 
-def train_valid_test_datasets_provider(train_val_test_num_samples):
+# def train_valid_test_datasets_provider(train_val_test_num_samples):
+#     """Build train, valid, and test datasets."""
+#     config = get_config()
+#     gpt_datasets = get_gpt_datasets(config, return_document_ids=False)
+#     pax("config, gpt_datasets")
+#     return get_retro_datasets(config, gpt_datasets)
+def train_valid_test_datasets_provider(train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
-    return get_retro_datasets()
+    config = get_config()
+    train_ds, valid_ds, test_ds = \
+        gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
+    gpt_datasets = RetroGPTDatasets(
+        train=(train_ds, train_valid_test_num_samples[0]),
+        valid=(valid_ds, train_valid_test_num_samples[1]),
+        test=(test_ds, train_valid_test_num_samples[2]),
+    )
+    # pax("config, gpt_datasets, train_valid_test_num_samples")
+    # retro_datasets = get_retro_datasets(config, gpt_datasets, get_args().seq_length)
+    retro_datasets = get_retro_datasets(
+        project_dir=config.retro_project_dir,
+        gpt_datasets=gpt_datasets,
+        sample_length=get_args().seq_length,
+        chunk_length=config.retro_chunk_length,
+        eod_token_id=config.retro_tokenizers.gpt.eod,
+    )
+    pax("retro_datasets")
+    return retro_datasets
 
 
 if __name__ == "__main__":
 
-    # Temporary for transitiont to core datasets
+    # Temporary for transition to core datasets.
     train_valid_test_datasets_provider.is_distributed = True
 
     pretrain(train_valid_test_datasets_provider,

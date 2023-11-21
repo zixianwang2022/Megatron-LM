@@ -14,19 +14,34 @@ class DBDataset(torch.utils.data.Dataset):
         [dataset_idx, doc_id, start_idx, end_idx, bert_length])
     '''
 
-    def __init__(self, config, db_path, indexed_datasets, chunks):
+    # >>>
+    # def __init__(self, config, db_path, indexed_datasets, chunks):
+
+    #     assert chunks.shape[1] == 5, "expected 5 columns (dataset_idx, " \
+    #     "doc_idx, token_start_idx, token_end_idx, bert_chunk_length); " \
+    #     "found %d columns." % chunks.shape[1]
+
+    #     self.db_path = db_path
+    #     self.indexed_datasets = indexed_datasets
+    #     self.chunks = chunks
+    #     self.doc_chunk_map = None
+
+    #     self.max_chunk_length = config.retro_chunk_length
+    #     self.eod_token_id = config.retro_tokenizers.gpt.eod
+    def __init__(self, db_path, indexed_datasets, chunks, chunk_length, eod_token_id):
 
         assert chunks.shape[1] == 5, "expected 5 columns (dataset_idx, " \
-        "doc_idx, token_start_idx, token_end_idx, bert_chunk_length); " \
-        "found %d columns." % chunks.shape[1]
+            "doc_idx, token_start_idx, token_end_idx, bert_chunk_length); " \
+            "found %d columns." % chunks.shape[1]
 
         self.db_path = db_path
         self.indexed_datasets = indexed_datasets
         self.chunks = chunks
         self.doc_chunk_map = None
 
-        self.max_chunk_length = config.retro_gpt_chunk_length
-        self.eod_token_id = config.retro_tokenizers.gpt.eod
+        self.max_chunk_length = chunk_length
+        self.eod_token_id = eod_token_id
+    # <<<
 
     def __len__(self):
         return self.chunks.shape[0]

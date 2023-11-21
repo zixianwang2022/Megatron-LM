@@ -6,12 +6,17 @@ import torch
 
 # >>>
 # from megatron import get_args, get_retro_args
-# from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset
+from megatron.core.models.retro.data.config import RetroGPTDatasets
+from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset
 # from megatron.core.models.retro.data.external_libs import h5py
 # from tools.bert_embedding.utils import BlockPathMap
 
-# from .chunk_dataset import get_chunk_dataset_map
+from .chunk_dataset import get_chunk_dataset_map
 # from .utils import get_neighbor_dirname
+# <<<
+
+# >>>
+from lutil import pax
 # <<<
 
 
@@ -103,19 +108,38 @@ class RetroDataset(torch.utils.data.Dataset):
         return sample
 
 
-def get_retro_datasets():
+# >>>
+# def get_retro_datasets():
+# def get_retro_datasets(config, gpt_datasets, sample_length):
+def get_retro_datasets(
+    project_dir: str,
+    gpt_datasets: RetroGPTDatasets,
+    sample_length: int,
+    chunk_length: int,
+    eod_token_id: int,
+):
+# <<<
     '''Get train, valid, test retro datasets.'''
 
-    # >>>
-    # args = get_args()
-    # retro_args = get_retro_args()
-    # <<<
-
     # DB dataset.
-    db_dataset = get_db_dataset()
+    db_dataset = get_db_dataset(
+        project_dir=project_dir,
+        chunk_length=chunk_length,
+        eod_token_id=eod_token_id,
+    )
 
     # Retro datasets.
-    chunk_ds_info_map = get_chunk_dataset_map()
+    # >>>
+    # chunk_ds_info_map = get_chunk_dataset_map(config)
+    # chunk_ds_info_map = get_chunk_dataset_map(config, gpt_datasets)
+    chunk_ds_info_map = get_chunk_dataset_map(
+        project_dir=project_dir,
+        gpt_datasets=gpt_datasets,
+        sample_length=sample_length,
+        chunk_length=chunk_length,
+    )
+    # <<<
+    pax("chunk_ds_info_map")
     retro_dataset_map = {}
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 

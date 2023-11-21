@@ -39,7 +39,7 @@ def init_indexed_dataset_infos(config):
     helps remove ambiguity.
     '''
 
-    data_dir = get_gpt_data_dir(config)
+    data_dir = get_gpt_data_dir(config.retro_project_dir)
     data_blend = config.retro_gpt_data_path
     assert len(data_blend) % 2 == 0, "currently, only blended dataset is supported."
 

@@ -75,7 +75,10 @@ def get_bert_embedders(config):
     )
 
 
-def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
+# >>>
+# def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
+def get_gpt_datasets(config, train_valid_test_num_iters):
+# <<<
 
     # >>>
     # # Reset iterations.
@@ -87,7 +90,9 @@ def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
     data_config = core_gpt_dataset_config_from_retro_preprocessing_config(
         config=config,
         is_dataset_built_on_rank=is_dataset_built_on_rank,
-        return_document_ids=return_document_ids,
+        # >>>
+        # return_document_ids=return_document_ids,
+        # <<<
     )
 
     # Datasets.
