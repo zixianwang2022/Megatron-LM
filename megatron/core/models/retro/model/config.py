@@ -3,9 +3,6 @@
 import types
 from dataclasses import dataclass
 
-# >>>
-# from megatron.core.models.retro.data.config import RetroTokenizers
-# <<<
 from megatron.core.transformer import TransformerConfig
 
 
@@ -54,9 +51,6 @@ class RetroConfig(TransformerConfig):
     retro_num_neighbors: int = 2
     retro_num_retrieved_chunks: int = 2
     retro_retrieved_length: int = None
-    # >>>
-    # retro_tokenizers: RetroTokenizers = None
-    # <<<
     retro_verify_neighbor_count: bool = True
 
     def __post_init__(self):

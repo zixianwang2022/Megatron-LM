@@ -14,10 +14,7 @@ from megatron.core import tensor_parallel
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.enums import ModelType
-# >>>
-# from megatron.core.models.retro.data.config import RetroGPTDatasets, RetroTokenizers
 from megatron.core.models.retro.data.config import RetroGPTDatasets
-# <<<
 from megatron.core.models.retro.data.query import get_retro_datasets
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.training import pretrain
@@ -34,11 +31,7 @@ from lutil import pax
 
 
 def get_retro_config():
-    config = core_transformer_config_from_args(get_args(), RetroConfig)
-    # >>>
-    # config.retro_tokenizers = RetroTokenizers(gpt=get_tokenizer())
-    # <<<
-    return config
+    return core_transformer_config_from_args(get_args(), RetroConfig)
 
 
 def core_model_provider(pre_process=True, post_process=True):
@@ -85,11 +78,8 @@ def model_provider(pre_process=True, post_process=True):
 
 def get_batch(data_iterator):
     """Generate a batch"""
-    # >>>
+
     args = get_args()
-    # retro_args = get_retro_args()
-    # config = get_retro_config()
-    # <<<
     tokenizer = get_tokenizer()
 
     # Items and their type.
