@@ -188,10 +188,7 @@ def is_dataset_built_on_rank():
     return (mpu.is_pipeline_first_stage() or mpu.is_pipeline_last_stage()) and mpu.get_tensor_model_parallel_rank() == 0
 
 
-# >>>
 def core_gpt_dataset_config_from_args(args):
-# def core_gpt_dataset_config_from_args(args, return_document_ids=False):
-# <<<
     return GPTDatasetConfig(
         is_built_on_rank=is_dataset_built_on_rank,
         random_seed=args.seed,
@@ -200,11 +197,7 @@ def core_gpt_dataset_config_from_args(args):
         blend_per_split=[args.train_data_path, args.valid_data_path, args.test_data_path],
         split=args.split,
         path_to_cache=args.data_cache_path,
-        # >>>
-        # return_document_ids=args.retro_return_doc_ids
-        # return_document_ids=return_document_ids,
         return_document_ids=False,
-        # <<<
     )
 
 

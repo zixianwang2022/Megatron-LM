@@ -5,10 +5,7 @@
 from functools import partial
 import torch
 
-# >>>
-# from megatron import get_args, get_retro_args
 from megatron import get_args
-# <<<
 from megatron import get_timers
 from megatron import get_tokenizer
 from megatron import print_rank_0
@@ -17,7 +14,10 @@ from megatron.core import tensor_parallel
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.enums import ModelType
-from megatron.core.models.retro.data.config import RetroGPTDatasets, RetroTokenizers
+# >>>
+# from megatron.core.models.retro.data.config import RetroGPTDatasets, RetroTokenizers
+from megatron.core.models.retro.data.config import RetroGPTDatasets
+# <<<
 from megatron.core.models.retro.data.query import get_retro_datasets
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.training import pretrain
@@ -27,9 +27,6 @@ from pretrain_gpt import (
     model_provider as default_model_provider,
     train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
 )
-# >>>
-# from tools.retro.utils import get_gpt_datasets
-# <<<
 
 # >>>
 from lutil import pax
@@ -38,7 +35,9 @@ from lutil import pax
 
 def get_config():
     config = core_transformer_config_from_args(get_args(), RetroConfig)
-    config.retro_tokenizers = RetroTokenizers(gpt=get_tokenizer())
+    # >>>
+    # config.retro_tokenizers = RetroTokenizers(gpt=get_tokenizer())
+    # <<<
     return config
 
 
@@ -47,15 +46,6 @@ def core_model_provider(pre_process=True, post_process=True):
 
     args = get_args()
     config = get_config()
-
-    # >>>
-    # from lutil import pax
-    # pax("config", {
-    #     "retro config" : {k:v for k,v in vars(config).items()
-    #                       if k.startswith("retro_")},
-    #     "init_method" : config.init_method,
-    # })
-    # <<<
 
     # NOTE: Experimental customization feature
     if args.spec is not None:
@@ -172,12 +162,6 @@ def forward_step(data_iterator, model):
     return output_tensor, partial(loss_func, loss_mask)
 
 
-# def train_valid_test_datasets_provider(train_val_test_num_samples):
-#     """Build train, valid, and test datasets."""
-#     config = get_config()
-#     gpt_datasets = get_gpt_datasets(config, return_document_ids=False)
-#     pax("config, gpt_datasets")
-#     return get_retro_datasets(config, gpt_datasets)
 def train_valid_test_datasets_provider(train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
     config = get_config()
@@ -188,15 +172,23 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         valid=(valid_ds, train_valid_test_num_samples[1]),
         test=(test_ds, train_valid_test_num_samples[2]),
     )
-    # pax("config, gpt_datasets, train_valid_test_num_samples")
-    # retro_datasets = get_retro_datasets(config, gpt_datasets, get_args().seq_length)
+    # >>>
+    # retro_datasets = get_retro_datasets(
+    #     project_dir=config.retro_project_dir,
+    #     gpt_datasets=gpt_datasets,
+    #     sample_length=get_args().seq_length,
+    #     chunk_length=config.retro_chunk_length,
+    #     eod_token_id=config.retro_tokenizers.gpt.eod,
+    #     block_size=config.retro_block_size,
+    #     verify_neighbor_count=config.retro_verify_neighbor_count,
+    # )
     retro_datasets = get_retro_datasets(
-        project_dir=config.retro_project_dir,
+        config=config,
         gpt_datasets=gpt_datasets,
         sample_length=get_args().seq_length,
-        chunk_length=config.retro_chunk_length,
-        eod_token_id=config.retro_tokenizers.gpt.eod,
+        eod_token_id=get_tokenizer().eod,
     )
+    # <<<
     pax("retro_datasets")
     return retro_datasets
 

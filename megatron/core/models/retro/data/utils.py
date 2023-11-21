@@ -10,6 +10,7 @@ from tqdm import tqdm
 from megatron.core import parallel_state
 from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
 
+from .config import RetroPreprocessingConfig
 from .external_libs import h5py
 
 
@@ -31,40 +32,22 @@ def get_config_path(project_dir):
     return os.path.join(project_dir, "config.json")
 
 
-# >>>
-# def get_num_chunks_per_sample(config):
-#     '''Compute seq_length // chunk_length.'''
-#     sample_length = config.retro_gpt_seq_length
-#     chunk_length = config.retro_gpt_chunk_length
-#     assert sample_length % chunk_length == 0
-#     return sample_length // chunk_length
 def get_num_chunks_per_sample(sample_length, chunk_length):
     '''Compute seq_length // chunk_length.'''
     assert sample_length % chunk_length == 0
     return sample_length // chunk_length
-# <<<
 
 
-# >>>
-# def get_gpt_data_dir(config):
-#     return os.path.join(config.retro_project_dir, "data")
 def get_gpt_data_dir(project_dir):
     return os.path.join(project_dir, "data")
-# <<<
 
 
 def core_gpt_dataset_config_from_retro_preprocessing_config(
-    config,
-    is_dataset_built_on_rank,
-    # >>>
-    # return_document_ids,
-    # <<<
-):
+    config: RetroPreprocessingConfig,
+    is_dataset_built_on_rank: bool,
+) -> GPTDatasetConfig:
     data_dir = get_gpt_data_dir(config.retro_project_dir)
-    # >>>
     blend = list(config.retro_gpt_data_path)
-    # blend = list(config.data_path)
-    # <<<
     for i in range(len(blend) - 1, -1, -2):
         blend[i] = os.path.join(data_dir, blend[i])
     return GPTDatasetConfig(
@@ -74,10 +57,7 @@ def core_gpt_dataset_config_from_retro_preprocessing_config(
         blend=blend,
         split=config.retro_gpt_split,
         path_to_cache=config.retro_gpt_data_cache_path,
-        # >>>
-        # return_document_ids=return_document_ids,
         return_document_ids=True,
-        # <<<
     )
 
 
@@ -103,9 +83,6 @@ class GPTToTextDataset(torch.utils.data.Dataset):
 # >>>
 # def save_data(data_map, *args):
 #     '''Save map of numpy arrays to hdf5 file.'''
-#     # >>>
-#     raise Exception("hi.")
-#     # <<<
 
 #     # Parse args.
 #     if len(args) == 1:
@@ -128,9 +105,6 @@ class GPTToTextDataset(torch.utils.data.Dataset):
 
 # def load_data(paths):
 #     '''Load multiple hdf5 files to single numpy array.'''
-#     # >>>
-#     raise Exception("hi.")
-#     # <<<
 
 #     # Read data shapes.
 #     shape_map = defaultdict(lambda : (0, None))
@@ -199,14 +173,12 @@ def get_missing_blocks(project_dir, n_samples, block_size,
             try:
                 f = h5py.File(path, "r")
             except:
-                # raise Exception("unable to open/validate '%s'." % path)
                 os.remove(path)
                 continue
 
             try:
                 validate(f)
             except:
-                # raise Exception("delete block file '%s'." % path)
                 os.remove(path)
             finally:
                 f.close()
@@ -263,10 +235,10 @@ class BlockPathMap:
     '''
 
     @classmethod
-    def from_dir(cls, _dir, block_size, ext="hdf5"):
+    def from_dir(cls, dir, block_size, ext="hdf5"):
         '''Get list of block files, and create map.'''
-        assert os.path.isdir(_dir), f"directory not found, '{_dir}'."
-        return cls(sorted(glob.glob(_dir + f"/*.{ext}")), block_size)
+        assert os.path.isdir(dir), f"directory not found, '{dir}'."
+        return cls(sorted(glob.glob(dir + f"/*.{ext}")), block_size)
 
     def __init__(self, block_paths, block_size):
         self.max_idx = 0

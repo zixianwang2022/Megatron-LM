@@ -50,12 +50,6 @@ from config_utils import add_config_args
 def add_retro_args(parser):
     group = parser.add_argument_group(title="Retro preprocessing")
     add_config_args(group, RetroPreprocessingConfig)
-
-    # >>>
-    # parser.print_help()
-    # raise Exception("hi.")
-    # <<<
-
     return parser
 
 
@@ -75,10 +69,7 @@ def get_bert_embedders(config):
     )
 
 
-# >>>
-# def get_gpt_datasets(config, return_document_ids, train_valid_test_num_iters):
 def get_gpt_datasets(config, train_valid_test_num_iters):
-# <<<
 
     # >>>
     # # Reset iterations.
@@ -90,9 +81,6 @@ def get_gpt_datasets(config, train_valid_test_num_iters):
     data_config = core_gpt_dataset_config_from_retro_preprocessing_config(
         config=config,
         is_dataset_built_on_rank=is_dataset_built_on_rank,
-        # >>>
-        # return_document_ids=return_document_ids,
-        # <<<
     )
 
     # Datasets.
@@ -100,23 +88,6 @@ def get_gpt_datasets(config, train_valid_test_num_iters):
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         lambda n : train_valid_test_datasets_provider(data_config, n))
 
-    # >>>
-    # num_train_samples, num_valid_samples, num_test_samples = \
-    #     get_train_valid_test_num_samples()
-    # num_train_iters, num_valid_iters, num_test_iters = train_valid_test_num_iters
-
-    # from lutil import pax
-    # pax("num_train_samples, num_valid_samples, num_test_samples")
-
-    # def get_max_samples(num_samples, num_iters):
-    #     return max(num_samples, num_iters * config.retro_gpt_global_batch_size)
-
-    # datasets = RetroGPTDatasets(
-    #     train = (train_ds, get_max_samples(num_train_samples, num_train_iters)),
-    #     valid = (valid_ds, get_max_samples(num_valid_samples, num_valid_iters)),
-    #     test = (test_ds, get_max_samples(num_test_samples, num_test_iters)),
-    # )
-    # +++
     num_train_samples, num_valid_samples, num_test_samples = \
         get_train_valid_test_num_samples()
 
@@ -125,10 +96,6 @@ def get_gpt_datasets(config, train_valid_test_num_iters):
         valid = (valid_ds, num_valid_samples),
         test = (test_ds, num_test_samples),
     )
-
-    # from lutil import pax
-    # pax("num_train_samples, num_valid_samples, num_test_samples, datasets")
-    # <<<
 
     # >>>
     # pax("config, data_config, datasets", {
@@ -230,9 +197,6 @@ if __name__ == "__main__":
     # Save retro config.
     os.makedirs(config.retro_project_dir, exist_ok=True)
     save_config(config)
-    # >>>
-    # set_retro_args(config)
-    # <<<
 
     # Expand tasks.
     task_remap = {

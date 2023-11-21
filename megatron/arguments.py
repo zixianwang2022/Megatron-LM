@@ -10,17 +10,10 @@ import torch
 import types
 
 import torch.nn.functional as F
-# >>>
-# from megatron.global_vars import set_retro_args, get_retro_args
-# <<<
 from megatron.core.models.retro.data.utils import (
     get_config_path as get_retro_config_path,
     get_gpt_data_dir as get_retro_data_dir,
 )
-
-# >>>
-# from megatron.core.models.retro import RetroConfig
-# <<<
 from megatron.core.transformer import TransformerConfig
 
 
@@ -98,17 +91,9 @@ def load_retro_args(args):
                 assert len(data_path) == 1
                 data_path[0] = os.path.join(data_dir, data_path[0])
 
-            # >>>
-            # from lutil import pax
-            # pax("data_dir, data_path")
-            # <<<
-
             # Update args.
             args.data_cache_path = retro_config.retro_gpt_data_cache_path
-            # >>>
-            # args.data_path = retro_config.retro_gpt_data_path
             args.data_path = data_path
-            # <<<
             args.eval_interval = retro_config.retro_gpt_eval_interval
             args.eval_iters = retro_config.retro_gpt_eval_iters
             args.global_batch_size = retro_config.retro_gpt_global_batch_size
@@ -122,20 +107,6 @@ def load_retro_args(args):
             args.train_samples = retro_config.retro_gpt_train_samples
             args.vocab_file = retro_config.retro_gpt_vocab_file
 
-            # >>>
-            # RETRO_GPT_TRAIN_SAMPLES=65000
-            # RETRO_GPT_LR_DECAY_SAMPLES=64000
-            # RETRO_GPT_LR_WARMUP_SAMPLES=1000
-            # ... RETRO_GPT_SEED=1234
-            # ... RETRO_GPT_SPLIT="98,2,0"
-            # ... RETRO_GPT_DATA_PATH="0.5 wiki-tiny-0/ds-0 0.5 wiki-tiny-1/ds-1"
-            # ... RETRO_GPT_EVAL_INTERVAL=2000
-            # ... RETRO_GPT_EVAL_ITERS=100
-            # ... RETRO_GPT_SEQ_LENGTH=2048
-            # ... RETRO_GPT_GLOBAL_BATCH_SIZE=256
-            # ... RETRO_GPT_CHUNK_LENGTH=64
-            # <<<
-
             args.retro_block_size = retro_config.retro_block_size
             args.retro_chunk_length = retro_config.retro_gpt_chunk_length
 # <<<
@@ -143,10 +114,8 @@ def load_retro_args(args):
 
 def validate_args(args, defaults={}):
 
-    # >>>
     # Load saved args from Retro (if applicable).
     load_retro_args(args)
-    # <<<
 
     # Tensor model parallel size.
     args.tensor_model_parallel_size = min(
@@ -509,23 +478,10 @@ def _check_arg_is_not_none(args, arg):
 def core_transformer_config_from_args(args, config_class=None):
 
     # Config class.
-    kw_args = {}
-    # >>>
-    # retro_args = get_retro_args()
-    # if config_class:
-    #     pass
-    # elif retro_args:
-    #     kw_args['retro_preprocess'] = retro_args
-    #     config_class = RetroConfig
-    # else:
-    #     config_class = TransformerConfig
-    # <<<
-
-    # >>>
     config_class = config_class or TransformerConfig
-    # <<<
 
     # Translate args to core transformer configuration
+    kw_args = {}
     for f in dataclasses.fields(config_class):
         if hasattr(args, f.name):
             kw_args[f.name] = getattr(args, f.name)
@@ -614,16 +570,12 @@ def _add_inference_args(parser):
 def _add_retro_args(parser):
     group = parser.add_argument_group(title='retro')
 
-    # >>>
-    # group.add_argument('--retro-workdir', default=None,
-    #                    help='Retro working directory, which contains the '
     group.add_argument('--retro-project-dir', default=None,
                        help='Retro project directory, which contains the '
                        'preprocessed data for pretraining. This directory '
                        'is built during preprocessing (see '
                        'tools/retro/README.md), and contains subdirectories '
                        'for the chunk database and pretraining neighbors.')
-    # <<<
     group.add_argument('--retro-add-retriever',
                        action='store_true', default=False,
                        help='Add a retriever to the transformer, for use in '
@@ -646,10 +598,6 @@ def _add_retro_args(parser):
     group.add_argument("--retro-num-retrieved-chunks", type=int, default=2,
                        help='Number of chunks to retrieve from the retrieval '
                        'database.')
-    # >>>
-    # group.add_argument("--retro-return-doc-ids", action="store_true",
-    #                    help="Turn this on when preprocessing retro data.")
-    # <<<
     group.add_argument("--retro-no-verify-neighbor-count", action="store_false",
                        dest="retro_verify_neighbor_count",
                        help="Skip verifying that len(GPT dataset) == len(saved "
