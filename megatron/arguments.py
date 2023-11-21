@@ -41,6 +41,7 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     parser = _add_transformer_engine_args(parser)
     parser = _add_retro_args(parser)
     parser = _add_experimental_args(parser)
+    parser = _add_muT_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:
@@ -1397,5 +1398,22 @@ def _add_experimental_args(parser):
                        'block, or transformer layer, depending on the use case. '
                        'For more details, see the model class, '
                        '`transformer_block.py`, or `transformer_layer.py`')
+
+    return parser
+
+
+def _add_muT_args(parser):
+    group = parser.add_argument_group(title='muT training')
+
+    group.add_argument('--initialization-scale', type=float, default=1.0,
+                       help='the multiplier to all the initializaed parameters(weight and bias)')
+    group.add_argument('--attention-temperature', type=float, default=1.0,
+                       help='Reciprocal of the multiplier applied to the input to attention softmax')
+    group.add_argument('--output-temperature', type=float, default=1.0,
+                       help='Reciprocal of the multiplier applied to the input to attention softmax')
+    group.add_argument('--embedding-multiplier', type=float, default=1.0,
+                       help='Scalar by which we multiply the output of the embedding layer')
+    group.add_argument('--pos-embedding-multiplier', type=float, default=1.0,
+                       help='Scalar by which we multiply vectors representing relative position')
 
     return parser

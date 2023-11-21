@@ -82,36 +82,48 @@ class OptimizerParamScheduler(object):
 
         # Use linear warmup for the initial part.
         if self.lr_warmup_steps > 0 and self.num_steps <= self.lr_warmup_steps:
-            return (
-                self.init_lr
-                + (
-                    (self.max_lr - self.init_lr)
-                    * float(self.num_steps)
-                    / float(self.lr_warmup_steps)
-                )
-            )
+            # return (
+            #     self.init_lr
+            #     + (
+            #         (self.max_lr - self.init_lr)
+            #         * float(self.num_steps)
+            #         / float(self.lr_warmup_steps)
+            #     )
+            # )
+            return [self.init_lr + (
+                        (group['max_lr'] - self.init_lr)  * float(self.num_steps) 
+                        / float(self.lr_warmup_steps)
+                        )
+                    for group in self.optimizer.param_groups]
+
 
         # If the learning rate is constant, just return the initial value.
         if self.lr_decay_style == 'constant':
-            return self.max_lr
+            # return self.max_lr
+            return [group['lr'] for group in self.optimizer.param_groups]
 
         # For any steps larger than `self.lr_decay_steps`, use `self.min_lr`.
         if self.num_steps > self.lr_decay_steps:
-            return self.min_lr
+            # return self.min_lr
+            return [group['min_lr'] for group in self.optimizer.param_groups]
 
         # If we are done with the warmup period, use the decay style.
         if self.lr_decay_style == 'inverse-square-root':
             warmup_steps = max(self.lr_warmup_steps, 1)
             num_steps = max(self.num_steps, 1)
-            lr = self.max_lr * warmup_steps ** 0.5 / (num_steps ** 0.5)
-            return max(self.min_lr, lr)
+            # lr = self.max_lr * warmup_steps ** 0.5 / (num_steps ** 0.5)
+            # return max(self.min_lr, lr)
+            lr = [max(group['max_lr'] * warmup_steps ** 0.5 / (num_steps ** 0.5), group['min_lr'])
+                  for group in self.optimizer.param_groups]
+            return lr
 
         num_steps_ = self.num_steps - self.lr_warmup_steps
         decay_steps_ = self.lr_decay_steps - self.lr_warmup_steps
         decay_ratio = float(num_steps_) / float(decay_steps_)
         assert decay_ratio >= 0.0
         assert decay_ratio <= 1.0
-        delta_lr = self.max_lr - self.min_lr
+        # delta_lr = self.max_lr - self.min_lr
+        delta_lr = [group['max_lr'] - group['min_lr'] for group in self.optimizer.param_groups]
 
         if self.lr_decay_style == 'linear':
             coeff = (1.0 - decay_ratio)
@@ -121,17 +133,26 @@ class OptimizerParamScheduler(object):
             raise Exception('{} decay style is not supported.'.format(
                 self.lr_decay_style))
 
-        return self.min_lr + coeff * delta_lr
+        # return self.min_lr + coeff * delta_lr
+        return [group['min_lr'] + coeff * delta_lr_each for group, delta_lr_each in
+                zip(self.optimizer.param_groups, delta_lr)]
 
 
     def step(self, increment):
         """Set lr for all parameters groups."""
         self.num_steps += increment
-        new_lr = self.get_lr()
+        # new_lr = self.get_lr()
+        # new_wd = self.get_wd()
+        # for group in self.optimizer.param_groups:
+        #     group['lr'] = new_lr * group.get('lr_mult', 1.0)
+        #     group['weight_decay'] = new_wd * group.get('wd_mult', 1.0)
+
+        new_lr_list = self.get_lr()
         new_wd = self.get_wd()
-        for group in self.optimizer.param_groups:
-            group['lr'] = new_lr * group.get('lr_mult', 1.0)
-            group['weight_decay'] = new_wd * group.get('wd_mult', 1.0)
+        for i, data in enumerate(zip(self.optimizer.param_groups, new_lr_list)):
+            param_group, lr = data
+            param_group['lr'] = lr * param_group.get('lr_mult', 1.0)
+            param_group['weight_decay'] = new_wd * param_group.get('wd_mult', 1.0)
 
 
     def state_dict(self):

@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from typing import Optional
+from torch.nn.init import constant_
 
 from megatron import get_timers, get_args, get_retro_args, core, get_num_microbatches
 from .module import MegatronModule
@@ -298,6 +299,7 @@ class CoreAttention(MegatronModule):
     def __init__(self, layer_number, config,
                  attn_mask_type=AttnMaskType.padding):
         super(CoreAttention, self).__init__()
+        args = get_args()
         self.fp16 = config.fp16
         self.bf16 = config.bf16
 
@@ -321,7 +323,13 @@ class CoreAttention(MegatronModule):
             config.num_attention_heads, world_size)
 
         coeff = None
-        self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
+        if args.muT_config_file is None:
+            self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
+        else:
+            self.norm_factor = self.hidden_size_per_attention_head
+        
+        self.attn_temp = args.attention_temperature
+
         if self.apply_query_key_layer_scaling:
             coeff = self.layer_number
             self.norm_factor *= coeff
@@ -373,6 +381,9 @@ class CoreAttention(MegatronModule):
 
         # change view to [b, np, sq, sk]
         attention_scores = matmul_result.view(*output_size)
+
+        ### attention logit scale
+        attention_scores.data *= self.attn_temp
 
         # ===========================
         # Attention probs and dropout
@@ -556,6 +567,11 @@ class ParallelAttention(MegatronModule):
                 init_method=config.init_method,
                 bias=args.add_bias_linear,
                 gather_output=False)
+            
+            if args.muT_config_file is not None:
+                # zero initializing query head (muT)
+                constant_(self.query_key_value.weight[:,:query_projection_size], 0.)
+
         else:
             assert attention_type == AttnType.cross_attn
 
@@ -691,7 +707,7 @@ class ParallelAttention(MegatronModule):
                 dim=3)
 
             # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn] -
-            query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head)
+            query_layer = query_layer.reshape(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head)
         else:
             # Attention heads [sk, b, h] --> [sk, b, (np * 2 * hn)]
             mixed_kv_layer, _ = self.key_value(encoder_output)

@@ -12,14 +12,27 @@ from .enums import AttnMaskType
 from .language_model import parallel_lm_logits
 from .language_model import get_language_model
 
+import math
+from tools.mup.shape import set_base_shapes
+from tools.mup.init import normal_
+from megatron.core.tensor_parallel.random import get_cuda_rng_tracker
+
 
 def post_language_model_processing(lm_output, labels, logit_weights,
                                    parallel_output,
                                    fp16_lm_cross_entropy):
 
+    args = get_args()
+    output_temperature = args.output_temperature
+
+    if hasattr(logit_weights, 'infshape'):
+        width_mult = logit_weights.infshape.width_mult()
+    else:
+        width_mult = 1.0
+
     # Output. Format [s b h]
     output = parallel_lm_logits(
-        lm_output,
+        lm_output / width_mult * output_temperature,
         logit_weights,
         parallel_output)
 
@@ -38,6 +51,25 @@ def post_language_model_processing(lm_output, labels, logit_weights,
         # [s b] => [b, s]
         loss = loss.transpose(0,1).contiguous()
         return loss
+
+    
+"""
+The only things we modified from the original GPTModel are 
+1) replace the readout layer with MuReadout or MuSharedReadout, --- > 
+ the initialization of self.output_layer is ok, only change the \
+post_language_model_processing() function
+2) use fan_in style initialization, 
+3) change attention scaling to 1/d instead of 1/sqrt(d), and
+4) zero initialization of query weights 
+5) zero initialization of the output layer
+6) muT style optimizer and scheduler
+7) add multiplier to the parameterization initialization (
+    a) initialization multiplier, 
+    b) embedding multiplier, 
+    c) attention temperature, 
+    d) output temperature, 
+    e) relative position embedding multiplier)
+"""
 
 
 class GPTModel(MegatronModule):
@@ -68,6 +100,57 @@ class GPTModel(MegatronModule):
         
         if not args.untie_embeddings_and_output_weights:
             self.initialize_word_embeddings()
+
+        if args.muT_config_file is not None:
+            self._fanin_initialization(args)
+
+
+    def _fanin_initialization(self, config):
+        if hasattr(config, "shape_file"):
+            print_rank_0("Set the base shapes!")
+
+            set_base_shapes(self, config.shape_file, rescale_params=False)
+
+            # here manually initialize all the named parameters with the muTranfer normal initializer
+            for name, tensor in self.named_parameters():
+                print_rank_0("The name is {}".format(name))
+                if name.endswith('.dense_4h_to_h.weight') or name.endswith('.dense.weight'):
+                    # initialize all the output dense matrix weight
+                    print_rank_0("reset the initialization for output dense matrix!")
+                    std = config.init_method_std / math.sqrt(2.0 * config.num_layers)
+                    with tensor_parallel.get_cuda_rng_tracker().fork():
+                        normal_(tensor, 0 , std)
+                elif name.endswith('layernorm.weight'):
+                    # initialize all the layer norm weight as all 1, and bias as 0
+                    if tensor.std() != 0 and tensor.mean() != 1:
+                        raise ValueError(f'need to check {name} init')
+                    print_rank_0("reset the initialization for layernorm weight!")
+                    if config.apply_layernorm_1p:
+                        normal_(tensor, 0, 0)
+                    else:
+                        normal_(tensor, 1, 0)
+                elif name.endswith('layernorm.bias'):
+                    if tensor.std() !=0 and tensor.mean() !=0:
+                        raise ValueError(f'need to check {name} init')
+                    print_rank_0("reset the initialization for layernorm bias!")
+                    normal_(tensor, 0, 0)
+                elif name.endswith('.weight'):
+                    # initialize all the other dense matrix weight
+                    print_rank_0("reset .weight with muP style initialization!")
+                    with tensor_parallel.get_cuda_rng_tracker().fork():
+                        normal_(tensor, 0, config.init_method_std)
+                else:
+                    if tensor.std() != 0 and tensor.mean() != 0:
+                        raise ValueError(f'need to check {name} init')
+                    
+                # initialization scale
+                init_scale = config.initialization_scale
+                print_rank_0("Multiply the parameter with init_scale {}".format(init_scale))
+                tensor.data *= init_scale
+
+        return
+
+
 
     def set_input_tensor(self, input_tensor):
         """See megatron.model.transformer.set_input_tensor()"""
