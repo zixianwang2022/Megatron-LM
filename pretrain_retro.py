@@ -33,7 +33,7 @@ from lutil import pax
 # <<<
 
 
-def get_config():
+def get_retro_config():
     config = core_transformer_config_from_args(get_args(), RetroConfig)
     # >>>
     # config.retro_tokenizers = RetroTokenizers(gpt=get_tokenizer())
@@ -45,7 +45,7 @@ def core_model_provider(pre_process=True, post_process=True):
     """Build the model using Megatron-Core."""
 
     args = get_args()
-    config = get_config()
+    config = get_retro_config()
 
     # NOTE: Experimental customization feature
     if args.spec is not None:
@@ -85,8 +85,11 @@ def model_provider(pre_process=True, post_process=True):
 
 def get_batch(data_iterator):
     """Generate a batch"""
+    # >>>
     args = get_args()
-    retro_args = get_retro_args()
+    # retro_args = get_retro_args()
+    # config = get_retro_config()
+    # <<<
     tokenizer = get_tokenizer()
 
     # Items and their type.
@@ -108,8 +111,7 @@ def get_batch(data_iterator):
 
     # note: [bs * l * k, r]
     # note: 2x == neighbor, continuation
-    neighbor_tokens = data_b['neighbor_tokens'] \
-        .view(-1, retro_args.retro_gpt_retrieved_length).long()
+    neighbor_tokens = data_b['neighbor_tokens'].view(-1, get_retro_config().retro_retrieved_length).long()
 
     # Get the masks and postition ids.
     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
@@ -164,7 +166,7 @@ def forward_step(data_iterator, model):
 
 def train_valid_test_datasets_provider(train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
-    config = get_config()
+    config = get_retro_config()
     train_ds, valid_ds, test_ds = \
         gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
     gpt_datasets = RetroGPTDatasets(
@@ -172,24 +174,12 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         valid=(valid_ds, train_valid_test_num_samples[1]),
         test=(test_ds, train_valid_test_num_samples[2]),
     )
-    # >>>
-    # retro_datasets = get_retro_datasets(
-    #     project_dir=config.retro_project_dir,
-    #     gpt_datasets=gpt_datasets,
-    #     sample_length=get_args().seq_length,
-    #     chunk_length=config.retro_chunk_length,
-    #     eod_token_id=config.retro_tokenizers.gpt.eod,
-    #     block_size=config.retro_block_size,
-    #     verify_neighbor_count=config.retro_verify_neighbor_count,
-    # )
     retro_datasets = get_retro_datasets(
         config=config,
         gpt_datasets=gpt_datasets,
         sample_length=get_args().seq_length,
         eod_token_id=get_tokenizer().eod,
     )
-    # <<<
-    pax("retro_datasets")
     return retro_datasets
 
 

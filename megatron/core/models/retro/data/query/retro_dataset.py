@@ -106,91 +106,6 @@ class RetroDataset(torch.utils.data.Dataset):
         return sample
 
 
-# >>>
-# def get_retro_datasets(
-#     project_dir: str,
-#     gpt_datasets: RetroGPTDatasets,
-#     sample_length: int,
-#     chunk_length: int,
-#     eod_token_id: int,
-#     block_size: int,
-#     verify_neighbor_count: bool,
-# ):
-#     '''Get train, valid, test retro datasets.'''
-
-#     # DB dataset.
-#     db_dataset = get_db_dataset(
-#         project_dir=project_dir,
-#         chunk_length=chunk_length,
-#         eod_token_id=eod_token_id,
-#     )
-
-#     # GPT chunk datasets.
-#     chunk_ds_info_map = get_chunk_dataset_map(
-#         project_dir=project_dir,
-#         gpt_datasets=gpt_datasets,
-#         sample_length=sample_length,
-#         chunk_length=chunk_length,
-#     )
-
-#     # Retro datasets.
-#     retro_dataset_map = {}
-#     for data_key, chunk_ds_info in chunk_ds_info_map.items():
-
-#         chunk_dataset = chunk_ds_info["dataset"]
-#         neighbor_dir = chunk_ds_info["neighbor_dir"]
-#         neighbor_path_map = BlockPathMap.from_dir(neighbor_dir, block_size)
-
-#         # Verify dataset prefixes.
-#         expected_dir = get_neighbor_dir(project_dir, data_key, chunk_dataset.sample_dataset)
-#         assert expected_dir == neighbor_dir, \
-#             "inconsistent dataset source; '%s' vs. '%s'." % \
-#             (expected_dir, neighbor_dir)
-
-#         # Verify num chunks.
-#         # >>>
-#         # n_sample_chunks = len(chunk_dataset)
-#         n_active_chunks = chunk_ds_info["num_active_chunks"]
-#         # <<<
-#         n_neighbor_chunks = neighbor_path_map.max_idx
-
-#         if not os.path.isdir(neighbor_dir):
-#             if torch.distributed.get_rank() == 0:
-#                 raise Exception("neighbor directory '%s' not found; please "
-#                                 "compare --train-samples, --seq-length, --seed, "
-#                                 "--eval-iters, and --eval-interval, with "
-#                                 "retro preprocessing args." %
-#                                 neighbor_dir)
-#             torch.distributed.barrier()
-#             exit()
-
-#         if verify_neighbor_count and n_active_chunks != n_neighbor_chunks:
-#             if torch.distributed.get_rank() == 0:
-#                 print("neighbor_dir : %s" % neighbor_dir)
-#                 print("neighbor_path_map : %s" % neighbor_path_map)
-#                 raise Exception("num sampled chunks (%d) != num neighbor chunks "
-#                                 "(%d); did you complete querying the entire "
-#                                 "pretraining dataset?"
-#                                 % (n_active_chunks, n_neighbor_chunks))
-#             torch.distributed.barrier()
-#             exit()
-
-#         # Retro dataset.
-#         retro_dataset_map[data_key] = RetroDataset(
-#             num_neighbors=args.retro_num_neighbors,
-#             num_retrieved_chunks=args.retro_num_retrieved_chunks,
-#             block_size=block_size,
-#             db_dataset=db_dataset,
-#             chunk_dataset=chunk_dataset,
-#             neighbor_path_map=neighbor_path_map,
-#         )
-
-#     # Extract datasets.
-#     train_ds = retro_dataset_map.get("train", None)
-#     valid_ds = retro_dataset_map.get("valid", None)
-#     test_ds = retro_dataset_map.get("test", None)
-
-#     return train_ds, valid_ds, test_ds
 def get_retro_datasets(
     config: RetroConfig,
     gpt_datasets: RetroGPTDatasets,
@@ -203,10 +118,7 @@ def get_retro_datasets(
     db_dataset = get_db_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_chunk_length,
-        # >>>
-        # eod_token_id=config.retro_tokenizers.gpt.eod,
         eod_token_id=eod_token_id,
-        # <<<
     )
 
     # GPT chunk datasets.
@@ -236,10 +148,7 @@ def get_retro_datasets(
             (expected_dir, neighbor_dir)
 
         # Verify num chunks.
-        # >>>
-        # n_sample_chunks = len(chunk_dataset)
         n_active_chunks = chunk_ds_info["num_active_chunks"]
-        # <<<
         n_neighbor_chunks = neighbor_path_map.max_idx
 
         if not os.path.isdir(neighbor_dir):
@@ -279,4 +188,3 @@ def get_retro_datasets(
     test_ds = retro_dataset_map.get("test", None)
 
     return train_ds, valid_ds, test_ds
-# <<<
