@@ -50,7 +50,6 @@ options=" \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
     --position-embedding-type rope \
-    --use-rotary-position-embeddings \
     --rotary-percent 0.5 \
     --swiglu \
     --attention-dropout 0.0 \
@@ -125,4 +124,4 @@ srun -l --verbose \
     --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
     sh -c "${run_cmd}"
 
-# set +x
+set +x

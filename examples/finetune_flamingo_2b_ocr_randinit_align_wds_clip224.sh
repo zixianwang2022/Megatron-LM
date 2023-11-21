@@ -44,16 +44,16 @@ PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
 DATASET_CONFIG="${SOURCE}/dataset.yaml"
 
 options=" \
+    --accumulate-allreduce-grads-in-fp32 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
-    --no-position-embedding \
-    --use-rotary-position-embeddings \
+    --position-embedding-type rope \
     --rotary-percent 0.5 \
     --swiglu \
-    --attention-dropout 0.1 \
-    --hidden-dropout 0.1 \
+    --attention-dropout 0.0 \
+    --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
@@ -61,15 +61,15 @@ options=" \
     --hidden-size 2048 \
     --num-attention-heads 16 \
     --seq-length ${SEQ_LEN} \
-    --ds-seq-length 256 \
-    --max-position-embeddings 2048 \
+    --ds-seq-length 512 \
+    --max-position-embeddings 4096 \
     --cyclic-train-iters 100000000 \
-    --train-samples 1048576 \
-    --micro-batch-size 8 \
+    --micro-batch-size 1 \
     --global-batch-size 256 \
-    --lr-decay-samples 10240000 \
+    --train-samples 131072 \
+    --lr-decay-samples 15600000 \
     --lr-warmup-samples 83200 \
-    --lr 1e-4 \
+    --lr 0.0001 \
     --min-lr 5e-5 \
     --lr-decay-style cosine \
     --log-interval 10 \
@@ -104,6 +104,7 @@ options=" \
     --finetune \
     --perceiver-type none \
     --freeze-LM \
+    --freeze-ViT \
     --img-h 224 \
     --img-w 224 \
     --dataloader-type cyclic --no-data-sharding \
