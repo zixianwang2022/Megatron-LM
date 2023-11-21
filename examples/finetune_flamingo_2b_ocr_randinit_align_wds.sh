@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=8
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr-wds-sam
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr-wds-sam
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-train-samples-new-withdocidx-mr-wds-sam"
+NAME="flamingo-2b-pretrain-ocr-randominit-aligned-train-samples-new-withdocidx-mr-wds-sam"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -44,16 +44,17 @@ PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
 DATASET_CONFIG="${SOURCE}/dataset.yaml"
 
 options=" \
+    --accumulate-allreduce-grads-in-fp32 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
-    --no-position-embedding \
+    --position-embedding-type rope \
     --use-rotary-position-embeddings \
     --rotary-percent 0.5 \
     --swiglu \
-    --attention-dropout 0.1 \
-    --hidden-dropout 0.1 \
+    --attention-dropout 0.0 \
+    --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
     --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
@@ -61,15 +62,15 @@ options=" \
     --hidden-size 2048 \
     --num-attention-heads 16 \
     --seq-length ${SEQ_LEN} \
-    --ds-seq-length 256 \
-    --max-position-embeddings 2048 \
+    --ds-seq-length 512 \
+    --max-position-embeddings 4096 \
     --cyclic-train-iters 100000000 \
-    --train-samples 1048576 \
     --micro-batch-size 1 \
     --global-batch-size 256 \
+    --train-samples 131072 \
     --lr-decay-samples 25600000 \
     --lr-warmup-samples 83200 \
-    --lr 1e-4 \
+    --lr 0.0001 \
     --min-lr 5e-5 \
     --lr-decay-style cosine \
     --log-interval 10 \
@@ -104,6 +105,7 @@ options=" \
     --finetune \
     --perceiver-type none \
     --freeze-LM \
+    --freeze-ViT \
     --img-h 1024 \
     --img-w 1024 \
     --dataloader-type cyclic --no-data-sharding \
@@ -124,4 +126,4 @@ srun -l --verbose \
     --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
     sh -c "${run_cmd}"
 
-set +x
+# set +x

@@ -8,7 +8,7 @@
 #SBATCH --overcommit
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
-#SBATCH --nodes=8
+#SBATCH --nodes=4
 #SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr-wds-clip224
 
 export NCCL_IB_SL=1
@@ -37,7 +37,7 @@ DATA_VALID="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/ocr.yaml"
 
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/checkpoints/vit_L_14"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -65,9 +65,9 @@ options=" \
     --max-position-embeddings 2048 \
     --cyclic-train-iters 100000000 \
     --train-samples 1048576 \
-    --micro-batch-size 1 \
+    --micro-batch-size 8 \
     --global-batch-size 256 \
-    --lr-decay-samples 25600000 \
+    --lr-decay-samples 10240000 \
     --lr-warmup-samples 83200 \
     --lr 1e-4 \
     --min-lr 5e-5 \

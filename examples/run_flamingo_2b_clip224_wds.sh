@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=8
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-clip-mr-wds-latest-nvgpt4
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-clip224-mr-wds
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-1node-COCO-overfit-clip-mr-wds-latest-nvgpt4"
+NAME="flamingo-2b-1node-COCO-overfit-clip224-mr-wds"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -38,9 +38,6 @@ DATA_VALID="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
 VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
-# VISUAL_ARCH="SAM_L"
-# VISUAL_TYPE="sam"
-# VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"

@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=8
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr-new
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-train-samples-new-withdocidx-mr-debug"
+NAME="flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-train-samples-new-withdocidx-mr-new"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"

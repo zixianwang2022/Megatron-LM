@@ -9,14 +9,14 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
 #SBATCH --nodes=8
-#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-clip336-mr
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-COCO-overfit-clip-mr
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 SEQ_LEN=96
 
-NAME="flamingo-2b-1node-COCO-overfit-clip336-mr"
+NAME="flamingo-2b-1node-COCO-overfit-clip-mr"
 LOAD_NAME="gpt3-2b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source"
@@ -37,7 +37,10 @@ DATA_VALID="1.0000 /lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO_debug/CO
 
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/checkpoints/vit_L_14_336px"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
+# VISUAL_ARCH="SAM_L"
+# VISUAL_TYPE="sam"
+# VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -85,7 +88,7 @@ options=" \
     --save ${FINETUNE_DIR} \
     --load ${CHECKPOINT_DIR} \
     --split 100,0,0 \
-    --clip-grad 52.0 \
+    --clip-grad 50.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
@@ -105,22 +108,22 @@ options=" \
     --perceiver-type none \
     --freeze-LM \
     --freeze-ViT \
-    --img-h 336 \
-    --img-w 336 \
+    --img-h 224 \
+    --img-w 224 \
     --dataloader-type cyclic --no-data-sharding \
     --align-to-old \
     --tensorboard-dir ${TENSORBOARD_DIR}"
 
 # torchrun --nproc-per-node 8 ${SOURCE}/pretrain_flamingo.py ${options}
-# python -u ${SOURCE}/pretrain_flamingo.py ${options}
-run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
+CUDA_VISIBLE_DEVICES=0 python -u ${SOURCE}/pretrain_flamingo.py ${options}
+# run_cmd="python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
-DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
+# DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-srun -l --verbose \
-    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
-    --container-mounts "/lustre" \
-    --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
-    sh -c "${run_cmd}"
+# srun -l --verbose \
+#    --container-image /lustre/fsw/adlr/adlr-nlp/jbarker/checkpoints/adlr+megatron-lm+pytorch+23.04-py3-jbarker.sqsh \
+#    --container-mounts "/lustre" \
+#    --output=${LOGS_DIR}/%x_%j_$DATETIME.log \
+#    sh -c "${run_cmd}"
 
-set +x
+# set +x
