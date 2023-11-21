@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from typing import Optional
-from torch.nn.init import constant_
 
 from megatron import get_timers, get_args, get_retro_args, core, get_num_microbatches
 from .module import MegatronModule
@@ -161,7 +160,7 @@ def sinkhorn(cost, tol=0.0001):
     cost = torch.exp(cost)
     d0 = torch.ones(cost.size(0), device=cost.device, dtype=cost.dtype)
     d1 = torch.ones(cost.size(1), device=cost.device, dtype=cost.dtype)
-    
+
     eps = 0.00000001
     error = 1e9
     d1_old = d1
@@ -229,7 +228,7 @@ class SwitchMLP(MegatronModule):
         b = hidden_states.size(1)
         h = hidden_states.size(2)
         route = self.router(hidden_states).view(-1, args.num_experts)
-        
+
         # TODO (rprenger) Right now we're just using the sinkhorn algorithm
         # for load balancing. There should be an option to do no load balancing
         # and the algorithm and parametets should be further tested
@@ -323,13 +322,10 @@ class CoreAttention(MegatronModule):
             config.num_attention_heads, world_size)
 
         coeff = None
-        if args.muT_config_file is None:
-            self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
-        else:
+        if args.use_mup_zero_init_and_qk_scale:
             self.norm_factor = self.hidden_size_per_attention_head
-        
-        self.attn_temp = args.attention_temperature
-
+        else:
+            self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
         if self.apply_query_key_layer_scaling:
             coeff = self.layer_number
             self.norm_factor *= coeff
@@ -381,9 +377,6 @@ class CoreAttention(MegatronModule):
 
         # change view to [b, np, sq, sk]
         attention_scores = matmul_result.view(*output_size)
-
-        ### attention logit scale
-        attention_scores.data *= self.attn_temp
 
         # ===========================
         # Attention probs and dropout
@@ -567,11 +560,10 @@ class ParallelAttention(MegatronModule):
                 init_method=config.init_method,
                 bias=args.add_bias_linear,
                 gather_output=False)
-            
-            if args.muT_config_file is not None:
-                # zero initializing query head (muT)
-                constant_(self.query_key_value.weight[:,:query_projection_size], 0.)
 
+            if args.use_mup_zero_init_and_qk_scale:
+                # Zero-init for query projection.
+                torch.nn.init.constant_(self.query_key_value.weight[:,:query_projection_size], 0.)
         else:
             assert attention_type == AttnType.cross_attn
 
@@ -600,8 +592,13 @@ class ParallelAttention(MegatronModule):
         self.checkpoint_core_attention = config.recompute_granularity == 'selective'
 
         if self.use_flash_attn:
+
+            softmax_scale = None
+            if args.use_mup_zero_init_and_qk_scale:
+                softmax_scale = 1. / self.hidden_size_per_attention_head
             self.core_attention_flash = FlashSelfAttention(
-                causal=True, attention_dropout=config.attention_dropout
+                causal=True, attention_dropout=config.attention_dropout,
+                softmax_scale=softmax_scale
             )
 
         # Output.
@@ -871,12 +868,14 @@ class ParallelTransformerLayer(MegatronModule):
     def __init__(self, config,
                  layer_number, layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
-                 drop_path_rate=0.):
+                 drop_path_rate=0., block_multiplier=1.0):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
         self.layer_number = layer_number
         self.layer_type = layer_type
+
+        self.block_multiplier = block_multiplier
 
         self.apply_residual_connection_post_norm \
             = config.apply_residual_connection_post_layernorm
@@ -1169,6 +1168,11 @@ class ParallelTransformerLayer(MegatronModule):
                 inference_params=inference_params,
                 rotary_pos_emb=rotary_pos_emb)
 
+        if self.block_multiplier != 1:
+            attention_output = attention_output * self.block_multiplier
+            if attention_bias is not None:
+                attention_bias = attention_bias * self.block_multiplier
+
         # Residual connection.
         if self.apply_residual_connection_post_norm:
             residual = norm_output
@@ -1240,6 +1244,11 @@ class ParallelTransformerLayer(MegatronModule):
 
         # MLP.
         mlp_output, mlp_bias = self.mlp(norm_output)
+
+        if self.block_multiplier != 1:
+            mlp_output = mlp_output * self.block_multiplier
+            if mlp_bias is not None:
+                mlp_bias = mlp_bias * self.block_multiplier
 
         # Second residual connection.
         if self.apply_residual_connection_post_norm:
@@ -1387,7 +1396,8 @@ class ParallelTransformer(MegatronModule):
                  post_norm=True,
                  pre_process=True,
                  post_process=True,
-                 drop_path_rate=0.0):
+                 drop_path_rate=0.0,
+                 block_multiplier=1.0):
         super(ParallelTransformer, self).__init__()
         args = get_args()
 
@@ -1402,6 +1412,7 @@ class ParallelTransformer(MegatronModule):
         self.drop_path_rate = drop_path_rate
         self.transformer_impl = args.transformer_impl
         self.retro_add_retriever = args.retro_add_retriever
+        self.block_multiplier = block_multiplier
 
         # Store activation checkpoiting flag.
         self.recompute_granularity = config.recompute_granularity
@@ -1492,7 +1503,8 @@ class ParallelTransformer(MegatronModule):
                     layer_number,
                     layer_type=current_layer_type,
                     self_attn_mask_type=self_attn_mask_type,
-                    drop_path_rate=self.drop_path_rates[layer_number - 1])
+                    drop_path_rate=self.drop_path_rates[layer_number - 1],
+                    block_multiplier=self.block_multiplier)
             else:
                 # This argument is only available from TE v0.10 onwards.
                 extra_transformer_engine_kwargs = {}

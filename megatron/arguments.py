@@ -41,7 +41,7 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     parser = _add_transformer_engine_args(parser)
     parser = _add_retro_args(parser)
     parser = _add_experimental_args(parser)
-    parser = _add_muT_args(parser)
+    parser = _add_mup_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:
@@ -832,18 +832,18 @@ def _add_training_args(parser):
                        help='Global ranks to profile.')
     group.add_argument('--tp-comm-overlap', action='store_true', help = 'Enables the '
                        ' overlap of Tensor parallel communication and GEMM kernels.')
-    group.add_argument('--tp-comm-overlap-cfg', type=str, default=None, 
+    group.add_argument('--tp-comm-overlap-cfg', type=str, default=None,
                        help = 'Config file when tp_comm_overlap is enabled.')
-    group.add_argument('--disable-tp-comm-split-ag', action='store_false', 
+    group.add_argument('--disable-tp-comm-split-ag', action='store_false',
                        help = 'Disables the All-Gather overlap with fprop GEMM.',
                        dest='tp_comm_split_ag')
-    group.add_argument('--disable-tp-comm-split-rs', action='store_false', 
+    group.add_argument('--disable-tp-comm-split-rs', action='store_false',
                        help = 'Disables the Reduce-Scatter overlap with fprop GEMM.',
                        dest='tp_comm_split_rs')
-    group.add_argument('--disable-tp-comm-bulk-dgrad', action='store_false', 
+    group.add_argument('--disable-tp-comm-bulk-dgrad', action='store_false',
                        help = 'Disables the All-Gather overlap with bprop activation gradient GEMM.',
                        dest='tp_comm_bulk_dgrad')
-    group.add_argument('--disable-tp-comm-bulk-wgrad', action='store_false', 
+    group.add_argument('--disable-tp-comm-bulk-wgrad', action='store_false',
                        help = 'Disables the Reduce-Scatter overlap with bprop weight gradient GEMM.',
                        dest='tp_comm_bulk_wgrad')
 
@@ -1389,6 +1389,39 @@ def _add_vision_args(parser):
 
     return parser
 
+
+def _add_mup_args(parser):
+    group = parser.add_argument_group(title='mup')
+    group.add_argument('--use-mup', action='store_true',
+                       help='Whether to use muP. If turned on, the '
+                            'learning rate and initialization will change with width. '
+                            'A shape file should also be provided.')
+    group.add_argument('--shape-file',
+                       type=str, default='',
+                       help='File specifying the base shape for muP, to compute the '
+                            'scaling of learning rate and initialization.')
+    group.add_argument('--input-lr',
+                       type=float, default=-1,
+                       help='Setting a separate learning rate for the input layer.'
+                            'If set to negative values, then the input layer uses args.lr.')
+    group.add_argument('--output-lr',
+                       type=float, default=-1,
+                       help='Setting a separate learning rate for the output layer.'
+                            'If set to negative values, then the output layer uses args.lr.')
+    group.add_argument('--block-multiplier',
+                       type=float, default=1.0,
+                       help='Block multiplier for the residual branches.')
+    group.add_argument('--use-mup-zero-init-and-qk-scale',
+                       action='store_true',
+                       help='Whether to use zero initialization for the query and the final output projections,'
+                            'and the 1/d qk-prod scale.')
+    group.add_argument('--strict-fan-in-init',
+                       action='store_true',
+                       help='Whether to use zero initialization for the query and the final output projections,'
+                            'and the 1/d qk-prod scale.')
+    return parser
+
+
 def _add_experimental_args(parser):
     group = parser.add_argument_group(title='experimental')
 
@@ -1398,22 +1431,5 @@ def _add_experimental_args(parser):
                        'block, or transformer layer, depending on the use case. '
                        'For more details, see the model class, '
                        '`transformer_block.py`, or `transformer_layer.py`')
-
-    return parser
-
-
-def _add_muT_args(parser):
-    group = parser.add_argument_group(title='muT training')
-
-    group.add_argument('--initialization-scale', type=float, default=1.0,
-                       help='the multiplier to all the initializaed parameters(weight and bias)')
-    group.add_argument('--attention-temperature', type=float, default=1.0,
-                       help='Reciprocal of the multiplier applied to the input to attention softmax')
-    group.add_argument('--output-temperature', type=float, default=1.0,
-                       help='Reciprocal of the multiplier applied to the input to attention softmax')
-    group.add_argument('--embedding-multiplier', type=float, default=1.0,
-                       help='Scalar by which we multiply the output of the embedding layer')
-    group.add_argument('--pos-embedding-multiplier', type=float, default=1.0,
-                       help='Scalar by which we multiply vectors representing relative position')
 
     return parser

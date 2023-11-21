@@ -35,7 +35,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE
 
-# Most of the code here has been copied from:
+# Code branched from:
 # https://github.com/microsoft/mup
 
 '''
@@ -64,14 +64,17 @@ from torch.nn.init import (
 from .shape import print_rank_0
 
 def constant_std_init_(tensor, sampler_):
-    assert hasattr(tensor, 'infshape'), 'Please call set_base_shapes(...)'
+    assert hasattr(tensor, 'infshape'), 'Infshape is missing. Please call set_base_shapes(...)'
     if tensor.infshape.ninf() <= 1:
+        scale = 1.0
         sampler_(tensor)
     elif tensor.infshape.ninf() == 2:
-        print_rank_0("The multiplier is {}".format(tensor.infshape.width_mult()))
-        sampler_(tensor, scale=tensor.infshape.width_mult() ** -0.5)
+        scale = tensor.infshape.width_mult() ** -0.5
+        sampler_(tensor, scale=scale)
     else:
         raise NotImplementedError()
+
+    print_rank_0(f'Rescaling initialization of {tensor.var_name} by {scale}.')
     return tensor
 
 

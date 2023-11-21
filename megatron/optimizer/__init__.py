@@ -2,15 +2,13 @@
 
 from apex.optimizers import FusedAdam as Adam
 from apex.optimizers import FusedSGD as SGD
+from collections import defaultdict
 
 from megatron import get_args
 
 from .distrib_optimizer import DistributedOptimizer
 from .grad_scaler import ConstantGradScaler, DynamicGradScaler
 from .optimizer import Float16OptimizerWithFloat16Params, FP32Optimizer
-
-from collections import defaultdict
-
 
 def get_param_groups(modules,
                      no_weight_decay_cond,
@@ -19,7 +17,7 @@ def get_param_groups(modules,
     """creates param groups based on weight decay condition (regularized vs non regularized)
        and learning rate scale condition (args.lr vs lr_mult * args.lr)
        scale_lr_cond is used during finetuning where head of the network requires a scaled
-       version of the base learning rate. 
+       version of the base learning rate.
     """
     wd_no_scale_lr = []
     wd_scale_lr = []
@@ -62,40 +60,8 @@ def get_param_groups(modules,
 
     return param_groups
 
-def muT_process_param_groups(params, decoupled_wd=True, **kwargs):
-    new_param_groups = []
-    for param_group in process_param_groups(params, **kwargs):
-        # For every existing param group, we split into several new groups
-        def new_group():
-            new_g = {k: v for k, v in param_group.items() if k != 'params'}
-            new_g['params'] = []
-            return new_g
 
-        # The matrix-like weights might need multiple groups since weights
-        # might have different width multipliers
-        matrix_like_p = defaultdict(new_group)  # key is width_mult
-        vector_like_p = new_group()
-        for p in param_group['params']:
-            assert hasattr(p, 'infshape'), (
-                f'A parameter with shape {p.shape} does not have `infshape` attribute. '
-                'Did you forget to call `mup.set_base_shapes` on the model?'
-            )
-            if p.infshape.ninf() == 2:
-                matrix_like_p[p.infshape.width_mult()]['params'].append(p)
-            elif p.infshape.ninf() > 2:
-                raise NotImplementedError('more than 2 inf dimensions')
-            else:
-                vector_like_p['params'].append(p)
-        for width_mult, group in matrix_like_p.items():
-            # Scale learning rate and weight decay accordingly
-            group['max_lr'] /= width_mult
-            group['min_lr'] /= width_mult
-            if not decoupled_wd:
-                group['weight_decay'] *= width_mult
-        new_param_groups.extend(list(matrix_like_p.values()) + [vector_like_p])
-    return new_param_groups
-
-def process_param_groups(params, **kwargs):
+def set_param_groups_defaults(params, **kwargs):
     param_groups = list(params)
     if not isinstance(param_groups[0], dict):
         param_groups = [{'params': param_groups}]
@@ -109,6 +75,59 @@ def process_param_groups(params, **kwargs):
     return param_groups
 
 
+def get_mup_param_groups(params, decoupled_wd=True, **kwargs):
+    new_param_groups = []
+    for param_group in set_param_groups_defaults(params, **kwargs):
+        # For every existing param group, we split into several new groups
+        def new_group():
+            new_g = {k: v for k, v in param_group.items() if k != 'params'}
+            new_g['params'] = []
+            return new_g
+
+        # The matrix-like weights might need multiple groups since weights
+        # might have different width multipliers. We use width_mult as the key.
+        matrix_like_p = defaultdict(new_group)
+        input_layer_p = new_group()
+        output_layer_p = new_group()
+        vector_like_p = new_group()
+        for p in param_group['params']:
+            assert hasattr(p, 'infshape'), (
+                f'A parameter with shape {p.shape} does not have `infshape` attribute. '
+                'Did you forget to call `mup.set_base_shapes` on the model?'
+            )
+            if p.infshape.ninf() == 2:
+                matrix_like_p[p.infshape.width_mult()]['params'].append(p)
+            elif p.infshape.ninf() > 2:
+                raise NotImplementedError('more than 2 inf dimensions')
+            else:
+                if 'embed' in p.var_name and kwargs['input_lr'] > 0:
+                    # Set a different learning rate for the input layer.
+                    input_layer_p['params'].append(p)
+                    input_layer_p['max_lr'] = kwargs['input_lr']
+                elif 'output' in p.var_name and kwargs['output_lr'] > 0:
+                    # Set a different learning rate for the output layer.
+                    output_layer_p['params'].append(p)
+                    output_layer_p['max_lr'] = kwargs['output_lr']
+                else:
+                    vector_like_p['params'].append(p)
+
+        for width_mult, group in matrix_like_p.items():
+            # Scale the max learning rate and weight decay accordingly.
+            # We keep min_lr unchanged, to achieve a better control of final LR.
+            group['max_lr'] /= width_mult
+            assert group['max_lr'] >= group['min_lr'], \
+                f'Group with width multiplier {width_mult} has a smaller max_lr than min_lr.'
+            if not decoupled_wd:
+                group['weight_decay'] *= width_mult
+        # Only append non-empty groups.
+        new_param_groups.extend([v for v in matrix_like_p.values() if v['params']])
+        if input_layer_p['params']:
+            new_param_groups.append(input_layer_p)
+        if output_layer_p['params']:
+            new_param_groups.append(output_layer_p)
+        if vector_like_p['params']:
+            new_param_groups.append(vector_like_p)
+    return new_param_groups
 
 
 def get_megatron_optimizer(model,
@@ -118,21 +137,23 @@ def get_megatron_optimizer(model,
     args = get_args()
 
     # Base optimizer.
-    if args.muT_config_file is None:
-        param_groups = get_param_groups(model,
-                                        no_weight_decay_cond,
-                                        scale_lr_cond,
-                                        lr_mult)
-
-    else:
-        param_groups = muT_process_param_groups(
-                            param_groups,
-                            lr=args.lr,
-                            min_lr=args.min_lr,
-                            weight_decay=args.weight_decay,
-                            betas=(args.adam_beta1, args.adam_beta2),
-                            eps=args.adam_eps
-                                    )
+    param_groups = get_param_groups(model,
+                                    no_weight_decay_cond,
+                                    scale_lr_cond,
+                                    lr_mult)
+    if args.use_mup:
+        # Currently supporting only Adam.
+        assert args.optimizer == 'adam', \
+            f'Only adam is supported when args.use_mup=True. Currently using {args.optimizer} optimizer.'
+        param_groups = get_mup_param_groups(
+                        param_groups,
+                        lr=args.lr,
+                        min_lr=args.min_lr,
+                        weight_decay=args.weight_decay,
+                        betas=(args.adam_beta1, args.adam_beta2),
+                        eps=args.adam_eps,
+                        input_lr=args.input_lr,
+                        output_lr=args.output_lr)
 
     if args.optimizer == 'adam':
         optimizer = Adam(param_groups,

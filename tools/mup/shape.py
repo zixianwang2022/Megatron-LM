@@ -35,7 +35,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE
 
-# Most of the code here has been copied from:
+# Code branched from:
 # https://github.com/microsoft/mup
 
 from copy import deepcopy
@@ -45,9 +45,9 @@ import yaml
 from torch import nn
 from torch.nn import Linear
 from torch.nn.modules.conv import _ConvNd
+from megatron.core import tensor_parallel
 
 from .infshape import InfShape, zip_infshape
-from .layer import MuReadout, rescale_linear_bias
 
 
 def print_rank_0(message):
@@ -66,7 +66,29 @@ __BSH_COMMENT__ = '''\
 
 
 def get_shapes(model):
-    return {name: param.shape for name, param in model.named_parameters()}
+    shapes_dict = {name: param.shape for name, param in model.named_parameters()}
+
+    # Fix the input and output dimensions for parallel layers, as this affects the multipliers.
+    # We want the complete shape regardless of the sharding.
+    for name, module in model.named_modules():
+        if isinstance(module, tensor_parallel.RowParallelLinear):
+            key = name + '.weight'
+            shapes_dict[key] = torch.Size([shapes_dict[key][0], module.input_size])
+            if module.bias:
+                key = name + '.bias'
+                shapes_dict[key] = torch.Size([module.input_size])
+        if isinstance(module, tensor_parallel.ColumnParallelLinear):
+            key = name + '.weight'
+            shapes_dict[key] = torch.Size([module.output_size, shapes_dict[key][1]])
+            if module.bias:
+                key = name + '.bias'
+                shapes_dict[key] = torch.Size([module.output_size])
+
+        if isinstance(module, tensor_parallel.VocabParallelEmbedding):
+            key = name + '.weight'
+            shapes_dict[key] = torch.Size([module.num_embeddings, shapes_dict[key][1]])
+
+    return shapes_dict
 
 
 def get_infshapes(model):
@@ -207,11 +229,11 @@ def make_base_shapes(base_shapes, delta_shapes, savefile=None):
 def apply_infshapes(model, infshapes):
     for name, p in model.named_parameters():
         p.infshape = infshapes[name]
-        print_rank_0("The name is {}".format(name))
-        print_rank_0(p.infshape)
+        p.var_name = name
+        print_rank_0(f'{p.var_name}, infshape: {p.infshape}')
 
 
-def set_base_shapes(model, base, rescale_params=True, delta=None, savefile=None, do_assert=True):
+def set_base_shapes(model, base, delta=None, savefile=None, do_assert=True):
     '''Sets the `p.infshape` attribute for each parameter `p` of `model`.
 
     Inputs:
@@ -220,11 +242,7 @@ def set_base_shapes(model, base, rescale_params=True, delta=None, savefile=None,
             Can be nn.Module, a dict of shapes, a str, or None.
             If None, then defaults to `model`
             If str, then treated as filename for yaml encoding of a dict of base shapes.
-        rescale_params:
-            assuming the model is initialized using the default pytorch init (or
-            He initialization etc that scale the same way with fanin): If True
-            (default), rescales parameters to have the correct (μP) variances.
-        do_assert: 
+        do_assert:
     Output:
         same object as `model`, after setting the `infshape` attribute of each parameter.
     '''
@@ -243,25 +261,20 @@ def set_base_shapes(model, base, rescale_params=True, delta=None, savefile=None,
     apply_infshapes(model, infshapes)
     if do_assert:
         assert_hidden_size_inf(model)
-    if rescale_params:
-        for name, module in model.named_modules():
-            if isinstance(module, MuReadout):
-                module._rescale_parameters()
-            elif isinstance(module, (Linear, _ConvNd)):
-                rescale_linear_bias(module)
+
     return model
 
 
 def assert_hidden_size_inf(model):
     '''
     This tests for any `nn.Linear` whose output dimension is finite but input
-    dimension is infinite and is not of type `MuReadout`. Such `nn.Linear`
+    dimension is infinite and is not the output layer of the network. Such `nn.Linear`
     modules should not exist in a correctly parametrized models.
     '''
     for name, module in model.named_modules():
-        if isinstance(module, Linear) and not isinstance(module, MuReadout):
+        if isinstance(module, Linear):
             if not module.weight.infshape[0].isinf() and module.weight.infshape[1].isinf():
                 assert False, (
-                    f'{name} has infinite fan-in and finite fan-out dimensions but is not type `MuReadout`. '
-                    'To resolve this, either change the module to `MuReadout` or change the fan-out to an infinite dimension.'
+                    f'{name} has infinite fan-in and finite fan-out dimensions but is not supposed to be the output layer. '
+                    'To resolve this, either change the fan-out to an infinite dimension.'
                 )

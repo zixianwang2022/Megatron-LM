@@ -16,8 +16,6 @@ from .transformer import ParallelTransformer
 from .utils import get_linear_layer
 from .utils import init_method_normal, scaled_init_method_normal
 
-from torch.nn.init import constant_
-
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output,
                        bias=None):
@@ -354,8 +352,8 @@ class TransformerLanguageModel(MegatronModule):
         self.add_pooler = add_pooler
         self.encoder_hidden_state = None
         self.add_retriever = args.retro_add_retriever
-        self.untie_embeddings_and_output_weights = args.untie_embeddings_and_output_weights 
-        self.emb_multiplier = args.embedding_multiplier
+        self.untie_embeddings_and_output_weights = args.untie_embeddings_and_output_weights
+        self.block_multiplier = args.block_multiplier
 
         # Embeddings.
         if self.pre_process:
@@ -394,6 +392,7 @@ class TransformerLanguageModel(MegatronModule):
                 self_attn_mask_type=self.encoder_attn_mask_type,
                 pre_process=self.pre_process,
                 post_process=self.post_process,
+                block_multiplier=self.block_multiplier
             )
             self._encoder_key = 'encoder'
         else:
@@ -408,7 +407,8 @@ class TransformerLanguageModel(MegatronModule):
                 layer_type=LayerType.decoder,
                 self_attn_mask_type=self.decoder_attn_mask_type,
                 pre_process=self.pre_process,
-                post_process=self.post_process)
+                post_process=self.post_process,
+                block_multiplier=self.block_multiplier)
             self._decoder_key = 'decoder'
         else:
             self.decoder = None
@@ -427,10 +427,8 @@ class TransformerLanguageModel(MegatronModule):
                     init_method=self.init_method,
                     bias=False) # Setting bias to False always to keep it consistent with embedding tying that also does not have a bias.
                 self._output_layer_key = 'output_layer'
-
-                # MuT
-                constant_(self.output_layer.weight, 0.)
-
+                if not args.use_mup_zero_init_and_qk_scale:
+                    torch.nn.init.constant_(self.output_layer.weight, 0.)
 
     def set_input_tensor(self, input_tensor):
         """ See megatron.model.transformer.set_input_tensor()"""
@@ -476,8 +474,6 @@ class TransformerLanguageModel(MegatronModule):
                                            tokentype_ids=tokentype_ids)
         else:
             encoder_input = None
-        
-        encoder_input = encoder_input * self.emb_multiplier
 
         # Retriever embedding.
         if self.add_retriever and self.pre_process:
