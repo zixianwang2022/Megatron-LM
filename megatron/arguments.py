@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 """Megatron arguments."""
 
@@ -14,6 +14,7 @@ from megatron.global_vars import set_retro_args, get_retro_args
 from tools.retro.utils import get_args_path as get_retro_args_path
 
 from megatron.core.transformer import TransformerConfig
+
 
 def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     """Parse all arguments."""
@@ -38,6 +39,7 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     parser = _add_inference_args(parser)
     parser = _add_transformer_engine_args(parser)
     parser = _add_retro_args(parser)
+    parser = _add_experimental_args(parser)
 
     # Custom arguments.
     if extra_args_provider is not None:
@@ -166,16 +168,19 @@ def validate_args(args, defaults={}):
     # Checks.
     model_parallel_size = args.pipeline_model_parallel_size * \
                           args.tensor_model_parallel_size
-    assert args.world_size % model_parallel_size == 0, 'world size ({}) is not'\
-        ' divisible by tensor parallel size ({}) times pipeline parallel ' \
-        'size ({})'.format(args.world_size, args.tensor_model_parallel_size,
-                           args.pipeline_model_parallel_size)
-    args.data_parallel_size = args.world_size // model_parallel_size
+    assert args.world_size % (model_parallel_size * args.context_parallel_size) == 0, \
+        'world size ({}) is not divisible by tensor parallel size ({}) times ' \
+        'pipeline parallel size ({}) times context parallel size ({})'.format(
+        args.world_size, args.tensor_model_parallel_size,
+        args.pipeline_model_parallel_size, args.context_parallel_size)
+    args.data_parallel_size = args.world_size // (model_parallel_size * args.context_parallel_size)
     if args.rank == 0:
         print('using world size: {}, data-parallel-size: {}, '
+              'context-parallel-size: {} '
               'tensor-model-parallel size: {}, '
               'pipeline-model-parallel size: {} '.format(
                   args.world_size, args.data_parallel_size,
+                  args.context_parallel_size,
                   args.tensor_model_parallel_size,
                   args.pipeline_model_parallel_size), flush=True)
     if args.pipeline_model_parallel_size > 1:
@@ -184,6 +189,10 @@ def validate_args(args, defaults={}):
                     args.pipeline_model_parallel_size, 'split rank needs'\
                     ' to be less than pipeline model parallel size ({})'.format(
                             args.pipeline_model_parallel_size)
+
+    if args.tp_comm_overlap:
+        assert args.sequence_parallel == True, 'Tensor parallel communication/GEMM overlap can happen only when sequence parallelism is enabled'
+
 
     # Deprecated arguments
     assert args.batch_size is None, '--batch-size argument is no longer ' \
@@ -212,7 +221,7 @@ def validate_args(args, defaults={}):
         # For default to be valid, it should not be provided in the
         # arguments that are passed to the program. We check this by
         # ensuring the arg is set to None.
-        if getattr(args, key) is not None:
+        if getattr(args, key, None) is not None:
             if args.rank == 0:
                 print('WARNING: overriding default arguments for {key}:{v} \
                        with {key}:{v2}'.format(key=key, v=defaults[key],
@@ -234,14 +243,20 @@ def validate_args(args, defaults={}):
         assert args.pipeline_model_parallel_size > 2, \
             'pipeline-model-parallel size should be greater than 2 with ' \
             'interleaved schedule'
-        assert args.num_layers % args.num_layers_per_virtual_pipeline_stage == 0, \
-            'number of layers is not divisible by number of layers per virtual ' \
-            'pipeline stage'
-        args.virtual_pipeline_model_parallel_size = \
-            (args.num_layers // args.transformer_pipeline_model_parallel_size) // \
+        assert args.num_layers % args.transformer_pipeline_model_parallel_size == 0, \
+            'number of layers should be divisible by the pipeline parallel size'
+        num_layers_per_pipeline_stage = args.num_layers // args.transformer_pipeline_model_parallel_size
+        assert num_layers_per_pipeline_stage % args.num_layers_per_virtual_pipeline_stage == 0, \
+            'number of layers per pipeline stage must be divisible number of layers per virtual pipeline stage'
+        args.virtual_pipeline_model_parallel_size = num_layers_per_pipeline_stage // \
             args.num_layers_per_virtual_pipeline_stage
     else:
         args.virtual_pipeline_model_parallel_size = None
+        # Overlap P2P communication is disabled if not using the interleaved schedule.
+        args.overlap_p2p_comm = False
+        if args.rank == 0:
+            print('WARNING: Setting args.overlap_p2p_comm to False since non-interleaved '
+                  'schedule does not support overlapping p2p communication')
 
     # Parameters dtype.
     args.params_dtype = torch.float
@@ -278,22 +293,6 @@ def validate_args(args, defaults={}):
     if args.rank == 0:
         print('using {} for parameters ...'.format(args.params_dtype),
               flush=True)
-
-    # If we do accumulation and all-reduces in fp32, we need to have local DDP
-    # and we should make sure use-contiguous-buffers-in-local-ddp is not off.
-    if args.accumulate_allreduce_grads_in_fp32:
-        assert args.DDP_impl == 'local'
-        assert args.use_contiguous_buffers_in_local_ddp
-
-    # If we use the distributed optimizer, we need to have local DDP
-    # and we should make sure use-contiguous-buffers-in-local-ddp is on.
-    if args.use_distributed_optimizer:
-        assert args.DDP_impl == 'local'
-        assert args.use_contiguous_buffers_in_local_ddp
-
-    # For torch DDP, we do not use contiguous buffer
-    if args.DDP_impl == 'torch':
-        args.use_contiguous_buffers_in_local_ddp = False
 
     if args.dataloader_type is None:
         args.dataloader_type = 'single'
@@ -357,15 +356,15 @@ def validate_args(args, defaults={}):
 
     # Checks.
     if args.ffn_hidden_size is None:
-        args.ffn_hidden_size = 4 * args.hidden_size
-
-    if args.swiglu:
-        # reduce the dimnesion for MLP since projections happens on
-        # two linear layers. this keeps the number of paramters in
-        # the same ballpark as the counterpart with 4*h size
-        # we keep it a multiple of 64, which means the actual tensor size
-        # will be a multiple of 64 / tp_size
-        args.ffn_hidden_size = int((4 * args.hidden_size * 2 / 3) / 64) * 64
+        if args.swiglu:
+            # reduce the dimnesion for MLP since projections happens on
+            # two linear layers. this keeps the number of paramters in
+            # the same ballpark as the counterpart with 4*h size
+            # we keep it a multiple of 64, which means the actual tensor size
+            # will be a multiple of 64 / tp_size
+            args.ffn_hidden_size = int((4 * args.hidden_size * 2 / 3) / 64) * 64
+        else:
+            args.ffn_hidden_size = 4 * args.hidden_size
 
     if args.kv_channels is None:
         assert args.hidden_size % args.num_attention_heads == 0
@@ -428,14 +427,6 @@ def validate_args(args, defaults={}):
             'v1.10 and above (Nvidia Pytorch container >= 21.07). Current ' \
             'pytorch version is v%s.%s.' % (TORCH_MAJOR, TORCH_MINOR)
 
-    # Tranformer-Engine/FP8 related checking
-    if args.fp8_e4m3 or args.fp8_hybrid:
-        assert args.transformer_impl == 'transformer_engine', \
-            'transformer-engine required for fp8 training and inference'
-
-    assert not (args.fp8_e4m3 and args.fp8_hybrid), \
-        'cannot train with both fp8 e4m3 and hybrid formatting'
-
     if args.recompute_granularity == 'selective':
         assert args.recompute_method is None, \
             'recompute method is not yet supported for ' \
@@ -484,6 +475,17 @@ def validate_args(args, defaults={}):
         assert args.pipeline_model_parallel_size == 1, \
             "retro currently does not support pipeline parallelism."
 
+    # Retro checks.
+    if args.retro_add_retriever:
+
+        # Sequence parallelism unsupported.
+        assert not args.sequence_parallel, \
+            "retro currently does not support sequence parallelism."
+
+        # Pipeline parallelism unsupported.
+        assert args.pipeline_model_parallel_size == 1, \
+            "retro currently does not support pipeline parallelism."
+
         # Load retro args.
         retro_args_path = get_retro_args_path(args.retro_workdir)
         assert os.path.exists(retro_args_path), "retro workdir missing args.json"
@@ -503,6 +505,19 @@ def validate_args(args, defaults={}):
     # don't allow it to keep things simple
     if not args.add_position_embedding and args.position_embedding_type != 'rope':
         raise RuntimeError('--no-position-embedding is deprecated, use --position-embedding-type')
+
+    # MoE Spec check
+    if args.num_experts is not None:
+        assert args.model_spec is None, "Model Spec must be None when using MoEs"
+
+    # Expert parallelism check
+    if args.expert_model_parallel_size  > 1:
+        assert args.num_experts is not None, "num_experts must be non None to use expert model parallelism"
+        assert args.num_experts % args.expert_model_parallel_size == 0, \
+            "Number of experts should be a multiple of expert model parallel_size."
+        if args.tensor_model_parallel_size > 1:
+            assert args.sequence_parallel, \
+                "When using expert parallelism and tensor parallelism, sequence parallelism must be used."
 
     # Print arguments.
     _print_args("arguments", args)
@@ -540,46 +555,56 @@ def core_transformer_config_from_args(args):
             kw_args[f.name] = getattr(args, f.name)
     kw_args['persist_layer_norm'] = not args.no_persist_layer_norm
     kw_args['layernorm_zero_centered_gamma'] = args.apply_layernorm_1p
+    kw_args['layernorm_epsilon'] = args.norm_epsilon
     kw_args['deallocate_pipeline_outputs'] = True
     kw_args['pipeline_dtype'] = args.params_dtype
     kw_args['batch_p2p_comm'] = not args.overlap_p2p_comm
+    kw_args['num_moe_experts'] = args.num_experts
     if args.swiglu:
         kw_args['activation_func'] = F.silu
         kw_args['gated_linear_unit'] = True
         kw_args['bias_gelu_fusion'] = False
+    if args.squared_relu:
+        assert not args.swiglu
+        def squared_relu(x):
+            return torch.pow(F.relu(x), 2)
+        kw_args['activation_func'] = squared_relu
     if args.init_method_xavier_uniform:
         kw_args['init_method'] = torch.nn.init.xavier_uniform_
         kw_args['scaled_init_method'] = torch.nn.init.xavier_uniform_
-    kw_args['fp8'] = args.fp8_e4m3 or args.fp8_hybrid
-    kw_args['fp8_e4m3'] = args.fp8_e4m3
-    kw_args['fp8_margin'] = args.fp8_hybrid
+    if args.group_query_attention:
+        kw_args['num_query_groups'] = args.num_query_groups
+    else:
+        kw_args['num_query_groups'] = None
 
     return TransformerConfig(**kw_args)
 
 def _add_transformer_engine_args(parser):
     group = parser.add_argument_group(title='Transformer-Engine')
 
-    group.add_argument('--fp8-e4m3', action='store_true',
-                        help='E4M3 TransformerLayer', dest='fp8_e4m3')
-    group.add_argument('--fp8-hybrid', action='store_true',
-                        help='Hybrid FP8 TransformerLayer', dest='fp8_hybrid')
-    group.add_argument('--no-fp8-wgrad', action='store_false',
-                        help='Execute wgrad in higher precision even for FP8 runs', dest='fp8_wgrad')
+    group.add_argument('--fp8-format', default=None,
+                       choices=['e4m3', 'hybrid'],
+                       help='Which fp8 format scheme to use for FP8 tensors in the forward and backward pass',
+                       dest='fp8')
     group.add_argument('--fp8-margin', type=int, default=0,
-                        help='Scaling margin for fp8', dest='fp8_margin')
+                       help='Scaling margin for fp8',
+                       dest='fp8_margin')
     group.add_argument('--fp8-interval', type=int, default=1,
-                        help='Scaling update interval for fp8', dest='fp8_interval')
-    group.add_argument('--transformer-impl', default='local',
-                       choices=['local', 'transformer_engine'],
-                       help='Which Transformer implementation to use.',
-                       dest='transformer_impl')
+                       help='Scaling update interval for fp8',
+                       dest='fp8_interval')
     group.add_argument('--fp8-amax-history-len', type=int, default=1,
-                        help='Number of steps for which amax history is recorded per tensor',
-                        dest='fp8_amax_history_len')
+                       help='Number of steps for which amax history is recorded per tensor',
+                       dest='fp8_amax_history_len')
     group.add_argument('--fp8-amax-compute-algo', default='most_recent',
                        choices=['most_recent', 'max'],
                        help='Algorithm for computing amax from history',
                        dest='fp8_amax_compute_algo')
+    group.add_argument('--no-fp8-wgrad', action='store_false',
+                       help='Execute wgrad in higher precision even for FP8 runs',
+                       dest='fp8_wgrad')
+    group.add_argument('--transformer-impl', default='local',
+                       choices=['local', 'transformer_engine'],
+                       help='Which Transformer implementation to use.')
 
     return parser
 
@@ -711,6 +736,10 @@ def _add_network_size_args(parser):
                        'attention. This is set to '
                        '   args.hidden_size // args.num_attention_heads '
                        'if not provided.')
+    group.add_argument('--group-query-attention', action='store_true',
+                          help='Use group-query attention.')
+    group.add_argument('--num-query-groups', type=int, default=1)
+
     group.add_argument('--max-position-embeddings', type=int, default=None,
                        help='Maximum number of position embeddings to use. '
                        'This is the size of position embedding.')
@@ -721,7 +750,9 @@ def _add_network_size_args(parser):
                        help='Use rotary positional embeddings or not. '
                        'Deprecated: use --position-embedding-type')
     group.add_argument('--rotary-percent', type=float, default=1.0,
-                       help='Percent of rotary dimension to use, default 100%')
+                       help='Percent of rotary dimension to use, default 100%%')
+    group.add_argument('--rotary-seq-len-interpolation-factor', type=int, default=None,
+                       help='Sequence length interpolation factor for rotary embeddings.')
     group.add_argument('--no-position-embedding',
                        action='store_false',
                        help='Disable position embedding. Deprecated: use --position-embedding-type',
@@ -729,8 +760,11 @@ def _add_network_size_args(parser):
     group.add_argument('--make-vocab-size-divisible-by', type=int, default=128,
                        help='Pad the vocab size to be divisible by this value.'
                        'This is added for computational efficieny reasons.')
-    group.add_argument('--layernorm-epsilon', type=float, default=1e-5,
-                       help='Layer norm epsilon.')
+    group.add_argument('--normalization', default='LayerNorm',
+                       choices=['LayerNorm', 'RMSNorm'],
+                       help='Which normalization technique to use.')
+    group.add_argument('--norm-epsilon', type=float, default=1e-5,
+                       help='Epsilon for layer norm and RMS norm.')
     group.add_argument('--apply-layernorm-1p', action='store_true',
                        help='Adjust LayerNorm weights such that they are centered '
                        'around zero. This improves numerical stability.')
@@ -756,8 +790,6 @@ def _add_network_size_args(parser):
                        help='Number of Experts in Switch Transformer (None means no Switch)')
     group.add_argument('--untie-embeddings-and-output-weights', action='store_true',
                        help='Untie embeddings and output weights.'),
-    group.add_argument('--embedding-weights-in-fp32', action='store_true',
-                       help='Cast word embedding weights to fp32 before embedding fwd.'),
     return parser
 
 
@@ -822,7 +854,12 @@ def _add_logging_args(parser):
     group.add_argument('--log-world-size-to-tensorboard',
                        action='store_true',
                        help='Enable world size logging to tensorboard.')
-
+    group.add_argument('--wandb-project', type=str, default='',
+                       help='The wandb project name. Ignore wandb by default.')
+    group.add_argument('--wandb-exp-name', type=str, default='',
+                       help='The wandb experiment name.')
+    group.add_argument('--wandb-save-dir', type=str, default='',
+                       help='Path to save the wandb results locally.')
     return parser
 
 
@@ -855,7 +892,6 @@ def _add_regularization_args(parser):
                        'numerical stability')
     group.add_argument('--sgd-momentum', type=float, default=0.9,
                        help='Momentum factor for sgd')
-
     return parser
 
 
@@ -899,6 +935,9 @@ def _add_training_args(parser):
                        'whole transformer layer is recomputed, '
                        '2) selective: core attention part of the transformer '
                        'layer is recomputed.')
+    group.add_argument('--no-check-for-nan-in-loss-and-grad', action='store_false',
+                       help='Check for NaNs in loss and grad',
+                       dest='check_for_nan_in_loss_and_grad')
     group.add_argument('--distribute-saved-activations',
                        action='store_true',
                        help='If set, distribute recomputed activations '
@@ -912,7 +951,7 @@ def _add_training_args(parser):
                        'individual Transformer layers per pipeline stage and do the '
                        'rest without any recomputing at specified granularity'
                        'default) do not apply activations recompute to any layers')
-    group.add_argument('--recompute-num-layers', type=int, default=1,
+    group.add_argument('--recompute-num-layers', type=int, default=None,
                        help='1) uniform: the number of Transformer layers in each '
                        'uniformly divided recompute unit, '
                        '2) block: the number of individual Transformer layers '
@@ -930,6 +969,22 @@ def _add_training_args(parser):
                        help='Gloable step to stop profiling.')
     group.add_argument('--profile-ranks', nargs='+', type=int, default=[0],
                        help='Global ranks to profile.')
+    group.add_argument('--tp-comm-overlap', action='store_true', help = 'Enables the '
+                       ' overlap of Tensor parallel communication and GEMM kernels.')
+    group.add_argument('--tp-comm-overlap-cfg', type=str, default=None,
+                       help = 'Config file when tp_comm_overlap is enabled.')
+    group.add_argument('--disable-tp-comm-split-ag', action='store_false',
+                       help = 'Disables the All-Gather overlap with fprop GEMM.',
+                       dest='tp_comm_split_ag')
+    group.add_argument('--disable-tp-comm-split-rs', action='store_false',
+                       help = 'Disables the Reduce-Scatter overlap with fprop GEMM.',
+                       dest='tp_comm_split_rs')
+    group.add_argument('--disable-tp-comm-bulk-dgrad', action='store_false',
+                       help = 'Disables the All-Gather overlap with bprop activation gradient GEMM.',
+                       dest='tp_comm_bulk_dgrad')
+    group.add_argument('--disable-tp-comm-bulk-wgrad', action='store_false',
+                       help = 'Disables the Reduce-Scatter overlap with bprop weight gradient GEMM.',
+                       dest='tp_comm_bulk_wgrad')
 
 
     # deprecated
@@ -997,6 +1052,28 @@ def _add_training_args(parser):
                        help='Disable fusing gradient accumulation to weight '
                        'gradient computation of linear layers',
                        dest='gradient_accumulation_fusion')
+    group.add_argument('--use-mcore-models', action='store_true',
+                       help='Use the implementation from megatron core',
+                       dest='use_mcore_models')
+    group.add_argument('--expert-parallel', action='store_true',
+                       help='Enable expert parallel optimization.')
+    group.add_argument('--manual-gc', action='store_true',
+                       help='Disable the threshold-based default garbage '
+                       'collector and trigger the garbage collection manually. '
+                       'Manual garbage collection helps to align the timing of '
+                       'the collection across ranks which mitigates the impact '
+                       'of CPU-associated jitters. When the manual gc is enabled, '
+                       'garbage collection is performed only at the start and the '
+                       'end of the validation routine by default.')
+    group.add_argument('--manual-gc-interval', type=int, default=0,
+                       help='Training step interval to trigger manual garbage '
+                       'collection. When the value is set to 0, garbage '
+                       'collection is not triggered between training steps.')
+    group.add_argument('--no-manual-gc-eval', action='store_false',
+                       help='When using manual garbage collection, disable '
+                       'garbage collection at the start and the end of each '
+                       'evaluation run.', dest='manual_gc_eval')
+
     return parser
 
 
@@ -1043,6 +1120,9 @@ def _add_learning_rate_args(parser):
     group.add_argument('--lr-warmup-samples', type=int, default=0,
                        help='number of samples to linearly warmup '
                        'learning rate over.')
+    group.add_argument('--lr-warmup-init', type=float, default=0.0,
+                       help='Initial value for learning rate warmup. The '
+                       'scheduler starts warmup from this value.')
     group.add_argument('--warmup', type=int, default=None,
                        help='Old lr warmup argument, do not use. Use one of the'
                        '--lr-warmup-* arguments above')
@@ -1122,9 +1202,9 @@ def _add_mixed_precision_args(parser):
                        help='hysteresis for dynamic loss scaling')
     group.add_argument('--fp32-residual-connection', action='store_true',
                        help='Move residual connections to fp32.')
-    group.add_argument('--no-query-key-layer-scaling', action='store_false',
-                       help='Do not scale Q * K^T by 1 / layer-number.',
-                       dest='apply_query_key_layer_scaling')
+    group.add_argument('--apply-query-key-layer-scaling', action='store_true',
+                       help='Scale Q * K^T by 1 / layer-number. '
+                       'Useful for fp16 training.')
     group.add_argument('--attention-softmax-in-fp32', action='store_true',
                        help='Run attention masking and softmax in fp32. '
                        'This flag is ignored unless '
@@ -1154,8 +1234,7 @@ def _add_distributed_args(parser):
                        '--tensor-model-parallel-size instead.')
     group.add_argument('--num-layers-per-virtual-pipeline-stage', type=int, default=None,
                        help='Number of layers per virtual pipeline stage')
-    group.add_argument('--overlap-p2p-communication',
-                       action='store_true',
+    group.add_argument('--no-overlap-p2p-communication', action='store_false',
                        help='overlap pipeline parallel communication with forward and backward chunks',
                        dest='overlap_p2p_comm')
     group.add_argument('--distributed-backend', default='nccl',
@@ -1163,16 +1242,13 @@ def _add_distributed_args(parser):
                        help='Which backend to use for distributed training.')
     group.add_argument('--distributed-timeout-minutes', type=int, default=10,
                        help='Timeout minutes for torch.distributed.')
-    group.add_argument('--DDP-impl', default='local',
-                       choices=['local', 'torch'],
-                       help='which DistributedDataParallel implementation '
-                       'to use.')
-    group.add_argument('--no-contiguous-buffers-in-local-ddp',
-                       action='store_false', help='If set, dont use '
-                       'contiguous buffer in local DDP.',
-                       dest='use_contiguous_buffers_in_local_ddp')
+    group.add_argument('--overlap-grad-reduce', action='store_true',
+                       default=False, help='If set, overlap DDP grad reduce.')
+    group.add_argument('--no-delay-grad-reduce', action='store_false',
+                       help='If not set, delay grad reduction in all but first PP stage.',
+                       dest='delay_grad_reduce')
     group.add_argument('--no-scatter-gather-tensors-in-pipeline', action='store_false',
-                       help='Use scatter/gather to optimize communication of tensors in pipeline',
+                       help='If not set, use scatter/gather to optimize communication of tensors in pipeline.',
                        dest='scatter_gather_tensors_in_pipeline')
     group.add_argument('--use-ring-exchange-p2p', action='store_true',
                        default=False, help='If set, use custom-built ring exchange '
@@ -1201,7 +1277,15 @@ def _add_distributed_args(parser):
                        'affects the encoder embedding.)')
     group.add_argument('--use-distributed-optimizer', action='store_true',
                        help='Use distributed optimizer.')
-
+    group.add_argument('--expert-model-parallel-size', type=int, default=1,
+                       help='Degree of expert model parallelism.')
+    group.add_argument('--context-parallel-size', type=int, default=1,
+                       help='Degree of context parallelism.')
+    group.add_argument('--nccl-communicator-config-path', type=str, default=None,
+                       help='Path to the yaml file with NCCL communicator '
+                       'configurations. The number of min/max thread groups and thread '
+                       'group cluster size of each communicator can be configured by '
+                       'setting `min_ctas`, `max_ctas`, and `cga_cluster_size`.')
     return parser
 
 
@@ -1283,8 +1367,6 @@ def _add_data_args(parser):
                        help='Probability of replacing a token with mask.')
     group.add_argument('--short-seq-prob', type=float, default=0.1,
                        help='Probability of producing a short sequence.')
-    group.add_argument('--mmap-warmup', action='store_true',
-                       help='Warm up mmap files.')
     group.add_argument('--num-workers', type=int, default=2,
                        help="Dataloader number of workers.")
     group.add_argument('--tokenizer-type', type=str,
@@ -1294,13 +1376,11 @@ def _add_data_args(parser):
                                 'GPT2BPETokenizer',
                                 'SentencePieceTokenizer',
                                 'GPTSentencePieceTokenizer',
+                                'Llama2Tokenizer',
                                 'NullTokenizer'],
                        help='What type of tokenizer to use.')
     group.add_argument('--tokenizer-model', type=str, default=None,
                        help='Sentencepiece tokenizer model.')
-    group.add_argument('--data-impl', type=str, default='infer',
-                       choices=['mmap', 'infer'],
-                       help='Implementation of indexed datasets.')
     group.add_argument('--reset-position-ids', action='store_true',
                        help='Reset posistion ids after end-of-document token.')
     group.add_argument('--reset-attention-mask', action='store_true',
@@ -1457,4 +1537,16 @@ def _add_vision_args(parser):
                        help='warmup teacher temperaure epochs')
     group.add_argument('--xattn_everyk', type=int, default=1, help='')
 
+    return parser
+
+def _add_experimental_args(parser):
+    group = parser.add_argument_group(title='experimental')
+
+    group.add_argument('--model-spec',
+                       type=str, default=None, nargs=2,
+                       help='Specify the <module_location function_name> pair '
+                            'that returns a spec to customize the transformer '
+                            'layer implementation. For more details, check the'
+                            '`transformer_layer.py` file that details the use '
+                            'of spec based customization.')
     return parser

@@ -38,8 +38,9 @@ class VitMlpHead(MegatronModule):
             bias is set to zero.
     """
 
-    def __init__(self, hidden_size, num_classes):
+    def __init__(self, config, hidden_size, num_classes):
         super(VitMlpHead, self).__init__()
+        self.config = config
         self.dense_in = torch.nn.Linear(hidden_size, hidden_size)
         self.relu = torch.nn.ReLU()
         self.dense_out = torch.nn.Linear(hidden_size, num_classes)
@@ -425,15 +426,15 @@ class HybridSAMCLIPBackbone(MegatronModule):
         super().__init__(config=config, share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights)
 
         validate_visual_args_sam(args)
-        self.sam_model = SAMViTBackbone(config, pre_process=pre_process, 
+        self.sam_model = SAMViTBackbone(config, pre_process=pre_process,
                                    post_process=post_process)
 
         validate_visual_args_clip(args)
-        self.clip_model = CLIPViTBackbone(config, pre_process=pre_process, 
+        self.clip_model = CLIPViTBackbone(config, pre_process=pre_process,
                                    post_process=post_process)
 
     def forward(self, input_dict):
- 
+
         # SAM model
         sam_hidden_states = self.sam_model(input_dict['sam'])
 

@@ -31,7 +31,7 @@ rm -rf $SELENE_ADLR_CI_PATH/$CI_PIPELINE_ID/$RUN_NAME/checkpoints/*
 rm -rf $SELENE_ADLR_CI_PATH/$CI_PIPELINE_ID/$RUN_NAME/tensorboard_logs/*
 rm -rf $SELENE_ADLR_CI_PATH/$CI_PIPELINE_ID/$RUN_NAME/debug/*
 
-# step 4 : EXPORTING SOME ENV VARIABLES 
+# step 4 : EXPORTING SOME ENV VARIABLES
 export BASE_DIR=$SELENE_ADLR_CI_PATH/$CI_PIPELINE_ID/$RUN_NAME
 export LOGS_DIR=$BASE_DIR/tensorboard_logs
 export OMP_NUM_THREADS=2
@@ -42,7 +42,7 @@ export OPENBLAS_NUM_THREADS=2
 envsubst '$BASE_DIR $PYTORCH_IMAGE $BUILD_DIR $DATA_DIR $MBS $GBS $TP_SIZE $PP_SIZE $VP_SIZE $NUM_NODES $MAX_STEPS'  <$BUILD_DIR/tests/functional_tests/test_scripts/$RUN_MODEL/sbatch_${RUN_MODEL}_distributed_resume_checkpoint_test.sh > $SELENE_ADLR_CI_PATH/$CI_PIPELINE_ID/$RUN_NAME/debug/sbatch_${RUN_MODEL}_distributed_resume_checkpoint_test.sh
 
 # step 6 : SUBMITTING THE JOB
-sbatch_submission=`sbatch $BUILD_DIR/tests/functional_tests/test_scripts/$RUN_MODEL/sbatch_${RUN_MODEL}_distributed_resume_checkpoint_test.sh --export=BASE_DIR,BUILD_DIR,DATA_DIR,TP_SIZE,PP_SIZE,VP_SIZE,NUM_NODES,PYTORCH_IMAGE`
+sbatch_submission=`sbatch -t $TIME_LIMIT $BUILD_DIR/tests/functional_tests/test_scripts/$RUN_MODEL/sbatch_${RUN_MODEL}_distributed_resume_checkpoint_test.sh --export=BASE_DIR,BUILD_DIR,DATA_DIR,TP_SIZE,PP_SIZE,VP_SIZE,NUM_NODES,PYTORCH_IMAGE`
 export SLURM_JOBID=$(echo $sbatch_submission| grep 'Submitted batch job' | awk '{ print $4 }');
 
 # step 7 : WAITING FOR JOB TO COMPLETE AND PRINTING JOB INFO

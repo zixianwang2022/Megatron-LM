@@ -1,21 +1,39 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 from abc import ABC, abstractmethod
-from .enums import AttnMaskType
-from .transformer_config import TransformerConfig
+from dataclasses import dataclass
+from typing import Union
+
 import torch
 
 from megatron.core import parallel_state, tensor_parallel
-from megatron.core.transformer.core_attention import CoreAttention
+from megatron.core.models.common.embeddings.rotary_pos_embedding import apply_rotary_pos_emb
+from megatron.core.transformer.enums import AttnMaskType
+from megatron.core.transformer.identity_op import IdentityFuncOp, IdentityOp
+from megatron.core.transformer.module import MegatronModule
+from megatron.core.transformer.spec_utils import ModuleSpec, build_module
+from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.utils import divide
 
-from megatron.core.transformer.module import MegatronModule
-from megatron.core.transformer.enums import AttnType, AttnMaskType
-from megatron.core.transformer.transformer_config import TransformerConfig
-from megatron.core.transformer.custom_layers.transformer_engine import \
-        TECoreAttention, TEColumnParallelLinear, TERowParallelLinear
+from .enums import AttnMaskType
+from .transformer_config import TransformerConfig
+from .utils import make_sharded_tensors_for_checkpoint
 
-from megatron.core.models.common.rotary_pos_embedding import apply_rotary_pos_emb
+
+@dataclass
+class SelfAttentionSubmodules:
+    linear_qkv: Union[ModuleSpec, type] = None
+    dot_product_attention: Union[ModuleSpec, type] = None
+    linear_proj: Union[ModuleSpec, type] = None
+
+
+@dataclass
+class CrossAttentionSubmodules:
+    linear_q: Union[ModuleSpec, type] = None
+    linear_kv: Union[ModuleSpec, type] = None
+    core_attention: Union[ModuleSpec, type] = None
+    linear_proj: Union[ModuleSpec, type] = None
+
 
 class Attention(MegatronModule, ABC):
     """Attention layer abstract class.
@@ -27,42 +45,57 @@ class Attention(MegatronModule, ABC):
     def __init__(
         self,
         config: TransformerConfig,
-        layer_number: int = 1,
-        attn_mask_type=AttnMaskType.padding,
+        submodules: Union[SelfAttentionSubmodules, CrossAttentionSubmodules],
+        layer_number: int,
+        attn_mask_type: AttnMaskType,
+        attention_type: str,
     ):
         super().__init__(config=config)
 
         self.config = config
         self.layer_number = layer_number
         self.attn_mask_type = attn_mask_type
+        self.attention_type = attention_type
 
-        self.projection_size = self.config.kv_channels * self.config.num_attention_heads
+        # For normal attention without groups, num_query_groups == num_attention_heads,
+        # so these two will be the same
+        self.query_projection_size = self.config.kv_channels * self.config.num_attention_heads
+        self.kv_projection_size = self.config.kv_channels * self.config.num_query_groups
 
         # Per attention head and per partition values.
         world_size = parallel_state.get_tensor_model_parallel_world_size()
-        self.hidden_size_per_attention_head = divide(self.projection_size, self.config.num_attention_heads)
+        self.hidden_size_per_attention_head = divide(
+            self.query_projection_size, self.config.num_attention_heads
+        )
         self.num_attention_heads_per_partition = divide(self.config.num_attention_heads, world_size)
+        self.num_query_groups_per_partition = divide(self.config.num_query_groups, world_size)
 
-
-        self.core_attention = TECoreAttention(
+        self.dot_product_attention = build_module(
+            submodules.dot_product_attention,
             config=self.config,
             layer_number=self.layer_number,
-            attn_mask_type=self.attn_mask_type
+            attn_mask_type=self.attn_mask_type,
+            attention_type=self.attention_type,
         )
 
-        self.checkpoint_core_attention = self.config.recompute_granularity == 'selective'
+        self.checkpoint_dot_product_attention = self.config.recompute_granularity == 'selective'
 
         # Output.
-        self.linear_proj = TERowParallelLinear(
-            self.projection_size,
+        self.linear_proj = build_module(
+            submodules.linear_proj,
+            self.query_projection_size,
             self.config.hidden_size,
             config=self.config,
             init_method=self.config.output_layer_init_method,
             bias=self.config.add_bias_linear,
+            input_is_parallel=True,
             skip_bias_add=True,
+            is_expert=False,
         )
 
-    def _checkpointed_attention_forward(self, query, key, value, attention_mask, rotary_pos_emb=None):
+    def _checkpointed_attention_forward(
+        self, query, key, value, attention_mask, rotary_pos_emb=None
+    ):
         """Forward method with selective activation checkpointing."""
 
         def custom_forward(*inputs):
@@ -70,7 +103,7 @@ class Attention(MegatronModule, ABC):
             key = inputs[1]
             value = inputs[2]
             attention_mask = inputs[3]
-            output_ = self.core_attention(query, key, value, attention_mask)
+            output_ = self.dot_product_attention(query, key, value, attention_mask)
             return output_
 
         hidden_states = tensor_parallel.checkpoint(
@@ -79,13 +112,15 @@ class Attention(MegatronModule, ABC):
 
         return hidden_states
 
-    def _allocate_memory(self, inference_max_sequence_len, batch_size):
+    def _allocate_memory(self, inference_max_sequence_length, batch_size, dtype):
+        """Allocate memory to store kv cache during inference."""
+
         return torch.empty(
-            inference_max_sequence_len,
+            inference_max_sequence_length,
             batch_size,
-            self.num_attention_heads_per_partition,
+            self.num_query_groups_per_partition,
             self.hidden_size_per_attention_head,
-            dtype=self.params_dtype,
+            dtype=dtype,
             device=torch.cuda.current_device(),
         )
 
@@ -106,10 +141,14 @@ class Attention(MegatronModule, ABC):
         # =================================================
         is_first_step = False
         if self.layer_number not in inference_params.key_value_memory_dict:
-            inf_max_seq_len = inference_params.max_sequence_len
+            inf_max_seq_length = inference_params.max_sequence_length
             inf_max_batch_size = inference_params.max_batch_size
-            inference_key_memory = self._allocate_memory(inf_max_seq_len, inf_max_batch_size)
-            inference_value_memory = self._allocate_memory(inf_max_seq_len, inf_max_batch_size)
+            inference_key_memory = self._allocate_memory(
+                inf_max_seq_length, inf_max_batch_size, key.dtype
+            )
+            inference_value_memory = self._allocate_memory(
+                inf_max_seq_length, inf_max_batch_size, value.dtype
+            )
             inference_params.key_value_memory_dict[self.layer_number] = (
                 inference_key_memory,
                 inference_value_memory,
@@ -162,13 +201,19 @@ class Attention(MegatronModule, ABC):
         is "self-attn" or "cross-attn".
         """
 
-    def forward(self, hidden_states, attention_mask, key_value_states=None, inference_params=None,
-                rotary_pos_emb=None):
+    def forward(
+        self,
+        hidden_states,
+        attention_mask,
+        key_value_states=None,
+        inference_params=None,
+        rotary_pos_emb=None,
+    ):
         # hidden_states: [sq, b, h]
 
         # For self attention we just duplicate the rotary_pos_emb if it isn't already
         if rotary_pos_emb is not None and not isinstance(rotary_pos_emb, tuple):
-            rotary_pos_emb = ((rotary_pos_emb,) * 2)
+            rotary_pos_emb = (rotary_pos_emb,) * 2
 
         # =====================
         # Query, Key, and Value
@@ -180,8 +225,9 @@ class Attention(MegatronModule, ABC):
         # ===================================================
         # Adjust key, value, and rotary_pos_emb for inference
         # ===================================================
-        key, value, rotary_pos_emb = self._adjust_key_value_for_inference(inference_params,
-                                                                          key, value, rotary_pos_emb)
+        key, value, rotary_pos_emb = self._adjust_key_value_for_inference(
+            inference_params, key, value, rotary_pos_emb
+        )
 
         # ================================================
         # relative positional embedding (rotary embedding)
@@ -198,10 +244,11 @@ class Attention(MegatronModule, ABC):
         # ==================================
         # core attention computation
         # ==================================
-        if self.checkpoint_core_attention:
+
+        if self.checkpoint_dot_product_attention:
             core_attn_out = self._checkpointed_attention_forward(query, key, value, attention_mask)
         else:
-            core_attn_out = self.core_attention(query, key, value, attention_mask)
+            core_attn_out = self.dot_product_attention(query, key, value, attention_mask)
 
         # =================
         # Output. [sq, b, h]
@@ -211,49 +258,92 @@ class Attention(MegatronModule, ABC):
 
         return output, bias
 
+
 class SelfAttention(Attention):
     """Self-attention layer class
 
     Self-attention layer takes input with size [s, b, h]
     and returns output of the same size.
     """
-    def __init__(self,
-                 config: TransformerConfig,
-                 layer_number: int = 1,
-                 attn_mask_type=AttnMaskType.padding):
+
+    def __init__(
+        self,
+        config: TransformerConfig,
+        submodules: SelfAttentionSubmodules,
+        layer_number: int,
+        attn_mask_type=AttnMaskType.padding,
+    ):
         super().__init__(
             config=config,
+            submodules=submodules,
             layer_number=layer_number,
-            attn_mask_type=attn_mask_type
+            attn_mask_type=attn_mask_type,
+            attention_type="self",
         )
 
-        self.linear_qkv = TEColumnParallelLinear(
-                self.config.hidden_size,
-                3 * self.projection_size,
-                config=self.config,
-                init_method=self.config.init_method,
-                bias=self.config.add_bias_linear,
-                skip_bias_add=False
+        self.linear_qkv = build_module(
+            submodules.linear_qkv,
+            self.config.hidden_size,
+            self.query_projection_size + 2 * self.kv_projection_size,
+            config=self.config,
+            init_method=self.config.init_method,
+            gather_output=False,
+            bias=self.config.add_bias_linear,
+            skip_bias_add=False,
+            is_expert=False,
         )
 
     def get_query_key_value_tensors(self, hidden_states, key_value_states=None):
         """
         Derives `query`, `key` and `value` tensors from `hidden_states`.
         """
-        # Attention heads [sq, b, h] --> [sq, b, (np * 3 * hn)]
+        # Attention heads [sq, b, h] --> [sq, b, ng * (np/ng + 2) * hn)]
         mixed_qkv, _ = self.linear_qkv(hidden_states)
 
-        # [sq, b, (np * 3 * hn)] --> [sq, b, np, 3 * hn]
+        # [sq, b, hp] --> [sq, b, ng, (np/ng + 2) * hn]
         new_tensor_shape = mixed_qkv.size()[:-1] + (
-            self.num_attention_heads_per_partition,
-            3 * self.hidden_size_per_attention_head,
+            self.num_query_groups_per_partition,
+            (
+                (self.num_attention_heads_per_partition // self.num_query_groups_per_partition + 2)
+                * self.hidden_size_per_attention_head
+            ),
         )
         mixed_qkv = mixed_qkv.view(*new_tensor_shape)
 
-        # [sq, b, np, 3 * hn] --> 3 [sq, b, np, hn]
-        (query, key, value) = tensor_parallel.split_tensor_along_last_dim(mixed_qkv, 3)
+        # [sq, b, ng, (np/ng + 2) * hn] --> [sq, b, ng, np/ng * hn], [sq, b, ng, hn], [sq, b, ng, hn]
+        (query, key, value) = torch.split(
+            mixed_qkv,
+            [
+                (
+                    self.num_attention_heads_per_partition
+                    // self.num_query_groups_per_partition
+                    * self.hidden_size_per_attention_head
+                ),
+                self.hidden_size_per_attention_head,
+                self.hidden_size_per_attention_head,
+            ],
+            dim=3,
+        )
+        # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn]
+        query = query.reshape(query.size(0), query.size(1), -1, self.hidden_size_per_attention_head)
 
         return query, key, value
+
+    def sharded_state_dict(self, prefix='', sharded_key_prefix=None, sharded_offsets=()):
+        sharded_key_prefix = prefix if sharded_key_prefix is None else sharded_key_prefix
+        sharded_state_dict = {}
+        for name, module in (
+            ('linear_qkv', self.linear_qkv),
+            ('linear_proj', self.linear_proj),
+        ):
+            sub_sd = module.sharded_state_dict(
+                prefix=f'{prefix}{name}.',
+                sharded_key_prefix=f'{sharded_key_prefix}{name}.',
+                sharded_offsets=sharded_offsets,
+            )
+            sharded_state_dict.update(sub_sd)
+        return sharded_state_dict
+
 
 class CrossAttention(Attention):
     """Cross-attention layer class
@@ -261,32 +351,50 @@ class CrossAttention(Attention):
     Cross-attention layer takes input with size [s, b, h] and context with size
     [s, b, h] and returns output of the same size.
     """
-    def __init__(self,
-                 config: TransformerConfig,
-                 layer_number: int = 1,
-                 attn_mask_type=AttnMaskType.padding):
+
+    def __init__(
+        self,
+        config: TransformerConfig,
+        submodules: CrossAttentionSubmodules,
+        layer_number: int,
+        attn_mask_type=AttnMaskType.padding,
+    ):
         super().__init__(
             config=config,
+            submodules=submodules,
             layer_number=layer_number,
-            attn_mask_type=attn_mask_type
+            attn_mask_type=attn_mask_type,
+            attention_type="cross",
         )
 
-        self.linear_q = TEColumnParallelLinear(
+        if self.config.num_query_groups != self.config.num_attention_heads:
+            raise ValueError(
+                f"Group query attention is not currently supported in cross attention."
+            )
+        assert self.query_projection_size == self.kv_projection_size
+
+        self.linear_q = build_module(
+            submodules.linear_q,
             self.config.hidden_size,
-            self.projection_size,
+            self.query_projection_size,
             config=self.config,
             init_method=self.config.init_method,
+            gather_output=False,
             bias=self.config.add_bias_linear,
-            skip_bias_add=False
+            skip_bias_add=False,
+            is_expert=False,
         )
 
-        self.linear_kv = TEColumnParallelLinear(
+        self.linear_kv = build_module(
+            submodules.linear_kv,
             self.config.hidden_size,
-            2 * self.projection_size,
+            2 * self.kv_projection_size,
             config=self.config,
             init_method=self.config.init_method,
+            gather_output=False,
             bias=self.config.add_bias_linear,
-            skip_bias_add=False
+            skip_bias_add=False,
+            is_expert=False,
         )
 
     def get_query_key_value_tensors(self, hidden_states, key_value_states):

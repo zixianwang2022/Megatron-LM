@@ -6,8 +6,9 @@ from typing import Callable
 import torch
 import torch.nn.functional as F
 
-from megatron.core import ModelParallelConfig
-from megatron.core.utils import init_method_normal, scaled_init_method_normal
+from ..model_parallel_config import ModelParallelConfig
+from ..utils import init_method_normal, scaled_init_method_normal
+
 
 @dataclass
 class TransformerConfig(ModelParallelConfig):
@@ -24,6 +25,8 @@ class TransformerConfig(ModelParallelConfig):
         kv_channels (int): Projection weights dimension in multi-head attention.
                             This is set to hidden_size // num_attention_heads if not provided.
                             Defaults to None.
+        num_query_groups (int): Number of query groups for group query attention. If None, normal attention is used.
+
         hidden_dropout (float): Dropout probability for transformer hidden state. Defaults to 0.1.
         attention_dropout (float): Post attention dropout probability. Defaults to 0.1.
         fp32_residual_connection (bool): If true, move residual connections to fp32.
@@ -40,6 +43,9 @@ class TransformerConfig(ModelParallelConfig):
         gated_linear_unit (bool): Use a gated linear unit for the first linear layer in the MLP. Defaults to False.
 
         activation_func (Callable): Activation function to use for the non-linearity in the MLP. Defaults to F.gelu.
+
+        num_moe_experts (int): Number of experts to use for Mixture of Experts. 
+                               When set, it replaces MLP with Switch MLP. Defaults to None (no MoE).
 
         # initialization
         init_method (Callable): Method to initialize weights. Note that bias is always set to
@@ -78,7 +84,8 @@ class TransformerConfig(ModelParallelConfig):
                                      are also less compute intensive which makes activation checkpointing more efficient
                                      for LLMs (20B+).  See Reducing Activation Recomputation in Large Transformer
                                      Models: https://arxiv.org/abs/2205.05198 for more details.  'full' will checkpoint
-                                     the entire transformer layer.  Must be 'selective' or 'full'. Defaults to None.
+                                     the entire transformer layer.  Must be 'selective' or 'full'. 'selective' always uses all layers.
+                                     Defaults to None.
 
         recompute_method (str): uniform will uniformly divide the total number of transformer layers in a transformer
                                 block and recompute the input activation of each divided chunk at the specified
@@ -90,7 +97,7 @@ class TransformerConfig(ModelParallelConfig):
         recompute_num_layers (int): When recompute_method is uniform, recompute_num_layers is the number of transformer
                                     layers in each uniformly divided recompute unit.  When recompute_method is block,
                                     recompute_num_layers is the number of transformer layers to recompute within each
-                                    pipeline stage.  Defaults to None.
+                                    pipeline stage.  Must be None for 'selective' activation checkpointing. Defaults to None.
 
         distribute_saved_activations (bool): If true, distribute recomputed activations across the model parallel
                                              group. Defaults to None.
@@ -98,12 +105,11 @@ class TransformerConfig(ModelParallelConfig):
         # fp8 related (via Transformer Engine). For detailed info, refer the the Transformer Engine docs at
         # https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/api/common.html
 
-        fp8 (bool): Enables the use of FP8 precision through Transformer Engine.
+        fp8 (str): If set, enables the use of FP8 precision through Transformer Engine. There are 2 predefined choices: (1) 'e4m3'
+                   uniformly uses e4m3 for all FP8 tensors, (2) 'hybrid' uses e4m3 for all FP8 activation and weight tensors and
+                   e5m2 for all FP8 output activation gradient tensors. Defaults to None.
 
-        fp8_e4m3 (bool): Enables the use of FP8 tensors in e4m3 format for both forward and backward passes.
-
-        fp8_margin (int): Enables the use of FP8 tensors in e4m3 format in the forward pass and e5m2 format in the
-                          backward pass.
+        fp8_margin (int): Margin for the scaling factor computation.
 
         fp8_interval (int): Controls how often the scaling factor is recomputed.
 
@@ -113,12 +119,21 @@ class TransformerConfig(ModelParallelConfig):
                                      There are 2 predefined choices: `max` chooses the largest `amax` in the history
                                      window, while `most_recent` always chooses the most recently seen value.
 
+        fp8_wgrad (bool): When set to False, override FP8 config options and do the wgrad computation in higher precision.
+                          Defaults to True.
+
+        # Experimental
+        normalization (str): Swtich b/w `LayerNorm` and `RMSNorm` as normalization layers. For now, these are primarily
+                             used by Transformer-Engine's layers like `LayerNormLinear`. Default value is `LayerNorm`.
+
+
     """
 
     # model architecture
     num_layers: int = 0
     hidden_size: int = 0
     num_attention_heads: int = 0
+    num_query_groups: int = None
 
     ffn_hidden_size: int = None
     kv_channels: int = None
@@ -132,6 +147,7 @@ class TransformerConfig(ModelParallelConfig):
     add_bias_linear: bool = True
     gated_linear_unit: bool = False
     activation_func: Callable = F.gelu
+    num_moe_experts: int = None
 
     # initialization
     init_method: Callable = None
@@ -139,7 +155,7 @@ class TransformerConfig(ModelParallelConfig):
     init_method_std: float = 0.02
 
     # mixed-precision
-    apply_query_key_layer_scaling: bool = True
+    apply_query_key_layer_scaling: bool = False
     attention_softmax_in_fp32: bool = True
 
     # communication
@@ -157,13 +173,15 @@ class TransformerConfig(ModelParallelConfig):
     distribute_saved_activations: bool = None
 
     # fp8 related
-    fp8: bool = True
-    fp8_e4m3: bool = False
+    fp8: str = None
     fp8_margin: int = 0
     fp8_interval: int = 1
     fp8_amax_history_len: int = 1
     fp8_amax_compute_algo: str = "most_recent"
+    fp8_wgrad: bool = True
 
+    # experimental section (TODO: move to apt. section above once stable)
+    normalization: bool = "LayerNorm"  # alt value supported by TE: "RMSNorm"
 
     def __post_init__(self):
         """ Python dataclass method that is used to modify attributes after initialization.
@@ -171,7 +189,15 @@ class TransformerConfig(ModelParallelConfig):
         """
         super().__post_init__()
         if self.fp16 and self.bf16:
-            raise ValueError(f'Only one of self.fp16: {self.fp16} and self.bf16 {self.bf16} should be True.')
+            raise ValueError(
+                f'Only one of self.fp16: {self.fp16} and self.bf16 {self.bf16} should be True.'
+            )
+
+        if self.num_attention_heads % self.tensor_model_parallel_size != 0:
+            raise ValueError(
+                f"num_attention_heads ({self.num_attention_heads}) must be a multiple of "
+                f"tensor_model_parallel_size ({self.tensor_model_parallel_size})."
+            )
 
         if self.ffn_hidden_size is None:
             self.ffn_hidden_size = 4 * self.hidden_size
@@ -179,8 +205,20 @@ class TransformerConfig(ModelParallelConfig):
         if self.kv_channels is None:
             self.kv_channels = self.hidden_size // self.num_attention_heads
 
+        if self.num_query_groups is None:
+            self.num_query_groups = self.num_attention_heads
+
+        if self.num_query_groups % self.tensor_model_parallel_size != 0:
+            raise ValueError(
+                f"num_query_groups ({self.num_query_groups}) must be a multiple of "
+                f"tensor_model_parallel_size ({self.tensor_model_parallel_size})."
+            )
+
         if self.apply_query_key_layer_scaling:
             self.attention_softmax_in_fp32 = True
+
+        if self.expert_model_parallel_size > 1 and self.num_moe_experts is None:
+            raise ValueError(f'num_moe_experts must be non None to use expert-parallel.')
 
         if self.recompute_granularity is not None:
             if not self.recompute_granularity in ['full', 'selective']:
@@ -190,21 +228,29 @@ class TransformerConfig(ModelParallelConfig):
 
             if self.recompute_method is not None:
                 if not self.recompute_method in ['block', 'uniform']:
-                    raise ValueError(f'recompute_method: {self.recompute_method} must be "block" or "uniform".')
+                    raise ValueError(
+                        f'recompute_method: {self.recompute_method} must be "block" or "uniform".'
+                    )
             elif self.recompute_granularity != 'selective':
                 raise ValueError(
                     f'Using recompute_granularity: {self.recompute_granularity} so recompute_method must be "block" or "uniform"'
                 )
 
-            if self.recompute_num_layers is None:
+            if self.recompute_granularity != 'selective' and self.recompute_num_layers is None:
                 raise ValueError(
-                    f'When using recompute_granularity: {self.recompute_granularity} so recompute_num_layers must be between '
+                    f'When using recompute_granularity: {self.recompute_granularity} recompute_num_layers must be between '
                     f'1 and num_layers_per_pipeline_rank: {self.num_layers // self.pipeline_model_parallel_size}'
                 )
-
-            if self.distribute_saved_activations and self.sequence_parallel_enabled:
+            elif (
+                self.recompute_granularity == 'selective' and self.recompute_num_layers is not None
+            ):
                 raise ValueError(
-                    f'distribute_saved_activations: {self.distribute_saved_activations} must be false when sequence parallel is enabled: {self.sequence_parallel_enabled}'
+                    f'When using recompute_granularity: {self.recompute_granularity} recompute_num_layers must be None.'
+                )
+
+            if self.distribute_saved_activations and self.sequence_parallel:
+                raise ValueError(
+                    f'distribute_saved_activations: {self.distribute_saved_activations} must be false when sequence parallel is enabled: {self.sequence_parallel}'
                 )
 
             if self.virtual_pipeline_model_parallel_size is not None:
@@ -218,7 +264,9 @@ class TransformerConfig(ModelParallelConfig):
 
         if self.bias_gelu_fusion:
             if not self.add_bias_linear:
-                raise ValueError("When bias_gelu_fusion is True, add_bias_linear must also be True.")
+                raise ValueError(
+                    "When bias_gelu_fusion is True, add_bias_linear must also be True."
+                )
 
             if self.activation_func != F.gelu:
                 raise ValueError(f'When bias_gelu_fusion is True, activation_func must be F.gelu.')
@@ -227,5 +275,6 @@ class TransformerConfig(ModelParallelConfig):
             self.init_method = init_method_normal(self.init_method_std)
 
         if self.output_layer_init_method is None:
-            self.output_layer_init_method = scaled_init_method_normal(self.init_method_std, self.num_layers)
-
+            self.output_layer_init_method = scaled_init_method_normal(
+                self.init_method_std, self.num_layers
+            )

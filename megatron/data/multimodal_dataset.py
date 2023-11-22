@@ -309,7 +309,7 @@ class MultiModalDataset(torch.utils.data.Dataset):
         self.name = name
         self.indexed_dataset = indexed_dataset
         self.visual_indexed_dataset = visual_indexed_dataset
-        #self.doc_idx = indexed_dataset.get_doc_idx()
+        #self.doc_idx = indexed_dataset.get_document_indices()
         self.data_prefix = data_prefix
 
         dset_name = self.data_prefix.split("/")[-1]

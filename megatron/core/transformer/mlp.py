@@ -1,14 +1,23 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+from dataclasses import dataclass
+from typing import Union
+
 import torch
 import torch.nn.functional as F
 
-from megatron.core import tensor_parallel
 from megatron.core.fusions.fused_bias_gelu import bias_gelu_impl
 from megatron.core.transformer.module import MegatronModule
+from megatron.core.transformer.spec_utils import ModuleSpec, build_module
 from megatron.core.transformer.transformer_config import TransformerConfig
-from megatron.core.transformer.custom_layers.transformer_engine import \
-        TERowParallelLinear, TEColumnParallelLinear
+from megatron.core.transformer.utils import make_sharded_tensors_for_checkpoint
+
+
+@dataclass
+class MLPSubmodules:
+    linear_fc1: Union[ModuleSpec, type] = None
+    linear_fc2: Union[ModuleSpec, type] = None
+
 
 class MLP(MegatronModule):
     """
@@ -27,7 +36,9 @@ class MLP(MegatronModule):
      s: sequence length
     """
 
-    def __init__(self, config: TransformerConfig):
+    def __init__(
+        self, config: TransformerConfig, submodules: MLPSubmodules, is_expert: bool = False
+    ):
         super().__init__(config=config)
 
         self.config: TransformerConfig = config
@@ -37,30 +48,38 @@ class MLP(MegatronModule):
         if self.config.gated_linear_unit:
             ffn_hidden_size *= 2
 
-        self.linear_fc1 = TEColumnParallelLinear(
+        self.linear_fc1 = build_module(
+            submodules.linear_fc1,
             self.config.hidden_size,
             ffn_hidden_size,
             config=self.config,
             init_method=self.config.init_method,
+            gather_output=False,
             bias=self.config.add_bias_linear,
             skip_bias_add=True,
+            is_expert=is_expert,
         )
 
         if self.config.gated_linear_unit:
+
             def glu(x):
                 x = torch.chunk(x, 2, dim=-1)
                 return self.config.activation_func(x[0]) * x[1]
+
             self.activation_func = glu
         else:
             self.activation_func = self.config.activation_func
 
-        self.linear_fc2 = TERowParallelLinear(
+        self.linear_fc2 = build_module(
+            submodules.linear_fc2,
             self.config.ffn_hidden_size,
             self.config.hidden_size,
             config=self.config,
             init_method=self.config.output_layer_init_method,
             bias=self.config.add_bias_linear,
+            input_is_parallel=True,
             skip_bias_add=True,
+            is_expert=is_expert,
         )
 
     def forward(self, hidden_states):
@@ -79,4 +98,17 @@ class MLP(MegatronModule):
 
         # [s, b, h]
         output, output_bias = self.linear_fc2(intermediate_parallel)
+
         return output, output_bias
+
+    def sharded_state_dict(self, prefix='', sharded_key_prefix=None, sharded_offsets=()):
+        sharded_key_prefix = prefix if sharded_key_prefix is None else sharded_key_prefix
+        sharded_state_dict = {}
+        for name, module in self._modules.items():
+            sub_sd = module.sharded_state_dict(
+                prefix=f'{prefix}{name}.',
+                sharded_key_prefix=f'{sharded_key_prefix}{name}.',
+                sharded_offsets=sharded_offsets,
+            )
+            sharded_state_dict.update(sub_sd)
+        return sharded_state_dict

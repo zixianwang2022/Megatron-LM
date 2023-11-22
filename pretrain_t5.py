@@ -142,13 +142,11 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
                  'for T5 ...')
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
-        data_impl=args.data_impl,
         splits_string=args.split,
         train_valid_test_num_samples=train_val_test_num_samples,
         max_seq_length=args.encoder_seq_length,
         max_seq_length_dec=args.decoder_seq_length,
         seed=args.seed,
-        skip_warmup=(not args.mmap_warmup),
         dataset_type='t5')
     print_rank_0("> finished creating T5 datasets ...")
 
