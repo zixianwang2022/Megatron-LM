@@ -8,7 +8,7 @@
 #SBATCH --overcommit
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
-#SBATCH --nodes=4
+#SBATCH --nodes=8
 #SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-2b-pretrain-1e-4-ocr-randominit-aligned-fix-train-samples-new-withdocidx-mr-wds-clip224
 
 export NCCL_IB_SL=1
@@ -44,7 +44,6 @@ PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
 DATASET_CONFIG="${SOURCE}/dataset.yaml"
 
 options=" \
-    --accumulate-allreduce-grads-in-fp32 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \

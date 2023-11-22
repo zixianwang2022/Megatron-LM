@@ -44,7 +44,6 @@ PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
 DATASET_CONFIG="${SOURCE}/dataset.yaml"
 
 options=" \
-    --accumulate-allreduce-grads-in-fp32 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \

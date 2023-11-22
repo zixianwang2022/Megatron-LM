@@ -35,9 +35,6 @@ mkdir -p ${TENSORBOARD_DIR}
 DATA_TRAIN="1.0000 /lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO_debug/COCO_train"
 DATA_VALID="1.0000 /lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/COCO_debug/COCO_val"
 
-# VISUAL_ARCH="L_14"
-# VISUAL_TYPE="vit"
-# VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
 VISUAL_ARCH="SAM_L"
 VISUAL_TYPE="sam"
 VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
@@ -51,8 +48,7 @@ options=" \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
-    --no-position-embedding \
-    --use-rotary-position-embeddings \
+    --position-embedding-type rope \
     --rotary-percent 0.5 \
     --swiglu \
     --attention-dropout 0.0 \

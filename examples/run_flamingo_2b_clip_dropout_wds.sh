@@ -38,9 +38,6 @@ DATA_VALID="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
 VISUAL_ARCH="L_14"
 VISUAL_TYPE="vit"
 VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/vit_L_14"
-# VISUAL_ARCH="SAM_L"
-# VISUAL_TYPE="sam"
-# VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -51,8 +48,7 @@ options=" \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
-    --no-position-embedding \
-    --use-rotary-position-embeddings \
+    --position-embedding-type rope \
     --rotary-percent 0.5 \
     --swiglu \
     --attention-dropout 0.0 \
