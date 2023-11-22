@@ -57,9 +57,7 @@ class MegatronOptimizer(ABC):
                  log_num_zeros_in_grad,
                  check_for_nan_in_grad,
                  params_have_main_grad,
-                 use_contiguous_buffers_in_local_ddp,
                  models, visual_model=None):
-                 models):
 
         """Input optimizer is the base optimizer for example Adam."""
         self.optimizer = optimizer
@@ -73,6 +71,7 @@ class MegatronOptimizer(ABC):
         # 'models' are retained for access to the contiguous grad buffers.
         # (see distributed optimizer)
         self.models = models
+        self.visual_model = visual_model
 
 
     def get_parameters(self):
@@ -232,7 +231,7 @@ class MixedPrecisionOptimizer(MegatronOptimizer):
         super().__init__(
             optimizer, clip_grad, log_num_zeros_in_grad,
             check_for_nan_in_grad, params_have_main_grad,
-            models, visual_model=visual_model)
+            models=models, visual_model=visual_model)
 
         self.fp16 = fp16
         self.bf16 = bf16

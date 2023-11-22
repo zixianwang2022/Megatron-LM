@@ -509,7 +509,8 @@ def train_step(forward_step_func, data_iterator,
         seq_length=args.seq_length,
         micro_batch_size=args.micro_batch_size,
         decoder_seq_length=args.decoder_seq_length,
-        forward_only=False)
+        forward_only=False,
+        visual_model=visual_model)
 
     # Empty unused memory.
     if args.empty_unused_memory_level >= 1:
@@ -800,7 +801,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
 
     # Setup some training config params
     config.grad_scale_func = optimizer.scale_loss
-    config.timers = timers
+    # config.timers = timers
     if isinstance(model[0], DDP) and args.overlap_grad_reduce:
         assert config.no_sync_func is None, \
             ('When overlap_grad_reduce is True, config.no_sync_func must be None; '
@@ -994,7 +995,7 @@ def evaluate(forward_step_func,
 
             forward_backward_func = get_forward_backward_func()
             # Don't care about timing during evaluation
-            config.timers = None
+            # config.timers = None
             loss_dicts = forward_backward_func(
                 forward_step_func=forward_step_func,
                 data_iterator=data_iterator,
@@ -1004,7 +1005,7 @@ def evaluate(forward_step_func,
                 micro_batch_size=args.micro_batch_size,
                 decoder_seq_length=args.decoder_seq_length,
                 forward_only=True, visual_model=visual_model)
-            config.timers = get_timers()
+            # config.timers = get_timers()
 
             # Empty unused memory
             if args.empty_unused_memory_level >= 1:
@@ -1082,7 +1083,7 @@ def evaluate_and_print_results(prefix, forward_step_func,
         data_iterators = [data_iterators]
 
     for i, data_iterator in enumerate(data_iterators):
-        total_loss_dict, collected_non_loss_data = evaluate(
+        total_loss_dict, collected_non_loss_data, timelimit = evaluate(
             forward_step_func,
             data_iterator,
             model,
@@ -1091,6 +1092,8 @@ def evaluate_and_print_results(prefix, forward_step_func,
             verbose,
             visual_model=visual_model,
         )
+        if timelimit:
+            return
 
         # DANNY ADDED FOR WEBDATASET FORMAT; CHANGED BY GUILIN AGAIN
 

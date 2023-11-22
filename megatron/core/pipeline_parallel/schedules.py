@@ -156,7 +156,8 @@ def forward_step(
     config,
     collect_non_loss_data=False,
     checkpoint_activations_microbatch=None,
-    visual_model=None):
+    visual_model=None,
+):
     """Forward step for passed-in model.
 
     If first stage, input tensor is obtained from data_iterator, otherwise
@@ -183,13 +184,21 @@ def forward_step(
             if visual_model is None:
                 output_tensor, loss_func = forward_step_func(data_iterator, model)
             else:
-                output_tensor, loss_func = forward_step_func(data_iterator, model, visual_model=visual_model)
+                output_tensor, loss_func = forward_step_func(
+                    data_iterator, model, visual_model=visual_model
+                )
         else:
             if visual_model is None:
-                output_tensor, loss_func = forward_step_func(data_iterator, model, checkpoint_activations_microbatch)
+                output_tensor, loss_func = forward_step_func(
+                    data_iterator, model, checkpoint_activations_microbatch
+                )
             else:
-                output_tensor, loss_func = forward_step_func(data_iterator, model, checkpoint_activations_microbatch, visual_model=visual_model)
-
+                output_tensor, loss_func = forward_step_func(
+                    data_iterator,
+                    model,
+                    checkpoint_activations_microbatch,
+                    visual_model=visual_model,
+                )
 
     if parallel_state.is_pipeline_last_stage():
         if not collect_non_loss_data:
@@ -287,18 +296,19 @@ def backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, c
     return input_tensor_grad
 
 
-def forward_backward_no_pipelining(*,
-                                   forward_step_func,
-                                   data_iterator: Union[Iterator, List[Iterator]],
-                                   model: Union[torch.nn.Module, List[torch.nn.Module]],
-                                   num_microbatches: int,
-                                   seq_length: int, # unused
-                                   micro_batch_size: int, # unused
-                                   decoder_seq_length: int = None, # unused
-                                   forward_only: bool = False,
-                                   collect_non_loss_data: bool = False,
-                                   visual_model: Optional[Union[torch.nn.Module, List[torch.nn.Module]]] = None
-                                   ):
+def forward_backward_no_pipelining(
+    *,
+    forward_step_func,
+    data_iterator: Union[Iterator, List[Iterator]],
+    model: Union[torch.nn.Module, List[torch.nn.Module]],
+    num_microbatches: int,
+    seq_length: int,  # unused
+    micro_batch_size: int,  # unused
+    decoder_seq_length: int = None,  # unused
+    forward_only: bool = False,
+    collect_non_loss_data: bool = False,
+    visual_model: Optional[Union[torch.nn.Module, List[torch.nn.Module]]] = None,
+):
     """Run forward and backward passes with no pipeline parallelism
     (no inter-stage communication).
 
@@ -340,7 +350,8 @@ def forward_backward_no_pipelining(*,
                 forward_data_store,
                 config,
                 collect_non_loss_data,
-                visual_model=visual_model)
+                visual_model=visual_model,
+            )
             if not forward_only:
                 torch.cuda.nvtx.range_push("backward")
                 backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config)
@@ -348,8 +359,17 @@ def forward_backward_no_pipelining(*,
 
     # Run computation for last microbatch out of context handler (want to
     # synchronize gradients).
-    output_tensor = forward_step(forward_step_func, data_iterator, model, num_microbatches,
-                                 input_tensor, forward_data_store, config, collect_non_loss_data, visual_model=visual_model)
+    output_tensor = forward_step(
+        forward_step_func,
+        data_iterator,
+        model,
+        num_microbatches,
+        input_tensor,
+        forward_data_store,
+        config,
+        collect_non_loss_data,
+        visual_model=visual_model,
+    )
 
     if not forward_only:
         torch.cuda.nvtx.range_push("backward (final)")

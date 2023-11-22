@@ -203,7 +203,7 @@ class CLIPViTBackbone(MegatronModule):
 
             self.pre_layernorm = LayerNorm(
                 self.hidden_size,
-                eps=args.layernorm_epsilon,
+                eps=args.norm_epsilon,
                 no_persist_layer_norm=args.no_persist_layer_norm)
             # Linear encoder
             #self.linear_encoder = torch.nn.Linear(
@@ -226,6 +226,7 @@ class CLIPViTBackbone(MegatronModule):
             self.embedding_dropout = torch.nn.Dropout(args.hidden_dropout)
 
         # Transformer
+        config.hidden_size = args.visual_hidden_size
         self.transformer = ParallelTransformer(
             config,
             model_type=args.model_type,

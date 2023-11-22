@@ -96,7 +96,6 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --log-validation-ppl-to-tensorboard \
     --log-timers-to-tensorboard \
     --${TRAINING_DTYPE} \
-    --DDP-impl local \
     --no-load-optim \
     --eod-mask-loss \
     --finetune \

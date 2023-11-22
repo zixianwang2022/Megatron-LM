@@ -670,8 +670,7 @@ def load_visual_checkpoint(model, load_arg='load', strict=True, load_iter=None):
             model.load_state_dict(state_dict['model'], strict=strict)
 
         if args.SAM_randinit and args.no_load_optim and args.visual_arch.startswith('SAM'):
-            if isinstance(model, torch.nn.parallel.DistributedDataParallel) or \
-                isinstance(model, megatron.model.distributed.DistributedDataParallel):
+            if isinstance(model, torch.nn.parallel.DistributedDataParallel):
                 model_component = model.module
 
                 if  isinstance(model_component, Float16Module):
