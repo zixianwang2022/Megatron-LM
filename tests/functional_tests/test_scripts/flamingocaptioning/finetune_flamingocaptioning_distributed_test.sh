@@ -53,8 +53,7 @@ torch_run_cmd="torchrun $DISTRIBUTED_ARGS \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
-    --no-position-embedding \
-    --use-rotary-position-embeddings \
+    --position-embedding-type rope \
     --rotary-percent 0.5 \
     --swiglu \
     --attention-dropout 0.0 \
