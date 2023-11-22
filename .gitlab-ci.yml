@@ -140,6 +140,22 @@ train.flamingoocr.tp1_pp1_1node_50steps_2b_CLIP336:
     PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
     ADDITIONAL_PARAMS: "--load /workspace/data/flamingo_data/gpt3-2b-multi-1.1t-gtc --visual-arch L_14 --visual-type vit --visual-path /workspace/data/flamingo_data/vit_L_14_336px --img-h 336 --img-w 336"
 
+train.flamingoocr.tp1_pp1_1node_50steps_2b_HYBRID:
+  <<: *flamingo-test-launcher
+  variables:
+    <<: [*VARS]
+    RUN_MODEL: flamingoocr
+    USE_TE: 0
+    TP_SIZE: 1
+    PP_SIZE: 1
+    NUM_NODES: 1
+    MAX_STEPS: 50
+    METADATA: 2b_HYBRID
+    TIME_LIMIT: "20:00"
+    TEST_LEVEL: FLAMINGO_TESTS
+    PYTORCH_IMAGE: gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:23.04-py3-jbarker-gitlab-ci
+    ADDITIONAL_PARAMS: "--load /workspace/data/flamingo_data/gpt3-2b-multi-1.1t-gtc --use-hybrid-visual-backbones --xattn-sam-num 1 --xattn-clip-num 3 --visual-arch HybridSAMCLIP --visual-arch-clip L_14 --visual-type-clip vit --visual-path-clip /workspace/data/flamingo_data/vit_L_14_336px --visual-arch-sam SAM_L --visual-type-sam sam --visual-path-sam /workspace/data/flamingo_data/SAM_L_16 --img-h-sam 1024 --img-w-sam 1024 --img-h 1024 --img-w 1024 --SAM-randinit"
+
 train.flamingocaptioning.tp1_pp1_1node_50steps_2b_SAM:
   <<: *flamingo-test-launcher
   variables:

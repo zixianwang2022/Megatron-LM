@@ -66,7 +66,7 @@ def validate_visual_args(args):
             args.visual_output_size = 768
             args.quickgelu = True
             args.global_attn_freq = 1
-            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
+            assert args.SAM_randinit is False or args.use_hybrid_visual_backbones, "args.SAM-randinit is not compatible with CLIP backbone"
         elif args.visual_arch == "L_14":
             args.visual_num_layers = 24
             args.visual_patch_dim = 14
@@ -81,7 +81,7 @@ def validate_visual_args(args):
             else:
                 args.quickgelu = False
             args.global_attn_freq = 1
-            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
+            assert args.SAM_randinit is False or args.use_hybrid_visual_backbones, "args.SAM-randinit is not compatible with CLIP backbone"
         elif args.visual_arch == "G_14":
             args.visual_num_layers = 48
             args.visual_patch_dim = 14
@@ -91,7 +91,7 @@ def validate_visual_args(args):
             args.visual_output_size = 1664
             args.quickgelu = False
             args.global_attn_freq = 1
-            assert args.SAM_randinit is False, "args.SAM-randinit is not compatible with CLIP backbone"
+            assert args.SAM_randinit is False or args.use_hybrid_visual_backbones, "args.SAM-randinit is not compatible with CLIP backbone"
         elif args.visual_arch == "SAM_B":
             args.visual_num_layers = 12
             args.visual_patch_dim = 16
@@ -145,7 +145,7 @@ def validate_visual_args_clip(args):
 
     args = validate_visual_args(args)
 
-    return args 
+    return args
 
 def validate_args(args, defaults={}):
     # Tensor model parallel size.
