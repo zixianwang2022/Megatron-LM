@@ -13,8 +13,6 @@ done
 echo "---------------------------------"
 
 set -x
-if [[ -n $MBS ]]; then MBS=1; fi
-if [[ -n $GBS ]]; then GBS=8; fi
 
 GPUS_PER_NODE=8
 # Change for multinode config
