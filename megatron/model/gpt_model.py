@@ -14,9 +14,6 @@ from .enums import AttnMaskType
 from .language_model import parallel_lm_logits
 from .language_model import get_language_model
 
-from tools.mup.shape import set_base_shapes
-from tools.mup.init import normal_ as mup_normal_
-
 
 def post_language_model_processing(lm_output, labels, logit_weights,
                                    parallel_output,
@@ -78,57 +75,6 @@ class GPTModel(MegatronModule):
 
         if not args.untie_embeddings_and_output_weights:
             self.initialize_word_embeddings()
-
-        if args.use_mup:
-            self.mup_rescale_initializtaions(args)
-
-    def mup_rescale_initializtaions(self, args):
-        """Set initializations according to muP (Table 8)."""
-        assert hasattr(args, 'shape_file'), \
-            'muP is enabled but a shape file is missing.'
-
-        set_base_shapes(self, args.shape_file)
-
-        for name, tensor in self.named_parameters():
-            if name.endswith('.dense_4h_to_h.weight') or name.endswith('.dense.weight'):
-                # Set the initialization scales for the output layer of each block.
-                if args.strict_fan_in_init:
-                    # Optionally remove depth-wise scaling for initialization,
-                    # to be consistent with muP.
-                    std = args.init_method_std
-                else:
-                    # Default of Megatron.
-                    print("Warning: using depth-wise initialization for block output layers.")
-                    std = args.init_method_std / math.sqrt(2.0 * args.num_layers)
-                with tensor_parallel.get_cuda_rng_tracker().fork():
-                    if name.endswith('.dense_4h_to_h.weight'):
-                        if args.strict_fan_in_init:
-                            # Need to divide the global std by a factor of sqrt(in_dim/out_dim),
-                            # because the output dim of FFN is consistent across Transformer layers,
-                            # but the input dim can change for swiglu vs. other activations.
-                            out_dim = tensor.infshape[0].dim
-                            in_dim = tensor.infshape[1].dim
-                            std_div = math.sqrt(in_dim / out_dim)
-                        else:
-                            std_div = 1.
-                        mup_normal_(tensor, 0, std / std_div)
-                    else:
-                        mup_normal_(tensor, 0 , std)
-            elif name.endswith('layernorm.weight'):
-                # Effectively initialize all the layer norm weights to 1.
-                if args.apply_layernorm_1p:
-                    torch.init.zero_(tensor)
-                else:
-                    torch.init.ones_(tensor)
-            elif name.endswith('layernorm.bias'):
-                torch.init.zero_(tensor)
-            elif name.endswith('.weight'):
-                # Apply width-dependent initialization to matrice-like weights.
-                with tensor_parallel.get_cuda_rng_tracker().fork():
-                    mup_normal_(tensor, 0, args.init_method_std)
-            else:
-                assert torch.all(tensor == 0), \
-                    f'Found non-zero init for {tensor.var_name}, which is supposed to be vector_like (shape: {tensor.shape}).'
 
     def set_input_tensor(self, input_tensor):
         """See megatron.model.transformer.set_input_tensor()"""

@@ -461,6 +461,12 @@ def core_transformer_config_from_args(args):
     else:
         kw_args['num_query_groups'] = None
 
+    # muP
+    kw_args['use_mup'] = args.use_mup
+    kw_args['shape_file'] = args.shape_file
+    kw_args['strict_fan_in_init'] = args.strict_fan_in_init
+    kw_args['block_multiplier'] = args.block_multiplier
+
     # If using Retro, return Retro config.
     retro_args = get_retro_args()
     if retro_args:
@@ -1414,7 +1420,7 @@ def _add_mup_args(parser):
     group.add_argument('--use-mup-zero-init-and-qk-scale',
                        action='store_true',
                        help='Whether to use zero initialization for the query and the final output projections,'
-                            'and the 1/d qk-prod scale.')
+                            'and the 1/d qk-prod scale. Not supported for megatron-core yet.')
     group.add_argument('--strict-fan-in-init',
                        action='store_true',
                        help='Whether to use zero initialization for the query and the final output projections,'

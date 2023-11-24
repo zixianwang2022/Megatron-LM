@@ -45,7 +45,7 @@ class TransformerConfig(ModelParallelConfig):
 
         activation_func (Callable): Activation function to use for the non-linearity in the MLP. Defaults to F.gelu.
 
-        num_moe_experts (int): Number of experts to use for Mixture of Experts. 
+        num_moe_experts (int): Number of experts to use for Mixture of Experts.
                                When set, it replaces MLP with Switch MLP. Defaults to None (no MoE).
 
         # initialization
@@ -131,6 +131,16 @@ class TransformerConfig(ModelParallelConfig):
         normalization (str): Swtich b/w `LayerNorm` and `RMSNorm` as normalization layers. For now, these are primarily
                              used by Transformer-Engine's layers like `LayerNormLinear`. Default value is `LayerNorm`.
 
+        # muP
+        use_mup (bool): Whether to enable muP to convert the optimal lr and init across different hidden sizes.
+
+        shape_file (bool): Must be provided when muP is enabled. Path to the shape file of the base model for computing the
+                           multipliers
+
+        strict_fan_in_init (bool): Whether to use strict fan-in initialization and remove all depth-dependent initializations.
+
+        block_multiplier (bool): Whether to use a block multiplier on the output of each Attention or MLP block before added
+                                 to the skip connection.
 
     """
 
@@ -190,6 +200,12 @@ class TransformerConfig(ModelParallelConfig):
 
     # experimental section (TODO: move to apt. section above once stable)
     normalization: bool = "LayerNorm"  # alt value supported by TE: "RMSNorm"
+
+    # muP
+    use_mup: bool = False
+    shape_file: str = ""
+    strict_fan_in_init: bool = False
+    block_multiplier: float = 1.
 
     def __post_init__(self):
         """ Python dataclass method that is used to modify attributes after initialization.

@@ -180,6 +180,10 @@ class GPTModel(LanguageModule):
             output_weight = self.shared_embedding_or_output_weight()
         logits, _ = self.output_layer(hidden_states, weight=output_weight)
 
+        if self.config.use_mup:
+            width_mult = self.output_layer.weight.infshape.width_mult()
+            logits = logits / width_mult
+
         if labels is None:
             # [s b h] => [b s h]
             return logits.transpose(0, 1).contiguous()

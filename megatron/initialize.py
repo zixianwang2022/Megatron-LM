@@ -168,7 +168,7 @@ def _compile_dependencies():
         )
 
 def _initialize_tp_communicators():
-    """ initializing the communicators with user buffers for high-performance tensor-model-parallel 
+    """ initializing the communicators with user buffers for high-performance tensor-model-parallel
         communication overlap """
 
     try:
@@ -179,23 +179,24 @@ def _initialize_tp_communicators():
 
     except ImportError:
        raise RuntimeError("Tensor Parallel Communication/GEMM Overlap optimization needs 'yaml' and "
-             "'transformer_engine' packages") 
+             "'transformer_engine' packages")
 
     args = get_args()
 
     if args.tp_comm_overlap_cfg is not None:
-       with open(args.tp_comm_overlap_cfg,"r") as stream:    
+       with open(args.tp_comm_overlap_cfg,"r") as stream:
           ub_cfgs = yaml.safe_load(stream)
     else:
        ub_cfgs = {}
 
     input_shape = [args.seq_length * args.micro_batch_size , args.hidden_size]
 
-    #We create a MPI process group, which is needed to bootstrap the pipelined 
+    #We create a MPI process group, which is needed to bootstrap the pipelined
     #tensor-model-parallel communication overlap
     torch.distributed.new_group(backend='mpi')
 
-    te_module.base.initialize_ub(shape = input_shape, tp_size = args.tensor_model_parallel_size, 
+    import pdb; pdb.set_trace()
+    te_module.base.initialize_ub(shape = input_shape, tp_size = args.tensor_model_parallel_size,
                                  use_fp8 = (args.fp8 is not None) , ub_cfgs = ub_cfgs,)
 
 def _initialize_distributed():

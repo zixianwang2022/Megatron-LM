@@ -42,21 +42,15 @@ from copy import deepcopy
 import torch
 
 import yaml
+import math
+import transformer_engine as te
 from torch import nn
 from torch.nn import Linear
 from torch.nn.modules.conv import _ConvNd
 from megatron.core import tensor_parallel
 
 from .infshape import InfShape, zip_infshape
-
-
-def print_rank_0(message):
-    """If distributed is initialized, print only on rank 0."""
-    if torch.distributed.is_initialized():
-        if torch.distributed.get_rank() == 0:
-            print(message, flush=True)
-    else:
-        print(message, flush=True)
+from .init import normal_, print_rank_0
 
 __BSH_COMMENT__ = '''\
 # This is a base shape file encoded in yaml
@@ -77,6 +71,23 @@ def get_shapes(model):
             if module.bias:
                 key = name + '.bias'
                 shapes_dict[key] = torch.Size([module.input_size])
+        if isinstance(module, te.pytorch.Linear) or isinstance(module, te.pytorch.LayerNormLinear):
+            key = name + '.weight'
+
+            in_features = module.in_features
+            out_features = module.out_features
+            if module.parallel_mode == 'row':
+                in_features = in_features * module.tp_size
+            elif module.parallel_mode == 'column':
+                out_features = out_features * module.tp_size
+            else:
+                raise ValueError(f'Parallel mode {module.parallel.mode} undefined!')
+
+            shapes_dict[key] = torch.Size([out_features, in_features])
+            if module.bias.nelement() > 0:
+                key = name + '.bias'
+                shapes_dict[key] = torch.Size([output_size])
+
         if isinstance(module, tensor_parallel.ColumnParallelLinear):
             key = name + '.weight'
             shapes_dict[key] = torch.Size([module.output_size, shapes_dict[key][1]])
@@ -233,6 +244,52 @@ def apply_infshapes(model, infshapes):
         print_rank_0(f'{p.var_name}, infshape: {p.infshape}')
 
 
+def _rescale_initializtaions(model, init_method_std, num_layers, apply_layernorm_1p=True, strict_fan_in_init=False, ):
+    """Set initializations according to muP (Table 8). Currently only supported for GPT models."""
+
+    for name, tensor in model.named_parameters():
+        if (name.endswith('.dense_4h_to_h.weight') or name.endswith('.dense.weight')
+            or name.endswith('linear_fc2.weight') or name.endswith('self_attention.linear_proj.weight')):
+            # Set the initialization scales for the output layer of each block.
+            if strict_fan_in_init:
+                # Optionally remove depth-wise scaling for initialization,
+                # to be consistent with muP.
+                std = init_method_std
+            else:
+                # Default of Megatron.
+                print("Warning: using depth-wise initialization for block output layers together with muP.")
+                std = init_method_std / math.sqrt(2.0 * num_layers)
+            with tensor_parallel.get_cuda_rng_tracker().fork():
+                if name.endswith('.dense_4h_to_h.weight') or name.endswith('linear_fc2.weight'):
+                    if strict_fan_in_init:
+                        # Need to divide the global std by a factor of sqrt(in_dim/out_dim),
+                        # because the output dim of FFN is consistent across Transformer layers,
+                        # but the input dim can change for swiglu vs. other activations.
+                        out_dim = tensor.infshape[0].dim
+                        in_dim = tensor.infshape[1].dim
+                        std_div = math.sqrt(in_dim / out_dim)
+                    else:
+                        std_div = 1.
+                    normal_(tensor, 0, std / std_div)
+                else:
+                    normal_(tensor, 0 , std)
+        elif name.endswith('norm.weight') or name.endswith('layer_norm_weight'):
+            # Effectively initialize all the layer norm weights to 1.
+            if apply_layernorm_1p:
+                torch.nn.init.zeros_(tensor)
+            else:
+                torch.nn.init.ones_(tensor)
+        elif name.endswith('norm.bias') or name.endswith('layer_norm_bias'):
+            torch.nn.init.zeros_(tensor)
+        elif name.endswith('.weight'):
+            # Apply width-dependent initialization to matrice-like weights.
+            with tensor_parallel.get_cuda_rng_tracker().fork():
+                normal_(tensor, 0, init_method_std)
+        else:
+            assert torch.all(tensor == 0), \
+                f'Found non-zero init for {tensor.var_name}, which is supposed to be vector_like (shape: {tensor.shape}).'
+
+
 def set_base_shapes(model, base, delta=None, savefile=None, do_assert=True):
     '''Sets the `p.infshape` attribute for each parameter `p` of `model`.
 
@@ -242,7 +299,6 @@ def set_base_shapes(model, base, delta=None, savefile=None, do_assert=True):
             Can be nn.Module, a dict of shapes, a str, or None.
             If None, then defaults to `model`
             If str, then treated as filename for yaml encoding of a dict of base shapes.
-        do_assert:
     Output:
         same object as `model`, after setting the `infshape` attribute of each parameter.
     '''
@@ -263,6 +319,11 @@ def set_base_shapes(model, base, delta=None, savefile=None, do_assert=True):
         assert_hidden_size_inf(model)
 
     return model
+
+
+def set_base_shapes_and_init(model, base, init_method_std, num_layers, apply_layernorm_1p=True, strict_fan_in_init=False,):
+    set_base_shapes(model, base)
+    _rescale_initializtaions(model, init_method_std, num_layers, apply_layernorm_1p=True, strict_fan_in_init=False, )
 
 
 def assert_hidden_size_inf(model):

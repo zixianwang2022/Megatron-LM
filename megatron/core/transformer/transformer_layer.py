@@ -48,6 +48,7 @@ class TransformerLayer(MegatronModule):
 
         self.layer_number = layer_number + self._get_layer_offset()
         self.hidden_dropout = config.hidden_dropout if hidden_dropout is None else hidden_dropout
+        self.block_multiplier = config.block_multiplier
 
         ## [Module 1: Input Layernorm] Optional Layernorm on the input data
         # TODO: add pytorch only layernorm
@@ -157,6 +158,11 @@ class TransformerLayer(MegatronModule):
             rotary_pos_emb=rotary_pos_emb,
         )
 
+        if self.block_multiplier != 1.:
+            attention_output_with_bias = (
+                attention_output_with_bias[0] * self.block_multiplier,
+                attention_output_with_bias[1] * self.block_multiplier if attention_output_with_bias[1] else None)
+
         # TODO: could we move `bias_dropout_add_exec_handler` itself
         # inside the module provided in the `bias_dropout_add_spec` module?
         with self.bias_dropout_add_exec_handler():
@@ -196,6 +202,11 @@ class TransformerLayer(MegatronModule):
 
         # MLP.
         mlp_output_with_bias = self.mlp(pre_mlp_layernorm_output)
+
+        if self.block_multiplier != 1.:
+            mlp_output_with_bias = (
+                mlp_output_with_bias[0] * self.block_multiplier,
+                mlp_output_with_bias[1] * self.block_multiplier if mlp_output_with_bias[1] else None)
 
         # TODO: could we move `bias_dropout_add_exec_handler` itself
         # inside the module provided in the `bias_dropout_add_spec` module?

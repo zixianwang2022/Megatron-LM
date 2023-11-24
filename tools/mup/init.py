@@ -61,7 +61,16 @@ from torch.nn.init import (
     _no_grad_uniform_,
     calculate_gain,
 )
-from .shape import print_rank_0
+
+
+def print_rank_0(message):
+    """If distributed is initialized, print only on rank 0."""
+    if torch.distributed.is_initialized():
+        if torch.distributed.get_rank() == 0:
+            print(message, flush=True)
+    else:
+        print(message, flush=True)
+
 
 def constant_std_init_(tensor, sampler_):
     assert hasattr(tensor, 'infshape'), 'Infshape is missing. Please call set_base_shapes(...)'

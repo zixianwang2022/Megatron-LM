@@ -142,16 +142,11 @@ def get_megatron_optimizer(model,
                                     scale_lr_cond,
                                     lr_mult)
     if args.use_mup:
-        # Currently supporting only Adam.
-        assert args.optimizer == 'adam', \
-            f'Only adam is supported when args.use_mup=True. Currently using {args.optimizer} optimizer.'
         param_groups = get_mup_param_groups(
                         param_groups,
                         lr=args.lr,
                         min_lr=args.min_lr,
                         weight_decay=args.weight_decay,
-                        betas=(args.adam_beta1, args.adam_beta2),
-                        eps=args.adam_eps,
                         input_lr=args.input_lr,
                         output_lr=args.output_lr)
 

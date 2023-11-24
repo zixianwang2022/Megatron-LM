@@ -30,6 +30,9 @@ from megatron.core.models.gpt.gpt_layer_specs import (
     gpt_layer_with_transformer_engine_spec_moe
 )
 
+from tools.mup.shape import set_base_shapes_and_init
+
+
 def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megatron.model.GPTModel]:
     """Builds the model.
 
@@ -80,6 +83,17 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
             pre_process=pre_process,
             post_process=post_process
         )
+
+    if args.use_mup:
+        # for name, p in model.named_parameters():
+        #     print(name)
+        # import pdb; pdb.set_trace()
+        set_base_shapes_and_init(
+            model, args.shape_file,
+            init_method_std=args.init_method_std,
+            num_layers=args.num_layers,
+            apply_layernorm_1p=args.apply_layernorm_1p,
+            strict_fan_in_init=args.strict_fan_in_init)
 
     return model
 
@@ -136,7 +150,7 @@ def loss_func(loss_mask: Tensor, output_tensor: Tensor):
     Args:
         loss_mask (Tensor): Used to mask out some portions of the loss
         output_tensor (Tensor): The tensor with the losses
-    """    
+    """
     args = get_args()
 
     losses = output_tensor.float()
