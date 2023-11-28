@@ -11,10 +11,15 @@ unset NCCL_DEBUG
 # fi
 # RETRO_TASKS=$1
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="query-neighbors"
+# RETRO_TASKS="query-neighbors"
+
+# ... RETRO_TASKS="db-build-verify"
+# ... RETRO_TASKS="index-train-verify"
+# ... RETRO_TASKS="index-add-verify"
+# ... RETRO_TASKS="query-neighbors-verify"
 
 ######## Megatron, Retro dirs. ########
 
@@ -145,6 +150,7 @@ ARGS=" \
 "
 
 ARGS+=" --retro-block-size 10000"
+# ARGS+=" --retro-task-verify 0.1"
 
 ######## Command. ########
 

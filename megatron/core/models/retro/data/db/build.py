@@ -29,6 +29,7 @@ from .utils import (
     load_indexed_datasets,
     save_indexed_dataset_infos,
 )
+from .verify import verify_db
 
 
 def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
@@ -350,6 +351,119 @@ def update_chunk_counts(config, indexed_dataset_infos):
                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
 
 
+# >>>
+# def merge_dbs(project_dir, indexed_dataset_infos, db_type):
+#     '''Merge individual DBs into single DB.'''
+
+#     if torch.distributed.get_rank() != 0:
+#         return
+
+#     print(" > build %s chunk db." % db_type)
+
+#     # Count chunks.
+#     if db_type == "sampled":
+#         n_chunks_key = "n_chunks_sampled"
+#         n_docs_key = None
+#     elif db_type == "train":
+#         n_chunks_key = "n_chunks_train"
+#         n_docs_key = "n_docs_train"
+#     elif db_type == "valid":
+#         n_docs_key = None
+#     else:
+#         raise Exception("handle db_type '%s'." % db_type)
+
+#     if db_type == "valid":
+#         n_chunks = sum(m["n_chunks"] - m["n_chunks_train"]
+#                        for m in indexed_dataset_infos)
+#     else:
+#         n_chunks = sum(m[n_chunks_key] for m in indexed_dataset_infos)
+#         n_docs = None if n_docs_key is None else \
+#             sum(m[n_docs_key] for m in indexed_dataset_infos)
+
+#     # DB path.
+#     db_path = get_merged_db_path_map(project_dir)[db_type]
+
+#     # Delete existing chunk db if incorrect size.
+#     if os.path.exists(db_path):
+
+#         try:
+
+#             f = h5py.File(db_path)
+#             n_alloc = len(f["chunks"])           # total allocated
+#             n_written = f["n_written"][0].item() # total written
+#             f.close()
+
+#             if n_chunks != n_alloc or n_chunks != n_written:
+#                 os.remove(db_path)
+
+#         except Exception as e:
+#             if isinstance(e, OSError):
+#                 os.remove(db_path)
+#             elif isinstance(e, KeyError):
+#                 f.close()
+#                 os.remove(db_path)
+#             else:
+#                 raise e
+
+#     # Build merged chunk db.
+#     if not os.path.exists(db_path):
+
+#         os.makedirs(os.path.dirname(db_path), exist_ok=True)
+#         f = h5py.File(db_path, "w")
+
+#         # Initialize output arrays.
+#         merged_chunk_db = \
+#             f.create_dataset("chunks", (n_chunks, 5), dtype="uint32")
+#         merged_doc_offsets = None if n_docs_key is None else \
+#             f.create_dataset("doc_offsets", (n_docs, 3), dtype="uint64")
+#         n_written = f.create_dataset("n_written", (1,), dtype="uint64")
+#         n_written[0] = 0
+
+#         # Iterate indexed datasets & collect chunks.
+#         chunk_start_index = 0
+#         doc_start_index = 0
+#         doc_start_offset = 0
+#         for ds_idx, ds_info in enumerate(indexed_dataset_infos):
+#             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
+#                   (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
+#             individual_chunk_db = get_individual_chunk_db(project_dir, ds_idx, ds_info)
+#             individual_doc_offsets = None if n_docs_key is None else \
+#                 get_individual_doc_offsets(project_dir, ds_idx, ds_info)
+
+#             if db_type == "valid":
+#                 individual_chunk_db = \
+#                     individual_chunk_db[ds_info["n_chunks_train"]:]
+#                 if n_docs_key is None:
+#                     individual_doc_offsets = None
+#                 else:
+#                     train_doc_offset = \
+#                         individual_doc_offsets[ds_info["n_docs_train"] - 1, 2]
+#                     individual_doc_offsets = \
+#                         np.copy(individual_doc_offsets[ds_info["n_docs_train"]:])
+#                     individual_doc_offsets[:, 2] -= train_doc_offset
+
+#                     print("~~~")
+#                     print(individual_doc_offsets)
+#                     print(train_doc_offset)
+#                     raise Exception("test me.")
+#             else:
+#                 individual_chunk_db = \
+#                     individual_chunk_db[:ds_info[n_chunks_key]]
+#                 individual_doc_offsets = None if n_docs_key is None else \
+#                     np.copy(individual_doc_offsets[:ds_info[n_docs_key]])
+
+#             merged_chunk_db[chunk_start_index:chunk_start_index+len(individual_chunk_db)] = individual_chunk_db
+#             chunk_start_index += len(individual_chunk_db)
+#             n_written[0] = chunk_start_index
+#             if n_docs_key is not None:
+#                 individual_doc_offsets[:, 2] += doc_start_offset
+#                 doc_end_index = doc_start_index + individual_doc_offsets.shape[0]
+#                 merged_doc_offsets[doc_start_index:doc_end_index] = \
+#                     individual_doc_offsets
+#                 doc_start_index = doc_end_index
+#                 doc_start_offset = individual_doc_offsets[-1, 2].item()
+
+#         f.close()
 def merge_dbs(project_dir, indexed_dataset_infos, db_type):
     '''Merge individual DBs into single DB.'''
 
@@ -380,6 +494,8 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
 
     # DB path.
     db_path = get_merged_db_path_map(project_dir)[db_type]
+
+    pax("project_dir, indexed_dataset_infos, db_type, n_chunks, n_docs")
 
     # Delete existing chunk db if incorrect size.
     if os.path.exists(db_path):
@@ -462,9 +578,16 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
                 doc_start_offset = individual_doc_offsets[-1, 2].item()
 
         f.close()
+# <<<
 
 
-def build_db(config):
+def build_merged_dbs(project_dir, indexed_dataset_infos):
+    merge_dbs(project_dir, indexed_dataset_infos, "sampled")
+    merge_dbs(project_dir, indexed_dataset_infos, "train")
+    merge_dbs(project_dir, indexed_dataset_infos, "valid")
+
+
+def _build_db(config):
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
@@ -476,7 +599,7 @@ def build_db(config):
     # Indexed dataset info.
     indexed_dataset_infos = init_indexed_dataset_infos(config)
 
-    # Build dbs.
+    # Build individual dbs.
     build_individual_dbs(config, indexed_dataset_infos)
 
     # Single-process going forward.
@@ -489,7 +612,20 @@ def build_db(config):
         save_indexed_dataset_infos(project_dir, indexed_dataset_infos)
     indexed_dataset_infos = get_indexed_dataset_infos(project_dir)
 
-    # Merge dbs.
-    merge_dbs(project_dir, indexed_dataset_infos, "sampled")
-    merge_dbs(project_dir, indexed_dataset_infos, "train")
-    merge_dbs(project_dir, indexed_dataset_infos, "valid")
+    # Builded merged dbs.
+    build_merged_dbs(project_dir, indexed_dataset_infos)
+
+
+def build_db(config):
+
+    # Build new database.
+    if config.retro_task_verify is None:
+        # >>>
+        raise Exception("build.")
+        # <<<
+        _build_db(config)
+
+    # Verify existing database.
+    else:
+        verify_db(config)
+

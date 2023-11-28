@@ -102,6 +102,11 @@ def get_individual_doc_offsets(project_dir, ds_id, ds_info):
     return doc_offsets
 
 
+# >>>
+# def get_individual_dataset(project_dir, ds_id, ds_info):
+# <<<
+
+
 def get_merged_db_path_map(project_dir):
     '''Paths to merged datasets.'''
     base_dir = get_db_dir(project_dir)
@@ -153,3 +158,15 @@ def get_merged_valid_dataset(project_dir, chunk_length, eod_token_id,
                              indexed_dataset_infos=None):
     return get_merged_dataset(project_dir, chunk_length, eod_token_id,
                               "valid", indexed_dataset_infos)
+
+
+def get_merged_datasets(project_dir, chunk_length, eod_token_id):
+    '''Get all merged datasets.'''
+    fns = {
+        "sampled" : get_merged_sampled_dataset,
+        "train" : get_merged_train_dataset,
+        "valid" : get_merged_valid_dataset,
+    }
+    datasets = { key : fn(project_dir, chunk_length, eod_token_id)
+                 for key, fn in fns.items() }
+    return datasets

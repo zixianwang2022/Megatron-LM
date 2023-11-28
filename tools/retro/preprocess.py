@@ -205,6 +205,11 @@ if __name__ == "__main__":
         "index-train" : [ "index-train" ],
         "index-add" : [ "index-add" ],
         "query-neighbors" : [ "query-neighbors" ],
+
+        "db-build-verify" : [ "db-build-verify" ],
+        "index-train-verify" : [ "index-train-verify" ],
+        "index-add-verify" : [ "index-add-verify" ],
+        "query-neighbors-verify" : [ "query-neighbors-verify" ],
     }
     tasks = []
     for task in config.retro_tasks:
