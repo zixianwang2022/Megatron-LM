@@ -13,10 +13,6 @@ from megatron.core.models.retro.model import RetroConfig
 from .chunk_dataset import get_chunk_dataset_map
 from .utils import get_neighbor_dir
 
-# >>>
-from lutil import pax
-# <<<
-
 
 class RetroDataset(torch.utils.data.Dataset):
     '''Dataset of retro samples.

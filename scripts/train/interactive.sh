@@ -12,7 +12,7 @@ if [ "$#" != 2 ]; then
 fi
 USE_CORE=$1
 ADD_RETRIEVER=$2
-NPROCS=1 # 8
+NPROCS=8
 NWORKERS=32
 
 REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/megatrons/retro-mcore-data"
