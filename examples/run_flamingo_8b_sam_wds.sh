@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A adlr
+#SBATCH -A llmservice_nlp_fm
 #SBATCH -p luna
 #SBATCH -t 4:00:00
 #SBATCH --exclusive
@@ -8,8 +8,8 @@
 #SBATCH --overcommit
 #SBATCH --ntasks-per-node=8
 #SBATCH --dependency=singleton
-#SBATCH --nodes=2
-#SBATCH --job-name=adlr-nlp:revilm-8b-profile
+#SBATCH --nodes=1
+#SBATCH --job-name=llmservice_nlp_fm-megatron-dev:flamingo-8b-COCO-overfit-sam-mr-wds
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -17,8 +17,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 SEQ_LEN=4096
 
 NAME="flamingo-8b-2node-profile"
-#LOAD_NAME="gpt3-8b-multi-1.1t-gtc"
-LOAD_NAME="dummy"
+LOAD_NAME="gpt3-8b-multi-1.1t-gtc"
 
 SCRIPTS_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source/"
 SOURCE="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/source/megatron-lm"
@@ -33,12 +32,12 @@ CHECKPOINT_DIR="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/checkpoint
 TENSORBOARD_DIR="${OUTPUT}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_TRAIN="1.0000 /lustre/fsw/adlr/adlr-nlp/zhuoliny/debug_folder/COCO_train_mmdata_512sl_256k_vocab"
+DATA_TRAIN="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
+DATA_VALID="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/data/coco.yaml"
 
 VISUAL_ARCH="SAM_L"
 VISUAL_TYPE="sam"
-#VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/SAM_L_16"
-VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/zhuoliny/checkpoints/dummy"
+VISUAL_LOAD_DIR="/lustre/fsw/adlr/adlr-nlp/jbarker/next-llm/checkpoint/SAM_L_16_tp4_pp1"
 VISUAL_SAVE_DIR="${FINETUNE_DIR}/${VISUAL_TYPE}"
 
 PROMPT_PATH="${SOURCE}/GPT4-prompts.json"
@@ -48,14 +47,11 @@ DATASET_CONFIG="${SOURCE}/dataset.yaml"
 #    --recompute-activations \
 
 options=" \
-    --use-distributed-optimizer \
     --use-flash-attn \
-    --overlap-p2p-communication \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
-    --no-position-embedding \
-    --use-rotary-position-embeddings \
+    --position-embedding-type rope \
     --rotary-percent 0.5 \
     --swiglu \
     --attention-dropout 0.0 \
@@ -83,6 +79,7 @@ options=" \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model /lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_TRAIN} \
+    --valid-path ${DATA_VALID} \
     --prompt-path ${PROMPT_PATH} \
     --dset-config ${DATASET_CONFIG} \
     --save-interval 1000 \
@@ -111,12 +108,11 @@ options=" \
     --freeze-ViT \
     --img-h 1024 \
     --img-w 1024 \
+    --dataset-type nvgpt4 \
     --dataloader-type cyclic --no-data-sharding \
-    --tensorboard-dir ${TENSORBOARD_DIR} \
-    --profile \
-    --profile-step-start 10 \
-    --profile-step-end 13"
+    --tensorboard-dir ${TENSORBOARD_DIR}"
 
+# CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc-per-node 4 ${SOURCE}/pretrain_flamingo.py ${options}
 run_cmd="${SCRIPTS_DIR}/bind.sh --cpu=${SCRIPTS_DIR}/dgxa100_ccx.sh --mem=${SCRIPTS_DIR}/dgxa100_ccx.sh nsys profile -w true -t cuda,nvtx,osrt,cudnn,cublas -s cpu  --capture-range=cudaProfilerApi --capture-range-end=stop --cudabacktrace=true -x true -o ${SOURCE}/8b_profile python -u ${SOURCE}/pretrain_flamingo.py ${options}"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
