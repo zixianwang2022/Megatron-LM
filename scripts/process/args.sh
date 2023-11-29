@@ -146,7 +146,7 @@ ARGS=" \
 
 ARGS+=" --retro-doc-block-size 10000"
 ARGS+=" --retro-block-size 10000"
-# ARGS+=" --retro-task-verify 0.1"
+ARGS+=" --retro-task-verify 0.1"
 
 ######## Command. ########
 

@@ -15,10 +15,6 @@ from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetCon
 from .config import RetroPreprocessingConfig
 from .external_libs import h5py
 
-# >>>
-from lutil import pax, print_seq
-# <<<
-
 
 def print_rank_0(message):
     """If distributed is initialized, print only on rank 0."""
@@ -86,69 +82,12 @@ class GPTToTextDataset(torch.utils.data.Dataset):
         return {"text": text}
 
 
-# >>>
-# def save_data(data_map, *args):
-#     '''Save map of numpy arrays to hdf5 file.'''
-
-#     # Parse args.
-#     if len(args) == 1:
-#         path = args[0]
-#     elif len(args) == 2:
-#         dir_path, file_name = args
-#         path = os.path.join(dir_path, file_name)
-#     else:
-#         raise Exception("specialize for len(args) == %d." % len(args))
-
-#     # Save data.
-#     if not os.path.isfile(path):
-#         f = h5py.File(path, "w")
-#         for k, v in data_map.items():
-#             f.create_dataset(k, data=v)
-#         f.close()
-
-#     return path
-
-
-# def load_data(paths):
-#     '''Load multiple hdf5 files to single numpy array.'''
-
-#     # Read data shapes.
-#     shape_map = defaultdict(lambda : (0, None))
-#     for p in paths:
-#         f = h5py.File(p, "r")
-#         for k in f.keys():
-#             shape = tuple(f[k].shape)
-#             shape_map[k] = (shape_map[k][0] + shape[0], shape[1])
-#         f.close()
-
-#     # Allocate output array.
-#     data_map = { k : np.empty(s, dtype="f4") for k, s in shape_map.items() }
-#     start_map = { k : 0 for k in shape_map }
-
-#     # Load files.
-#     for pi, p in enumerate(tqdm(paths, "load data")):
-#         f = h5py.File(p, "r")
-#         for k in f.keys():
-#             i0 = start_map[k]
-#             i1 = i0 + len(f[k])
-#             data_map[k][i0:i1] = f[k]
-#             start_map[k] += len(f[k])
-#         f.close()
-
-#     return data_map
-# <<<
-
-
-# >>>
-# def get_missing_blocks(project_dir, n_samples, block_size,
-#                        validate=lambda f : None):
 def get_blocks(
     project_dir: str,
     n_samples: int,
     block_size: int,
     validate: Callable = None,
 ):
-# <<<
     '''Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
@@ -174,10 +113,8 @@ def get_blocks(
     } for r in block_ranges]
     all_block_path_set = set(block["path"] for block in all_blocks)
 
-    # >>>
     # Validate function.
     validate = (lambda f : None) if validate is None else validate
-    # <<<
 
     # Delete corrupt files.
     if torch.distributed.get_rank() == 0:
@@ -205,53 +142,15 @@ def get_blocks(
     # Wait for files to be deleted.
     torch.distributed.barrier()
 
-    # >>>
-    # # Filter missing files.
-    # missing_blocks = [block
-    #                   for block in all_blocks
-    #                   if not os.path.exists(block["path"])]
-
-    # return missing_blocks
-    # +++
-    # Group existing, missing blocks.
+    # Collect blocks.
     blocks = SimpleNamespace(
         existing=[ b for b in all_blocks if os.path.exists(b["path"]) ],
         missing=[ b for b in all_blocks if not os.path.exists(b["path"]) ],
     )
 
     return blocks
-    # <<<
 
 
-# >>>
-# def get_missing_blocks_by_rank(project_dir, n_samples, block_size,
-#                                validate=lambda f : None):
-#     '''Divide missing blocks evenly across all ranks.
-
-#     See 'get_missing_blocks()' above for description. The returned list of
-#     missing blocks is split evenly across ranks via interleaving. This way,
-#     each rank has a roughly equal number of blocks to process for a
-#     downstream operation.
-#     '''
-
-#     missing_blocks = get_missing_blocks(project_dir, n_samples, block_size,
-#                                         validate)
-
-#     # This rank's missing files.
-#     data_parallel_rank = parallel_state.get_data_parallel_rank()
-#     data_parallel_world_size = parallel_state.get_data_parallel_world_size()
-#     rank_missing_blocks = missing_blocks[data_parallel_rank:len(missing_blocks):data_parallel_world_size]
-
-#     # Extend rank's missing blocks (with None) such that all ranks have equal
-#     # length lists. This allows for easier tracking of global progress.
-#     n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_blocks)])
-#     torch.distributed.all_reduce(n_missing_tensor,
-#                                  op=torch.distributed.ReduceOp.MAX)
-#     max_n_missing = n_missing_tensor.item()
-#     rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
-
-#     return len(missing_blocks), rank_missing_blocks
-# +++
 def get_blocks_by_rank(
     project_dir: str,
     n_samples: int,
@@ -285,15 +184,6 @@ def get_blocks_by_rank(
     max_n_existing = get_world_max(len(rank_existing_blocks))
     max_n_missing = get_world_max(len(rank_missing_blocks))
 
-    # >>>
-    # print_seq("existing %d / %d, missing %d / %d." % (
-    #     len(rank_existing_blocks),
-    #     max_n_existing,
-    #     len(rank_missing_blocks),
-    #     max_n_missing,
-    # ))
-    # <<<
-
     rank_existing_blocks += [None] * (max_n_existing - len(rank_existing_blocks))
     rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
 
@@ -305,12 +195,7 @@ def get_blocks_by_rank(
         missing = rank_missing_blocks,
     )
 
-    # >>>
-    # pax("blocks")
-    # <<<
-
     return blocks
-# <<<
 
 
 class BlockPathMap:

@@ -249,7 +249,7 @@ def build_individual_db(
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
 
-    # Missing db blocks.
+    # Missing DB blocks (split by documents).
     blocks = get_blocks_by_rank(
         db_dir,
         len(indexed_dataset),
