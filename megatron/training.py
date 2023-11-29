@@ -440,15 +440,9 @@ def setup_model_and_optimizer(model_provider_func,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
-    if args.load is not None:
-        timers = get_timers()
-        timers('load-checkpoint', log_level=0).start(barrier=True)
-        args.iteration = load_checkpoint(model, optimizer, opt_param_scheduler)
-        timers('load-checkpoint').stop(barrier=True)
-        timers.log(['load-checkpoint'])
-    else:
-        args.iteration = 0
-
+    # NOTE(jbarker): It is critical that visual checkpoint loading happens
+    # before llm checkpoint loading. Otherwise the randomly initialized
+    # visual params will be stored for future copying to model params
     if visual_model:
         if args.use_hybrid_visual_backbones:
             validate_visual_args_sam(args)
@@ -465,6 +459,15 @@ def setup_model_and_optimizer(model_provider_func,
         else:
             load_visual_checkpoint(unwrap_model(visual_model[0]))
         print_rank_0("Loaded pretrained ViT model.")
+
+    if args.load is not None:
+        timers = get_timers()
+        timers('load-checkpoint', log_level=0).start(barrier=True)
+        args.iteration = load_checkpoint(model, optimizer, opt_param_scheduler)
+        timers('load-checkpoint').stop(barrier=True)
+        timers.log(['load-checkpoint'])
+    else:
+        args.iteration = 0
 
     # We only support local DDP with multiple micro-batches.
     if len(model) > 1 or mpu.get_pipeline_model_parallel_world_size() > 1:
