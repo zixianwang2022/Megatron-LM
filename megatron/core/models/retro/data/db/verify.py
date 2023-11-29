@@ -8,18 +8,11 @@ from typing import List
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
+from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0
 
-from .utils import (
-    get_indexed_dataset_infos,
-    # get_individual_db_dir,
-    # get_individual_chunk_db,
-    # get_individual_doc_offsets,
-    get_merged_datasets,
-    # get_merged_db_path_map,
-    # load_indexed_datasets,
-    # save_indexed_dataset_infos,
-)
+from .build import build_block_db
+from .utils import get_indexed_dataset_infos, get_merged_datasets
 
 # >>>
 from lutil import pax, print_seq
@@ -52,60 +45,69 @@ def verify_individual_db(
 
     # Randomly sample blocks.
     n_blocks_sample = int(np.ceil(config.retro_task_verify * len(blocks.existing)))
-    shuffled_blocks = [ b for b in blocks.existing if b is not None ]
+    sampled_blocks = [ b for b in blocks.existing if b is not None ]
 
     np.random.seed(None)
-    np.random.shuffle(shuffled_blocks)
+    np.random.shuffle(sampled_blocks)
 
-    shuffled_blocks = shuffled_blocks[:n_blocks_sample]
-    shuffled_blocks += [None] * (n_blocks_sample - len(shuffled_blocks))
+    sampled_blocks = sampled_blocks[:n_blocks_sample]
+    sampled_blocks += [None] * (n_blocks_sample - len(sampled_blocks))
 
     # >>>
-    print_seq("n_blocks_sample = %d / %d [%d] ... %s." % (
-        n_blocks_sample,
-        len(blocks.existing),
-        len(shuffled_blocks),
-        [ b["range"] for b in shuffled_blocks ],
-    ))
+    # print_seq("n_blocks_sample = %d / %d [%d] ... %s." % (
+    #     n_blocks_sample,
+    #     len(blocks.existing),
+    #     len(sampled_blocks),
+    #     [ b["range"] for b in sampled_blocks ],
+    # ))
     # <<<
 
     # Num processes.
     n_procs = 8
-    # n_procs = 1 # ... for debug.
 
     # Process documents in parallel.
     with ProcessPoolExecutor(max_workers=n_procs) as executor:
-        for block_idx, block in enumerate(missing_db_blocks):
+        for block_idx, block in enumerate(sampled_blocks):
 
             if block is not None:
 
-                # >>>
-                pax("block")
-                # <<<
+                # Load existing block DB.
+                with h5py.File(block["path"]) as f:
+                    existing_chunks_valid = np.copy(f["chunks_valid"])
+                    existing_chunks_invalid = np.copy(f["chunks_invalid"])
+                    existing_doc_offsets = np.copy(f["doc_offsets"])
 
-                # Build block DB.
-                chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
+                # Build new block DB.
+                chunks_valid, chunks_invalid, doc_offsets = build_block_db(
                     config=config,
                     dataset_idx=dataset_idx,
                     n_datasets=n_datasets,
-                    # dataset_info=dataset_info,
                     indexed_dataset=indexed_dataset,
                     n_procs=n_procs,
                     executor=executor,
-                    n_missing_blocks=len(missing_db_blocks),
+                    n_missing_blocks=len(sampled_blocks),
                     block_idx=block_idx,
                     block=block,
                 )
 
+                # Check equality.
+                assert np.array_equal(existing_chunks_valid, chunks_valid)
+                assert np.array_equal(existing_chunks_invalid, chunks_invalid)
+                assert np.array_equal(existing_doc_offsets, doc_offsets)
+
                 # >>>
-                pax("chunk_db_valid, chunk_db_invalid, doc_offsets")
+                # pax(
+                #     "block",
+                #     "existing_chunks_valid, existing_chunks_invalid, existing_doc_offsets",
+                #     "chunks_valid, chunks_invalid, doc_offsets",
+                # )
                 # <<<
 
             # Wait for all ranks to finish block.
             print_rank_0(" > waiting for all ranks to finish block.")
             torch.distributed.barrier()
 
-    print_rank_0(" > finished saving individual db.")
+    print_rank_0(" > finished verifying individual db.")
 
 
 def verify_individual_dbs(
@@ -140,6 +142,12 @@ def verify_individual_dbs(
 #     )
 
 #     pax("config, merged_ds_map")
+
+
+# def verify_merged_dbs(project_dir, indexed_dataset_infos):
+#     verify_merged_db(project_dir, indexed_dataset_infos, "sampled")
+#     verify_merged_db(project_dir, indexed_dataset_infos, "train")
+#     verify_merged_db(project_dir, indexed_dataset_infos, "valid")
 # <<<
 
 
@@ -158,21 +166,13 @@ def verify_db(config):
     # Verify individual dbs.
     verify_individual_dbs(config, indexed_dataset_infos)
 
-    # Single-process going forward.
-    if torch.distributed.get_rank() != 0:
-        return
+    ########################################################
+    # [ **Note**: individual checks considered sufficient. ]
+    ########################################################
 
-    # >>>
-    # # Update n_chunks & save indexed dataset infos.
-    # if not os.path.exists(get_indexed_dataset_infos_path(project_dir)):
-    #     update_chunk_counts(config, indexed_dataset_infos)
-    #     # >>>
-    #     # save_indexed_dataset_infos(project_dir, indexed_dataset_infos)
-    #     # <<<
-    # indexed_dataset_infos = get_indexed_dataset_infos(project_dir)
-    # <<<
+    # # Single-process going forward.
+    # if torch.distributed.get_rank() != 0:
+    #     return
 
-    # Verify merged dbs.
-    verify_merged_db(project_dir, indexed_dataset_infos, "sampled")
-    verify_merged_db(project_dir, indexed_dataset_infos, "train")
-    verify_merged_db(project_dir, indexed_dataset_infos, "valid")
+    # # Verify merged dbs.
+    # verify_merged_dbs(project_dir, indexed_dataset_infos)

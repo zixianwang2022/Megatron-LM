@@ -29,7 +29,6 @@ from .utils import (
     load_indexed_datasets,
     save_indexed_dataset_infos,
 )
-from .verify import verify_db
 
 
 def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
@@ -234,6 +233,20 @@ def build_block_db(
     return chunk_db_valid, chunk_db_invalid, doc_offsets
 
 
+def save_block_db(
+    block: dict,
+    chunk_db_valid: np.ndarray,
+    chunk_db_invalid: np.ndarray,
+    doc_offsets: np.ndarray,
+) -> None:
+    print_rank_0(" > saving individual db.")
+    with h5py.File(block["path"], "w") as f:
+        dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
+        dset = f.create_dataset("chunks_invalid",
+                                data=chunk_db_invalid)
+        dset = f.create_dataset("doc_offsets", data=doc_offsets)
+
+
 def build_individual_db(
     config: RetroPreprocessingConfig,
     dataset_idx: int,
@@ -296,12 +309,12 @@ def build_individual_db(
                 )
 
                 # Save block DB.
-                print_rank_0(" > saving individual db.")
-                with h5py.File(block["path"], "w") as f:
-                    dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
-                    dset = f.create_dataset("chunks_invalid",
-                                            data=chunk_db_invalid)
-                    dset = f.create_dataset("doc_offsets", data=doc_offsets)
+                save_block_db(
+                    block=block,
+                    chunk_db_valid=chunk_db_valid,
+                    chunk_db_invalid=chunk_db_invalid,
+                    doc_offsets=doc_offsets,
+                )
 
             # Wait for all ranks to finish block.
             print_rank_0(" > waiting for all ranks to finish block.")
@@ -535,5 +548,5 @@ def build_db(config):
 
     # Verify existing database.
     else:
+        from .verify import verify_db
         verify_db(config)
-
