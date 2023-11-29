@@ -16,11 +16,6 @@ RETRO_TASKS="db-build"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 
-# ... RETRO_TASKS="db-build-verify"
-# ... RETRO_TASKS="index-train-verify"
-# ... RETRO_TASKS="index-add-verify"
-# ... RETRO_TASKS="query-neighbors-verify"
-
 ######## Megatron, Retro dirs. ########
 
 ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee"
@@ -149,6 +144,7 @@ ARGS=" \
     --retro-query-nprobe ${RETRO_QUERY_NPROBE} \
 "
 
+ARGS+=" --retro-doc-block-size 10000"
 ARGS+=" --retro-block-size 10000"
 # ARGS+=" --retro-task-verify 0.1"
 

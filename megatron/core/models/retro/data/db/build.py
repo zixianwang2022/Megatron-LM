@@ -15,7 +15,10 @@ from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     extract_data_config,
     get_gpt_data_dir,
-    get_missing_blocks_by_rank,
+    # >>>
+    # get_missing_blocks_by_rank,
+    get_blocks_by_rank,
+    # <<<
     print_rank_0,
 )
 
@@ -30,6 +33,10 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 from .verify import verify_db
+
+# >>>
+from lutil import pax
+# <<<
 
 
 def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
@@ -169,6 +176,78 @@ def build_partial_db(
     return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map
 
 
+def build_block_db(
+    config: RetroPreprocessingConfig,
+    dataset_idx: int,
+    n_datasets: int,
+    # >>>
+    # dataset_info: dict,
+    # <<<
+    indexed_dataset: MMapIndexedDataset,
+    n_procs: int,
+    executor: ProcessPoolExecutor,
+    n_missing_blocks: int,
+    block_idx: int,
+    block: dict,
+):
+
+    # Build partial dbs.
+    print_rank_0(' > build partial dbs.')
+    futures = []
+    for proc_id in range(n_procs): # not true process id
+        futures.append(executor.submit(
+            build_partial_db,
+            types.SimpleNamespace(
+                chunk_length = config.retro_gpt_chunk_length,
+                gpt_eod = config.retro_tokenizers.gpt.eod,
+                gpt_detokenize = config.retro_tokenizers.gpt.detokenize,
+                bert_tokenize = config.retro_tokenizers.bert.tokenize,
+            ),
+            dataset_idx,
+            n_datasets,
+            indexed_dataset,
+            block_idx,
+            n_missing_blocks,
+            block,
+            proc_id,
+            n_procs,
+        ))
+    partial_chunk_dbs = []
+    for future in as_completed(futures):
+        partial_chunk_dbs.append(future.result())
+
+    # Concatenate chunks.
+    partial_chunk_dbs.sort(key=lambda item:item[0]) # sort by proc_id
+    chunk_db_valid = [item
+                      for partial_chunk_db in partial_chunk_dbs
+                      for item in partial_chunk_db[1]]
+    chunk_db_invalid = [item
+                        for partial_chunk_db in partial_chunk_dbs
+                        for item in partial_chunk_db[2]]
+
+    # Convert to numpy.
+    print_rank_0(' > converting chunk db to numpy.')
+    chunk_db_valid = np.array(chunk_db_valid, dtype="uint32")
+    chunk_db_invalid = np.array(chunk_db_invalid, dtype="uint32")
+
+    # Document offsets.
+    doc_sizes = [(d, s)
+                 for partial_chunk_db in partial_chunk_dbs
+                 for d, s in partial_chunk_db[3].items()]
+    doc_sizes.sort(key = lambda item : item[0])
+    doc_offsets = np.cumsum([item[1] for item in doc_sizes]) \
+                    .astype("uint64")
+    doc_offsets = np.stack((
+        np.array([item[0] for item in doc_sizes], dtype="uint64"),
+        doc_offsets), axis=1)
+
+    # >>>
+    # pax("chunk_db_valid, chunk_db_invalid, doc_offsets")
+    # <<<
+
+    return chunk_db_valid, chunk_db_invalid, doc_offsets
+
+
 def build_individual_db(
     config: RetroPreprocessingConfig,
     dataset_idx: int,
@@ -185,7 +264,10 @@ def build_individual_db(
     indexed_dataset = dataset_info["dataset"]
 
     # Missing db blocks.
-    n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
+    # >>>
+    # n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
+    blocks = get_blocks_by_rank(
+    # <<<
         db_dir,
         len(indexed_dataset),
         config.retro_doc_block_size,
@@ -210,67 +292,45 @@ def build_individual_db(
     else:
         n_procs = 8
 
+    # >>>
+    # n_procs = 1
+    # <<<
+
     # Process documents in parallel.
     with ProcessPoolExecutor(max_workers=n_procs) as executor:
         for block_idx, block in enumerate(missing_db_blocks):
 
             if block is not None:
 
-                db_path = block["path"]
+                # >>>
+                # pax("block")
+                # <<<
 
-                # Build partial dbs.
-                print_rank_0(' > build partial dbs.')
-                futures = []
-                for proc_id in range(n_procs): # not true process id
-                    futures.append(executor.submit(
-                        build_partial_db,
-                        types.SimpleNamespace(
-                            chunk_length = config.retro_gpt_chunk_length,
-                            gpt_eod = config.retro_tokenizers.gpt.eod,
-                            gpt_detokenize = config.retro_tokenizers.gpt.detokenize,
-                            bert_tokenize = config.retro_tokenizers.bert.tokenize,
-                        ),
-                        dataset_idx,
-                        n_datasets,
-                        indexed_dataset,
-                        block_idx,
-                        len(missing_db_blocks),
-                        block,
-                        proc_id,
-                        n_procs,
-                    ))
-                partial_chunk_dbs = []
-                for future in as_completed(futures):
-                    partial_chunk_dbs.append(future.result())
+                # Build block DB.
+                chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
+                    config=config,
+                    dataset_idx=dataset_idx,
+                    n_datasets=n_datasets,
+                    # dataset_info=dataset_info,
+                    indexed_dataset=indexed_dataset,
+                    n_procs=n_procs,
+                    executor=executor,
+                    n_missing_blocks=len(missing_db_blocks),
+                    block_idx=block_idx,
+                    block=block,
+                )
 
-                # Concatenate chunks.
-                partial_chunk_dbs.sort(key=lambda item:item[0]) # sort by proc_id
-                chunk_db_valid = [item
-                                  for partial_chunk_db in partial_chunk_dbs
-                                  for item in partial_chunk_db[1]]
-                chunk_db_invalid = [item
-                                    for partial_chunk_db in partial_chunk_dbs
-                                    for item in partial_chunk_db[2]]
+                # >>>
+                # pax("chunk_db_valid, chunk_db_invalid, doc_offsets")
+                # <<<
 
-                # Convert to numpy.
-                print_rank_0(' > converting chunk db to numpy.')
-                chunk_db_valid = np.array(chunk_db_valid, dtype="uint32")
-                chunk_db_invalid = np.array(chunk_db_invalid, dtype="uint32")
-
-                # Document offsets.
-                doc_sizes = [(d, s)
-                             for partial_chunk_db in partial_chunk_dbs
-                             for d, s in partial_chunk_db[3].items()]
-                doc_sizes.sort(key = lambda item : item[0])
-                doc_offsets = np.cumsum([item[1] for item in doc_sizes]) \
-                                .astype("uint64")
-                doc_offsets = np.stack((
-                    np.array([item[0] for item in doc_sizes], dtype="uint64"),
-                    doc_offsets), axis=1)
-
-                # Save DB.
+                # Save block DB.
                 print_rank_0(" > saving individual db.")
-                with h5py.File(db_path, "w") as f:
+                # >>>
+                # db_path = block["path"]
+                # with h5py.File(db_path, "w") as f:
+                # <<<
+                with h5py.File(block["path"], "w") as f:
                     dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
                     dset = f.create_dataset("chunks_invalid",
                                             data=chunk_db_invalid)
@@ -351,119 +411,6 @@ def update_chunk_counts(config, indexed_dataset_infos):
                 ds_info["n_chunks_sampled"], ds_info["n_chunks_train"])
 
 
-# >>>
-# def merge_dbs(project_dir, indexed_dataset_infos, db_type):
-#     '''Merge individual DBs into single DB.'''
-
-#     if torch.distributed.get_rank() != 0:
-#         return
-
-#     print(" > build %s chunk db." % db_type)
-
-#     # Count chunks.
-#     if db_type == "sampled":
-#         n_chunks_key = "n_chunks_sampled"
-#         n_docs_key = None
-#     elif db_type == "train":
-#         n_chunks_key = "n_chunks_train"
-#         n_docs_key = "n_docs_train"
-#     elif db_type == "valid":
-#         n_docs_key = None
-#     else:
-#         raise Exception("handle db_type '%s'." % db_type)
-
-#     if db_type == "valid":
-#         n_chunks = sum(m["n_chunks"] - m["n_chunks_train"]
-#                        for m in indexed_dataset_infos)
-#     else:
-#         n_chunks = sum(m[n_chunks_key] for m in indexed_dataset_infos)
-#         n_docs = None if n_docs_key is None else \
-#             sum(m[n_docs_key] for m in indexed_dataset_infos)
-
-#     # DB path.
-#     db_path = get_merged_db_path_map(project_dir)[db_type]
-
-#     # Delete existing chunk db if incorrect size.
-#     if os.path.exists(db_path):
-
-#         try:
-
-#             f = h5py.File(db_path)
-#             n_alloc = len(f["chunks"])           # total allocated
-#             n_written = f["n_written"][0].item() # total written
-#             f.close()
-
-#             if n_chunks != n_alloc or n_chunks != n_written:
-#                 os.remove(db_path)
-
-#         except Exception as e:
-#             if isinstance(e, OSError):
-#                 os.remove(db_path)
-#             elif isinstance(e, KeyError):
-#                 f.close()
-#                 os.remove(db_path)
-#             else:
-#                 raise e
-
-#     # Build merged chunk db.
-#     if not os.path.exists(db_path):
-
-#         os.makedirs(os.path.dirname(db_path), exist_ok=True)
-#         f = h5py.File(db_path, "w")
-
-#         # Initialize output arrays.
-#         merged_chunk_db = \
-#             f.create_dataset("chunks", (n_chunks, 5), dtype="uint32")
-#         merged_doc_offsets = None if n_docs_key is None else \
-#             f.create_dataset("doc_offsets", (n_docs, 3), dtype="uint64")
-#         n_written = f.create_dataset("n_written", (1,), dtype="uint64")
-#         n_written[0] = 0
-
-#         # Iterate indexed datasets & collect chunks.
-#         chunk_start_index = 0
-#         doc_start_index = 0
-#         doc_start_offset = 0
-#         for ds_idx, ds_info in enumerate(indexed_dataset_infos):
-#             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
-#                   (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
-#             individual_chunk_db = get_individual_chunk_db(project_dir, ds_idx, ds_info)
-#             individual_doc_offsets = None if n_docs_key is None else \
-#                 get_individual_doc_offsets(project_dir, ds_idx, ds_info)
-
-#             if db_type == "valid":
-#                 individual_chunk_db = \
-#                     individual_chunk_db[ds_info["n_chunks_train"]:]
-#                 if n_docs_key is None:
-#                     individual_doc_offsets = None
-#                 else:
-#                     train_doc_offset = \
-#                         individual_doc_offsets[ds_info["n_docs_train"] - 1, 2]
-#                     individual_doc_offsets = \
-#                         np.copy(individual_doc_offsets[ds_info["n_docs_train"]:])
-#                     individual_doc_offsets[:, 2] -= train_doc_offset
-
-#                     print("~~~")
-#                     print(individual_doc_offsets)
-#                     print(train_doc_offset)
-#                     raise Exception("test me.")
-#             else:
-#                 individual_chunk_db = \
-#                     individual_chunk_db[:ds_info[n_chunks_key]]
-#                 individual_doc_offsets = None if n_docs_key is None else \
-#                     np.copy(individual_doc_offsets[:ds_info[n_docs_key]])
-
-#             merged_chunk_db[chunk_start_index:chunk_start_index+len(individual_chunk_db)] = individual_chunk_db
-#             chunk_start_index += len(individual_chunk_db)
-#             n_written[0] = chunk_start_index
-#             if n_docs_key is not None:
-#                 individual_doc_offsets[:, 2] += doc_start_offset
-#                 doc_end_index = doc_start_index + individual_doc_offsets.shape[0]
-#                 merged_doc_offsets[doc_start_index:doc_end_index] = \
-#                     individual_doc_offsets
-#                 doc_start_index = doc_end_index
-#                 doc_start_offset = individual_doc_offsets[-1, 2].item()
-
-#         f.close()
 def merge_dbs(project_dir, indexed_dataset_infos, db_type):
     '''Merge individual DBs into single DB.'''
 
@@ -494,8 +441,6 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
 
     # DB path.
     db_path = get_merged_db_path_map(project_dir)[db_type]
-
-    pax("project_dir, indexed_dataset_infos, db_type, n_chunks, n_docs")
 
     # Delete existing chunk db if incorrect size.
     if os.path.exists(db_path):
@@ -578,7 +523,6 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
                 doc_start_offset = individual_doc_offsets[-1, 2].item()
 
         f.close()
-# <<<
 
 
 def build_merged_dbs(project_dir, indexed_dataset_infos):
@@ -621,7 +565,7 @@ def build_db(config):
     # Build new database.
     if config.retro_task_verify is None:
         # >>>
-        raise Exception("build.")
+        # raise Exception("build?")
         # <<<
         _build_db(config)
 

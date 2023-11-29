@@ -13,7 +13,10 @@ from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.factory import IndexFactory
 from megatron.core.models.retro.data.index.utils import get_index_dir
 from megatron.core.models.retro.data.utils import (
-    get_missing_blocks_by_rank,
+    # >>>
+    # get_missing_blocks_by_rank,
+    get_blocks_by_rank,
+    # <<<
     GPTToTextDataset,
     print_rank_0,
 )

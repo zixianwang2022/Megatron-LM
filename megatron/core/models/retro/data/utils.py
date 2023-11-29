@@ -6,12 +6,18 @@ import numpy as np
 import os
 import torch
 from tqdm import tqdm
+from types import SimpleNamespace
+from typing import Callable
 
 from megatron.core import parallel_state
 from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
 
 from .config import RetroPreprocessingConfig
 from .external_libs import h5py
+
+# >>>
+from lutil import pax, print_seq
+# <<<
 
 
 def print_rank_0(message):
@@ -133,8 +139,16 @@ class GPTToTextDataset(torch.utils.data.Dataset):
 # <<<
 
 
-def get_missing_blocks(project_dir, n_samples, block_size,
-                       validate=lambda f : None):
+# >>>
+# def get_missing_blocks(project_dir, n_samples, block_size,
+#                        validate=lambda f : None):
+def get_blocks(
+    project_dir: str,
+    n_samples: int,
+    block_size: int,
+    validate: Callable = None,
+):
+# <<<
     '''Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
@@ -159,6 +173,11 @@ def get_missing_blocks(project_dir, n_samples, block_size,
         )
     } for r in block_ranges]
     all_block_path_set = set(block["path"] for block in all_blocks)
+
+    # >>>
+    # Validate function.
+    validate = (lambda f : None) if validate is None else validate
+    # <<<
 
     # Delete corrupt files.
     if torch.distributed.get_rank() == 0:
@@ -186,16 +205,59 @@ def get_missing_blocks(project_dir, n_samples, block_size,
     # Wait for files to be deleted.
     torch.distributed.barrier()
 
-    # Filter missing files.
-    missing_blocks = [block
-                      for block in all_blocks
-                      if not os.path.exists(block["path"])]
+    # >>>
+    # # Filter missing files.
+    # missing_blocks = [block
+    #                   for block in all_blocks
+    #                   if not os.path.exists(block["path"])]
 
-    return missing_blocks
+    # return missing_blocks
+    # +++
+    # Group existing, missing blocks.
+    blocks = SimpleNamespace(
+        existing=[ b for b in all_blocks if os.path.exists(b["path"]) ],
+        missing=[ b for b in all_blocks if not os.path.exists(b["path"]) ],
+    )
+
+    return blocks
+    # <<<
 
 
-def get_missing_blocks_by_rank(project_dir, n_samples, block_size,
-                               validate=lambda f : None):
+# >>>
+# def get_missing_blocks_by_rank(project_dir, n_samples, block_size,
+#                                validate=lambda f : None):
+#     '''Divide missing blocks evenly across all ranks.
+
+#     See 'get_missing_blocks()' above for description. The returned list of
+#     missing blocks is split evenly across ranks via interleaving. This way,
+#     each rank has a roughly equal number of blocks to process for a
+#     downstream operation.
+#     '''
+
+#     missing_blocks = get_missing_blocks(project_dir, n_samples, block_size,
+#                                         validate)
+
+#     # This rank's missing files.
+#     data_parallel_rank = parallel_state.get_data_parallel_rank()
+#     data_parallel_world_size = parallel_state.get_data_parallel_world_size()
+#     rank_missing_blocks = missing_blocks[data_parallel_rank:len(missing_blocks):data_parallel_world_size]
+
+#     # Extend rank's missing blocks (with None) such that all ranks have equal
+#     # length lists. This allows for easier tracking of global progress.
+#     n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_blocks)])
+#     torch.distributed.all_reduce(n_missing_tensor,
+#                                  op=torch.distributed.ReduceOp.MAX)
+#     max_n_missing = n_missing_tensor.item()
+#     rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
+
+#     return len(missing_blocks), rank_missing_blocks
+# +++
+def get_blocks_by_rank(
+    project_dir: str,
+    n_samples: int,
+    block_size: int,
+    validate: Callable = None,
+):
     '''Divide missing blocks evenly across all ranks.
 
     See 'get_missing_blocks()' above for description. The returned list of
@@ -204,23 +266,51 @@ def get_missing_blocks_by_rank(project_dir, n_samples, block_size,
     downstream operation.
     '''
 
-    missing_blocks = get_missing_blocks(project_dir, n_samples, block_size,
-                                        validate)
+    # Get world blocks.
+    blocks = get_blocks(project_dir, n_samples, block_size, validate)
 
     # This rank's missing files.
     data_parallel_rank = parallel_state.get_data_parallel_rank()
     data_parallel_world_size = parallel_state.get_data_parallel_world_size()
-    rank_missing_blocks = missing_blocks[data_parallel_rank:len(missing_blocks):data_parallel_world_size]
+    rank_existing_blocks = blocks.existing[data_parallel_rank:len(blocks.existing):data_parallel_world_size]
+    rank_missing_blocks = blocks.missing[data_parallel_rank:len(blocks.missing):data_parallel_world_size]
 
     # Extend rank's missing blocks (with None) such that all ranks have equal
     # length lists. This allows for easier tracking of global progress.
-    n_missing_tensor = torch.cuda.LongTensor([len(rank_missing_blocks)])
-    torch.distributed.all_reduce(n_missing_tensor,
-                                 op=torch.distributed.ReduceOp.MAX)
-    max_n_missing = n_missing_tensor.item()
+    def get_world_max(n):
+        n_tensor = torch.cuda.LongTensor([n])
+        torch.distributed.all_reduce(n_tensor, op=torch.distributed.ReduceOp.MAX)
+        return n_tensor.item()
+
+    max_n_existing = get_world_max(len(rank_existing_blocks))
+    max_n_missing = get_world_max(len(rank_missing_blocks))
+
+    # >>>
+    # print_seq("existing %d / %d, missing %d / %d." % (
+    #     len(rank_existing_blocks),
+    #     max_n_existing,
+    #     len(rank_missing_blocks),
+    #     max_n_missing,
+    # ))
+    # <<<
+
+    rank_existing_blocks += [None] * (max_n_existing - len(rank_existing_blocks))
     rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
 
-    return len(missing_blocks), rank_missing_blocks
+    # Collect blocks.
+    blocks = SimpleNamespace(
+        n_existing_world = len(blocks.existing),
+        existing_blocks = rank_existing_blocks,
+        n_missing_world = len(blocks.missing),
+        missing_blocks = rank_missing_blocks,
+    )
+
+    # >>>
+    # pax("blocks")
+    # <<<
+
+    return blocks
+# <<<
 
 
 class BlockPathMap:

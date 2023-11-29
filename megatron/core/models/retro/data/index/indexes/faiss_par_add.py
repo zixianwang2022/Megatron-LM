@@ -18,7 +18,10 @@ from tqdm import tqdm
 from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
 from megatron.core.models.retro.data.utils import (
-    get_missing_blocks_by_rank,
+    # >>>
+    # get_missing_blocks_by_rank,
+    get_blocks_by_rank,
+    # <<<
     print_rank_0,
 )
 

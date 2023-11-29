@@ -8,7 +8,8 @@ from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 # from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
-    get_missing_blocks_by_rank,
+    # get_missing_blocks_by_rank,
+    get_blocks_by_rank,
     print_rank_0,
 )
 
@@ -145,11 +146,14 @@ def verify_individual_db(
     # >>>
     # # Missing db blocks.
     # n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
-    #     db_dir,
-    #     len(indexed_dataset),
-    #     config.retro_doc_block_size,
-    #     validate=lambda f : f["chunks_valid"].shape == (0,) \
-    #         or f["chunks_valid"].shape[1] == 4)
+    blocks = get_blocks_by_rank(
+        db_dir,
+        len(indexed_dataset),
+        config.retro_doc_block_size,
+        validate=lambda f : f["chunks_valid"].shape == (0,) \
+            or f["chunks_valid"].shape[1] == 4)
+
+    pax("blocks")
     # <<<
 
     # >>>
@@ -173,7 +177,8 @@ def verify_individual_db(
     # else:
     #     n_procs = 8
     # +++
-    n_procs = 8
+    # n_procs = 8
+    n_procs = 1 # ... for debug.
     # <<<
 
     # >>>
@@ -186,65 +191,27 @@ def verify_individual_db(
 
             if block is not None:
 
-                db_path = block["path"]
+                # >>>
+                # pax("block")
+                # <<<
 
-                # Build partial dbs.
-                print_rank_0(' > build partial dbs.')
-                futures = []
-                for proc_id in range(n_procs): # not true process id
-                    futures.append(executor.submit(
-                        build_partial_db,
-                        types.SimpleNamespace(
-                            chunk_length = config.retro_gpt_chunk_length,
-                            gpt_eod = config.retro_tokenizers.gpt.eod,
-                            gpt_detokenize = config.retro_tokenizers.gpt.detokenize,
-                            bert_tokenize = config.retro_tokenizers.bert.tokenize,
-                        ),
-                        dataset_idx,
-                        n_datasets,
-                        indexed_dataset,
-                        block_idx,
-                        len(missing_db_blocks),
-                        block,
-                        proc_id,
-                        n_procs,
-                    ))
-                partial_chunk_dbs = []
-                for future in as_completed(futures):
-                    partial_chunk_dbs.append(future.result())
+                # Build block DB.
+                chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
+                    config=config,
+                    dataset_idx=dataset_idx,
+                    n_datasets=n_datasets,
+                    # dataset_info=dataset_info,
+                    indexed_dataset=indexed_dataset,
+                    n_procs=n_procs,
+                    executor=executor,
+                    n_missing_blocks=len(missing_db_blocks),
+                    block_idx=block_idx,
+                    block=block,
+                )
 
-                # Concatenate chunks.
-                partial_chunk_dbs.sort(key=lambda item:item[0]) # sort by proc_id
-                chunk_db_valid = [item
-                                  for partial_chunk_db in partial_chunk_dbs
-                                  for item in partial_chunk_db[1]]
-                chunk_db_invalid = [item
-                                    for partial_chunk_db in partial_chunk_dbs
-                                    for item in partial_chunk_db[2]]
-
-                # Convert to numpy.
-                print_rank_0(' > converting chunk db to numpy.')
-                chunk_db_valid = np.array(chunk_db_valid, dtype="uint32")
-                chunk_db_invalid = np.array(chunk_db_invalid, dtype="uint32")
-
-                # Document offsets.
-                doc_sizes = [(d, s)
-                             for partial_chunk_db in partial_chunk_dbs
-                             for d, s in partial_chunk_db[3].items()]
-                doc_sizes.sort(key = lambda item : item[0])
-                doc_offsets = np.cumsum([item[1] for item in doc_sizes]) \
-                                .astype("uint64")
-                doc_offsets = np.stack((
-                    np.array([item[0] for item in doc_sizes], dtype="uint64"),
-                    doc_offsets), axis=1)
-
-                # Save DB.
-                print_rank_0(" > saving individual db.")
-                with h5py.File(db_path, "w") as f:
-                    dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
-                    dset = f.create_dataset("chunks_invalid",
-                                            data=chunk_db_invalid)
-                    dset = f.create_dataset("doc_offsets", data=doc_offsets)
+                # >>>
+                pax("chunk_db_valid, chunk_db_invalid, doc_offsets")
+                # <<<
 
             # Wait for all ranks to finish block.
             print_rank_0(" > waiting for all ranks to finish block.")
