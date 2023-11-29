@@ -300,9 +300,9 @@ def get_blocks_by_rank(
     # Collect blocks.
     blocks = SimpleNamespace(
         n_existing_world = len(blocks.existing),
-        existing_blocks = rank_existing_blocks,
         n_missing_world = len(blocks.missing),
-        missing_blocks = rank_missing_blocks,
+        existing = rank_existing_blocks,
+        missing = rank_missing_blocks,
     )
 
     # >>>

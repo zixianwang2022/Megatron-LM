@@ -15,10 +15,7 @@ from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     extract_data_config,
     get_gpt_data_dir,
-    # >>>
-    # get_missing_blocks_by_rank,
     get_blocks_by_rank,
-    # <<<
     print_rank_0,
 )
 
@@ -33,10 +30,6 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 from .verify import verify_db
-
-# >>>
-from lutil import pax
-# <<<
 
 
 def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
@@ -180,9 +173,6 @@ def build_block_db(
     config: RetroPreprocessingConfig,
     dataset_idx: int,
     n_datasets: int,
-    # >>>
-    # dataset_info: dict,
-    # <<<
     indexed_dataset: MMapIndexedDataset,
     n_procs: int,
     executor: ProcessPoolExecutor,
@@ -241,10 +231,6 @@ def build_block_db(
         np.array([item[0] for item in doc_sizes], dtype="uint64"),
         doc_offsets), axis=1)
 
-    # >>>
-    # pax("chunk_db_valid, chunk_db_invalid, doc_offsets")
-    # <<<
-
     return chunk_db_valid, chunk_db_invalid, doc_offsets
 
 
@@ -264,10 +250,7 @@ def build_individual_db(
     indexed_dataset = dataset_info["dataset"]
 
     # Missing db blocks.
-    # >>>
-    # n_missing_world, missing_db_blocks = get_missing_blocks_by_rank(
     blocks = get_blocks_by_rank(
-    # <<<
         db_dir,
         len(indexed_dataset),
         config.retro_doc_block_size,
@@ -277,59 +260,43 @@ def build_individual_db(
     # Prevent missing-path-write race condition.
     torch.distributed.barrier()
 
-    if not missing_db_blocks:
+    # Nothing to do?
+    if not blocks.missing:
         return
 
     # Num processes.
-    if n_missing_world == 1:
+    if blocks.n_missing_world == 1:
         n_procs = 128
-    elif n_missing_world <= 2:
+    elif blocks.n_missing_world <= 2:
         n_procs = 64
-    elif n_missing_world <= 4:
+    elif blocks.n_missing_world <= 4:
         n_procs = 32
-    elif n_missing_world <= 8:
+    elif blocks.n_missing_world <= 8:
         n_procs = 16
     else:
         n_procs = 8
 
-    # >>>
-    # n_procs = 1
-    # <<<
-
     # Process documents in parallel.
     with ProcessPoolExecutor(max_workers=n_procs) as executor:
-        for block_idx, block in enumerate(missing_db_blocks):
+        for block_idx, block in enumerate(blocks.missing):
 
             if block is not None:
-
-                # >>>
-                # pax("block")
-                # <<<
 
                 # Build block DB.
                 chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
                     config=config,
                     dataset_idx=dataset_idx,
                     n_datasets=n_datasets,
-                    # dataset_info=dataset_info,
                     indexed_dataset=indexed_dataset,
                     n_procs=n_procs,
                     executor=executor,
-                    n_missing_blocks=len(missing_db_blocks),
+                    n_missing_blocks=len(blocks.missing),
                     block_idx=block_idx,
                     block=block,
                 )
 
-                # >>>
-                # pax("chunk_db_valid, chunk_db_invalid, doc_offsets")
-                # <<<
-
                 # Save block DB.
                 print_rank_0(" > saving individual db.")
-                # >>>
-                # db_path = block["path"]
-                # with h5py.File(db_path, "w") as f:
-                # <<<
                 with h5py.File(block["path"], "w") as f:
                     dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
                     dset = f.create_dataset("chunks_invalid",
@@ -564,9 +531,6 @@ def build_db(config):
 
     # Build new database.
     if config.retro_task_verify is None:
-        # >>>
-        # raise Exception("build?")
-        # <<<
         _build_db(config)
 
     # Verify existing database.
