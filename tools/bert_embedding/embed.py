@@ -272,7 +272,7 @@ class DiskDataParallelBertEmbedder:
                                      embedder_type)
         self.block_size = block_size
 
-    def embed_text_blocks(self, name, workdir, text_dataset,
+    def embed_text_blocks(self, name, dirname, text_dataset,
                           missing_embedding_blocks):
         '''Process a text dataset in blocks.'''
 
@@ -304,17 +304,17 @@ class DiskDataParallelBertEmbedder:
             print_rank_0(" > waiting for other ranks to finish block.")
             torch.distributed.barrier()
 
-    def embed_text_dataset(self, name, workdir, text_dataset):
+    def embed_text_dataset(self, name, dirname, text_dataset):
         '''Embed a text dataset.'''
 
-        # Dataset workdir.
-        os.makedirs(workdir, exist_ok=True)
+        # Dataset dir.
+        os.makedirs(dirname, exist_ok=True)
 
         # Missing embedding blocks (stored on disk).
         def validate(f):
             assert f["data"].shape[1] == 1024
         n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
-            workdir,
+            dirname,
             len(text_dataset),
             self.block_size,
             validate=validate)
@@ -323,5 +323,5 @@ class DiskDataParallelBertEmbedder:
         torch.distributed.barrier()
 
         # Embed batches.
-        self.embed_text_blocks(name, workdir, text_dataset,
+        self.embed_text_blocks(name, dirname, text_dataset,
                                missing_embedding_blocks)

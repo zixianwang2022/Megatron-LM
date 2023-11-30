@@ -11,8 +11,8 @@ unset NCCL_DEBUG
 # fi
 # RETRO_TASKS=$1
 
-RETRO_TASKS="db-build"
-# RETRO_TASKS="index-train"
+# RETRO_TASKS="db-build"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 
@@ -47,7 +47,7 @@ RETRO_QUERY_NPROBE=64
 ######## Index. ########
 
 RETRO_INDEX_TRAIN_LOAD_FRACTION=1.0
-RETRO_INDEX_ADD_LOAD_FRACTION=1.0
+RETRO_INDEX_ADD_LOAD_FRACTION=1.0 # INDEX_ADD
 
 ######## GPT. ########
 

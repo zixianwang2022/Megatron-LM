@@ -115,7 +115,7 @@ def remove_embeddings(config):
     shutil.rmtree(get_training_data_root_dir(config), ignore_errors=True)
 
 
-def train_index(config):
+def _train_index(config):
     '''Train index on DB chunks.'''
 
     # Check if trained index already exists.
@@ -135,12 +135,24 @@ def train_index(config):
         remove_embeddings(config)
 
 
+def train_index(config):
+
+    # Train new index.
+    if config.retro_task_verify is None:
+        _train_index(config)
+
+    # Verify existing trained index.
+    else:
+        from .verify import verify_trained_index
+        verify_trained_index(config)
+
+
 ##################################################
 # Add to index.
 ##################################################
 
 
-def add_to_index(config):
+def _add_to_index(config):
     '''Add DB chunks to index.'''
 
     # Get index.
@@ -158,6 +170,18 @@ def add_to_index(config):
     output_index_path = index.add(config, text_dataset)
 
     return output_index_path
+
+
+def add_to_index(config):
+
+    # Add to new index.
+    if config.retro_task_verify is None:
+        _add_to_index(config)
+
+    # Verify existing added index.
+    else:
+        from .verify import verify_added_index
+        verify_added_index(config)
 
 
 ##################################################
