@@ -313,7 +313,10 @@ class DiskDataParallelBertEmbedder:
         # Missing embedding blocks (stored on disk).
         def validate(f):
             assert f["data"].shape[1] == 1024
-        n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
+        # >>>
+        # n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
+        blocks = get_missing_blocks_by_rank(
+        # <<<
             dirname,
             len(text_dataset),
             self.block_size,
@@ -323,5 +326,8 @@ class DiskDataParallelBertEmbedder:
         torch.distributed.barrier()
 
         # Embed batches.
-        self.embed_text_blocks(name, dirname, text_dataset,
-                               missing_embedding_blocks)
+        # >>>
+        # self.embed_text_blocks(name, dirname, text_dataset,
+        #                        missing_embedding_blocks)
+        self.embed_text_blocks(name, dirname, text_dataset, blocks.missing)
+        # <<<

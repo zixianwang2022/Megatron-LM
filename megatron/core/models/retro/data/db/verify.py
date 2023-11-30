@@ -9,7 +9,10 @@ from typing import List
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
-from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0
+from megatron.core.models.retro.data.utils import (
+    get_sampled_blocks_by_rank,
+    print_rank_0,
+)
 
 from .build import build_block_db
 from .utils import get_indexed_dataset_infos, get_merged_datasets
@@ -33,32 +36,22 @@ def verify_individual_db(
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
 
-    # Existing DB blocks (split by documents).
-    blocks = get_blocks_by_rank(
+    # Sample existing DB blocks (split by documents).
+    blocks = get_sampled_blocks_by_rank(
         db_dir,
         len(indexed_dataset),
         config.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
-            or f["chunks_valid"].shape[1] == 4)
+            or f["chunks_valid"].shape[1] == 4,
+        fraction=config.retro_task_verify,
+    )
 
     assert blocks.n_missing_world == 0
 
-    # Randomly sample blocks.
-    n_blocks_sample = int(np.ceil(config.retro_task_verify * len(blocks.existing)))
-    sampled_blocks = [ b for b in blocks.existing if b is not None ]
-
-    np.random.seed(None)
-    np.random.shuffle(sampled_blocks)
-
-    sampled_blocks = sampled_blocks[:n_blocks_sample]
-    sampled_blocks += [None] * (n_blocks_sample - len(sampled_blocks))
-
     # >>>
-    # print_seq("n_blocks_sample = %d / %d [%d] ... %s." % (
-    #     n_blocks_sample,
+    # print_seq("sampled blocks = %d ... %s." % (
     #     len(blocks.existing),
-    #     len(sampled_blocks),
-    #     [ b["range"] for b in sampled_blocks ],
+    #     [ b["range"] for b in blocks.existing ],
     # ))
     # <<<
 
@@ -67,7 +60,7 @@ def verify_individual_db(
 
     # Process documents in parallel.
     with ProcessPoolExecutor(max_workers=n_procs) as executor:
-        for block_idx, block in enumerate(sampled_blocks):
+        for block_idx, block in enumerate(blocks.existing):
 
             if block is not None:
 
@@ -85,7 +78,7 @@ def verify_individual_db(
                     indexed_dataset=indexed_dataset,
                     n_procs=n_procs,
                     executor=executor,
-                    n_missing_blocks=len(sampled_blocks),
+                    n_missing_blocks=len(blocks.existing),
                     block_idx=block_idx,
                     block=block,
                 )

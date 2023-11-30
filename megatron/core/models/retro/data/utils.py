@@ -94,7 +94,8 @@ def get_blocks(
     is to divide a range (size n_samples) into a sequence of blocks. Each
     block corresponds to a file within 'project_dir' with name
     '{start_idx}-{end_idx}.hdf5'. This method checks for the existence of
-    these files, and returns a list of the ones that are missing.
+    these files, and returns two lists, one for existing blocks and one for
+    missing blocks.
     '''
 
     # Block ranges.
@@ -157,10 +158,10 @@ def get_blocks_by_rank(
     block_size: int,
     validate: Callable = None,
 ):
-    '''Divide missing blocks evenly across all ranks.
+    '''Divide existing and missing blocks evenly across all ranks.
 
-    See 'get_missing_blocks()' above for description. The returned list of
-    missing blocks is split evenly across ranks via interleaving. This way,
+    See 'get_blocks()' above for description. The returned lists of existing and
+    missing blocks are split evenly across ranks via interleaving. This way,
     each rank has a roughly equal number of blocks to process for a
     downstream operation.
     '''
@@ -168,14 +169,14 @@ def get_blocks_by_rank(
     # Get world blocks.
     blocks = get_blocks(project_dir, n_samples, block_size, validate)
 
-    # This rank's missing files.
+    # This rank's existing and missing files.
     data_parallel_rank = parallel_state.get_data_parallel_rank()
     data_parallel_world_size = parallel_state.get_data_parallel_world_size()
     rank_existing_blocks = blocks.existing[data_parallel_rank:len(blocks.existing):data_parallel_world_size]
     rank_missing_blocks = blocks.missing[data_parallel_rank:len(blocks.missing):data_parallel_world_size]
 
-    # Extend rank's missing blocks (with None) such that all ranks have equal
-    # length lists. This allows for easier tracking of global progress.
+    # Extend rank's existing and missing blocks (with None) such that all ranks
+    # have equal length lists. This allows for easier tracking of global progress.
     def get_world_max(n):
         n_tensor = torch.cuda.LongTensor([n])
         torch.distributed.all_reduce(n_tensor, op=torch.distributed.ReduceOp.MAX)
@@ -194,6 +195,42 @@ def get_blocks_by_rank(
         existing = rank_existing_blocks,
         missing = rank_missing_blocks,
     )
+
+    return blocks
+
+
+def get_sampled_blocks_by_rank(
+    project_dir: str,
+    n_samples: int,
+    block_size: int,
+    validate: Callable = None,
+    fraction: float = None,
+):
+    '''Sample existing and missing blocks evenly across all ranks.
+
+    See 'get_blocks_by_rank()' above for description. The returned lists of
+    blocks are randomly sampled (without replacement) to yield
+    `fraction * len(blocks)` number of blocks.
+    '''
+
+    # Get blocks.
+    blocks = get_blocks_by_rank(project_dir, n_samples, block_size, validate)
+
+    # Randomly sample blocks.
+    def sample_blocks(_blocks):
+        n_blocks_sample = int(np.ceil(fraction * len(_blocks)))
+        sampled_blocks = [ b for b in _blocks if b is not None ]
+
+        np.random.seed(None)
+        np.random.shuffle(sampled_blocks)
+
+        sampled_blocks = sampled_blocks[:n_blocks_sample]
+        sampled_blocks += [None] * (n_blocks_sample - len(sampled_blocks))
+
+        return sampled_blocks
+
+    blocks.existing = sample_blocks(blocks.existing)
+    blocks.missing = sample_blocks(blocks.missing)
 
     return blocks
 
