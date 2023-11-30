@@ -1,25 +1,37 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# import numpy as np
+import numpy as np
 # import os
 # import shutil
-# import torch
+import torch
+from torch.utils.data import Subset
 # from tqdm import tqdm
 
+from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 # from megatron.core.models.retro.data.db.utils import (
 #     get_merged_sampled_dataset,
 #     get_merged_train_dataset,
 # )
-# from megatron.core.models.retro.data.external_libs import h5py
-# from megatron.core.models.retro.data.utils import GPTToTextDataset
+from megatron.core.models.retro.data.external_libs import h5py
+from megatron.core.models.retro.data.utils import (
+    GPTToTextDataset,
+    get_sampled_blocks_by_rank,
+    print_rank_0,
+)
 
-# from .factory import IndexFactory
-# from .utils import (
-#     get_training_data_block_dir,
-#     get_training_data_block_paths,
-#     get_training_data_merged_path,
-#     get_training_data_root_dir,
-# )
+from .build import (
+    get_text_dataset_for_adding,
+    get_text_dataset_for_training,
+)
+from .factory import IndexFactory
+from .utils import (
+    get_added_codes_dir,
+    get_training_data_block_dir,
+)
+
+# >>>
+from lutil import pax, print_seq
+# <<<
 
 
 ##################################################
@@ -27,15 +39,19 @@
 ##################################################
 
 
-def verify_trained_index(config):
-    '''Verify trained index.
+def verify_training_embeddings(config: RetroPreprocessingConfig) -> None:
+    '''Verify training embeddings.
 
     Steps:
-    - Randomly sample subset of chunk blocks.
-    - Embed each block
+    - Randomly sample subset of text dataset blocks.
+    - Embed each block.
     - Compare against saved embeddings.
     '''
 
+    # Training text dataset.
+    text_dataset = get_text_dataset_for_training(config)
+
+    # Sample existing blocks.
     blocks = get_sampled_blocks_by_rank(
         dirname=get_training_data_block_dir(config),
         n_samples=len(text_dataset),
@@ -44,29 +60,43 @@ def verify_trained_index(config):
         fraction=config.retro_task_verify,
     )
 
-    pax("blocks")
+    assert blocks.n_missing_world == 0
 
-    merged_train_data_path = get_training_data_merged_path(config)
-    if os.path.exists(merged_train_data_path):
-        return
+    # Embed & verify blocks.
+    embedder = config.retro_bert_embedders.mem
+    for block_idx, block in enumerate(blocks.existing):
 
-    # Get db dataset.
-    gpt_dataset = get_merged_sampled_dataset(
-        project_dir=config.retro_project_dir,
-        chunk_length=config.retro_gpt_chunk_length,
-        eod_token_id=config.retro_tokenizers.gpt.eod,
-    )
+        # Missing block lists are extended with None to have equal-length
+        # lists. Skip the Nones.
+        if block is not None:
 
-    text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
+            # Progress. (*note*: move world progress to here.)
+            print_rank_0("embed training block %d / %d ... %s." % (
+                block_idx,
+                len(blocks.existing),
+                block["path"],
+            ))
 
-    # Embed dataset.
-    # embedder = config.retro_bert_embedders.disk
-    embedder.embed_text_dataset("index",
-                                get_training_data_block_dir(config),
-                                text_dataset)
+            # Load existing block embeddings.
+            with h5py.File(block["path"]) as f:
+                existing_embeddings = np.copy(f["data"])
 
-    # Merge embeddings.
-    merge_embedding_blocks(config)
+            # Embed block.
+            sub_dataset = Subset(text_dataset, range(*block["range"]))
+            embeddings = embedder.embed_text_dataset(sub_dataset)
+
+            # Check equality.
+            assert np.array_equal(existing_embeddings, embeddings)
+
+            # >>>
+            # pax("existing_embeddings, embeddings")
+            # <<<
+
+        # Synchronize progress across all ranks. (for easier observation)
+        print_rank_0(" > waiting for other ranks to finish block.")
+        torch.distributed.barrier()
+
+    print_rank_0(" > finished verifying training embeddings.")
 
 
 ##################################################
@@ -74,26 +104,67 @@ def verify_trained_index(config):
 ##################################################
 
 
-def verify_filled_index(config):
-    '''Verify filled index.'''
+def verify_added_encodings(config):
+    '''Verify added encodings.
 
-    raise Exception("hi.")
+    Steps:
+    - Randomly sample subset of text dataset blocks.
+    - Encode each block.
+    - Compare against saved encodings.
+    '''
 
-    # Get index.
+    # Index.
     index = IndexFactory.get_index(config.retro_index_type)
+    inner_index = index.get_empty_index(config)
 
-    # Get text dataset.
-    gpt_dataset = get_merged_train_dataset(
-        project_dir=config.retro_project_dir,
-        chunk_length=config.retro_gpt_chunk_length,
-        eod_token_id=config.retro_tokenizers.gpt.eod,
+    # Text dataset.
+    text_dataset = get_text_dataset_for_adding(config)
+
+    # Sample existing blocks.
+    def validate(f):
+        assert len(f["data"].shape) == 2
+    blocks = get_sampled_blocks_by_rank(
+        dirname=get_added_codes_dir(config),
+        n_samples=len(text_dataset),
+        block_size=config.retro_block_size,
+        validate=validate,
+        fraction=config.retro_task_verify,
     )
-    text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
 
-    # Fill index.
-    output_index_path = index.add(config, text_dataset)
+    assert blocks.n_missing_world == 0
 
-    return output_index_path
+    # Encode and verify blocks.
+    embedder = config.retro_bert_embedders.mem
+    for block_idx, block in enumerate(blocks.existing):
+
+        if block is not None:
+
+            # Progress.
+            print_rank_0("encode block %d / %d ... %s." % (
+                block_idx,
+                len(blocks.existing),
+                block["path"],
+            ))
+
+            # Load existing codes.
+            with h5py.File(block["path"]) as f:
+                existing_codes = np.copy(f["data"])
+
+            # Encode block.
+            codes = index.encode_block(inner_index, embedder, text_dataset, block)
+
+            # Check equality.
+            assert np.array_equal(existing_codes, codes)
+
+            # >>>
+            pax("existing_codes, codes")
+            # <<<
+
+        # Synchronize progress across all ranks. (for easier observation)
+        print_rank_0(" > waiting for other ranks to finish block.")
+        torch.distributed.barrier()
+
+    print_rank_0(" > finished verifying added encodings.")
 
 
 ##################################################

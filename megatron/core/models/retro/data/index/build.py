@@ -69,7 +69,17 @@ def merge_embedding_blocks(config):
                 fo.seek(byte_offset)
 
 
-def embed_db(config):
+def get_text_dataset_for_training(config):
+    gpt_dataset = get_merged_sampled_dataset(
+        project_dir=config.retro_project_dir,
+        chunk_length=config.retro_gpt_chunk_length,
+        eod_token_id=config.retro_tokenizers.gpt.eod,
+    )
+    text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
+    return text_dataset
+
+
+def embed_training_chunks(config):
     '''Embed DB chunks.
 
     Store chunks in blocks on disk. These blocks will later be merged into
@@ -80,14 +90,8 @@ def embed_db(config):
     if os.path.exists(merged_train_data_path):
         return
 
-    # Get db dataset.
-    gpt_dataset = get_merged_sampled_dataset(
-        project_dir=config.retro_project_dir,
-        chunk_length=config.retro_gpt_chunk_length,
-        eod_token_id=config.retro_tokenizers.gpt.eod,
-    )
-
-    text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
+    # Get training text dataset.
+    text_dataset = get_text_dataset_for_training(config)
 
     # Embed dataset.
     embedder = config.retro_bert_embedders.disk
@@ -122,7 +126,7 @@ def _train_index(config):
     if not os.path.isfile(get_empty_index_path(config)):
 
         # Embed training chunks.
-        embed_db(config)
+        embed_training_chunks(config)
 
         # Train index on embeddings.
         train_on_embeddings(config)
@@ -143,13 +147,23 @@ def train_index(config):
 
     # Verify existing trained index.
     else:
-        from .verify import verify_trained_index
-        verify_trained_index(config)
+        from .verify import verify_training_embeddings
+        verify_training_embeddings(config)
 
 
 ##################################################
 # Add to index.
 ##################################################
+
+
+def get_text_dataset_for_adding(config):
+    gpt_dataset = get_merged_train_dataset(
+        project_dir=config.retro_project_dir,
+        chunk_length=config.retro_gpt_chunk_length,
+        eod_token_id=config.retro_tokenizers.gpt.eod,
+    )
+    text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
+    return text_dataset
 
 
 def _add_to_index(config):
@@ -159,12 +173,7 @@ def _add_to_index(config):
     index = IndexFactory.get_index(config.retro_index_type)
 
     # Get text dataset.
-    gpt_dataset = get_merged_train_dataset(
-        project_dir=config.retro_project_dir,
-        chunk_length=config.retro_gpt_chunk_length,
-        eod_token_id=config.retro_tokenizers.gpt.eod,
-    )
-    text_dataset = GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt)
+    text_dataset = get_text_dataset_for_adding(config)
 
     # Add to index.
     output_index_path = index.add(config, text_dataset)
@@ -178,10 +187,10 @@ def add_to_index(config):
     if config.retro_task_verify is None:
         _add_to_index(config)
 
-    # Verify existing added index.
+    # Verify existing encodings.
     else:
-        from .verify import verify_added_index
-        verify_added_index(config)
+        from .verify import verify_added_encodings
+        verify_added_encodings(config)
 
 
 ##################################################

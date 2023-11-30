@@ -49,6 +49,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
         print_rank_0("encode.")
         codes = index.sa_encode(embeddings)
 
+        return codes
+
+    def save_block(self, block, codes):
         # Save neighbors.
         print_rank_0("save codes.")
         os.makedirs(os.path.dirname(block["path"]), exist_ok=True)
@@ -88,8 +91,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
                     block["path"],
                 ))
 
-                # Query block neighbors.
-                self.encode_block(index, embedder, text_dataset, block)
+                # Encode and save.
+                codes = self.encode_block(index, embedder, text_dataset, block)
+                self.save_block(block, codes)
 
             # Synchronize progress across all ranks. (for easier observation)
             print_rank_0(" > waiting for other ranks to finish block.")

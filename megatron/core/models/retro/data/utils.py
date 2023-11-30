@@ -83,7 +83,7 @@ class GPTToTextDataset(torch.utils.data.Dataset):
 
 
 def get_blocks(
-    project_dir: str,
+    dirname: str,
     n_samples: int,
     block_size: int,
     validate: Callable = None,
@@ -92,7 +92,7 @@ def get_blocks(
 
     This is a core method within the concept of block processing. The idea
     is to divide a range (size n_samples) into a sequence of blocks. Each
-    block corresponds to a file within 'project_dir' with name
+    block corresponds to a file within 'dirname' with name
     '{start_idx}-{end_idx}.hdf5'. This method checks for the existence of
     these files, and returns two lists, one for existing blocks and one for
     missing blocks.
@@ -108,7 +108,7 @@ def get_blocks(
     all_blocks = [{
         "range" : r,
         "path" : os.path.join(
-            project_dir,
+            dirname,
             "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
         )
     } for r in block_ranges]
@@ -153,7 +153,7 @@ def get_blocks(
 
 
 def get_blocks_by_rank(
-    project_dir: str,
+    dirname: str,
     n_samples: int,
     block_size: int,
     validate: Callable = None,
@@ -167,7 +167,7 @@ def get_blocks_by_rank(
     '''
 
     # Get world blocks.
-    blocks = get_blocks(project_dir, n_samples, block_size, validate)
+    blocks = get_blocks(dirname, n_samples, block_size, validate)
 
     # This rank's existing and missing files.
     data_parallel_rank = parallel_state.get_data_parallel_rank()
@@ -200,7 +200,7 @@ def get_blocks_by_rank(
 
 
 def get_sampled_blocks_by_rank(
-    project_dir: str,
+    dirname: str,
     n_samples: int,
     block_size: int,
     validate: Callable = None,
@@ -214,7 +214,7 @@ def get_sampled_blocks_by_rank(
     '''
 
     # Get blocks.
-    blocks = get_blocks_by_rank(project_dir, n_samples, block_size, validate)
+    blocks = get_blocks_by_rank(dirname, n_samples, block_size, validate)
 
     # Randomly sample blocks.
     def sample_blocks(_blocks):
