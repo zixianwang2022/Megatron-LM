@@ -80,13 +80,23 @@ def get_batch(data_iterator, visual_model):
     prompt_len = tensor_parallel.broadcast_data(["prompt_len"], data, torch.int64)["prompt_len"]
 
     torch.cuda.nvtx.range_pop()
-
-    # NOTE(jbarker): this freezes the whole ViT model, but we
-    # actually need to allow the last couple of "neck" layers
-    # to be trainable
-    # with torch.no_grad() if args.freeze_ViT else nullcontext():
-    # Unpack.
+    torch.cuda.nvtx.range_push("index tokens")
     tokens_ = data_text.long()
+    tokenizer = get_tokenizer()
+    tokens = tokens_[:, :args.seq_length].contiguous()
+    labels = tokens_[:, 1:args.seq_length+1].contiguous()
+    torch.cuda.nvtx.range_pop()
+
+    torch.cuda.nvtx.range_push("get_ltor_masks_and_position_ids")
+    attention_mask, loss_mask, position_ids = \
+        get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
+                                        args.reset_position_ids,
+                                        args.reset_attention_mask,
+                                        args.eod_mask_loss,
+                                        question_length=prompt_len)
+    torch.cuda.nvtx.range_pop()
+
+    # Unpack.
 
     if args.use_hybrid_visual_backbones:
         img_raw = data_img['img'].reshape(-1, 3, args.img_h_sam, args.img_w_sam)
@@ -107,20 +117,6 @@ def get_batch(data_iterator, visual_model):
         else:
             img_tokens = img_tokens.transpose(0, 1).contiguous()
         torch.cuda.nvtx.range_pop()
-    torch.cuda.nvtx.range_push("index tokens")
-    tokenizer = get_tokenizer()
-    tokens = tokens_[:, :args.seq_length].contiguous()
-    labels = tokens_[:, 1:args.seq_length+1].contiguous()
-    torch.cuda.nvtx.range_pop()
-
-    torch.cuda.nvtx.range_push("get_ltor_masks_and_position_ids")
-    attention_mask, loss_mask, position_ids = \
-        get_ltor_masks_and_position_ids(tokens, tokenizer.eod,
-                                        args.reset_position_ids,
-                                        args.reset_attention_mask,
-                                        args.eod_mask_loss,
-                                        question_length=prompt_len)
-    torch.cuda.nvtx.range_pop()
 
     return tokens, labels, img_tokens, loss_mask, attention_mask, position_ids
 
@@ -156,14 +152,6 @@ def forward_step(data_iterator, model, visual_model):
     output_tensor, p_tokens = model(tokens, img_tokens, position_ids, attention_mask,
                           labels=labels)
     torch.cuda.nvtx.range_pop()
-    # import os
-    # if int(os.environ["RANK"]) == 0:
-    #     p_tokens = p_tokens * loss_mask
-    #     t = get_tokenizer()
-    #     for in_line, pred_line in zip(tokens.cpu().numpy(), p_tokens.detach().cpu().numpy()):
-    #         in_tokens = [int(to) for to in in_line]
-    #         pred_tokens = [int(to) for to in pred_line]
-    #         print(f"in: {t.detokenize(in_tokens)}, pred: {t.detokenize(pred_tokens)}")
 
     return output_tensor, partial(loss_func, loss_mask)
 
