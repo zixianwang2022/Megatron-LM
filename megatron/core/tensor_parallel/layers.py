@@ -563,6 +563,8 @@ class ColumnParallelLinear(torch.nn.Module):
                                       bias is True. Defaults to False.
         is_expert: If True, the layer is treated as an MoE expert layer.
         config: ModelParallelConfig object
+        tp_comm_buffer_name: Communication buffer name is not used in
+                             non-Transformer-Engine modules.
 
     """
 
@@ -580,6 +582,7 @@ class ColumnParallelLinear(torch.nn.Module):
         skip_bias_add=False,
         skip_weight_param_allocation: bool = False,
         is_expert: bool = False,
+        tp_comm_buffer_name: str = None,  # Not used
     ):
         super(ColumnParallelLinear, self).__init__()
 
@@ -794,6 +797,8 @@ class RowParallelLinear(torch.nn.Module):
                        enables performance optimations where bias can
                        be fused with other elementwise operations.
         is_expert: If True, the layer is treated as an MoE expert layer
+        tp_comm_buffer_name: Communication buffer name. Not used in
+                             non-Transformer-Engine modules.
         config: ModelParallelConfig object
 
     """
@@ -811,6 +816,7 @@ class RowParallelLinear(torch.nn.Module):
         stride: int = 1,
         keep_master_weight_for_test: bool = False,
         is_expert: bool = False,
+        tp_comm_buffer_name: str = None,  # Not used
     ):
         super(RowParallelLinear, self).__init__()
 

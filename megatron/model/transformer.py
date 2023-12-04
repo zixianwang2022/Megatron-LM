@@ -6,7 +6,7 @@ import math
 import numpy as np
 import torch
 import torch.nn.functional as F
-from typing import Optional
+from typing import Optional, Tensor
 
 from megatron import get_timers, get_args, get_retro_args, core, get_num_microbatches
 from .module import MegatronModule
@@ -18,7 +18,12 @@ from megatron.model.fused_bias_gelu import bias_gelu_impl
 from megatron.core.models.common.embeddings.rotary_pos_embedding import RotaryEmbedding, apply_rotary_pos_emb
 from megatron.model.utils import attention_mask_func, openai_gelu, erf_gelu, quick_gelu, get_norm
 from megatron.arguments import validate_visual_args_sam, validate_visual_args_clip
-from megatron.core.tensor_parallel import gather_from_sequence_parallel_region_to_moe, reduce_scatter_to_sequence_parallel_region_from_moe
+from megatron.core.tensor_parallel import (
+    gather_from_sequence_parallel_region_to_moe,
+    reduce_scatter_to_sequence_parallel_region_from_moe,
+    get_cuda_rng_tracker,
+    get_data_parallel_rng_tracker_name
+)
 from megatron.core.parallel_state import get_tensor_model_parallel_group, get_tensor_and_expert_parallel_group
 
 try:
@@ -214,6 +219,16 @@ def sinkhorn(cost, tol=0.0001):
         d1_old = d1
     return d1*cost*d0.unsqueeze(1)
 
+
+def get_router_linear_layer(config):
+    args = get_args()
+    router = torch.nn.Linear(args.hidden_size, args.num_experts, bias=False)
+    with get_cuda_rng_tracker().fork(get_data_parallel_rng_tracker_name()):
+        config.init_method(router.weight)
+    setattr(router.weight, 'sequence_parallel',config.sequence_parallel)
+    return router
+
+
 class SwitchMLP(MegatronModule):
     """
     Routes input to one of N MLP "experts"
@@ -221,7 +236,7 @@ class SwitchMLP(MegatronModule):
     def __init__(self, config):
         super(SwitchMLP, self).__init__()
         args = get_args()
-        self.router = torch.nn.Linear(args.hidden_size, args.num_experts)
+        self.router = get_router_linear_layer(config)
         self.expert_parallel_size = mpu.get_expert_model_parallel_world_size()
         self.sequence_parallel = config.sequence_parallel
         self.add_bias = config.add_bias_linear
@@ -1275,9 +1290,10 @@ class ParallelTransformerLayer(MegatronModule):
     def __init__(self, config,
                  layer_number, layer_type=LayerType.encoder,
                  self_attn_mask_type=AttnMaskType.padding,
-                 drop_path_rate=0., is_vit=False, use_rel_pos=False,
+                 drop_path_rate=0.,
+                 is_vit=False,
+                 use_rel_pos=False,
                  window_size=0):
-                 # retriever=None):
         args = get_args()
 
         super(ParallelTransformerLayer, self).__init__()
