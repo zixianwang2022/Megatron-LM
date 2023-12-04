@@ -662,6 +662,7 @@ def load_visual_checkpoint(model, load_arg='load', strict=True, load_iter=None):
         if args.align_to_old:
             new_state_dict = {}
             for key, values in state_dict['model'].items():
+                key = key.replace("layernorm", "norm")
                 if "rel_pos" in key and ("core_attention" not in key):
                     key = key.replace("self_attention", "self_attention.core_attention")
                 new_state_dict[key] = values

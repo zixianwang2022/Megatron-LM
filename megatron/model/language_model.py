@@ -436,7 +436,7 @@ class PerceiverResampler(MegatronModule):
                     encoder_output_sam = self.affine[0](vision_inputs['sam'])
                 else:
                     encoder_output_sam = vision_inputs['sam']
-                
+
                 if self.has_affine_dict['clip']:
                     encoder_output_clip = self.affine[-1](vision_inputs['clip'])
                 else:
@@ -514,10 +514,12 @@ class TransformerLanguageModel(MegatronModule):
             # partial rotary embeddings, which is better than full rotary
             # Wang and Komatsuzaki et al
             # https://github.com/kingoflolz/mesh-transformer-jax/
+            if args.rotary_percent < 1.0:
+                rotary_dim = int(rotary_dim * args.rotary_percent)
             self.rotary_pos_emb = RotaryEmbedding(
                 rotary_dim,
-                args.rotary_percent,
-                seq_len_interpolation_factor=args.rotary_seq_len_interpolation_factor
+                # args.rotary_percent,
+                # seq_len_interpolation_factor=args.rotary_seq_len_interpolation_factor
             )
 
         # Encoder (usually set to True, False if part of an encoder-decoder

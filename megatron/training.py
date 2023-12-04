@@ -529,7 +529,7 @@ def train_step(forward_step_func, data_iterator,
         # Otherwise, zero the buffer.
         model_chunk.zero_grad_buffer(zero_buffer=(not args.use_distributed_optimizer))
     if visual_model is not None:
-        visual_model.zero_grad_buffer()
+        visual_model.zero_grad_buffer(zero_buffer=(not args.use_distributed_optimizer))
     optimizer.zero_grad()
 
     # Forward pass.
