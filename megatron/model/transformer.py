@@ -753,8 +753,8 @@ class ParallelAttention(MegatronModule):
                 gather_output=False)
 
             self.key_value = tensor_parallel.ColumnParallelLinear(
-                self.hidden_size if not is_vit else args.visual_hidden_size,
-                2 * kv_projection_size,
+                self.hidden_size if is_vit else int(self.hidden_size // world_size),
+                2 * projection_size,
                 config=config,
                 init_method=config.init_method,
                 # bias=config.add_bias_linear or is_vit,
@@ -879,6 +879,7 @@ class ParallelAttention(MegatronModule):
             # [sq, b, ng, np/ng * hn] -> [sq, b, np, hn] -
             query_layer = query_layer.view(query_layer.size(0), query_layer.size(1), -1, self.hidden_size_per_attention_head)
         else:
+
             # Attention heads [sk, b, h] --> [sk, b, (np * 2 * hn)]
             mixed_kv_layer, _ = self.key_value(encoder_output)
 
@@ -1967,8 +1968,14 @@ class ParallelTransformer(MegatronModule):
         self.checkpoint_core_attention = config.recompute_granularity == 'selective'
 
         # Number of layers.
-        self.num_layers = _get_num_layers(args, model_type,
-                                          layer_type==LayerType.decoder)
+        if self.is_vit:
+            # TODO(jbarker): This will not support pipeline
+            # parallelism for ViT models. _get_num_layers needs
+            # updating.
+            self.num_layers = args.visual_num_layers
+        else:
+            self.num_layers = _get_num_layers(args, model_type,
+                                            layer_type==LayerType.decoder)
 
         self.drop_path_rates = [
             rate.item() for rate in

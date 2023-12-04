@@ -464,6 +464,9 @@ def setup_model_and_optimizer(model_provider_func,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
+    # NOTE(jbarker): It is critical that visual checkpoint loading happens
+    # before llm checkpoint loading. Otherwise the randomly initialized
+    # visual params will be stored for future copying to model params
     if visual_model:
         if args.use_hybrid_visual_backbones:
             validate_visual_args_sam(args)
@@ -489,6 +492,10 @@ def setup_model_and_optimizer(model_provider_func,
         timers.log(['load-checkpoint'])
     else:
         args.iteration = 0
+
+    # We only support local DDP with multiple micro-batches.
+    if len(model) > 1 or mpu.get_pipeline_model_parallel_world_size() > 1:
+        assert args.DDP_impl == 'local'
 
     for i in range(args.num_layers - 1):
         cur_layer = unwrapped_model[0].language_model.encoder.layers[i + 1]
