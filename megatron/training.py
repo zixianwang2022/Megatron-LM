@@ -441,15 +441,6 @@ def setup_model_and_optimizer(model_provider_func,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
-    if args.load is not None:
-        timers = get_timers()
-        timers('load-checkpoint', log_level=0).start(barrier=True)
-        args.iteration = load_checkpoint(model, optimizer, opt_param_scheduler)
-        timers('load-checkpoint').stop(barrier=True)
-        timers.log(['load-checkpoint'])
-    else:
-        args.iteration = 0
-
     if visual_model:
         if args.use_hybrid_visual_backbones:
             validate_visual_args_sam(args)
@@ -466,6 +457,15 @@ def setup_model_and_optimizer(model_provider_func,
         else:
             load_visual_checkpoint(unwrap_model(visual_model[0]))
         print_rank_0("Loaded pretrained ViT model.")
+
+    if args.load is not None:
+        timers = get_timers()
+        timers('load-checkpoint', log_level=0).start(barrier=True)
+        args.iteration = load_checkpoint(model, optimizer, opt_param_scheduler)
+        timers('load-checkpoint').stop(barrier=True)
+        timers.log(['load-checkpoint'])
+    else:
+        args.iteration = 0
 
     for i in range(args.num_layers - 1):
         cur_layer = unwrapped_model[0].language_model.encoder.layers[i + 1]
@@ -849,8 +849,7 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                                        args.micro_batch_size * \
                                        get_num_microbatches()
         if iteration % args.print_freq == 0:
-            unwrapped_model = unwrap_model(model,
-                                   (torchDDP, LocalDDP, Float16Module))[0]
+            unwrapped_model = unwrap_model(model)[0]
             print_rank_0("Iteration %d: " % (iteration))
             for i in range(args.num_layers):
                 cur_layer = unwrapped_model.language_model.encoder.layers[i]
