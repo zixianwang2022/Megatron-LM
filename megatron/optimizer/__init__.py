@@ -53,7 +53,7 @@ def get_param_groups(modules, visual_modules,
             elif "gate" in name: # Gate parameters:
                 param_name = "pretraining"
             elif "input_layernorm" in name and "language_model.encoder" in name:
-                if args.align_to_old:
+                if args.align_to_old and not args.freeze_ViT:
                     param_name = "Visual"
                 else:
                     param_name = "pretraining"
@@ -76,6 +76,8 @@ def get_param_groups(modules, visual_modules,
                     continue
                 elif not args.train_adaptor:
                     continue
+
+            print_rank_0("trainable:" + name + ": " + param_name)
 
             if not no_wd and not scale_lr:
                 wd_no_scale_lr.append(param)
