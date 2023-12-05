@@ -10,7 +10,7 @@ from .grad_scaler import ConstantGradScaler, DynamicGradScaler
 from .optimizer import Float16OptimizerWithFloat16Params, FP32Optimizer
 
 
-def get_param_groups(modules, visual_modules,
+def get_param_groups(modules,
                      no_weight_decay_cond,
                      scale_lr_cond,
                      lr_mult):
@@ -26,9 +26,6 @@ def get_param_groups(modules, visual_modules,
 
     args = get_args()
     all_modules = modules
-
-    if visual_modules is not None:
-        all_modules = all_modules + visual_modules
 
     for module in all_modules:
         for name, param in module.named_parameters():
@@ -109,14 +106,14 @@ def get_param_groups(modules, visual_modules,
 
     return param_groups
 
-def get_megatron_optimizer(model, visual_model=None,
+def get_megatron_optimizer(model,
                            no_weight_decay_cond=None,
                            scale_lr_cond=None,
                            lr_mult=1.0):
     args = get_args()
 
     # Base optimizer.
-    param_groups = get_param_groups(model, visual_model,
+    param_groups = get_param_groups(model,
                                     no_weight_decay_cond,
                                     scale_lr_cond,
                                     lr_mult)
@@ -181,11 +178,11 @@ def get_megatron_optimizer(model, visual_model=None,
                       args.bf16,
                       args.params_dtype,
                       grad_scaler,
-                      model, visual_model=visual_model[0])
+                      model)
 
     # FP32.
     return FP32Optimizer(optimizer, args.clip_grad,
                          args.log_num_zeros_in_grad,
                          args.check_for_nan_in_loss_and_grad,
                          params_have_main_grad,
-                         model, visual_model=visual_model[0])
+                         model)

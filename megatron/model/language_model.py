@@ -516,6 +516,7 @@ class TransformerLanguageModel(MegatronModule):
             # https://github.com/kingoflolz/mesh-transformer-jax/
             if args.rotary_percent < 1.0:
                 rotary_dim = int(rotary_dim * args.rotary_percent)
+
             self.rotary_pos_emb = RotaryEmbedding(
                 rotary_dim,
                 # args.rotary_percent,

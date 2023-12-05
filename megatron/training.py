@@ -443,30 +443,36 @@ def setup_model_and_optimizer(model_provider_func,
 
     model = get_model(model_provider_func, model_type)
 
-    if args.fp32SAM:
-        fp16 = args.fp16
-        bf16 = args.bf16
-        pdtype = args.params_dtype
-        args.fp16 = False
-        args.bf16 = False
-        args.params_dtype = torch.float32
+    if visual_model_provider:
+        if args.fp32SAM:
+            fp16 = args.fp16
+            bf16 = args.bf16
+            pdtype = args.params_dtype
+            args.fp16 = False
+            args.bf16 = False
+            args.params_dtype = torch.float32
 
-    visual_model = get_model(visual_model_provider, model_type, visual_arch=args.visual_arch)
+        visual_model = get_model(visual_model_provider, model_type, visual_arch=args.visual_arch)
 
-    if args.fp32SAM:
-        args.fp16 = fp16
-        args.bf16 = bf16
-        args.params_dtype = pdtype
+        if args.fp32SAM:
+            args.fp16 = fp16
+            args.bf16 = bf16
+            args.params_dtype = pdtype
 
     unwrapped_model = unwrap_model(model)
 
-    optimizer = get_megatron_optimizer(model, visual_model, no_wd_decay_cond,
+    if visual_model_provider:
+        optimizer_model = model + visual_model
+    else:
+        optimizer_model = model
+    optimizer = get_megatron_optimizer(optimizer_model, no_wd_decay_cond,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
     # NOTE(jbarker): It is critical that visual checkpoint loading happens
     # before llm checkpoint loading. Otherwise the randomly initialized
-    # visual params will be stored for future copying to model params
+    # visual params will be stored for future copying to model params.
+    # This brittleness needs fixing but is non-trivial.
     if visual_model:
         if args.use_hybrid_visual_backbones:
             validate_visual_args_sam(args)
@@ -474,7 +480,6 @@ def setup_model_and_optimizer(model_provider_func,
                 load_visual_checkpoint(visual_model[0].module.sam_model)
             else:
                 load_visual_checkpoint(visual_model[0].module.module.sam_model)
-
             validate_visual_args_clip(args)
             if hasattr(visual_model[0].module, 'clip_model'):
                 load_visual_checkpoint(visual_model[0].module.clip_model)

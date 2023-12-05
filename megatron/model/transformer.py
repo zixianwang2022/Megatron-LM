@@ -1069,7 +1069,7 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         self.layer_number = layer_number
         self.layer_type = layer_type
 
-        self.apply_residual_connection_post_layernorm \
+        self.apply_residual_connection_post_norm \
             = config.apply_residual_connection_post_layernorm
 
         self.bf16 = config.bf16
@@ -1080,10 +1080,10 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         self.ff_gate = torch.nn.Parameter(torch.tensor([0.]))
 
         # Normalize the input data.
-        self.input_layernorm = get_norm(config)
+        self.input_norm = get_norm(config)
 
 
-        self.xattn_layernorm = get_norm(config)
+        self.xattn_norm = get_norm(config)
 
         # Self attention.
         self.self_attention = ParallelAttention(
@@ -1097,15 +1097,15 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
 
         # Normalize the attention output
-        self.post_attention_layernorm = get_norm(config)
+        self.post_attention_norm = get_norm(config)
 
         self.inter_attention = ParallelAttention(
             config,
             layer_number,
             attention_type=AttnType.cross_attn)
 
-        # Layernorm on the attention output.
-        self.post_inter_attention_layernorm = get_norm(config)
+        # norm on the attention output.
+        self.post_inter_attention_norm = get_norm(config)
 
         # MLP
         self.mlp = ParallelMLP(config)
@@ -1127,7 +1127,7 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         # hidden_states: [s, b, h]
 
         # Layer norm at the beginning of the transformer layer.
-        layernorm_output = self.input_layernorm(hidden_states)
+        norm_output = self.input_norm(hidden_states)
 
         # hybrid SAM and CLIP feature for cross attention
         if vision_inputs is not None and self.is_hybrid_visual_backbone:
@@ -1140,12 +1140,12 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
 
         # Cross attention.
         attention_output, attention_bias = \
-            self.inter_attention(layernorm_output,   # lm output (Q)
+            self.inter_attention(norm_output,   # lm output (Q)
                                  None, # media_mask
                                  encoder_output=vision_input) # Vision input (KV)
         # residual connection
-        if self.apply_residual_connection_post_layernorm:
-            residual = layernorm_output
+        if self.apply_residual_connection_post_norm:
+            residual = norm_output
         else:
             residual = hidden_states
 
@@ -1166,7 +1166,7 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
                 bias_dropout_add_func = get_bias_dropout_add(self.training)
 
             with self.bias_dropout_add_exec_handler():
-                inter_layernorm_input = bias_dropout_add_func(
+                inter_norm_input = bias_dropout_add_func(
                     attention_output,
                     attention_bias,
                     residual,
@@ -1175,29 +1175,29 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
             out = torch.nn.functional.dropout(attention_output + \
                     attention_bias, p=self.hidden_dropout,
                     training=self.training)
-            layernorm_input = residual + self.drop_path(out)
+            norm_input = residual + self.drop_path(out)
 
         # Layer norm post the cross attention
-        inter_layernorm_output = self.post_inter_attention_layernorm(inter_layernorm_input)
+        inter_norm_output = self.post_inter_attention_norm(inter_norm_input)
 
         # MLP Layer (FFW) after cross attention
-        xattn_mlp_output, xattn_mlp_bias = self.xattn_mlp(inter_layernorm_output)
+        xattn_mlp_output, xattn_mlp_bias = self.xattn_mlp(inter_norm_output)
 
         # Second residual connection.
-        if self.apply_residual_connection_post_layernorm:
-            residual = inter_layernorm_output
+        if self.apply_residual_connection_post_norm:
+            residual = inter_norm_output
         else:
-            residual = inter_layernorm_input
+            residual = inter_norm_input
 
         with self.bias_dropout_add_exec_handler():
-            xattn_layernorm_input = bias_dropout_add_func(
+            xattn_norm_input = bias_dropout_add_func(
                 xattn_mlp_output,
                 xattn_mlp_bias,
                 residual,
                 self.hidden_dropout, gate=self.ff_gate) # ff_gate used here
 
         # Layer norm post the MLP
-        xattn_layernorm_output = self.xattn_layernorm(xattn_layernorm_input)
+        xattn_norm_output = self.xattn_norm(xattn_norm_input)
 
         # Self attention.
         self_attention_pos_emb = None
@@ -1205,16 +1205,16 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
             self_attention_pos_emb = rotary_pos_emb
         attention_output, attention_bias = \
             self.self_attention(
-                xattn_layernorm_output,
+                xattn_norm_output,
                 attention_mask,
                 inference_params=inference_params,
                 rotary_pos_emb=self_attention_pos_emb)
 
         # Residual connection.
-        if self.apply_residual_connection_post_layernorm:
-            residual = xattn_layernorm_output
+        if self.apply_residual_connection_post_norm:
+            residual = xattn_norm_output
         else:
-            residual = xattn_layernorm_input
+            residual = xattn_norm_input
 
         if self.drop_path is None:
             # jit scripting for a nn.module (with dropout) is not
@@ -1232,7 +1232,7 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
                 bias_dropout_add_func = get_bias_dropout_add(self.training)
 
             with self.bias_dropout_add_exec_handler():
-                layernorm_input = bias_dropout_add_func(
+                norm_input = bias_dropout_add_func(
                     attention_output,
                     attention_bias,
                     residual,
@@ -1241,19 +1241,19 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
             out = torch.nn.functional.dropout(attention_output + \
                     attention_bias, p=self.hidden_dropout,
                     training=self.training)
-            layernorm_input = residual + self.drop_path(out)
+            norm_input = residual + self.drop_path(out)
 
         # Layer norm post the self attention.
-        layernorm_output = self.post_attention_layernorm(layernorm_input)
+        norm_output = self.post_attention_norm(norm_input)
 
         # MLP.
-        mlp_output, mlp_bias = self.mlp(layernorm_output)
+        mlp_output, mlp_bias = self.mlp(norm_output)
 
         # Second residual connection.
-        if self.apply_residual_connection_post_layernorm:
-            residual = layernorm_output
+        if self.apply_residual_connection_post_norm:
+            residual = norm_output
         else:
-            residual = layernorm_input
+            residual = norm_input
 
         if self.drop_path is None:
             with self.bias_dropout_add_exec_handler():
@@ -1319,7 +1319,7 @@ class ParallelTransformerLayer(MegatronModule):
         # Normalize the input data.
         if is_vit:
             config.hidden_size = args.visual_hidden_size
-        self.input_layernorm = get_norm(config)
+        self.input_norm = get_norm(config)
 
         # Self attention.
         self.self_attention = ParallelAttention(
@@ -1335,7 +1335,7 @@ class ParallelTransformerLayer(MegatronModule):
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
 
         # Normalize the attention output
-        self.post_attention_layernorm = get_norm(config)
+        self.post_attention_norm = get_norm(config)
 
         # Cross attention.
         if self.layer_type in (LayerType.decoder,
@@ -1347,7 +1347,7 @@ class ParallelTransformerLayer(MegatronModule):
                 layer_number,
                 attention_type=AttnType.cross_attn)
             # Normalize the attention output.
-            self.post_inter_attention_layernorm = get_norm(config)
+            self.post_inter_attention_norm = get_norm(config)
 
         # MLP
         if args.num_experts is not None:
@@ -1413,7 +1413,7 @@ class ParallelTransformerLayer(MegatronModule):
                 self.hidden_dropout)
 
         # Normalize.
-        norm_output = self.post_inter_attention_layernorm(norm_input)
+        norm_output = self.post_inter_attention_norm(norm_input)
 
         return norm_input, norm_output
 
@@ -1473,7 +1473,7 @@ class ParallelTransformerLayer(MegatronModule):
                 norm_inputs.append(norm_input)
 
             # Layer norm.
-            norm_output = self.post_inter_attention_layernorm(norm_input)
+            norm_output = self.post_inter_attention_norm(norm_input)
             norm_outputs.append(norm_output)
 
         # Concatenate layer norms.
@@ -1582,7 +1582,7 @@ class ParallelTransformerLayer(MegatronModule):
             norm_input = norm_input + residual
 
         # Layer norm post the decoder attention
-        norm_output = self.post_inter_attention_layernorm(norm_input)
+        norm_output = self.post_inter_attention_norm(norm_input)
 
         return retriever_output, norm_input, norm_output
 
@@ -1640,7 +1640,7 @@ class ParallelTransformerLayer(MegatronModule):
         # hidden_states: [s, b, h]
 
         # Layer norm at the beginning of the transformer layer.
-        norm_output = self.input_layernorm(hidden_states, vit_layer_norm=self.is_vit)
+        norm_output = self.input_norm(hidden_states, vit_layer_norm=self.is_vit)
 
         if self.window_size > 0:
             norm_output, pad_hw = self.window_partition(norm_output.reshape(self.pad_h, self.pad_w,
@@ -1698,7 +1698,7 @@ class ParallelTransformerLayer(MegatronModule):
             norm_input = residual + self.drop_path(out)
 
         # Layer norm post the self attention.
-        norm_output = self.post_attention_layernorm(norm_input, vit_layer_norm=self.is_vit)
+        norm_output = self.post_attention_norm(norm_input, vit_layer_norm=self.is_vit)
 
         # Cross attention.
         if self.layer_type == LayerType.encoder:
