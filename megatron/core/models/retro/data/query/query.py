@@ -13,10 +13,7 @@ from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.factory import IndexFactory
 from megatron.core.models.retro.data.index.utils import get_index_dir
 from megatron.core.models.retro.data.utils import (
-    # >>>
-    # get_missing_blocks_by_rank,
     get_blocks_by_rank,
-    # <<<
     GPTToTextDataset,
     print_rank_0,
 )
@@ -181,7 +178,7 @@ def query_dataset_neighbors(config, db_dataset,
                 str(f["neighbors"].shape),
                 config.retro_num_neighbors_target,
             )
-    n_missing_blocks, missing_neighbor_blocks = get_missing_blocks_by_rank(
+    blocks = get_blocks_by_rank(
         neighbor_dir,
         num_active_chunks,
         config.retro_block_size,
@@ -189,7 +186,7 @@ def query_dataset_neighbors(config, db_dataset,
     )
 
     # Query each block.
-    for block_index, block in enumerate(missing_neighbor_blocks):
+    for block_index, block in enumerate(blocks.missing):
 
         if block is not None:
 
@@ -197,7 +194,7 @@ def query_dataset_neighbors(config, db_dataset,
             print_rank_0("query '%s' block %d / %d ... %s ... mem %.3f gb, %.1f%%." % (
                 prefix,
                 block_index,
-                len(missing_neighbor_blocks),
+                len(blocks.missing),
                 os.path.basename(block["path"]),
                 psutil.virtual_memory()[3] / 1024**3,
                 psutil.virtual_memory()[2],

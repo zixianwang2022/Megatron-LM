@@ -17,13 +17,7 @@ from tqdm import tqdm
 
 from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
-from megatron.core.models.retro.data.utils import (
-    # >>>
-    # get_missing_blocks_by_rank,
-    get_blocks_by_rank,
-    # <<<
-    print_rank_0,
-)
+from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0
 
 from .faiss_base import FaissBaseIndex
 
@@ -72,7 +66,10 @@ class FaissParallelAddIndex(FaissBaseIndex):
         # Missing code blocks.
         def validate(f):
             assert len(f["data"].shape) == 2
-        n_missing_blocks, missing_code_blocks = get_missing_blocks_by_rank(
+        # >>>
+        # n_missing_blocks, missing_code_blocks = get_missing_blocks_by_rank(
+        blocks = get_blocks_by_rank(
+        # <<<
             codes_dir,
             len(text_dataset),
             config.retro_block_size,
@@ -80,14 +77,14 @@ class FaissParallelAddIndex(FaissBaseIndex):
         )
 
         # Encode each block.
-        for block_index, block in enumerate(missing_code_blocks):
+        for block_index, block in enumerate(blocks.missing):
 
             if block is not None:
 
                 # Progress.
                 print_rank_0("encode block %d / %d ... %s." % (
                     block_index,
-                    len(missing_code_blocks),
+                    len(blocks.missing),
                     block["path"],
                 ))
 
