@@ -13,10 +13,7 @@ from megatron import get_args, get_tokenizer, print_rank_0
 from megatron import core
 from megatron.arguments import core_transformer_config_from_args
 from megatron.core.enums import ModelType
-# >>>
-# from megatron.core.models.retro.data.utils import get_missing_blocks_by_rank
 from megatron.core.models.retro.data.utils import get_blocks_by_rank
-# <<<
 from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.model import BertModel
 from megatron.training import setup_model_and_optimizer
@@ -313,10 +310,7 @@ class DiskDataParallelBertEmbedder:
         # Missing embedding blocks (stored on disk).
         def validate(f):
             assert f["data"].shape[1] == 1024
-        # >>>
-        # n_missing_world, missing_embedding_blocks = get_missing_blocks_by_rank(
-        blocks = get_missing_blocks_by_rank(
-        # <<<
+        blocks = get_blocks_by_rank(
             dirname,
             len(text_dataset),
             self.block_size,
@@ -326,8 +320,4 @@ class DiskDataParallelBertEmbedder:
         torch.distributed.barrier()
 
         # Embed batches.
-        # >>>
-        # self.embed_text_blocks(name, dirname, text_dataset,
-        #                        missing_embedding_blocks)
         self.embed_text_blocks(name, dirname, text_dataset, blocks.missing)
-        # <<<
