@@ -1080,10 +1080,10 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         self.ff_gate = torch.nn.Parameter(torch.tensor([0.]))
 
         # Normalize the input data.
-        self.input_norm = get_norm(config)
+        self.input_norm = get_norm(config, is_vit=False)
 
 
-        self.xattn_norm = get_norm(config)
+        self.xattn_norm = get_norm(config, is_vit=False)
 
         # Self attention.
         self.self_attention = ParallelAttention(
@@ -1097,7 +1097,7 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
 
         # Normalize the attention output
-        self.post_attention_norm = get_norm(config)
+        self.post_attention_norm = get_norm(config, is_vit=False)
 
         self.inter_attention = ParallelAttention(
             config,
@@ -1105,7 +1105,7 @@ class ParallelGatedXattnFusedTransformerLayer(MegatronModule):
             attention_type=AttnType.cross_attn)
 
         # norm on the attention output.
-        self.post_inter_attention_norm = get_norm(config)
+        self.post_inter_attention_norm = get_norm(config, is_vit=False)
 
         # MLP
         self.mlp = ParallelMLP(config)
@@ -1319,7 +1319,7 @@ class ParallelTransformerLayer(MegatronModule):
         # Normalize the input data.
         if is_vit:
             config.hidden_size = args.visual_hidden_size
-        self.input_norm = get_norm(config)
+        self.input_norm = get_norm(config, is_vit=is_vit)
 
         # Self attention.
         self.self_attention = ParallelAttention(
@@ -1335,7 +1335,7 @@ class ParallelTransformerLayer(MegatronModule):
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else None
 
         # Normalize the attention output
-        self.post_attention_norm = get_norm(config)
+        self.post_attention_norm = get_norm(config, is_vit=is_vit)
 
         # Cross attention.
         if self.layer_type in (LayerType.decoder,
@@ -1347,7 +1347,7 @@ class ParallelTransformerLayer(MegatronModule):
                 layer_number,
                 attention_type=AttnType.cross_attn)
             # Normalize the attention output.
-            self.post_inter_attention_norm = get_norm(config)
+            self.post_inter_attention_norm = get_norm(config, is_vit=is_vit)
 
         # MLP
         if args.num_experts is not None:
@@ -2134,7 +2134,7 @@ class ParallelTransformer(MegatronModule):
 
         if self.post_process and self.post_norm:
             # Final layer norm before output.
-            self.final_norm = get_norm(config)
+            self.final_norm = get_norm(config, is_vit=is_vit)
 
     def _get_layer(self, layer_number):
         return self.layers[layer_number]

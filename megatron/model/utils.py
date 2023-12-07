@@ -61,9 +61,9 @@ def erf_gelu(x):
     return x * 0.5 * (torch.erf(x / 1.41421).to(dtype=x.dtype)+torch.ones_like(x).to(dtype=x.dtype))
 
 
-def get_norm(config):
+def get_norm(config, is_vit = False):
     args = get_args()
-    if args.normalization == "LayerNorm":
+    if args.normalization == "LayerNorm" or is_vit:
         return LayerNorm(
             config.hidden_size,
             eps=config.layernorm_epsilon,

@@ -762,12 +762,12 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
         print_rank_0('could not find arguments in the checkpoint ...')
 
     if args.no_load_optim and args.add_gated_xattn:
-        print("Load from GPT.... Initialize the input layer norm to xattn layer norm.")
+        print("Load from GPT.... Initialize the input norm to xattn norm.")
         for i in range(args.num_layers):
-            state_dict['model']['language_model']['encoder']['layers.%d.xattn_layernorm.weight' % (i)] = \
-                state_dict['model']['language_model']['encoder']['layers.%d.input_layernorm.weight' % (i)]
-            state_dict['model']['language_model']['encoder']['layers.%d.xattn_layernorm.bias' % (i)] = \
-                state_dict['model']['language_model']['encoder']['layers.%d.input_layernorm.bias' % (i)]
+            state_dict['model']['language_model']['encoder']['layers.%d.xattn_norm.weight' % (i)] = \
+                state_dict['model']['language_model']['encoder']['layers.%d.input_norm.weight' % (i)]
+            state_dict['model']['language_model']['encoder']['layers.%d.xattn_norm.bias' % (i)] = \
+                state_dict['model']['language_model']['encoder']['layers.%d.input_norm.bias' % (i)]
 
     # Model.
     if len(model) == 1:
