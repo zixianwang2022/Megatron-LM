@@ -65,6 +65,7 @@ from megatron.data.nvgpt4_multimodal_dataset import (
 )
 from megatron.arguments import validate_visual_args_sam, validate_visual_args_clip
 
+from agat import AGATProbe
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -886,13 +887,18 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
 
         update_num_microbatches(args.consumed_train_samples)
         args.curr_iteration = iteration
-        loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
-            train_step(forward_step_func,
-                    train_data_iterator,
-                    model,
-                    optimizer,
-                    opt_param_scheduler,
-                    config, visual_model=visual_model)
+        with AGATProbe(modules=[model[0], visual_model],
+                       output_file="test.json",
+                       enabled=iteration == 0,
+                       append=False,
+                       iteration=iteration):
+            loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
+                train_step(forward_step_func,
+                        train_data_iterator,
+                        model,
+                        optimizer,
+                        opt_param_scheduler,
+                        config, visual_model=visual_model)
         iteration += 1
         args.consumed_train_samples += mpu.get_data_parallel_world_size() * \
                                        args.micro_batch_size * \
