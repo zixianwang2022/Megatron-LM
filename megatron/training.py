@@ -889,8 +889,8 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
         args.curr_iteration = iteration
         with AGATProbe(modules=[model[0], visual_model],
                        output_file="test.json",
-                       enabled=iteration == 0,
-                       append=False,
+                       enabled=True,
+                       append=iteration > 0,
                        iteration=iteration):
             loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
                 train_step(forward_step_func,

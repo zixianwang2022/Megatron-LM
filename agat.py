@@ -25,34 +25,27 @@ class AGATProbe(object):
 
         self.rank = torch.distributed.get_rank()
 
-        if self.append and os.path.exists(output_file):
-            try:
-                self.output_file = open(output_file + f"_{self.rank}", "a")
-            except Exception as e:
-                print(f"Error loading {self.output_file}: {e}\n")
-        else:
-            print(f"Starting new AGAT file {output_file}\n")
-            self.output_file = open(output_file + f"_{self.rank}", "w")
-            self.names = {}
-            self.save = True
+        self.output_file = f"{output_file}_{self.rank}"
 
-        for module in modules:
-            self.parents = []
-            self.get_children(module)
-            for name, parameter in module.named_parameters():
-                parameter.register_hook(self.parameter_hook(name, parameter))
+        if not self.append:
+            print(f"Starting new AGAT file {output_file}_{self.rank}\n")
+            f = open(self.output_file, "w")
+            f.close()
+            for module in modules:
+                self.parents = []
+                self.get_children(module)
+                for name, parameter in module.named_parameters():
+                    parameter.register_hook(self.parameter_hook(name, parameter))
+            self.append = True
 
     def parameter_hook(self, name, parameter):
         def f(grad):
             if grad is not None:
-                if name in self.names:
-                    self.names[name] += 1
-                else:
-                    self.names[name] = 0
-                key = f"grad_{name}_{self.names[name]}_{self.rank}"
+                key = f"grad_{name}_{self.rank}"
                 nans = torch.isnan(grad).any()
                 val = np.float64(grad.detach().double().abs().sum().item())
-                self.output_file.write(f"{self.iteration},{key},{val},{int(nans)}\n")
+                with open(self.output_file, "a" if self.append else "w") as f:
+                    f.write(f"{self.iteration},{key},{val},{int(nans)}\n")
 
         return f
 
@@ -68,18 +61,15 @@ class AGATProbe(object):
 
     def enter_module(self, name):
         def f(module, inputs):
-            if name in self.names:
-                self.names[name] += 1
-            else:
-                self.names[name] = 0
             self.parents.append(name)
             inputs = normalize_tuple(inputs)
             for inp_id, inp in enumerate(inputs):
                 if inp is not None and isinstance(inp, torch.Tensor):
-                    key = f"in_{name}_{self.names[name]}_{inp_id}_{self.rank}"
+                    key = f"in_{name}_{inp_id}_{self.rank}"
                     nans = torch.isnan(inp).any()
                     val = float(inp.detach().double().abs().sum().item())
-                    self.output_file.write(f"{self.iteration},{key},{val},{int(nans)}\n")
+                    with open(self.output_file, "a" if self.append else "w") as f:
+                        f.write(f"{self.iteration},{key},{val},{int(nans)}\n")
 
         return f
 
@@ -90,10 +80,11 @@ class AGATProbe(object):
             outputs = normalize_tuple(outputs)
             for out_id, out in enumerate(outputs):
                 if out is not None and isinstance(out, torch.Tensor):
-                    key = f"out_{name}_{self.names[name]}_{out_id}_{self.rank}"
+                    key = f"out_{name}_{out_id}_{self.rank}"
                     nans = torch.isnan(out).any()
                     val = float(out.detach().double().abs().sum().item())
-                    self.output_file.write(f"{self.iteration},{key},{val},{int(nans)}\n")
+                    with open(self.output_file, "a" if self.append else "w") as f:
+                        f.write(f"{self.iteration},{key},{val},{int(nans)}\n")
 
         return f
 
@@ -101,5 +92,5 @@ class AGATProbe(object):
         pass
 
     def __exit__(self, *args):
-        self.output_file.close()
+        pass
 
