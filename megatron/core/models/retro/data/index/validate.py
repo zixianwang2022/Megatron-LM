@@ -89,27 +89,27 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
             # Embed block.
             sub_dataset = Subset(text_dataset, range(*block["range"]))
             # >>>
-            from lutil import pax
-            pax({
-                "embeddings / short" : [
-                    embedder.embed_text("hi, bert.")
-                    for _ in range(3)
-                ],
-                "embeddings / long" : [
-                    # embedder.embed_text_dataset(sub_dataset)
-                    embedder.embed_text_dataset(Subset(text_dataset, range(*block["range"])))
-                    for _ in range(3)
-                ],
-            })
+            # from lutil import pax
+            # pax({
+            #     "embeddings / short" : [
+            #         embedder.embed_text("hi, bert.")
+            #         for _ in range(3)
+            #     ],
+            #     "embeddings / long" : [
+            #         # embedder.embed_text_dataset(sub_dataset)
+            #         embedder.embed_text_dataset(Subset(text_dataset, range(*block["range"])))
+            #         for _ in range(3)
+            #     ],
+            # })
             # <<<
             embeddings = embedder.embed_text_dataset(sub_dataset)
 
             # >>>
-            embeddings = [ embeddings ] + [
-                embedder.embed_text_dataset(sub_dataset)
-                for _ in range(3) ]
-            from lutil import pax
-            pax("sub_dataset, embeddings")
+            # embeddings = [ embeddings ] + [
+            #     embedder.embed_text_dataset(sub_dataset)
+            #     for _ in range(3) ]
+            # from lutil import pax
+            # pax("sub_dataset, embeddings")
             # <<<
 
             # Check equality.

@@ -249,24 +249,28 @@ class BertEmbedder:
             raise Exception("specialize for embedder type '%s'." % embedder_type)
 
         # >>>
-        dataset = TextDataset([
-            "i am here.",
-            "now i am all the way over there.",
-            "where am i now, i cannot count to ten without rest.",
+        # Warm-up JIT.
+        # - Important to separately warm up:
+        #   1. batch_size == 1
+        #   2. batch_size > 1
+        warmup_dataset = TextDataset([
+            "great fleas have lesser fleas, upon their backs to bite’em,",
+            "and lesser fleas have lesser fleas, and so, ad infinitum,",
+            "and those great fleas, themselves, in turn have greater fleas to go on,",
+            "while those again have greater still, and greater still, and so on.",
         ])
-
-        from lutil import pax
-        pax({
-            "warm up / 0" : [ self.embed_text("hi, bert.") for _ in range(4) ],
-            "warm up / 1" : [ self.embed_text("ijasdf0989u oafdg8990aud 098f d0f 90adf 98asd f") for _ in range(4) ],
-            "warm up / 2" : [ self.embed_text_dataset(dataset) for _ in range(4) ],
-        })
+        for _ in range(3):
+            self.embed_text("hi, bert.")            # batch size == 1
+        for _ in range(3):
+            self.embed_text_dataset(warmup_dataset) # batch size > 1
         # <<<
 
         # >>>
-        # Warm-up JIT.
-        for _ in range(3):
-            self.embed_text("hi, bert.")
+        # from lutil import pax
+        # pax({
+        #     "warm up / 0" : [ self.embed_text("hi, bert.") for _ in range(4) ],
+        #     "warm up / 1" : [ self.embed_text_dataset(warmup_dataset) for _ in range(4) ],
+        # })
         # <<<
 
     def embed_text_dataset(self, text_dataset):
@@ -326,7 +330,7 @@ class BertEmbedder:
         '''
 
         # Embed text.
-        text_ds = SingleTextDataset(text)
+        text_ds = TextDataset([ text ])
         embed = self.embed_text_dataset(text_ds)[0]
 
         return embed
