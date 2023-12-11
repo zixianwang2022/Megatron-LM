@@ -543,10 +543,10 @@ def _build_db(config):
 def build_db(config):
 
     # Build new database.
-    if config.retro_task_verify is None:
+    if config.retro_task_validate is None:
         _build_db(config)
 
-    # Verify existing database.
+    # Validate existing database.
     else:
-        from .verify import verify_db
-        verify_db(config)
+        from .validate import validate_db
+        validate_db(config)

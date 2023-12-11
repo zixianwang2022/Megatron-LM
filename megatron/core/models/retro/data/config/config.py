@@ -33,11 +33,12 @@ class RetroPreprocessingConfig(TransformerConfig):
             equivalent to '--retro-tasks build'; or the argument can contain a
             subset of these tasks. Stages must always be run in the correct order
             (listed above).
-        retro_task_verify (float): If defined, verify a randomly sampled subset
-            of the existing results of the given task. Each task implements a
-            'verify' method that is responsible for sampling a `retro_task_verify`
-            fraction of the existing results, and then checking for bitwise
-            equality with the current code base. (E.g., `--retro-task-verify 0.01`.)
+        retro_task_validate (float): If defined, validate a randomly sampled
+            subset of the existing results of the given task. Each task
+            implements a 'validate' method that is responsible for sampling a
+            `retro_task_validate` fraction of the existing results, and then
+            checking for bitwise equality with the current code base. (E.g.,
+            `--retro-task-validate 0.01`.)
         retro_block_size (int): Number of chunks to process at a time when
             generating Bert embeddings and querying the search index. Partial
             results for each block are generally saved to disk in separate files.
@@ -121,7 +122,7 @@ class RetroPreprocessingConfig(TransformerConfig):
     # Basic.
     retro_project_dir: str = None
     retro_tasks: str = 'build'
-    retro_task_verify: float = None
+    retro_task_validate: float = None
     retro_block_size: int = 100000
     retro_doc_block_size: int = 100000
 

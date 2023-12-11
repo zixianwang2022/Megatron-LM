@@ -53,20 +53,32 @@ def add_retro_args(parser):
     return parser
 
 
+# >>>
+# def get_bert_embedders(config):
+#     return RetroBertEmbedders(
+#         disk = DiskDataParallelBertEmbedder(
+#             batch_size = config.retro_bert_batch_size,
+#             max_bert_seq_length = config.retro_bert_max_chunk_length,
+#             block_size = config.retro_block_size,
+#             embedder_type = "megatron",
+#         ),
+#         mem = BertEmbedder(
+#             batch_size = config.retro_bert_batch_size,
+#             max_bert_seq_length = config.retro_bert_max_chunk_length,
+#             embedder_type = "megatron",
+#         ),
+#     )
 def get_bert_embedders(config):
-    return RetroBertEmbedders(
-        disk = DiskDataParallelBertEmbedder(
-            batch_size = config.retro_bert_batch_size,
-            max_bert_seq_length = config.retro_bert_max_chunk_length,
-            block_size = config.retro_block_size,
-            embedder_type = "megatron",
-        ),
-        mem = BertEmbedder(
-            batch_size = config.retro_bert_batch_size,
-            max_bert_seq_length = config.retro_bert_max_chunk_length,
-            embedder_type = "megatron",
-        ),
+    mem_embedder = BertEmbedder(
+        batch_size = config.retro_bert_batch_size,
+        max_bert_seq_length = config.retro_bert_max_chunk_length,
+        embedder_type = "megatron",
     )
+    return RetroBertEmbedders(
+        mem = mem_embedder,
+        disk = DiskDataParallelBertEmbedder(mem_embedder, config.retro_block_size),
+    )
+# <<<
 
 
 # >>>
@@ -206,10 +218,12 @@ if __name__ == "__main__":
         "index-add" : [ "index-add" ],
         "query-neighbors" : [ "query-neighbors" ],
 
-        "db-build-verify" : [ "db-build-verify" ],
-        "index-train-verify" : [ "index-train-verify" ],
-        "index-add-verify" : [ "index-add-verify" ],
-        "query-neighbors-verify" : [ "query-neighbors-verify" ],
+        # >>>
+        # "db-build-verify" : [ "db-build-verify" ],
+        # "index-train-verify" : [ "index-train-verify" ],
+        # "index-add-verify" : [ "index-add-verify" ],
+        # "query-neighbors-verify" : [ "query-neighbors-verify" ],
+        # <<<
     }
     tasks = []
     for task in config.retro_tasks:

@@ -142,13 +142,13 @@ def _train_index(config):
 def train_index(config):
 
     # Train new index.
-    if config.retro_task_verify is None:
+    if config.retro_task_validate is None:
         _train_index(config)
 
-    # Verify existing trained index.
+    # Validate existing trained index.
     else:
-        from .verify import verify_training_embeddings
-        verify_training_embeddings(config)
+        from .validate import validate_training_embeddings
+        validate_training_embeddings(config)
 
 
 ##################################################
@@ -184,13 +184,13 @@ def _add_to_index(config):
 def add_to_index(config):
 
     # Add to new index.
-    if config.retro_task_verify is None:
+    if config.retro_task_validate is None:
         _add_to_index(config)
 
-    # Verify existing encodings.
+    # Validate existing encodings.
     else:
-        from .verify import verify_added_encodings
-        verify_added_encodings(config)
+        from .validate import validate_added_encodings
+        validate_added_encodings(config)
 
 
 ##################################################

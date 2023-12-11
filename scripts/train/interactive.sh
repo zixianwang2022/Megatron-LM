@@ -12,11 +12,11 @@ if [ "$#" != 2 ]; then
 fi
 USE_CORE=$1
 ADD_RETRIEVER=$2
-NPROCS=8
+NPROCS=1 # 8
 NWORKERS=32
 
 REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/megatrons/retro-mcore-data"
-RETRO_PROJECT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/projects/wiki-tiny-2xb"
+RETRO_PROJECT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/projects/wiki-tiny-core"
 
 # CORPUS_ROOT="/lustre/fsw/portfolios/adlr/users/lmcafee/corpus-530b"
 # DATA_PATH=" \

@@ -22,7 +22,7 @@ from lutil import pax, print_seq
 # <<<
 
 
-def verify_individual_db(
+def validate_individual_db(
     config: RetroPreprocessingConfig,
     dataset_idx: int,
     n_datasets: int,
@@ -43,7 +43,7 @@ def verify_individual_db(
         config.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
             or f["chunks_valid"].shape[1] == 4,
-        fraction=config.retro_task_verify,
+        fraction=config.retro_task_validate,
     )
 
     assert blocks.n_missing_world == 0
@@ -100,32 +100,32 @@ def verify_individual_db(
             print_rank_0(" > waiting for all ranks to finish block.")
             torch.distributed.barrier()
 
-    print_rank_0(" > finished verifying individual db.")
+    print_rank_0(" > finished validating individual db.")
 
 
-def verify_individual_dbs(
+def validate_individual_dbs(
     config: RetroPreprocessingConfig,
     indexed_dataset_infos: List[dict],
 ) -> None:
     '''Iterate each indexed dataset & process its chunks.'''
 
-    # Verify individual DBs.
-    print_rank_0(" > verify individual chunk dbs.")
+    # Validate individual DBs.
+    print_rank_0(" > validate individual chunk dbs.")
     for ds_idx, ds_info in enumerate(indexed_dataset_infos):
 
         # Progress.
-        print_rank_0(" > verifying individual db, dataset %d / %d ... '%s'." % (
+        print_rank_0(" > validating individual db, dataset %d / %d ... '%s'." % (
             ds_idx,
             len(indexed_dataset_infos),
             ds_info["name"],
         ))
 
         # Process single dataset.
-        verify_individual_db(config, ds_idx, len(indexed_dataset_infos), ds_info)
+        validate_individual_db(config, ds_idx, len(indexed_dataset_infos), ds_info)
 
 
 # >>>
-# def verify_db(config):
+# def validate_db(config):
 
 #     # train_dataset = get_merged_train_dataset(
 #     merged_ds_map = get_merged_datasets(
@@ -137,14 +137,14 @@ def verify_individual_dbs(
 #     pax("config, merged_ds_map")
 
 
-# def verify_merged_dbs(project_dir, indexed_dataset_infos):
-#     verify_merged_db(project_dir, indexed_dataset_infos, "sampled")
-#     verify_merged_db(project_dir, indexed_dataset_infos, "train")
-#     verify_merged_db(project_dir, indexed_dataset_infos, "valid")
+# def validate_merged_dbs(project_dir, indexed_dataset_infos):
+#     validate_merged_db(project_dir, indexed_dataset_infos, "sampled")
+#     validate_merged_db(project_dir, indexed_dataset_infos, "train")
+#     validate_merged_db(project_dir, indexed_dataset_infos, "valid")
 # <<<
 
 
-def verify_db(config):
+def validate_db(config):
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
@@ -156,8 +156,8 @@ def verify_db(config):
     # Indexed dataset info.
     indexed_dataset_infos = get_indexed_dataset_infos(project_dir)
 
-    # Verify individual dbs.
-    verify_individual_dbs(config, indexed_dataset_infos)
+    # Validate individual dbs.
+    validate_individual_dbs(config, indexed_dataset_infos)
 
     ########################################################
     # [ **Note**: individual checks considered sufficient. ]
@@ -167,5 +167,5 @@ def verify_db(config):
     # if torch.distributed.get_rank() != 0:
     #     return
 
-    # # Verify merged dbs.
-    # verify_merged_dbs(project_dir, indexed_dataset_infos)
+    # # Validate merged dbs.
+    # validate_merged_dbs(project_dir, indexed_dataset_infos)

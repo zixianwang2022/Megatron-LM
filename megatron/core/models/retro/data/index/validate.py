@@ -35,12 +35,12 @@ from lutil import pax, print_seq
 
 
 ##################################################
-# Verify trained index.
+# Validate trained index.
 ##################################################
 
 
-def verify_training_embeddings(config: RetroPreprocessingConfig) -> None:
-    '''Verify training embeddings.
+def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
+    '''Validate training embeddings.
 
     Steps:
     - Randomly sample subset of text dataset blocks.
@@ -57,13 +57,18 @@ def verify_training_embeddings(config: RetroPreprocessingConfig) -> None:
         n_samples=len(text_dataset),
         block_size=config.retro_block_size,
         validate=None,
-        fraction=config.retro_task_verify,
+        fraction=config.retro_task_validate,
     )
 
     assert blocks.n_missing_world == 0
 
-    # Embed & verify blocks.
+    # Embed & validate blocks.
     embedder = config.retro_bert_embedders.mem
+    # >>>
+    # embeddings = [ embedder.embed_text("hi, lawrence.") for _ in range(20) ]
+    # from lutil import pax
+    # pax("embeddings")
+    # <<<
     for block_idx, block in enumerate(blocks.existing):
 
         # Missing block lists are extended with None to have equal-length
@@ -83,7 +88,29 @@ def verify_training_embeddings(config: RetroPreprocessingConfig) -> None:
 
             # Embed block.
             sub_dataset = Subset(text_dataset, range(*block["range"]))
+            # >>>
+            from lutil import pax
+            pax({
+                "embeddings / short" : [
+                    embedder.embed_text("hi, bert.")
+                    for _ in range(3)
+                ],
+                "embeddings / long" : [
+                    # embedder.embed_text_dataset(sub_dataset)
+                    embedder.embed_text_dataset(Subset(text_dataset, range(*block["range"])))
+                    for _ in range(3)
+                ],
+            })
+            # <<<
             embeddings = embedder.embed_text_dataset(sub_dataset)
+
+            # >>>
+            embeddings = [ embeddings ] + [
+                embedder.embed_text_dataset(sub_dataset)
+                for _ in range(3) ]
+            from lutil import pax
+            pax("sub_dataset, embeddings")
+            # <<<
 
             # Check equality.
             assert np.array_equal(existing_embeddings, embeddings)
@@ -96,16 +123,16 @@ def verify_training_embeddings(config: RetroPreprocessingConfig) -> None:
         print_rank_0(" > waiting for other ranks to finish block.")
         torch.distributed.barrier()
 
-    print_rank_0(" > finished verifying training embeddings.")
+    print_rank_0(" > finished validating training embeddings.")
 
 
 ##################################################
-# Verify filled index.
+# Validate filled index.
 ##################################################
 
 
-def verify_added_encodings(config):
-    '''Verify added encodings.
+def validate_added_encodings(config):
+    '''Validate added encodings.
 
     Steps:
     - Randomly sample subset of text dataset blocks.
@@ -128,12 +155,12 @@ def verify_added_encodings(config):
         n_samples=len(text_dataset),
         block_size=config.retro_block_size,
         validate=validate,
-        fraction=config.retro_task_verify,
+        fraction=config.retro_task_validate,
     )
 
     assert blocks.n_missing_world == 0
 
-    # Encode and verify blocks.
+    # Encode and validate blocks.
     embedder = config.retro_bert_embedders.mem
     for block_idx, block in enumerate(blocks.existing):
 
@@ -151,10 +178,21 @@ def verify_added_encodings(config):
                 existing_codes = np.copy(f["data"])
 
             # Encode block.
-            codes = index.encode_block(inner_index, embedder, text_dataset, block)
+            embeddings, codes = index.encode_block(inner_index, embedder, text_dataset, block)
 
             # Check equality.
-            assert np.array_equal(existing_codes, codes)
+            # >>>
+            try:
+                assert np.array_equal(existing_codes, codes)
+            except Exception as e:
+                diff_codes = codes - existing_codes
+
+                print(diff_codes)
+                print(np.nonzero(diff_codes))
+                print(diff_codes[np.nonzero(diff_codes)])
+                from lutil import pax
+                pax("existing_codes, codes, diff_codes")
+            # <<<
 
             # >>>
             pax("existing_codes, codes")
@@ -164,24 +202,24 @@ def verify_added_encodings(config):
         print_rank_0(" > waiting for other ranks to finish block.")
         torch.distributed.barrier()
 
-    print_rank_0(" > finished verifying added encodings.")
+    print_rank_0(" > finished validating added encodings.")
 
 
 ##################################################
-# Verify index (trained + filled).
+# Validate index (trained + filled).
 ##################################################
 
 
-def verify_index(config):
-    '''Verify index.
+def validate_index(config):
+    '''Validate index.
 
-    Verifying index involves sequentially running stages above:
-    - Verify trained index.
-    - Verify filled index.
+    Validating index involves sequentially running stages above:
+    - Validate trained index.
+    - Validate filled index.
     '''
 
-    # Verify trained index.
-    verify_trained_index(config)
+    # Validate trained index.
+    validate_trained_index(config)
 
-    # Verify filled index.
-    verify_filled_index(config)
+    # Validate filled index.
+    validate_filled_index(config)
