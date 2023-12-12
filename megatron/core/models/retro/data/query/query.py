@@ -14,7 +14,6 @@ from megatron.core.models.retro.data.index.factory import IndexFactory
 from megatron.core.models.retro.data.index.utils import get_index_dir
 from megatron.core.models.retro.data.utils import (
     get_blocks_by_rank,
-    get_sampled_blocks_by_rank,
     GPTToTextDataset,
     print_rank_0,
 )
@@ -197,12 +196,12 @@ def query_dataset_neighbors(config, db_dataset,
         )
         active_blocks = blocks.missing
     else:
-        blocks = get_sampled_blocks_by_rank(
+        blocks = get_blocks_by_rank(
             neighbor_dir,
             num_active_chunks,
             config.retro_block_size,
             validate=validate,
-            fraction=config.retro_task_validate,
+            sample=config.retro_task_validate,
         )
         assert blocks.n_missing_world == 0
         active_blocks = blocks.existing

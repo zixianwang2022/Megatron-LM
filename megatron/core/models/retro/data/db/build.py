@@ -30,6 +30,10 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
+# >>>
+from lutil import pax, print_seq
+# <<<
+
 
 def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
     '''Gather meta-info about each indexed dataset.
@@ -268,13 +272,20 @@ def build_individual_db(
         len(indexed_dataset),
         config.retro_doc_block_size,
         validate=lambda f : f["chunks_valid"].shape == (0,) \
-            or f["chunks_valid"].shape[1] == 4)
+            or f["chunks_valid"].shape[1] == 4,
+        sample=config.retro_task_validate,
+    )
+    if config.retro_task_validate is None:
+        active_blocks = blocks.missing
+    else:
+        assert blocks.n_missing_world == 0
+        active_blocks = blocks.existing
 
     # Prevent missing-path-write race condition.
     torch.distributed.barrier()
 
     # Nothing to do?
-    if not blocks.missing:
+    if config.retro_task_validate is None and not active_blocks:
         return
 
     # Num processes.
@@ -291,7 +302,7 @@ def build_individual_db(
 
     # Process documents in parallel.
     with ProcessPoolExecutor(max_workers=n_procs) as executor:
-        for block_idx, block in enumerate(blocks.missing):
+        for block_idx, block in enumerate(active_blocks):
 
             if block is not None:
 
@@ -303,18 +314,39 @@ def build_individual_db(
                     indexed_dataset=indexed_dataset,
                     n_procs=n_procs,
                     executor=executor,
-                    n_missing_blocks=len(blocks.missing),
+                    n_missing_blocks=len(active_blocks),
                     block_idx=block_idx,
                     block=block,
                 )
 
-                # Save block DB.
-                save_block_db(
-                    block=block,
-                    chunk_db_valid=chunk_db_valid,
-                    chunk_db_invalid=chunk_db_invalid,
-                    doc_offsets=doc_offsets,
-                )
+                if config.retro_task_validate is None:
+                    # Save block DB.
+                    save_block_db(
+                        block=block,
+                        chunk_db_valid=chunk_db_valid,
+                        chunk_db_invalid=chunk_db_invalid,
+                        doc_offsets=doc_offsets,
+                    )
+
+                else:
+                    # Load existing block DB.
+                    with h5py.File(block["path"]) as f:
+                        existing_chunks_valid = np.copy(f["chunks_valid"])
+                        existing_chunks_invalid = np.copy(f["chunks_invalid"])
+                        existing_doc_offsets = np.copy(f["doc_offsets"])
+
+                    # >>>
+                    # pax(
+                    #     "existing_chunks_valid, chunk_db_valid",
+                    #     "existing_chunks_invalid, chunk_db_invalid",
+                    #     "existing_doc_offsets, doc_offsets",
+                    # )
+                    # <<<
+
+                    # Check equality.
+                    assert np.array_equal(existing_chunks_valid, chunk_db_valid)
+                    assert np.array_equal(existing_chunks_invalid, chunk_db_invalid)
+                    assert np.array_equal(existing_doc_offsets, doc_offsets)
 
             # Wait for all ranks to finish block.
             print_rank_0(" > waiting for all ranks to finish block.")
@@ -511,7 +543,10 @@ def build_merged_dbs(project_dir, indexed_dataset_infos):
     merge_dbs(project_dir, indexed_dataset_infos, "valid")
 
 
-def _build_db(config):
+# >>>
+# def _build_db(config):
+def build_db(config):
+# <<<
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
@@ -521,10 +556,22 @@ def _build_db(config):
     project_dir = config.retro_project_dir
 
     # Indexed dataset info.
-    indexed_dataset_infos = init_indexed_dataset_infos(config)
+    # >>>
+    if config.retro_task_validate is None:
+        indexed_dataset_infos = init_indexed_dataset_infos(config)
+    else:
+        indexed_dataset_infos = get_indexed_dataset_infos(config.retro_project_dir)
+    # <<<
 
     # Build individual dbs.
     build_individual_dbs(config, indexed_dataset_infos)
+
+    # >>>
+    # If validating, return here.
+    if config.retro_task_validate is not None:
+        print_seq("hi.")
+        return
+    # <<<
 
     # Single-process going forward.
     if torch.distributed.get_rank() != 0:
@@ -540,13 +587,15 @@ def _build_db(config):
     build_merged_dbs(project_dir, indexed_dataset_infos)
 
 
-def build_db(config):
+# >>>
+# def build_db(config):
 
-    # Build new database.
-    if config.retro_task_validate is None:
-        _build_db(config)
+#     # Build new database.
+#     if config.retro_task_validate is None:
+#         _build_db(config)
 
-    # Validate existing database.
-    else:
-        from .validate import validate_db
-        validate_db(config)
+#     # Validate existing database.
+#     else:
+#         from .validate import validate_db
+#         validate_db(config)
+# <<<

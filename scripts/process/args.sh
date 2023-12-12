@@ -11,10 +11,10 @@ unset NCCL_DEBUG
 # fi
 # RETRO_TASKS=$1
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="query-neighbors"
+# RETRO_TASKS="query-neighbors"
 
 RETRO_TASK_VALIDATE=1
 
@@ -150,7 +150,8 @@ ARGS+=" --retro-doc-block-size 10000"
 ARGS+=" --retro-block-size 10000"
 if [ "${RETRO_TASK_VALIDATE}" = "1" ]; then
     # ARGS+=" --retro-task-validate 0.1"
-    ARGS+=" --retro-task-validate 1.0"
+    ARGS+=" --retro-task-validate 0.5"
+    # ARGS+=" --retro-task-validate 1.0"
 fi
 
 ######## Command. ########
