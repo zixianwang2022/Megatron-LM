@@ -98,6 +98,8 @@ def add_text_generate_args(parser):
                         help='project size for adapters')
     group.add_argument("--use-retrieved-neighbours", action='store_true', default=False,
                        help='Use retrieved neighbours')
+    group.add_argument("--zihan-format", action='store_true', default=False,
+                       help='Use zihan format to reproduce')
     return parser
 
 def generate_samples_conditional(model):
@@ -142,7 +144,7 @@ def generate_samples_conditional(model):
                     tokenizer = get_tokenizer()
 
                     # input_tokens = format_query(args.task.split(".")[0], neighbours, query, args.seq_length, tokenizer, args.out_seq_length)
-                    input_tokens = reformat_prompt_v2(query, neighbours, args.task.split(".")[0], args.ft_neighbours, max_target_len, tokenizer, args.seq_length)
+                    input_tokens = reformat_prompt_v2(query, neighbours, args.task.split(".")[0], args.ft_neighbours, max_target_len, tokenizer, args.seq_length, zihan_format=args.zihan_format)
                     raw_text = tokenizer.detokenize(input_tokens)
                     print(raw_text)
                 else:

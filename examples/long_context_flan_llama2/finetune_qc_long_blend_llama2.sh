@@ -41,7 +41,7 @@ mkdir -p ${TENSORBOARD_DIR}
 
 OUTPUT_ARGS="--log-interval 1 \
              --save-interval 500 \
-             --eval-interval 50 \
+             --eval-interval 501 \
              --tensorboard-dir ${TENSORBOARD_DIR} \
              --log-validation-ppl-to-tensorboard \
              --eval-iters 50"
@@ -72,8 +72,12 @@ else
     options="$options \
         --load $PRETRAINED_CHECKPOINT \
         --finetune \
-	    --no-load-rng \
+	--no-load-rng \
         --no-load-optim "
+    if [[ ${model_card} == *itp-32k* ]]; then
+        # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
+	DOCKER="/lustre/fs3/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.04-py3-eval.sqsh"
+    fi
 fi
 
 if [[ ${ckpt_step} ]] && [[ ! -f "$CHECKPOINT_PATH/latest_checkpointed_iteration.txt" ]]; then
@@ -101,4 +105,4 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo ${run_cmd}
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude ${bad_nodes} # --dependent_clones 4 # --dependency afterany:100750 
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude ${bad_nodes}  --dependent_clones 2 # --dependency afterany:100750 

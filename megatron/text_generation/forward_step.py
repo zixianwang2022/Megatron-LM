@@ -12,6 +12,7 @@ from .communication import (
     send_to_next_pipeline_rank,
     recv_from_prev_pipeline_rank_)
 
+import gc
 
 class ForwardStep:
     """Forward step function with all the communications.
@@ -101,6 +102,12 @@ def _forward_step_helper(model, tokens, position_ids, attention_mask,
     # Send output to the next stage.
     send_to_next_pipeline_rank(output_tensor)
 
+    # free up mem after usage
+    del recv_buffer
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+
     return output_tensor
 
 
@@ -173,5 +180,10 @@ def _with_pipelining_forward_step(model, tokens, position_ids, attention_mask,
     inference_params.sequence_len_offset += sequence_length
     # and reset the batch size offset
     inference_params.batch_size_offset = 0
+
+    #free memory after usage
+    del recv_buffer
+    gc.collect()
+    torch.cuda.empty_cache()
 
     return logits

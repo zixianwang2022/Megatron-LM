@@ -18,7 +18,7 @@ if [[ $model_size == "43b" ]]; then
     heads=64
     pip_par=4
     if [[ $model_card == *itp-32k* ]]; then
-        mod_par=16
+        mod_par=8
     fi
     if [[ $model_card == *quiet_cockatoo* ]]; then
         pip_par=1
@@ -84,4 +84,4 @@ if [[ ${model_card} == *itp-32k*  ]]; then
     --recompute-activations"
 fi
 
-DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
+DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"

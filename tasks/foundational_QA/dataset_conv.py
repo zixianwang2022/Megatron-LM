@@ -256,65 +256,67 @@ def build_simple_io_training_sample(sample,
     }
     return train_sample
 
-def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
-    max_output_len, tokenizer, max_seq_length):
-
-    system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
-
-    if dataset_name in ["oasst", "quiet_cockatoo"]:
-        input_tokens = tokenizer.tokenize(system + query)
-        # print(dataset_name, system + query)
-        return input_tokens
-
-    short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
-    yes_no_without_context = ["BoolQ"]
-    multichoices = [""]
-    formatted_dataset_name = ["doc2dial"]
-    user_template = ""
-
-    ## fix bug format for formatted text, no change
-    if dataset_name in formatted_dataset_name:
-        dialogue_turn = query
-    else:
-        if dataset_name in short_span_with_context:
-            user = "{} Answer the above question with a short phrase.".format(query)
-        elif dataset_name in yes_no_without_context:
-            user = "{} Answer the above question with True or False.".format(query)
-        else:
-            user = "{} Answer the above question with a long complete answer.".format(query)
-
-        dialogue_format="User: {}\n\nAssistant:"
-        dialogue_turn = dialogue_format.format(user)
-
-    if ft_neighbours > 0:
-        # if shuffle_topn:
-        #     import random
-        #     random.seed(1234)
-        #     random_neighbours = neighbours[0:ft_neighbours]
-        #     random.shuffle(random_neighbours)
-        #     neighbours = random_neighbours + neighbours[ft_neighbours:]
-        # Truncate to `max_sequence_length` to fit in output tokens.
-        context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
-        context_tokens = tokenizer.tokenize(context)
-        dialogue_tokens = tokenizer.tokenize(dialogue_turn)
-        system_tokens = tokenizer.tokenize(system)
-        context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
-        context = tokenizer.detokenize(context_tokens)
-
-        all_input = system + context + dialogue_turn
-        input_tokens = tokenizer.tokenize(all_input)
-    else:
-        all_input = system + dialogue_turn
-        input_tokens = tokenizer.tokenize(all_input)
-
-    # print(dataset_name, all_input)
-
-    return  input_tokens
+# def reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, \
+#     max_output_len, tokenizer, max_seq_length):
+# 
+#     system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+# 
+#     if dataset_name in ["oasst", "quiet_cockatoo"]:
+#         input_tokens = tokenizer.tokenize(system + query)
+#         # print(dataset_name, system + query)
+#         return input_tokens
+# 
+#     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq"]
+#     yes_no_without_context = ["BoolQ"]
+#     multichoices = [""]
+#     formatted_dataset_name = ["doc2dial"]
+#     user_template = ""
+# 
+#     ## fix bug format for formatted text, no change
+#     if dataset_name in formatted_dataset_name:
+#         dialogue_turn = query
+#     else:
+#         if dataset_name in short_span_with_context:
+#             user = "{} Answer the above question with a short phrase.".format(query)
+#         elif dataset_name in yes_no_without_context:
+#             user = "{} Answer the above question with True or False.".format(query)
+#         else:
+#             user = "{} Answer the above question with a long complete answer.".format(query)
+# 
+#         dialogue_format="User: {}\n\nAssistant:"
+#         dialogue_turn = dialogue_format.format(user)
+# 
+#     if ft_neighbours > 0:
+#         # if shuffle_topn:
+#         #     import random
+#         #     random.seed(1234)
+#         #     random_neighbours = neighbours[0:ft_neighbours]
+#         #     random.shuffle(random_neighbours)
+#         #     neighbours = random_neighbours + neighbours[ft_neighbours:]
+#         # Truncate to `max_sequence_length` to fit in output tokens.
+#         context = "\n\n".join(neighbours[0:ft_neighbours]) + "\n\n"
+#         context_tokens = tokenizer.tokenize(context)
+#         dialogue_tokens = tokenizer.tokenize(dialogue_turn)
+#         system_tokens = tokenizer.tokenize(system)
+#         context_tokens = context_tokens[:max_seq_length - max_output_len - len(dialogue_tokens) - len(system_tokens)]
+#         context = tokenizer.detokenize(context_tokens)
+# 
+#         all_input = system + context + dialogue_turn
+#         input_tokens = tokenizer.tokenize(all_input)
+#     else:
+#         all_input = system + dialogue_turn
+#         input_tokens = tokenizer.tokenize(all_input)
+# 
+#     # print(dataset_name, all_input)
+# 
+#     return  input_tokens
 
 def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
-    max_output_len, tokenizer, max_seq_length):
+    max_output_len, tokenizer, max_seq_length, zihan_format=False):
 
     system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+    if zihan_format:
+        system = "System: This is a chat between a user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions based on the context. The assistant should also indicate when the answer cannot be found in the context.\n\n"
 
     if dataset_name in ["oasst", "quiet_cockatoo"]:
         input_tokens = tokenizer.tokenize(system + query)
@@ -326,6 +328,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     multichoices = [""]
     formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
     summary_dataset_name = ["gov_report", "summ_screen_fd"]
+    nli_dataset_name = ["contract_nli"]
     user_template = ""
 
     ## fix bug format for formatted text, no change
@@ -338,6 +341,8 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
             user = "Answer the above question with True or False. {}".format(query)
         elif dataset_name in summary_dataset_name:
             user = "Summarize the passage above."
+        elif dataset_name in nli_dataset_name:
+            user = "Based on the passage above, what is the entailment judgement with the following sentence. {}".format(query)
         else:
             user = "Please give a full and complete answer for the question. {}".format(query)
 
@@ -361,7 +366,8 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
             output_text = re.sub(pattern, ' ', input_text)
             return output_text
 
-        neighbours = [nl_replace(n) for n in neighbours[0:ft_neighbours]]
+        if not zihan_format:
+            neighbours = [nl_replace(n) for n in neighbours[0:ft_neighbours]]
         context = "\n\n".join(neighbours[0:ft_neighbours])
         context_tokens = tokenizer.tokenize(context)
         dialogue_tokens = tokenizer.tokenize(dialogue_turn)
@@ -398,7 +404,7 @@ def build_normal_training_sample_v2(sample,
     tokenizer = get_tokenizer()
     output_tokens = tokenizer.tokenize(answer)
 
-    input_tokens = reformat_prompt_v1(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
+    input_tokens = reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, len(output_tokens), tokenizer, max_seq_length)
     # print(answer)
     
     # print(repr(tokenizer.detokenize(input_tokens)), repr(tokenizer.detokenize(output_tokens)), dataset_name)

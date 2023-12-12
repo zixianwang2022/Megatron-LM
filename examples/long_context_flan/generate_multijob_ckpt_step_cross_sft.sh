@@ -25,6 +25,7 @@ if [[ $sampling == "beam" ]]; then
 fi
 
 CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
+CHECKPOINT_PATH="/lustre/fsw/portfolios/adlr/users/pengx/projects/sft_43b_qa/checkpoints/applications/qc_gpt3-43b-multi-1.1t-gtc-itp-32k-tian-tp8pp4_43b_128_5e-6"
 sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}.txt"
 
 if [[ $use_retrieved_neighbours ]]; then
@@ -43,7 +44,7 @@ GEN_ARGS="$SAMPLE_ARGS \
 
 if [[ ${model_card} == *itp-32k*  ]]; then 
 	mod_par=8
-	pip_par=8
+	pip_par=4
 fi
 DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
                   --nnodes ${pip_par} \
@@ -79,5 +80,5 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo $COMMAND
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 2
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 0.3
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 

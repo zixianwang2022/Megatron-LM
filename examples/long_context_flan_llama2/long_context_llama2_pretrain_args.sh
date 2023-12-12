@@ -5,7 +5,7 @@
 
 ## llama-2
 if [[ $model_size == "7b" ]]; then
-    mod_par=2
+    mod_par=1
     layers=32
     hid_dim=4096
     heads=32
@@ -99,5 +99,13 @@ if [[ ${model_card} == *text*70b*  ]]; then
     # --recompute-activations"
 fi
 
+if [[ ${model_card} == *text*7b*itp-*  ]]; then
+    FT_ARGS="$FT_ARGS \
+    --recompute-method uniform \
+    --recompute-granularity full"
+    # --recompute-activations"
+fi
+
 # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
-DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
+# DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
+DOCKER="/lustre/fsw/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.12-py3-eval.sqsh"

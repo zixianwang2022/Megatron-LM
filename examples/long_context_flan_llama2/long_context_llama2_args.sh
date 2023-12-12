@@ -5,7 +5,7 @@
 
 ## llama-2
 if [[ $model_size == "7b" ]]; then
-    mod_par=2
+    mod_par=1
     layers=32
     hid_dim=4096
     heads=32
@@ -71,8 +71,13 @@ if [[ ${model_card} == *itp-16k*  ]]; then
     --distributed-timeout-minutes 30"
 
 elif [[ ${model_card} == *itp-32k*  ]]; then
+
+    seq_len=32768
+    if [[  ${blend_name} == multiturn_qa_blend* ]]; then
+	 seq_len=4096
+    fi
     GPT_ARGS="$GPT_ARGS \
-    --seq-length 32768 \
+    --seq-length ${seq_len} \
     --max-position-embeddings 32768 \
     --max-tokens-to-oom 32768 \
     --rotary-seq-len-interpolation-factor 8 \
@@ -101,5 +106,13 @@ if [[ ${model_card} == *text*70b*  ]]; then
     # --recompute-activations"
 fi
 
-DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
+if [[ ${model_card} == *text*7b*itp-*  ]]; then
+    FT_ARGS="$FT_ARGS \
+    --recompute-method uniform \
+    --recompute-granularity full"
+    # --recompute-activations"
+fi
+
+# DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
 # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
+DOCKER="/lustre/fsw/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.12-py3-eval.sqsh"

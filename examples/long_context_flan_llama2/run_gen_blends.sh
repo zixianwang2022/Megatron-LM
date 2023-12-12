@@ -23,27 +23,27 @@ retriever=dragon_retriever_chunkbysents300
 
 # bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh gov_report.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
 # bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh gov_report.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh narrative_qa.${retriever} 70b greedy test 0 2000 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh narrative_qa.${retriever} 70b greedy test 0 1000 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh narrative_qa.${retriever} 70b greedy test 1000 1000 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qasper.${retriever} 70b greedy test 0 2000 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qasper.${retriever} 70b greedy test 0 2000 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qmsum.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qmsum.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 0 1000 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 1000 1000 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 0 1000 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 1000 1000 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh narrative_qa.${retriever} 70b greedy test 0 2000 $step $num_ctxs $model_name true
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh narrative_qa.${retriever} 70b greedy test 0 1000 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh narrative_qa.${retriever} 70b greedy test 1000 1000 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qasper.${retriever} 70b greedy test 0 2000 $step $num_ctxs $model_name true
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qasper.${retriever} 70b greedy test 0 2000 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qmsum.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
+echo bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh qmsum.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 0 1000 $step $num_ctxs $model_name true
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 1000 1000 $step $num_ctxs $model_name true
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 0 1000 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh quality.${retriever} 70b greedy test 1000 1000 $step $num_ctxs $model_name
 # bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh summ_screen_fd.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
 # bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh summ_screen_fd.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
 
 
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh musique.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh musique.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh hotpotqa.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh hotpotqa.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh multifieldqa_en.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
-bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh multifieldqa_en.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh musique.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh musique.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh hotpotqa.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh hotpotqa.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh multifieldqa_en.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name true
+# bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh multifieldqa_en.${retriever} 70b greedy test 0 200 $step $num_ctxs $model_name
 # bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh doc2dial_full_dialogue.${retriever} 70b greedy test 0 1000 $step $num_ctxs $model_name true
 # bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh doc2dial_full_dialogue.${retriever} 70b greedy test 0 500 $step $num_ctxs $model_name
 # bash examples/long_context_flan_llama2/generate_multijob_ckpt_step_cross_sft.sh doc2dial_full_dialogue.${retriever} 70b greedy test 500 500 $step $num_ctxs $model_name
