@@ -64,11 +64,6 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
 
     # Embed & validate blocks.
     embedder = config.retro_bert_embedders.mem
-    # >>>
-    # embeddings = [ embedder.embed_text("hi, lawrence.") for _ in range(20) ]
-    # from lutil import pax
-    # pax("embeddings")
-    # <<<
     for block_idx, block in enumerate(blocks.existing):
 
         # Missing block lists are extended with None to have equal-length
@@ -88,36 +83,10 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
 
             # Embed block.
             sub_dataset = Subset(text_dataset, range(*block["range"]))
-            # >>>
-            # from lutil import pax
-            # pax({
-            #     "embeddings / short" : [
-            #         embedder.embed_text("hi, bert.")
-            #         for _ in range(3)
-            #     ],
-            #     "embeddings / long" : [
-            #         # embedder.embed_text_dataset(sub_dataset)
-            #         embedder.embed_text_dataset(Subset(text_dataset, range(*block["range"])))
-            #         for _ in range(3)
-            #     ],
-            # })
-            # <<<
             embeddings = embedder.embed_text_dataset(sub_dataset)
-
-            # >>>
-            # embeddings = [ embeddings ] + [
-            #     embedder.embed_text_dataset(sub_dataset)
-            #     for _ in range(3) ]
-            # from lutil import pax
-            # pax("sub_dataset, embeddings")
-            # <<<
 
             # Check equality.
             assert np.array_equal(existing_embeddings, embeddings)
-
-            # >>>
-            # pax("existing_embeddings, embeddings")
-            # <<<
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")
@@ -181,22 +150,7 @@ def validate_added_encodings(config):
             embeddings, codes = index.encode_block(inner_index, embedder, text_dataset, block)
 
             # Check equality.
-            # >>>
-            try:
-                assert np.array_equal(existing_codes, codes)
-            except Exception as e:
-                diff_codes = codes - existing_codes
-
-                print(diff_codes)
-                print(np.nonzero(diff_codes))
-                print(diff_codes[np.nonzero(diff_codes)])
-                from lutil import pax
-                pax("existing_codes, codes, diff_codes")
-            # <<<
-
-            # >>>
-            pax("existing_codes, codes")
-            # <<<
+            assert np.array_equal(existing_codes, codes)
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")

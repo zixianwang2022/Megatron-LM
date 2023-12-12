@@ -14,6 +14,7 @@ from megatron.core.models.retro.data.index.factory import IndexFactory
 from megatron.core.models.retro.data.index.utils import get_index_dir
 from megatron.core.models.retro.data.utils import (
     get_blocks_by_rank,
+    get_sampled_blocks_by_rank,
     GPTToTextDataset,
     print_rank_0,
 )
@@ -159,14 +160,65 @@ def query_block_neighbors(config, db_dataset, query_dataset,
         sample_map, n_chunks_per_sample,
     )
 
-    # Save neighbors.
-    print_rank_0("save neighbors.")
-    os.makedirs(os.path.dirname(block["path"]), exist_ok=True)
-    f = h5py.File(block["path"], "w")
-    f.create_dataset("neighbors", data=filtered_neighbor_ids)
-    f.close()
+    if config.retro_task_validate is None:
+        # Save neighbors.
+        print_rank_0("save neighbors.")
+        os.makedirs(os.path.dirname(block["path"]), exist_ok=True)
+        f = h5py.File(block["path"], "w")
+        f.create_dataset("neighbors", data=filtered_neighbor_ids)
+        f.close()
+
+    else:
+        # Validate neighbors.
+        with h5py.File(block["path"]) as f:
+            existing_neighbor_ids = np.copy(f["neighbors"])
+            assert np.array_equal(existing_neighbor_ids, filtered_neighbor_ids)
+            # >>>
+            from lutil import pax
+            pax("existing_neighbor_ids, filtered_neighbor_ids")
+            # <<<
 
 
+# >>>
+# def query_dataset_neighbors(config, db_dataset,
+#                             query_dataset, num_active_chunks,
+#                             prefix, neighbor_dir, index):
+#     '''Query neighbors of each chunk within a dataset.'''
+
+#     def validate(f):
+#         assert f["neighbors"].shape[1] == config.retro_query_num_neighbors_save, \
+#             "neighbors.shape == %s; num_neighbors_target == %d." % (
+#                 str(f["neighbors"].shape),
+#                 config.retro_num_neighbors_target,
+#             )
+#     blocks = get_blocks_by_rank(
+#         neighbor_dir,
+#         num_active_chunks,
+#         config.retro_block_size,
+#         validate=validate,
+#     )
+
+#     # Query each block.
+#     for block_index, block in enumerate(blocks.missing):
+
+#         if block is not None:
+
+#             # Progress.
+#             print_rank_0("query '%s' block %d / %d ... %s ... mem %.3f gb, %.1f%%." % (
+#                 prefix,
+#                 block_index,
+#                 len(blocks.missing),
+#                 os.path.basename(block["path"]),
+#                 psutil.virtual_memory()[3] / 1024**3,
+#                 psutil.virtual_memory()[2],
+#             ))
+
+#             # Query block neighbors.
+#             query_block_neighbors(config, db_dataset, query_dataset, index, block)
+
+#         # Synchronize progress across all ranks. (for easier observation)
+#         print_rank_0(" > waiting for other ranks to finish block.")
+#         torch.distributed.barrier()
 def query_dataset_neighbors(config, db_dataset,
                             query_dataset, num_active_chunks,
                             prefix, neighbor_dir, index):
@@ -178,15 +230,27 @@ def query_dataset_neighbors(config, db_dataset,
                 str(f["neighbors"].shape),
                 config.retro_num_neighbors_target,
             )
-    blocks = get_blocks_by_rank(
-        neighbor_dir,
-        num_active_chunks,
-        config.retro_block_size,
-        validate=validate,
-    )
+    if config.retro_task_validate is None:
+        blocks = get_blocks_by_rank(
+            neighbor_dir,
+            num_active_chunks,
+            config.retro_block_size,
+            validate=validate,
+        )
+        active_blocks = blocks.missing
+    else:
+        blocks = get_sampled_blocks_by_rank(
+            neighbor_dir,
+            num_active_chunks,
+            config.retro_block_size,
+            validate=validate,
+            fraction=config.retro_task_validate,
+        )
+        assert blocks.n_missing_world == 0
+        active_blocks = blocks.existing
 
     # Query each block.
-    for block_index, block in enumerate(blocks.missing):
+    for block_index, block in enumerate(active_blocks):
 
         if block is not None:
 
@@ -194,7 +258,7 @@ def query_dataset_neighbors(config, db_dataset,
             print_rank_0("query '%s' block %d / %d ... %s ... mem %.3f gb, %.1f%%." % (
                 prefix,
                 block_index,
-                len(blocks.missing),
+                len(active_blocks),
                 os.path.basename(block["path"]),
                 psutil.virtual_memory()[3] / 1024**3,
                 psutil.virtual_memory()[2],
@@ -206,9 +270,13 @@ def query_dataset_neighbors(config, db_dataset,
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")
         torch.distributed.barrier()
+# <<<
 
 
+# >>>
+# def _query_neighbors(config):
 def query_neighbors(config):
+# <<<
     '''Query pretraining datasets (train & valid).'''
 
     # Num threads.
@@ -244,3 +312,17 @@ def query_neighbors(config):
         query_dataset_neighbors(config, db_dataset,
                                 info["dataset"], info["num_active_chunks"],
                                 prefix, info["neighbor_dir"], index)
+
+
+# >>>
+# def query_neighbors(config):
+
+#     # Query new neighbors.
+#     if config.retro_task_validate is None:
+#         _query_neighbors(config)
+
+#     # Validate existing neighbors.
+#     else:
+#         from .validate import validate_neighbors
+#         validate_neighbors(config)
+# <<<
