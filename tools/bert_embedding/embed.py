@@ -190,7 +190,12 @@ def embed_data_loader(models, data_loader):
 
     # Embed.
     embeddings = []
-    for _ in tqdm(range(len(data_loader)), "mt embed"):
+    for _ in tqdm(
+        range(len(data_loader)),
+        "  embed",
+        miniters=len(data_loader) // 10,
+        disable=torch.distributed.get_rank() != 0,
+    ):
         with torch.no_grad():
             result = forward_step(data_iterator, models[0])
             embeddings.append(result[0].detach().cpu().numpy())

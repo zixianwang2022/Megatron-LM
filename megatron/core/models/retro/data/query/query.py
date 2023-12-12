@@ -108,8 +108,10 @@ def query_embedding_block(config, db_dataset, index,
     # Query in sub-blocks.
     partial_block_size = 1000
     for partial_start_idx in tqdm(
-            range(0, len(embeddings), partial_block_size),
-            "search",
+        range(0, len(embeddings), partial_block_size),
+        "  search",
+        miniters=(len(embeddings)//partial_block_size)//10,
+        disable=torch.distributed.get_rank() != 0,
     ):
         partial_end_idx = min(len(embeddings),
                               partial_start_idx + partial_block_size)
@@ -211,7 +213,8 @@ def query_dataset_neighbors(config, db_dataset,
         if block is not None:
 
             # Progress.
-            print_rank_0("query '%s' block %d / %d ... %s ... mem %.3f gb, %.1f%%." % (
+            print_rank_0("%squery '%s' block %d / %d ... %s ... mem %.3f gb, %.1f%%." % (
+                "" if config.retro_task_validate is None else "[validate] ",
                 prefix,
                 block_index,
                 len(active_blocks),
