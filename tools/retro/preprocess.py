@@ -96,12 +96,21 @@ def get_gpt_tokenizer(config):
     if tokenizer_type == "GPT2BPETokenizer":
         assert config.retro_gpt_vocab_file and config.retro_gpt_merge_file
         return _GPT2BPETokenizer(
-            vocab_file=config.retro_gpt_vocab_file,
-            merge_file=config.retro_gpt_merge_file,
+            vocab_file=os.path.join(
+                config.retro_project_dir,
+                config.retro_gpt_vocab_file,
+            ),
+            merge_file=os.path.join(
+                config.retro_project_dir,
+                config.retro_gpt_merge_file,
+            ),
         )
     elif tokenizer_type == 'GPTSentencePieceTokenizer':
         assert config.retro_gpt_tokenizer_model is not None
-        return _GPTSentencePieceTokenizer(config.retro_gpt_tokenizer_model)
+        return _GPTSentencePieceTokenizer(os.path.join(
+            config.retro_project_dir,
+            config.retro_gpt_tokenizer_model,
+        ))
     else:
         raise Exception("unrecognized gpt tokenizer, '%s'." % tokenizer_type)
 
@@ -113,7 +122,10 @@ def get_bert_tokenizer(config):
         "BertWordPieceCase" : False,
     }[config.retro_bert_tokenizer_type]
     return _BertWordPieceTokenizer(
-        vocab_file=config.retro_bert_vocab_file,
+        vocab_file=os.path.join(
+            config.retro_project_dir,
+            config.retro_bert_vocab_file,
+        ),
         lower_case=lower_case,
     )
 
