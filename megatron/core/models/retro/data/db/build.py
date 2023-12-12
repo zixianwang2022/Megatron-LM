@@ -30,10 +30,6 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
-# >>>
-from lutil import pax, print_seq
-# <<<
-
 
 def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
     '''Gather meta-info about each indexed dataset.
@@ -335,14 +331,6 @@ def build_individual_db(
                         existing_chunks_invalid = np.copy(f["chunks_invalid"])
                         existing_doc_offsets = np.copy(f["doc_offsets"])
 
-                    # >>>
-                    # pax(
-                    #     "existing_chunks_valid, chunk_db_valid",
-                    #     "existing_chunks_invalid, chunk_db_invalid",
-                    #     "existing_doc_offsets, doc_offsets",
-                    # )
-                    # <<<
-
                     # Check equality.
                     assert np.array_equal(existing_chunks_valid, chunk_db_valid)
                     assert np.array_equal(existing_chunks_invalid, chunk_db_invalid)
@@ -543,10 +531,7 @@ def build_merged_dbs(project_dir, indexed_dataset_infos):
     merge_dbs(project_dir, indexed_dataset_infos, "valid")
 
 
-# >>>
-# def _build_db(config):
 def build_db(config):
-# <<<
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
@@ -556,22 +541,17 @@ def build_db(config):
     project_dir = config.retro_project_dir
 
     # Indexed dataset info.
-    # >>>
     if config.retro_task_validate is None:
         indexed_dataset_infos = init_indexed_dataset_infos(config)
     else:
         indexed_dataset_infos = get_indexed_dataset_infos(config.retro_project_dir)
-    # <<<
 
     # Build individual dbs.
     build_individual_dbs(config, indexed_dataset_infos)
 
-    # >>>
     # If validating, return here.
     if config.retro_task_validate is not None:
-        print_seq("hi.")
         return
-    # <<<
 
     # Single-process going forward.
     if torch.distributed.get_rank() != 0:
@@ -585,17 +565,3 @@ def build_db(config):
 
     # Builded merged dbs.
     build_merged_dbs(project_dir, indexed_dataset_infos)
-
-
-# >>>
-# def build_db(config):
-
-#     # Build new database.
-#     if config.retro_task_validate is None:
-#         _build_db(config)
-
-#     # Validate existing database.
-#     else:
-#         from .validate import validate_db
-#         validate_db(config)
-# <<<
