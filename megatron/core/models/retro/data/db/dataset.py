@@ -64,6 +64,11 @@ class DBDataset(torch.utils.data.Dataset):
         '''
         self.doc_tuples = np.zeros(shape=(len(self), 2), dtype="uint32")
         block_size = int(1e6)
-        for start_idx in tqdm(range(0, len(self), block_size)):
+        for start_idx in tqdm(
+            range(0, len(self), block_size),
+            "load doc tuples",
+            miniters=(len(self)//block_size)//10,
+            disable=torch.distributed.get_rank() != 0,
+        ):
             end_idx = min(len(self), start_idx + block_size)
             self.doc_tuples[start_idx:end_idx]=self.chunks[start_idx:end_idx,:2]

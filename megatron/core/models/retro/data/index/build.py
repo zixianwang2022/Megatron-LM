@@ -56,8 +56,12 @@ def merge_embedding_blocks(config):
     # Merge blocks.
     with open(bin_path, "wb") as fo:
         byte_offset = 0
-        for block_idx, block_path in \
-            enumerate(tqdm(block_paths, "merge train embeddings")):
+        for block_idx, block_path in enumerate(tqdm(
+            block_paths,
+            "merge train embeddings",
+            miniters=len(block_paths)//10,
+            disable=torch.distributed.get_rank() != 0,
+        )):
             with h5py.File(block_path) as fi:
 
                 nload = get_block_nload(block_path, load_fraction)

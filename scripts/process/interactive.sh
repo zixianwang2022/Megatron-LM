@@ -4,6 +4,8 @@ set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
+NPROCS=8
+
 ######## Arguments. ########
 
 . args.sh
@@ -12,7 +14,6 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 # tools/retro/main.py
 # megatron/core/models/retro/data/preprocess.py ${ARGS} \
-NPROCS=8
 CMD="\
     cd ${REPO_DIR} && \
     export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && \

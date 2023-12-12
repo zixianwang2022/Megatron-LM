@@ -15,7 +15,7 @@ from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     GPTToTextDataset,
-    get_sampled_blocks_by_rank,
+    get_blocks_by_rank,
     print_rank_0,
 )
 
@@ -52,12 +52,12 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
     text_dataset = get_text_dataset_for_training(config)
 
     # Sample existing blocks.
-    blocks = get_sampled_blocks_by_rank(
+    blocks = get_blocks_by_rank(
         dirname=get_training_data_block_dir(config),
         n_samples=len(text_dataset),
         block_size=config.retro_block_size,
         validate=None,
-        fraction=config.retro_task_validate,
+        sample=config.retro_task_validate,
     )
 
     assert blocks.n_missing_world == 0
@@ -119,12 +119,12 @@ def validate_added_encodings(config):
     # Sample existing blocks.
     def validate(f):
         assert len(f["data"].shape) == 2
-    blocks = get_sampled_blocks_by_rank(
+    blocks = get_blocks_by_rank(
         dirname=get_added_codes_dir(config),
         n_samples=len(text_dataset),
         block_size=config.retro_block_size,
         validate=validate,
-        fraction=config.retro_task_validate,
+        sample=config.retro_task_validate,
     )
 
     assert blocks.n_missing_world == 0
@@ -172,8 +172,8 @@ def validate_index(config):
     - Validate filled index.
     '''
 
-    # Validate trained index.
-    validate_trained_index(config)
+    # Validate training embeddings.
+    validate_training_embeddings(config)
 
-    # Validate filled index.
-    validate_filled_index(config)
+    # Validate added codes.
+    validate_added_codes(config)
