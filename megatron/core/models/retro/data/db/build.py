@@ -105,9 +105,11 @@ def build_partial_db(
 
     # Progress bars (snapshot of overall progress).
     doc_id_iter = range(doc_start_id, doc_end_id)
-    pbar = tqdm(doc_id_iter) \
-        if proc_id in progress_proc_ids else \
-           doc_id_iter
+    pbar = tqdm(
+        doc_id_iter,
+        miniters=len(doc_id_iter)//10,
+        disable=torch.distributed.get_rank() != 0,
+    ) if proc_id in progress_proc_ids else doc_id_iter
 
     # Iterate documents & parse chunks.
     chunk_db_valid = []
@@ -117,7 +119,8 @@ def build_partial_db(
 
         # Progress description.
         try:
-            pbar.set_description("ds %d / %d, block %d / %d, proc %d / %d." % (
+            pbar.set_description("%sds %d / %d, block %d / %d, proc %d / %d." % (
+                "" if config.retro_task_validate is None else "[validate] ",
                 dataset_idx,
                 n_datasets,
                 block_id,

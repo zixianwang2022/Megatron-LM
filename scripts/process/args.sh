@@ -11,8 +11,8 @@ unset NCCL_DEBUG
 # fi
 # RETRO_TASKS=$1
 
-RETRO_TASKS="db-build"
-# RETRO_TASKS="index-train"
+# RETRO_TASKS="db-build"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 

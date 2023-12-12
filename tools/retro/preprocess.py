@@ -233,7 +233,10 @@ if __name__ == "__main__":
     # Select task to run.
     for task in tasks:
 
-        print_rank_0("start '%s'." % task)
+        print_rank_0("start '%s%s'." % (
+            "" if config.retro_task_validate is None else "[validate] ",
+            task,
+        ))
 
         # DB (i.e., chunk db).
         if task == "db-build":
@@ -254,4 +257,7 @@ if __name__ == "__main__":
 
         torch.distributed.barrier()
 
-        print_rank_0("end '%s'." % task)
+        print_rank_0("end '%s%s'." % (
+            "" if config.retro_task_validate is None else "[validate] ",
+            task,
+        ))
