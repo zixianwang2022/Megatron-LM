@@ -182,12 +182,6 @@ def embed_data_loader(models, data_loader):
     for m in models:
         m.eval()
 
-    # >>>
-    # from lutil import pax, print_model
-    # print_model("before", models[0])
-    # pax("models")
-    # <<<
-
     # Embed.
     embeddings = []
     for _ in tqdm(
@@ -202,11 +196,6 @@ def embed_data_loader(models, data_loader):
 
     # Concatenate embeddings.
     embeddings = np.concatenate(embeddings, axis=0)
-
-    # >>>
-    # print_model("after", models[0])
-    # exit()
-    # <<<
 
     return embeddings
 
@@ -291,15 +280,6 @@ class BertEmbedder:
 
         # Embed.
         data_loader = get_data_loader(bert_dataset, self.batch_size)
-        # >>>
-        # embeddings = [ embed_data_loader(self.models, data_loader) for _ in range(2) ]
-        # embeddings = []
-        # embeddings.append(embed_data_loader(self.models, data_loader))
-        # embeddings.append(embed_data_loader(self.models, data_loader))
-
-        # from lutil import pax
-        # pax("embeddings")
-        # <<<
         embeddings = embed_data_loader(self.models, data_loader)
 
         return embeddings

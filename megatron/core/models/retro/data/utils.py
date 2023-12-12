@@ -152,11 +152,94 @@ def get_blocks(
     return blocks
 
 
+# >>>
+# def get_blocks_by_rank(
+#     dirname: str,
+#     n_samples: int,
+#     block_size: int,
+#     validate: Callable = None,
+# ):
+#     '''Divide existing and missing blocks evenly across all ranks.
+
+#     See 'get_blocks()' above for description. The returned lists of existing and
+#     missing blocks are split evenly across ranks via interleaving. This way,
+#     each rank has a roughly equal number of blocks to process for a
+#     downstream operation.
+#     '''
+
+#     # Get world blocks.
+#     blocks = get_blocks(dirname, n_samples, block_size, validate)
+
+#     # This rank's existing and missing files.
+#     data_parallel_rank = parallel_state.get_data_parallel_rank()
+#     data_parallel_world_size = parallel_state.get_data_parallel_world_size()
+#     rank_existing_blocks = blocks.existing[data_parallel_rank:len(blocks.existing):data_parallel_world_size]
+#     rank_missing_blocks = blocks.missing[data_parallel_rank:len(blocks.missing):data_parallel_world_size]
+
+#     # Extend rank's existing and missing blocks (with None) such that all ranks
+#     # have equal length lists. This allows for easier tracking of global progress.
+#     def get_world_max(n):
+#         n_tensor = torch.cuda.LongTensor([n])
+#         torch.distributed.all_reduce(n_tensor, op=torch.distributed.ReduceOp.MAX)
+#         return n_tensor.item()
+
+#     max_n_existing = get_world_max(len(rank_existing_blocks))
+#     max_n_missing = get_world_max(len(rank_missing_blocks))
+
+#     rank_existing_blocks += [None] * (max_n_existing - len(rank_existing_blocks))
+#     rank_missing_blocks += [None] * (max_n_missing - len(rank_missing_blocks))
+
+#     # Collect blocks.
+#     blocks = SimpleNamespace(
+#         n_existing_world = len(blocks.existing),
+#         n_missing_world = len(blocks.missing),
+#         existing = rank_existing_blocks,
+#         missing = rank_missing_blocks,
+#     )
+
+#     return blocks
+
+
+# def get_sampled_blocks_by_rank(
+#     dirname: str,
+#     n_samples: int,
+#     block_size: int,
+#     validate: Callable = None,
+#     fraction: float = None,
+# ):
+#     '''Sample existing and missing blocks evenly across all ranks.
+
+#     See 'get_blocks_by_rank()' above for description. The returned lists of
+#     blocks are randomly sampled (without replacement) to yield
+#     `fraction * len(blocks)` number of blocks.
+#     '''
+
+#     # Get blocks.
+#     blocks = get_blocks_by_rank(dirname, n_samples, block_size, validate)
+
+#     # Randomly sample blocks.
+#     def sample_blocks(_blocks):
+#         n_blocks_sample = int(np.ceil(fraction * len(_blocks)))
+#         sampled_blocks = [ b for b in _blocks if b is not None ]
+
+#         np.random.seed(None)
+#         np.random.shuffle(sampled_blocks)
+
+#         sampled_blocks = sampled_blocks[:n_blocks_sample]
+#         sampled_blocks += [None] * (n_blocks_sample - len(sampled_blocks))
+
+#         return sampled_blocks
+
+#     blocks.existing = sample_blocks(blocks.existing)
+#     blocks.missing = sample_blocks(blocks.missing)
+
+#     return blocks
 def get_blocks_by_rank(
     dirname: str,
     n_samples: int,
     block_size: int,
     validate: Callable = None,
+    sample: float = None,
 ):
     '''Divide existing and missing blocks evenly across all ranks.
 
@@ -196,43 +279,29 @@ def get_blocks_by_rank(
         missing = rank_missing_blocks,
     )
 
-    return blocks
+    if sample is not None:
+        # Sample existing and missing blocks evenly across all ranks. The
+        # returned lists of blocks are randomly sampled (without replacement)
+        # to yield `sample * len(blocks)` number of blocks.
 
+        # Randomly sample blocks.
+        def sample_blocks(_blocks):
+            n_blocks_sample = int(np.ceil(sample * len(_blocks)))
+            sampled_blocks = [ b for b in _blocks if b is not None ]
 
-def get_sampled_blocks_by_rank(
-    dirname: str,
-    n_samples: int,
-    block_size: int,
-    validate: Callable = None,
-    fraction: float = None,
-):
-    '''Sample existing and missing blocks evenly across all ranks.
+            np.random.seed(None)
+            np.random.shuffle(sampled_blocks)
 
-    See 'get_blocks_by_rank()' above for description. The returned lists of
-    blocks are randomly sampled (without replacement) to yield
-    `fraction * len(blocks)` number of blocks.
-    '''
+            sampled_blocks = sampled_blocks[:n_blocks_sample]
+            sampled_blocks += [None] * (n_blocks_sample - len(sampled_blocks))
 
-    # Get blocks.
-    blocks = get_blocks_by_rank(dirname, n_samples, block_size, validate)
+            return sampled_blocks
 
-    # Randomly sample blocks.
-    def sample_blocks(_blocks):
-        n_blocks_sample = int(np.ceil(fraction * len(_blocks)))
-        sampled_blocks = [ b for b in _blocks if b is not None ]
-
-        np.random.seed(None)
-        np.random.shuffle(sampled_blocks)
-
-        sampled_blocks = sampled_blocks[:n_blocks_sample]
-        sampled_blocks += [None] * (n_blocks_sample - len(sampled_blocks))
-
-        return sampled_blocks
-
-    blocks.existing = sample_blocks(blocks.existing)
-    blocks.missing = sample_blocks(blocks.missing)
+        blocks.existing = sample_blocks(blocks.existing)
+        blocks.missing = sample_blocks(blocks.missing)
 
     return blocks
+# <<<
 
 
 class BlockPathMap:
