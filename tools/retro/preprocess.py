@@ -53,21 +53,6 @@ def add_retro_args(parser):
     return parser
 
 
-# >>>
-# def get_bert_embedders(config):
-#     return RetroBertEmbedders(
-#         disk = DiskDataParallelBertEmbedder(
-#             batch_size = config.retro_bert_batch_size,
-#             max_bert_seq_length = config.retro_bert_max_chunk_length,
-#             block_size = config.retro_block_size,
-#             embedder_type = "megatron",
-#         ),
-#         mem = BertEmbedder(
-#             batch_size = config.retro_bert_batch_size,
-#             max_bert_seq_length = config.retro_bert_max_chunk_length,
-#             embedder_type = "megatron",
-#         ),
-#     )
 def get_bert_embedders(config):
     mem_embedder = BertEmbedder(
         batch_size = config.retro_bert_batch_size,
@@ -78,19 +63,9 @@ def get_bert_embedders(config):
         mem = mem_embedder,
         disk = DiskDataParallelBertEmbedder(mem_embedder, config.retro_block_size),
     )
-# <<<
 
 
-# >>>
-# def get_gpt_datasets(config, train_valid_test_num_iters):
 def get_gpt_datasets(config):
-# <<<
-
-    # >>>
-    # # Reset iterations.
-    # config.iteration = 0
-    # config.consumed_train_samples = 0
-    # <<<
 
     # Dataset config.
     data_config = core_gpt_dataset_config_from_retro_preprocessing_config(
@@ -111,17 +86,6 @@ def get_gpt_datasets(config):
         valid=(valid_ds, num_valid_samples),
         test=(test_ds, num_test_samples),
     )
-
-    # >>>
-    # pax("config, data_config, datasets", {
-    #     f"datasets / {k}" : "%s, %d" % (len(d[0]) if d[0] else None, d[1])
-    #     for k,d in vars(datasets).items()
-    # }, "num_train_samples, num_valid_samples, num_test_samples", {
-    #     "train_iters" : get_args().train_iters,
-    #     "valid_iters" : get_args().eval_iters,
-    #     # "test_iters" : get_args().test_iters,
-    # })
-    # <<<
 
     return datasets
 
@@ -167,6 +131,17 @@ def get_retro_preprocessing_config():
     args = get_args()
     # >>>
     # update_train_iters(args)
+    # <<<
+
+    # >>>
+    # # Update project-dir-relative paths.
+    # args.load = os.path.join(args.retro_project_dir, args.load)
+    # if args.vocab_file is not None:
+    #     args.vocab_file = os.path.join(args.retro_project_dir, args.vocab_file)
+    # if args.merge_file is not None:
+    #     args.merge_file = os.path.join(args.retro_project_dir, args.merge_file)
+    # if args.tokenizer_model is not None:
+    #     args.tokenizer_model = os.path.join(args.retro_project_dir, args.tokenizer_model)
     # <<<
 
     # Retro config.
@@ -229,6 +204,8 @@ if __name__ == "__main__":
     for task in config.retro_tasks:
         tasks.extend(task_remap[task])
     config.retro_tasks = tasks
+
+    raise Exception("saved config?")
 
     # Select task to run.
     for task in tasks:

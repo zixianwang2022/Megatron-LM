@@ -127,6 +127,7 @@ ARGS=" \
     --retro-tasks ${RETRO_TASKS} \
     --retro-bert-vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
     --retro-bert-tokenizer-type BertWordPieceLowerCase \
+    \
     --retro-gpt-seed ${RETRO_GPT_SEED} \
     --retro-gpt-tokenizer-type GPT2BPETokenizer \
     --retro-gpt-vocab-file ${ROOT_DIR}/retro/misc/vocab/gpt2-vocab.json \
@@ -139,12 +140,14 @@ ARGS=" \
     --retro-gpt-split ${RETRO_GPT_SPLIT} \
     --retro-gpt-data-path ${RETRO_GPT_DATA_PATH} \
     --retro-gpt-train-samples ${RETRO_GPT_TRAIN_SAMPLES} \
+    \
     --retro-index-str ${RETRO_INDEX_STR} \
     --retro-index-ntrain ${RETRO_INDEX_NTRAIN} \
     --retro-index-train-load-fraction ${RETRO_INDEX_TRAIN_LOAD_FRACTION} \
     --retro-index-add-load-fraction ${RETRO_INDEX_ADD_LOAD_FRACTION} \
     --no-retro-index-delete-training-embeddings \
     --no-retro-index-delete-added-codes \
+    \
     --retro-query-num-neighbors-query ${RETRO_QUERY_NUM_NEIGHBORS_QUERY} \
     --retro-query-num-neighbors-save ${RETRO_QUERY_NUM_NEIGHBORS_SAVE} \
     --retro-query-ef-search ${RETRO_QUERY_EF_SEARCH} \

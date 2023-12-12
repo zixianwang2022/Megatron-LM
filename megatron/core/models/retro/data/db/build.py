@@ -109,10 +109,6 @@ def build_partial_db(
         doc_id_iter,
         "parse doc chunks",
         miniters=len(doc_id_iter)//20,
-        # >>>
-        # disable=torch.distributed.get_rank() != 0,
-        # disable=proc_id != 0,
-        # <<<
     ) if proc_id in progress_proc_ids else doc_id_iter
 
     # Iterate documents & parse chunks.
