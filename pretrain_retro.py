@@ -171,29 +171,29 @@ def forward_step(data_iterator, model):
 
 def train_valid_test_datasets_provider(train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
-    # >>>
-    # config = get_retro_config()
-    # train_ds, valid_ds, test_ds = \
-    #     gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
-    # gpt_datasets = RetroGPTDatasets(
-    #     train=(train_ds, train_valid_test_num_samples[0]),
-    #     valid=(valid_ds, train_valid_test_num_samples[1]),
-    #     test=(test_ds, train_valid_test_num_samples[2]),
-    # )
-    # retro_datasets = get_retro_datasets(
-    #     config=config,
-    #     gpt_datasets=gpt_datasets,
-    #     sample_length=get_args().seq_length,
-    #     eod_token_id=get_tokenizer().eod,
-    # )
-    # return retro_datasets
-    # +++
     args = get_args()
     if args.retro_add_retriever:
-        return get_retro_datasets()
+        config = get_retro_config()
+        train_ds, valid_ds, test_ds = \
+            gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
+        gpt_datasets = RetroGPTDatasets(
+            train=(train_ds, train_valid_test_num_samples[0]),
+            valid=(valid_ds, train_valid_test_num_samples[1]),
+            test=(test_ds, train_valid_test_num_samples[2]),
+        )
+        raise Exception("hi.")
+        retro_datasets = get_retro_datasets(
+            config=config,
+            gpt_datasets=gpt_datasets,
+            sample_length=args.seq_length,
+            eod_token_id=get_tokenizer().eod,
+        )
+        # >>>
+        pax("retro_datasets")
+        # <<<
+        return retro_datasets
     else:
         return gpt_train_valid_test_datasets_provider(train_val_test_num_samples)
-    # <<<
 
 
 if __name__ == "__main__":

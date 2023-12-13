@@ -12,12 +12,12 @@ unset NCCL_DEBUG
 # RETRO_TASKS=$1
 
 # >>>
-NPROCS=1
+# NPROCS=1
 # <<<
 
-RETRO_TASKS="db-build"
+# RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
-# RETRO_TASKS="index-add"
+RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 
 RETRO_TASK_VALIDATE=""

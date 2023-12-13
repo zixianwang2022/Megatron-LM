@@ -10,7 +10,6 @@ from types import SimpleNamespace
 from typing import Callable
 
 from megatron.core import parallel_state
-from megatron.core.datasets.gpt_dataset import GPTDatasetConfig
 
 from .config import RetroPreprocessingConfig
 from .external_libs import h5py
@@ -42,25 +41,6 @@ def get_num_chunks_per_sample(sample_length, chunk_length):
 
 def get_gpt_data_dir(project_dir):
     return os.path.join(project_dir, "data")
-
-
-def core_gpt_dataset_config_from_retro_preprocessing_config(
-    config: RetroPreprocessingConfig,
-    is_dataset_built_on_rank: bool,
-) -> GPTDatasetConfig:
-    data_dir = get_gpt_data_dir(config.retro_project_dir)
-    blend = list(config.retro_gpt_data_path)
-    for i in range(len(blend) - 1, -1, -2):
-        blend[i] = os.path.join(data_dir, blend[i])
-    return GPTDatasetConfig(
-        is_built_on_rank=is_dataset_built_on_rank,
-        random_seed=config.retro_gpt_seed,
-        sequence_length=config.retro_gpt_seq_length,
-        blend=blend,
-        split=config.retro_gpt_split,
-        path_to_cache=config.retro_gpt_data_cache_path,
-        return_document_ids=True,
-    )
 
 
 class GPTToTextDataset(torch.utils.data.Dataset):

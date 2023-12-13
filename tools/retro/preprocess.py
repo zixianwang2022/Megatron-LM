@@ -27,8 +27,14 @@ from megatron.core.models.retro.data.query import (
     query_neighbors,
     train_valid_test_datasets_provider,
 )
+# >>>
+from megatron.core.models.retro.data.query.utils import \
+    core_multi_split_gpt_dataset_config_from_retro_preprocessing_config
+# <<<
 from megatron.core.models.retro.data.utils import (
-    core_gpt_dataset_config_from_retro_preprocessing_config,
+    # >>>
+    # core_gpt_dataset_config_from_retro_preprocessing_config,
+    # <<<
     get_config_path,
 )
 from megatron.tokenizer.tokenizer import (
@@ -43,8 +49,8 @@ from megatron.training import (
 )
 from pretrain_gpt import is_dataset_built_on_rank
 from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
+from tools.retro.config_utils import add_config_args
 
-from config_utils import add_config_args
 
 
 def add_retro_args(parser):
@@ -68,9 +74,12 @@ def get_bert_embedders(config):
 def get_gpt_datasets(config):
 
     # Dataset config.
-    data_config = core_gpt_dataset_config_from_retro_preprocessing_config(
+    data_config = core_multi_split_gpt_dataset_config_from_retro_preprocessing_config(
         config=config,
+        split=config.retro_gpt_split,
+        return_document_ids=True,
         is_dataset_built_on_rank=is_dataset_built_on_rank,
+        custom_data_path=None,
     )
 
     # Datasets.
