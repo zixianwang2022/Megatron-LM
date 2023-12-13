@@ -86,46 +86,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
                     block["path"],
                 ))
 
-                # >>>
-                # embeddings = []
-                # for i in range(2):
-                #     embeddings.append(self.embed_text_dataset_block(
-                #         embedder,
-                #         text_dataset,
-                #         block["range"],
-                #     ))
-                # from lutil import pax
-                # pax("embeddings")
-                # <<<
-
-                # >>>
-                # embeddings = []
-                # codes = []
-                # for i in range(2):
-                #     _embeddings, _codes = self.encode_block(index, embedder, text_dataset, block)
-                #     embeddings.append(_embeddings)
-                #     codes.append(_codes)
-
-                # from lutil import pax
-                # pax("embeddings, codes")
-                # <<<
-
                 # Encode and save.
                 _, codes = self.encode_block(index, embedder, text_dataset, block)
                 self.save_block(block, codes)
-
-                # >>>
-                # with h5py.File(block["path"]) as f:
-                #     saved_codes = np.copy(f["data"])
-                # _, codes = self.encode_block(index, embedder, text_dataset, block)
-
-                # if not np.array_equal(saved_codes, codes):
-                #     os.remove(block["path"])
-                # from lutil import pax
-                # pax("block, saved_codes, codes", {
-                #     "equal?" : np.array_equal(saved_codes, codes),
-                # })
-                # <<<
 
             # Synchronize progress across all ranks. (for easier observation)
             print_rank_0(" > waiting for other ranks to finish block.")

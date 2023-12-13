@@ -200,7 +200,6 @@ def embed_data_loader(models, data_loader):
     return embeddings
 
 
-# >>>
 class TextDataset(torch.utils.data.Dataset):
     '''Dataset that holds a list of strings.'''
 
@@ -215,7 +214,6 @@ class TextDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         return {"text": self.texts[i]}
-# <<<
 
 
 class BertEmbedder:
@@ -242,7 +240,6 @@ class BertEmbedder:
         else:
             raise Exception("specialize for embedder type '%s'." % embedder_type)
 
-        # >>>
         # Warm-up JIT.
         # - Important to separately warm up:
         #   1. batch_size == 1
@@ -257,15 +254,6 @@ class BertEmbedder:
             self.embed_text("hi, bert.")            # batch size == 1
         for _ in range(3):
             self.embed_text_dataset(warmup_dataset) # batch size > 1
-        # <<<
-
-        # >>>
-        # from lutil import pax
-        # pax({
-        #     "warm up / 0" : [ self.embed_text("hi, bert.") for _ in range(4) ],
-        #     "warm up / 1" : [ self.embed_text_dataset(warmup_dataset) for _ in range(4) ],
-        # })
-        # <<<
 
     def embed_text_dataset(self, text_dataset):
         '''Embed a text dataset.'''
@@ -284,29 +272,6 @@ class BertEmbedder:
 
         return embeddings
 
-    # >>>
-    # def embed_text(self, text):
-    #     '''Embed a single text string.
-
-    #     Primarily used for on-the-fly embeddings, particularly during
-    #     analysis or debugging. For large scale, use 'embed_text_dataset()'.
-    #     '''
-
-    #     class SingleTextDataset(torch.utils.data.Dataset):
-    #         '''Dataset that holds single string.'''
-    #         def __init__(self, text):
-    #             assert isinstance(text, str)
-    #             self.text = text
-    #         def __len__(self):
-    #             return 1
-    #         def __getitem__(self, i):
-    #             return {"text": self.text}
-
-    #     # Embed text.
-    #     text_ds = SingleTextDataset(text)
-    #     embed = self.embed_text_dataset(text_ds)[0]
-
-    #     return embed
     def embed_text(self, text):
         '''Embed a single text string.
 
@@ -319,23 +284,15 @@ class BertEmbedder:
         embed = self.embed_text_dataset(text_ds)[0]
 
         return embed
-    # <<<
 
 
 class DiskDataParallelBertEmbedder:
     '''Process embeddings in blocks & save to disk.'''
 
-    # >>>
-    # def __init__(self, batch_size, max_bert_seq_length, block_size,
-    #              embedder_type):
-    #     self.embedder = BertEmbedder(batch_size, max_bert_seq_length,
-    #                                  embedder_type)
-    #     self.block_size = block_size
     def __init__(self, embedder, block_size):
         assert isinstance(embedder, BertEmbedder)
         self.embedder = embedder
         self.block_size = block_size
-    # <<<
 
     def embed_text_blocks(self, name, dirname, text_dataset,
                           missing_embedding_blocks):

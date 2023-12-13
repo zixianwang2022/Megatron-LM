@@ -12,16 +12,9 @@ import os
 import torch
 from tqdm import tqdm
 
-# >>>
-# from megatron import get_retro_args, print_rank_0
 from megatron.core.models.retro.data.external_libs import faiss
 from megatron.core.models.retro.data.index.index import Index
-from megatron.core.models.retro.data.index.utils import (
-    get_training_data_merged_path,
-    # num_samples_to_block_ranges,
-)
-# from tools.bert_embedding import BertEmbedder
-# <<<
+from megatron.core.models.retro.data.index.utils import get_training_data_merged_path
 
 
 class FaissBaseIndex(Index):
@@ -32,9 +25,7 @@ class FaissBaseIndex(Index):
         assert torch.distributed.get_rank() == 0
 
         # Set num threads (torch.distributed reset it to 1).
-        # faiss.omp_set_num_threads(32)
-        faiss.omp_set_num_threads(64)
-        # faiss.omp_set_num_threads(128)
+        faiss.omp_set_num_threads(64) # 32, *64, 128
 
         empty_index_path = self.get_empty_index_path(config)
 
@@ -44,10 +35,6 @@ class FaissBaseIndex(Index):
 
         # Load data.
         merged_path = get_training_data_merged_path(config)
-        # >>>
-        # from lutil import pax
-        # pax("merged_path")
-        # <<<
         inp = np.memmap(
 	    merged_path,
             dtype = "f4",
@@ -89,10 +76,6 @@ class FaissBaseIndex(Index):
         '''Add to index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
-
-        # >>>
-        # args = get_retro_args()
-        # <<<
 
         dataset_sample_ranges = num_samples_to_block_ranges(len(text_dataset))
 

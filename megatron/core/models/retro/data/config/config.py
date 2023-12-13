@@ -155,12 +155,8 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_index_ntrain: int = None
     retro_index_train_load_fraction: float = 1.0
     retro_index_add_load_fraction: float = 1.0
-    # >>>
-    # retro_index_no_delete_training_embeddings: bool = True
-    # retro_index_no_delete_added_codes: bool = True
     retro_index_delete_training_embeddings: bool = True
     retro_index_delete_added_codes: bool = True
-    # <<<
 
     # Query.
     retro_query_ef_search: int = 256

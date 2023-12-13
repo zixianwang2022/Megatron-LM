@@ -1,17 +1,10 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 import numpy as np
-# import os
-# import shutil
 import torch
 from torch.utils.data import Subset
-# from tqdm import tqdm
 
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
-# from megatron.core.models.retro.data.db.utils import (
-#     get_merged_sampled_dataset,
-#     get_merged_train_dataset,
-# )
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     GPTToTextDataset,
@@ -28,10 +21,6 @@ from .utils import (
     get_added_codes_dir,
     get_training_data_block_dir,
 )
-
-# >>>
-from lutil import pax, print_seq
-# <<<
 
 
 ##################################################

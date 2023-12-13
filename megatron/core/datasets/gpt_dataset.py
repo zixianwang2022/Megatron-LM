@@ -208,15 +208,6 @@ class GPTDataset(MegatronDataset):
 
         num_tokens_per_epoch = _get_num_tokens_per_epoch(self.indexed_dataset, self.indexed_indices)
 
-        # >>>
-        # from lutil import pax
-        # pax({
-        #     "indexed_dataset" : self.indexed_dataset,
-        #     "indexed_indices" : self.indexed_indices,
-        #     "num_tokens_per_epoch" : num_tokens_per_epoch.item(),
-        # })
-        # <<<
-
         sequence_length = getattr(self.config, "sequence_length")
 
         num_epochs = _get_num_epochs(num_tokens_per_epoch, sequence_length, self.num_samples)

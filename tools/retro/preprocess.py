@@ -120,10 +120,7 @@ def get_bert_tokenizer(config):
     lower_case = {
         "BertWordPieceLowerCase" : True,
         "BertWordPieceCase" : False,
-    # >>>
     }[config.retro_bert_tokenizer_type]
-    # }[config.tokenizer_type]
-    # <<<
     return _BertWordPieceTokenizer(
         vocab_file=os.path.join(
             config.retro_project_dir,
@@ -207,13 +204,6 @@ if __name__ == "__main__":
         "index-train" : [ "index-train" ],
         "index-add" : [ "index-add" ],
         "query-neighbors" : [ "query-neighbors" ],
-
-        # >>>
-        # "db-build-verify" : [ "db-build-verify" ],
-        # "index-train-verify" : [ "index-train-verify" ],
-        # "index-add-verify" : [ "index-add-verify" ],
-        # "query-neighbors-verify" : [ "query-neighbors-verify" ],
-        # <<<
     }
     tasks = []
     for task in config.retro_tasks:

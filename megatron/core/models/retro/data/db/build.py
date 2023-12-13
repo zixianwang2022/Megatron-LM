@@ -22,7 +22,7 @@ from .utils import (
     get_indexed_dataset_infos,
     get_indexed_dataset_infos_path,
     get_individual_db_dir,
-    get_individual_db_path,
+    get_individual_db_paths,
     get_individual_chunk_db,
     get_individual_doc_offsets,
     get_merged_db_path_map,

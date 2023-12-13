@@ -25,10 +25,6 @@ from pretrain_gpt import (
     train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
 )
 
-# >>>
-from lutil import pax
-# <<<
-
 
 def get_retro_config():
     return core_transformer_config_from_args(get_args(), RetroConfig)

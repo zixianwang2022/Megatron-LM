@@ -12,16 +12,6 @@ import re
 import types
 import typing as T
 
-# >>>
-# from megatron.checkpointing import load_config_from_checkpoint
-# from megatron.config import MegatronConfig
-# from megatron.core.transformer import TransformerConfig
-# <<<
-
-# >>>
-from lutil import pax
-# <<<
-
 
 PARAM_KEYWORDS = {
     "param",
@@ -316,7 +306,7 @@ class GoogleDocstringParser:
 
         if ":" not in text:
             # >>>
-            # pax("text, title")
+            # raise Exception(f"text '{text}', title '{title}'.")
             return None
             # <<<
             raise ParseError(f"Expected a colon in {text!r}.")
@@ -516,12 +506,8 @@ def verify_and_get_config_attr_descs(config_cls, strict_docstring_match=True):
     config_type_keys = set(config_types.keys())
     missing_attr_keys = config_type_keys - config_attr_keys
     extra_attr_keys = config_attr_keys - config_type_keys
-    # >>>
-    # assert not missing_attr_keys, f"{config_cls.__name__} docstring missing attributes (using Google docstring format): {', '.join(missing_attr_keys)}."
-    # assert not extra_attr_keys, f"{config_cls.__name__} docstring contains unused attributes (using Google docstring format): {', '.join(extra_attr_keys)}."
     if strict_docstring_match:
         assert not missing_attr_keys and not extra_attr_keys, f"{config_cls.__name__} docstring is either missing attributes ({', '.join(missing_attr_keys) if missing_attr_keys else '--'}) or contains extra attributes ({', '.join(extra_attr_keys) if extra_attr_keys else '--'})."
-    # <<<
 
     # >>>
     # Verify attribute type names.
@@ -569,26 +555,15 @@ def add_config_args(parser, config_cls):
                 else:
                     args["action"] = "store_true"
 
-                # >>>
-                # if "delete" in key:
-                #     pax("key, attr, _type, args")
-                # <<<
-
             elif _type in (int, float):
                 args["type"] = _type
 
             elif _type == list:
-                # >>>
-                # args["type"] = str
-                # <<<
                 args["nargs"] = "*"
-                # >>>
-                # pax("key, attr, _type, args")
-                # <<<
 
             # else: ....... treat as string arg
             #     raise Exception(f"specialize action for '{key}', type <{_type}>.")
-            # >>>
+
             try:
                 parser.add_argument(f"--{key.replace('_', '-')}", **args)
             except argparse.ArgumentError as e:

@@ -1017,30 +1017,6 @@ def cyclic_iter(iter):
             yield x
 
 
-# >>>
-# def build_train_valid_test_datasets(build_train_valid_test_datasets_provider):
-#     """Build pretraining datasets."""
-
-#     args = get_args()
-
-#     # Number of train/valid/test samples.
-#     if args.train_samples:
-#         train_samples = args.train_samples
-#     else:
-#         train_samples = args.train_iters * args.global_batch_size
-#     eval_iters = (args.train_iters // args.eval_interval + 1) * \
-#                  args.eval_iters
-#     test_iters = args.eval_iters
-#     train_val_test_num_samples = [train_samples,
-#                                   eval_iters * args.global_batch_size,
-#                                   test_iters * args.global_batch_size]
-#     print_rank_0(' > datasets target sizes (minimum size):')
-#     print_rank_0('    train:      {}'.format(train_val_test_num_samples[0]))
-#     print_rank_0('    validation: {}'.format(train_val_test_num_samples[1]))
-#     print_rank_0('    test:       {}'.format(train_val_test_num_samples[2]))
-
-#     # Build the datasets.
-#     return build_train_valid_test_datasets_provider(train_val_test_num_samples)
 def get_train_valid_test_num_samples():
     """Train/valid/test num samples."""
 
@@ -1070,7 +1046,6 @@ def build_train_valid_test_datasets(build_train_valid_test_datasets_provider):
     print_rank_0('    validation: {}'.format(train_valid_test_num_samples[1]))
     print_rank_0('    test:       {}'.format(train_valid_test_num_samples[2]))
     return build_train_valid_test_datasets_provider(train_valid_test_num_samples)
-# <<<
 
 
 def build_train_valid_test_data_loaders(
