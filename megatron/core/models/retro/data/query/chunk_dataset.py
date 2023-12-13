@@ -1,16 +1,34 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import torch
+# >>>
+# import torch
 
-from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
-from megatron.core.datasets.gpt_dataset import GPTDataset
-from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
-from megatron.core.models.retro.data.utils import (
-    get_num_chunks_per_sample,
-    print_rank_0,
-)
+# from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
+# from megatron.core.datasets.gpt_dataset import GPTDataset
+# from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
+# from megatron.core.models.retro.data.utils import (
+#     get_num_chunks_per_sample,
+#     print_rank_0,
+# )
 
-from .utils import get_neighbor_dir
+# from .utils import get_neighbor_dir
+# +++
+# import os
+# import torch
+
+# from megatron import get_args, get_retro_args, print_rank_0
+# from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
+# from megatron.training import (
+#     build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
+#     update_train_iters,
+# )
+# from pretrain_gpt import is_dataset_built_on_rank
+# from tools.retro.db.utils import get_indexed_dataset_infos
+# from tools.retro.utils import get_num_chunks_per_sample
+
+# from .multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
+# from .utils import get_neighbor_dirname, get_query_workdir
+# <<<
 
 
 class ChunkDataset(torch.utils.data.Dataset):
@@ -57,18 +75,36 @@ class ChunkDataset(torch.utils.data.Dataset):
         }
 
 
+# >>>
+# def core_retro_dataset_config_from_args(args, retro_args):
+#     return MultiSplitGPTDatasetConfig(
+#         is_built_on_rank=is_dataset_built_on_rank,
+#         random_seed=retro_args.retro_gpt_seed,
+#         sequence_length=retro_args.retro_gpt_seq_length,
+#         blend=args.data_path if args.data_path is not None else retro_args.retro_gpt_data_path,
+#         split=args.split,
+#         path_to_cache=args.data_cache_path,
+#         return_document_ids=retro_args.retro_return_doc_ids,
+#         split_preprocessing=retro_args.retro_gpt_split,
+#     )
+# <<<
+
+
 def train_valid_test_datasets_provider(data_config, train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
 
-    print_rank_0('> building train, validation, and test datasets '
+    print_rank_0('> building multi-split train, validation, and test datasets '
                  'for GPT ...')
     
     train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
-        GPTDataset,
+        # >>>
+        # GPTDataset,
+        MultiSplitGPTDataset,
+        # <<<
         train_valid_test_num_samples,
         data_config,
     ).build()
-    print_rank_0("> finished creating pretrained GPT datasets ...")
+    print_rank_0("> finished creating multi-split GPT datasets ...")
 
     return train_ds, valid_ds, test_ds
 

@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from typing import Callable
 
 from megatron.core import parallel_state
-from megatron.core.datasets.blended_megatron_dataset_config import GPTDatasetConfig
+from megatron.core.datasets.gpt_dataset import GPTDatasetConfig
 
 from .config import RetroPreprocessingConfig
 from .external_libs import h5py

@@ -1,19 +1,21 @@
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
-import logging
-from dataclasses import dataclass
-from typing import Dict, List
+# >>>
+# import logging
+# from dataclasses import dataclass
+# from typing import Dict, List
 
-import numpy
-import torch
+# import numpy
+# import torch
 
-from megatron.core.datasets.blended_megatron_dataset_config import (
-    convert_split_vector_to_split_matrix,
-    parse_and_normalize_split,
-)
-from megatron.core.datasets.gpt_dataset import GPTDataset, GPTDatasetConfig
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
-from megatron.core.datasets.utils import Split, log_single_rank
+# from megatron.core.datasets.blended_megatron_dataset_config import (
+#     convert_split_vector_to_split_matrix,
+#     parse_and_normalize_split,
+# )
+# from megatron.core.datasets.gpt_dataset import GPTDataset, GPTDatasetConfig
+# from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+# from megatron.core.datasets.utils import Split, log_single_rank
+# <<<
 
 logger = logging.getLogger(__name__)
 
