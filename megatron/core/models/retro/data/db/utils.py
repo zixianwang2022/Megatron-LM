@@ -4,17 +4,90 @@ import glob
 import json
 import numpy as np
 import os
+from typing import List
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import get_gpt_data_dir
 
 from .dataset import DBDataset
 
+# >>>
+from lutil import pax
+# <<<
+
 
 def get_db_dir(project_dir):
     '''Sub-directory for DB data.'''
     return os.path.join(project_dir, "db")
+
+
+# >>>
+# def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
+#     '''Gather meta-info about each indexed dataset.
+
+#     The returned info array allows for easy access to the configuration, and
+#     helps remove ambiguity.
+#     '''
+
+#     data_dir = get_gpt_data_dir(config.retro_project_dir)
+#     data_blend = config.retro_gpt_data_path
+#     assert len(data_blend) % 2 == 0, "currently, only blended dataset is supported."
+
+#     # Dataset infos.
+#     infos = []
+#     for i in range(0, len(data_blend), 2):
+#         ratio = float(data_blend[i])
+#         prefix = data_blend[i + 1]
+#         path = prefix + ".bin"
+#         name = os.path.basename(prefix)
+#         assert os.path.exists(os.path.join(data_dir, path)), \
+#             "couldn't find '%s'." % path
+#         infos.append({
+#             "ratio" : ratio,
+#             "prefix" : prefix,
+#             "path" : path,
+#             "name" : name,
+#             "db_dir" : get_individual_db_dir(config.retro_project_dir, name),
+#         })
+
+#     # Load indexed datasets.
+#     load_indexed_datasets(config.retro_project_dir, infos)
+
+#     return infos
+def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
+    '''Gather meta-info about each indexed dataset.
+
+    The returned info array allows for easy access to the configuration, and
+    helps remove ambiguity.
+    '''
+
+    data_dir = get_gpt_data_dir(config.retro_project_dir)
+    data_blend = config.retro_gpt_data_path
+    assert len(data_blend) % 2 == 0, "currently, only blended dataset is supported."
+
+    # Dataset infos.
+    infos = []
+    for i in range(0, len(data_blend), 2):
+        ratio = float(data_blend[i])
+        prefix = data_blend[i + 1]
+        assert os.path.exists(os.path.join(data_dir, prefix + ".bin")), \
+            "couldn't find '%s'." % path
+        infos.append({
+            "ratio" : ratio,
+            "prefix" : prefix,
+        })
+
+    # Load indexed datasets.
+    load_indexed_datasets(config.retro_project_dir, infos)
+
+    # >>>
+    # pax(dict(enumerate(infos)))
+    # <<<
+
+    return infos
+# <<<
 
 
 def get_indexed_dataset_infos_path(project_dir):
@@ -26,15 +99,21 @@ def save_indexed_dataset_infos(project_dir, indexed_dataset_infos):
     '''Save dataset order & meta-info.'''
 
     # Remove 'dataset' field.
+    # >>>
+    # db_dir = get_db_dir(project_dir)
+    # <<<
     clean_infos = []
     for info in indexed_dataset_infos:
         info = dict(info)
+        # >>>
+        # info["db_dir"] = os.path.relpath(info["db_dir"], db_dir)
+        # <<<
         del info["dataset"]
         clean_infos.append(info)
 
     # >>>
-    from lutil import pax
-    pax(dict(enumerate(clean_infos)))
+    # from lutil import pax
+    # pax(dict(enumerate(clean_infos)))
     # <<<
 
     # Save.
@@ -62,20 +141,28 @@ def get_indexed_dataset_infos(project_dir):
     return infos
 
 
-def get_individual_db_dir(project_dir, name):
+def get_individual_db_dir(project_dir, prefix):
     '''Individual DB's directory.'''
-    return os.path.join(get_db_dir(project_dir), "individual", name)
+    return os.path.join(get_db_dir(project_dir), "individual", prefix)
+
+
+def get_individual_db_paths(project_dir, prefix):
+    return sorted(glob.glob(get_individual_db_dir(project_dir, prefix) + "/*hdf5"))
 
 
 def get_individual_chunk_db(project_dir, ds_id, ds_info):
     '''Load individual dataset's chunk DB.'''
-    db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
+    # >>>
+    # db_paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
+    paths = get_individual_db_paths(project_dir, ds_info["prefix"])
+    # pax("paths")
+    # <<<
     # *Note*: convert to dataset, rather than copying to memory.
     db = np.zeros((ds_info["n_chunks"], 5), dtype="uint32")
     db[:, 0] = ds_id
     start_idx = 0
-    for db_path in db_paths:
-        f = h5py.File(db_path, "r")
+    for path in paths:
+        f = h5py.File(path, "r")
         n_chunks_current = f["chunks_valid"].shape[0]
         db[start_idx:(start_idx+n_chunks_current), 1:] = f["chunks_valid"]
         start_idx += n_chunks_current
@@ -88,7 +175,11 @@ def get_individual_chunk_db(project_dir, ds_id, ds_info):
 
 def get_individual_doc_offsets(project_dir, ds_id, ds_info):
     '''Load individual dataset's chunk DB.'''
-    paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
+    # >>>
+    # paths = sorted(glob.glob(ds_info["db_dir"] + "/*hdf5"))
+    paths = get_individual_db_paths(project_dir, ds_info["prefix"])
+    # pax("paths")
+    # <<<
     # *Note*: convert to dataset, rather than copying to memory.
     doc_offsets = np.zeros((ds_info["n_docs"], 3), dtype="uint64")
     doc_offsets[:, 0] = ds_id

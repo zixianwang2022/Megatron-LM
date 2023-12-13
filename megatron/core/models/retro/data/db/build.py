@@ -14,7 +14,9 @@ from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     extract_data_config,
-    get_gpt_data_dir,
+    # >>>
+    # get_gpt_data_dir,
+    # <<<
     get_blocks_by_rank,
     print_rank_0,
 )
@@ -26,43 +28,14 @@ from .utils import (
     get_individual_chunk_db,
     get_individual_doc_offsets,
     get_merged_db_path_map,
+    init_indexed_dataset_infos,
     load_indexed_datasets,
     save_indexed_dataset_infos,
 )
 
-
-def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
-    '''Gather meta-info about each indexed dataset.
-
-    The returned info array allows for easy access to the configuration, and
-    helps remove ambiguity.
-    '''
-
-    data_dir = get_gpt_data_dir(config.retro_project_dir)
-    data_blend = config.retro_gpt_data_path
-    assert len(data_blend) % 2 == 0, "currently, only blended dataset is supported."
-
-    # Dataset infos.
-    infos = []
-    for i in range(0, len(data_blend), 2):
-        ratio = float(data_blend[i])
-        prefix = data_blend[i + 1]
-        path = prefix + ".bin"
-        name = os.path.basename(prefix)
-        assert os.path.exists(os.path.join(data_dir, path)), \
-            "couldn't find '%s'." % path
-        infos.append({
-            "ratio" : ratio,
-            "prefix" : prefix,
-            "path" : path,
-            "name" : name,
-            "db_dir" : get_individual_db_dir(config.retro_project_dir, name),
-        })
-
-    # Load indexed datasets.
-    load_indexed_datasets(config.retro_project_dir, infos)
-
-    return infos
+# >>>
+from lutil import pax
+# <<<
 
 
 def build_partial_db(
@@ -120,7 +93,7 @@ def build_partial_db(
         # Progress description.
         try:
             pbar.set_description("%sds %d / %d, block %d / %d, proc %d / %d." % (
-                "" if config.retro_task_validate is None else "[validate] ",
+                "" if config.task_validate is None else "[validate] ",
                 dataset_idx,
                 n_datasets,
                 block_id,
@@ -194,6 +167,7 @@ def build_block_db(
                 gpt_eod = config.retro_tokenizers.gpt.eod,
                 gpt_detokenize = config.retro_tokenizers.gpt.detokenize,
                 bert_tokenize = config.retro_tokenizers.bert.tokenize,
+                task_validate = config.retro_task_validate,
             ),
             dataset_idx,
             n_datasets,
@@ -259,7 +233,11 @@ def build_individual_db(
     '''Process a single indexed dataset & extract chunks.'''
 
     # Make directory.
-    db_dir = dataset_info["db_dir"]
+    # >>>
+    # db_dir = dataset_info["db_dir"]
+    db_dir = get_individual_db_dir(config.retro_project_dir, dataset_info["prefix"])
+    # pax("db_dir")
+    # <<<
     os.makedirs(db_dir, exist_ok=True)
 
     # Indexed dataset.
@@ -273,7 +251,6 @@ def build_individual_db(
     #     validate=lambda f : f["chunks_valid"].shape == (0,) \
     #         or f["chunks_valid"].shape[1] == 4,
     # )
-    # from lutil import pax
     # pax("dataset_info, blocks")
     # <<<
 
@@ -291,7 +268,6 @@ def build_individual_db(
     else:
         # >>>
         if blocks.n_missing_world != 0:
-            from lutil import pax
             pax("blocks")
         # <<<
         assert blocks.n_missing_world == 0
@@ -377,7 +353,10 @@ def build_individual_dbs(
         print_rank_0(" > building individual db, dataset %d / %d ... '%s'." % (
             ds_idx,
             len(indexed_dataset_infos),
-            ds_info["name"],
+            # >>>
+            # ds_info["name"],
+            ds_info["prefix"],
+            # <<<
         ))
 
         # Process single dataset.
@@ -401,7 +380,10 @@ def update_chunk_counts(config, indexed_dataset_infos):
     print_rank_0(" > compute n_chunks.")
     for ds_index, ds_info in enumerate(indexed_dataset_infos):
 
-        db_dir = ds_info["db_dir"]
+        # >>>
+        # db_dir = ds_info["db_dir"]
+        db_dir = get_individual_db_dir(config.retro_project_dir, ds_info["prefix"])
+        # <<<
         db_paths = sorted(glob.glob(db_dir + "/*.hdf5"))
 
         # Update counts.
@@ -410,8 +392,12 @@ def update_chunk_counts(config, indexed_dataset_infos):
         ds_info["n_chunks"] = 0 # previously, 'n_chunks_valid'
         ds_info["n_chunks_train"] = 0
         ds_info["n_chunks_invalid"] = 0
+        # >>>
+        # for db_path in tqdm(db_paths, "%d/%d, %s" % (
+        #     ds_index, len(indexed_dataset_infos), ds_info["name"])):
         for db_path in tqdm(db_paths, "%d/%d, %s" % (
-                ds_index, len(indexed_dataset_infos), ds_info["name"])):
+            ds_index, len(indexed_dataset_infos), ds_info["prefix"])):
+        # <<<
            with h5py.File(db_path, "r") as f:
                 ds_info["n_chunks"] += len(f["chunks_valid"])
                 ds_info["n_chunks_invalid"] += len(f["chunks_invalid"])
@@ -503,8 +489,11 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
         doc_start_index = 0
         doc_start_offset = 0
         for ds_idx, ds_info in enumerate(indexed_dataset_infos):
+            # >>>
             print(" > merging dbs; '%s', dataset %d / %d ... '%s'." %
-                  (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
+                  # (db_type, ds_idx, len(indexed_dataset_infos), ds_info["name"]))
+                  (db_type, ds_idx, len(indexed_dataset_infos), ds_info["prefix"]))
+            # <<<
             individual_chunk_db = get_individual_chunk_db(project_dir, ds_idx, ds_info)
             individual_doc_offsets = None if n_docs_key is None else \
                 get_individual_doc_offsets(project_dir, ds_idx, ds_info)

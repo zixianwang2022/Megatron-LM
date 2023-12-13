@@ -12,11 +12,11 @@ unset NCCL_DEBUG
 # RETRO_TASKS=$1
 
 # >>>
-NPROCS=1
+# NPROCS=1
 # <<<
 
-RETRO_TASKS="db-build"
-# RETRO_TASKS="index-train"
+# RETRO_TASKS="db-build"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 
@@ -63,8 +63,8 @@ RETRO_GPT_SEED=1234
 RETRO_GPT_SPLIT="98,2,0"
 # RETRO_GPT_DATA_PATH=${DATA_BLEND}
 RETRO_GPT_DATA_PATH=" \
-  0.5 wiki-tiny-0/ds-0 \
-  0.5 wiki-tiny-1/ds-1 \
+  0.5 wiki-tiny-0/ds \
+  0.5 wiki-tiny-1/ds \
 "
 # RETRO_GPT_DATA_IMPL=mmap
 RETRO_GPT_DATALOADER_TYPE=cyclic # single
