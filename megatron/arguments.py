@@ -428,6 +428,20 @@ def validate_args(args, defaults={}):
         assert args.pipeline_model_parallel_size == 1, \
             "retro currently does not support pipeline parallelism."
 
+    # >>>
+    # # Load retro args (used by both Retro & GPT).
+    # if args.retro_workdir:
+    #     retro_args_path = get_retro_args_path(args.retro_workdir)
+    #     assert os.path.exists(retro_args_path), "retro workdir missing args.json"
+    #     with open(retro_args_path) as f:
+    #         retro_args = types.SimpleNamespace(**json.load(f))
+    #         retro_args.retro_return_doc_ids = args.retro_return_doc_ids
+    #         retro_args.retro_gpt_retrieved_length = \
+    #             args.retro_num_retrieved_chunks * \
+    #             retro_args.retro_gpt_chunk_length
+    #         set_retro_args(retro_args)
+    # <<<
+
     # Legacy RoPE arguments
     if args.use_rotary_position_embeddings:
         args.position_embedding_type = 'rope'
@@ -602,6 +616,12 @@ def _add_retro_args(parser):
     group.add_argument("--retro-num-retrieved-chunks", type=int, default=2,
                        help='Number of chunks to retrieve from the retrieval '
                        'database.')
+    # >>>
+    # group.add_argument("--retro-return-doc-ids", action="store_true",
+    #                    help="Turn this on when preprocessing retro data.")
+    # <<<
+    group.add_argument("--retro-attention-gate", type=float, default=1,
+                       help="Gated cross attention.")
     group.add_argument("--retro-no-verify-neighbor-count", action="store_false",
                        dest="retro_verify_neighbor_count",
                        help="Skip verifying that len(GPT dataset) == len(saved "
@@ -702,6 +722,8 @@ def _add_logging_args(parser):
                        help='If set, calculate and log parameters norm.')
     group.add_argument('--log-num-zeros-in-grad', action='store_true',
                        help='If set, calculate and log the number of zeros in gradient.')
+    group.add_argument('--log-throughput', action='store_true',
+                       help='If set, calculate and log throughput per GPU.')
     group.add_argument('--timing-log-level', type=int,
                        default=0, choices=range(0,3),
                        help='Granularity level to measure and report timing. '

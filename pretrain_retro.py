@@ -19,11 +19,16 @@ from megatron.core.models.retro.data.query import get_retro_datasets
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
-from pretrain_gpt import (
-    loss_func,
-    model_provider as default_model_provider,
-    train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
-)
+# >>>
+# from pretrain_gpt import (
+#     loss_func,
+#     model_provider as default_model_provider,
+#     train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
+# )
+# +++
+from tools.retro.query.chunk_dataset import train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider
+from tools.retro.query.retro_dataset import get_retro_datasets
+# <<<
 
 
 def get_retro_config():
@@ -79,7 +84,9 @@ def get_batch(data_iterator):
     tokenizer = get_tokenizer()
 
     # Items and their type.
-    keys = ['text', 'neighbor_tokens']
+    keys = ['text']
+    if args.retro_add_retriever:
+        keys.append('neighbor_tokens')
     datatype = torch.int64
 
     # Broadcast data.
@@ -95,9 +102,11 @@ def get_batch(data_iterator):
     labels = tokens_[:, 1:].contiguous()
     tokens = tokens_[:, :-1].contiguous()
 
-    # note: [bs * l * k, r]
-    # note: 2x == neighbor, continuation
-    neighbor_tokens = data_b['neighbor_tokens'].view(-1, get_retro_config().retro_retrieved_length).long()
+    if args.retro_add_retriever:
+        # note: [bs * l * k, r]
+        # note: 2x == neighbor, continuation
+        neighbor_tokens = data_b['neighbor_tokens'] \
+            .view(-1, retro_args.retro_gpt_retrieved_length).long()
 
     # Get the masks and postition ids.
     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
@@ -106,16 +115,20 @@ def get_batch(data_iterator):
         args.reset_position_ids,
         args.reset_attention_mask,
         args.eod_mask_loss)
-    _, _, neighbor_position_ids = get_ltor_masks_and_position_ids(
-        neighbor_tokens,
-        tokenizer.eod,
-        args.reset_position_ids,
-        args.reset_attention_mask,
-        args.eod_mask_loss)
-    neighbor_attention_mask = None
 
-    return tokens, labels, loss_mask, attention_mask, position_ids, \
-           neighbor_tokens, neighbor_attention_mask, neighbor_position_ids
+    if args.retro_add_retriever:
+        _, _, neighbor_position_ids = get_ltor_masks_and_position_ids(
+            neighbor_tokens,
+            tokenizer.eod,
+            args.reset_position_ids,
+            args.reset_attention_mask,
+            args.eod_mask_loss)
+        neighbor_attention_mask = None
+        return tokens, labels, loss_mask, attention_mask, position_ids, \
+               neighbor_tokens, neighbor_attention_mask, neighbor_position_ids
+
+    else:
+        return tokens, labels, loss_mask, attention_mask, position_ids
 
 
 def forward_step(data_iterator, model):
@@ -125,9 +138,15 @@ def forward_step(data_iterator, model):
 
     # Get the batch.
     timers('batch-generator').start()
-    tokens, labels, loss_mask, attention_mask, position_ids, \
+    if args.retro_add_retriever:
+        tokens, labels, loss_mask, attention_mask, position_ids, \
+            neighbor_tokens, neighbor_attention_mask, neighbor_position_ids = \
+                get_batch(data_iterator)
+    else:
+        tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
+            data_iterator)
         neighbor_tokens, neighbor_attention_mask, neighbor_position_ids = \
-            get_batch(data_iterator)
+            None, None, None
     timers('batch-generator').stop()
 
     # Model call.
@@ -152,21 +171,29 @@ def forward_step(data_iterator, model):
 
 def train_valid_test_datasets_provider(train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
-    config = get_retro_config()
-    train_ds, valid_ds, test_ds = \
-        gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
-    gpt_datasets = RetroGPTDatasets(
-        train=(train_ds, train_valid_test_num_samples[0]),
-        valid=(valid_ds, train_valid_test_num_samples[1]),
-        test=(test_ds, train_valid_test_num_samples[2]),
-    )
-    retro_datasets = get_retro_datasets(
-        config=config,
-        gpt_datasets=gpt_datasets,
-        sample_length=get_args().seq_length,
-        eod_token_id=get_tokenizer().eod,
-    )
-    return retro_datasets
+    # >>>
+    # config = get_retro_config()
+    # train_ds, valid_ds, test_ds = \
+    #     gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
+    # gpt_datasets = RetroGPTDatasets(
+    #     train=(train_ds, train_valid_test_num_samples[0]),
+    #     valid=(valid_ds, train_valid_test_num_samples[1]),
+    #     test=(test_ds, train_valid_test_num_samples[2]),
+    # )
+    # retro_datasets = get_retro_datasets(
+    #     config=config,
+    #     gpt_datasets=gpt_datasets,
+    #     sample_length=get_args().seq_length,
+    #     eod_token_id=get_tokenizer().eod,
+    # )
+    # return retro_datasets
+    # +++
+    args = get_args()
+    if args.retro_add_retriever:
+        return get_retro_datasets()
+    else:
+        return gpt_train_valid_test_datasets_provider(train_val_test_num_samples)
+    # <<<
 
 
 if __name__ == "__main__":
@@ -178,5 +205,4 @@ if __name__ == "__main__":
              model_provider,
              ModelType.retro_decoder,
              forward_step,
-             args_defaults={'tokenizer_type': 'GPT2BPETokenizer',
-                            'retro_add_retriever': True})
+             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
