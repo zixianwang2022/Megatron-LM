@@ -32,6 +32,11 @@ def save_indexed_dataset_infos(project_dir, indexed_dataset_infos):
         del info["dataset"]
         clean_infos.append(info)
 
+    # >>>
+    from lutil import pax
+    pax(dict(enumerate(clean_infos)))
+    # <<<
+
     # Save.
     with open(get_indexed_dataset_infos_path(project_dir), "w") as f:
         json.dump(clean_infos, f, indent=4)

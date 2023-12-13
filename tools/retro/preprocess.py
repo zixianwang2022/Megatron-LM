@@ -120,7 +120,10 @@ def get_bert_tokenizer(config):
     lower_case = {
         "BertWordPieceLowerCase" : True,
         "BertWordPieceCase" : False,
+    # >>>
     }[config.retro_bert_tokenizer_type]
+    # }[config.tokenizer_type]
+    # <<<
     return _BertWordPieceTokenizer(
         vocab_file=os.path.join(
             config.retro_project_dir,
@@ -216,8 +219,6 @@ if __name__ == "__main__":
     for task in config.retro_tasks:
         tasks.extend(task_remap[task])
     config.retro_tasks = tasks
-
-    raise Exception("saved config?")
 
     # Select task to run.
     for task in tasks:

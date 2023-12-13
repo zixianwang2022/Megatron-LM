@@ -265,6 +265,18 @@ def build_individual_db(
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
 
+    # >>>
+    # blocks = get_blocks_by_rank(
+    #     db_dir,
+    #     len(indexed_dataset),
+    #     config.retro_doc_block_size,
+    #     validate=lambda f : f["chunks_valid"].shape == (0,) \
+    #         or f["chunks_valid"].shape[1] == 4,
+    # )
+    # from lutil import pax
+    # pax("dataset_info, blocks")
+    # <<<
+
     # Missing DB blocks (split by documents).
     blocks = get_blocks_by_rank(
         db_dir,
@@ -277,6 +289,11 @@ def build_individual_db(
     if config.retro_task_validate is None:
         active_blocks = blocks.missing
     else:
+        # >>>
+        if blocks.n_missing_world != 0:
+            from lutil import pax
+            pax("blocks")
+        # <<<
         assert blocks.n_missing_world == 0
         active_blocks = blocks.existing
 

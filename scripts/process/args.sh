@@ -12,7 +12,7 @@ unset NCCL_DEBUG
 # RETRO_TASKS=$1
 
 # >>>
-# NPROCS=1
+NPROCS=1
 # <<<
 
 RETRO_TASKS="db-build"
@@ -20,8 +20,9 @@ RETRO_TASKS="db-build"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 
+RETRO_TASK_VALIDATE=""
 # RETRO_TASK_VALIDATE=1
-RETRO_TASK_VALIDATE=0.1
+# RETRO_TASK_VALIDATE=0.1
 
 ######## Megatron, Retro dirs. ########
 
@@ -86,6 +87,11 @@ RETRO_QUERY_NUM_NEIGHBORS_QUERY=200 RETRO_QUERY_NUM_NEIGHBORS_SAVE=20
 # --retro-gpt-data-impl ${RETRO_GPT_DATA_IMPL} \
 # --data-path ${RETRO_GPT_DATA_PATH} \
 # --retro-return-doc-ids \
+# --load ${ROOT_DIR}/bert-23/checkpoints \
+# --vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
+# --retro-gpt-vocab-file ${ROOT_DIR}/retro/misc/vocab/gpt2-vocab.json \
+# --retro-gpt-merge-file ${ROOT_DIR}/retro/misc/vocab/gpt2-merges.txt \
+# --retro-bert-vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
 ARGS=" \
     --distributed-timeout-minutes 600 \
     --tensor-model-parallel-size 1 \
@@ -97,12 +103,12 @@ ARGS=" \
     --global-batch-size ${RETRO_GPT_GLOBAL_BATCH_SIZE} \
     --seq-length 512 \
     --max-position-embeddings 512 \
-    --load ${ROOT_DIR}/bert-23/checkpoints \
+    --load ${RETRO_PROJECT_DIR}/checkpoints/bert \
     --exit-on-missing-checkpoint \
     --no-load-optim \
     --data-path [null] \
     --tokenizer-type BertWordPieceLowerCase \
-    --vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
+    --vocab-file ${RETRO_PROJECT_DIR}/tokenizer/bert-large-uncased-vocab.txt \
     --split ${RETRO_GPT_SPLIT} \
     --distributed-backend nccl \
     --lr 0.0001 \
@@ -125,13 +131,13 @@ ARGS=" \
     \
     --retro-project-dir ${RETRO_PROJECT_DIR} \
     --retro-tasks ${RETRO_TASKS} \
-    --retro-bert-vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
+    --retro-bert-vocab-file tokenizer/bert-large-uncased-vocab.txt \
     --retro-bert-tokenizer-type BertWordPieceLowerCase \
     \
     --retro-gpt-seed ${RETRO_GPT_SEED} \
     --retro-gpt-tokenizer-type GPT2BPETokenizer \
-    --retro-gpt-vocab-file ${ROOT_DIR}/retro/misc/vocab/gpt2-vocab.json \
-    --retro-gpt-merge-file ${ROOT_DIR}/retro/misc/vocab/gpt2-merges.txt \
+    --retro-gpt-vocab-file tokenizer/gpt2-vocab.json \
+    --retro-gpt-merge-file tokenizer/gpt2-merges.txt \
     --retro-gpt-seq-length ${RETRO_GPT_SEQ_LENGTH} \
     --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-gpt-global-batch-size ${RETRO_GPT_GLOBAL_BATCH_SIZE} \
