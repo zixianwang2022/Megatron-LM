@@ -25,11 +25,13 @@ from megatron.core.models.retro.data.config import (
 )
 from megatron.core.models.retro.data.query import (
     query_neighbors,
-    train_valid_test_datasets_provider,
+    # >>>
+    # train_valid_test_datasets_provider,
+    # <<<
 )
 # >>>
-from megatron.core.models.retro.data.query.utils import \
-    core_multi_split_gpt_dataset_config_from_retro_preprocessing_config
+# from megatron.core.models.retro.data.query.multi_split_gpt_dataset import \
+#     core_multi_split_gpt_dataset_config_from_retro_preprocessing_config
 # <<<
 from megatron.core.models.retro.data.utils import (
     # >>>
@@ -42,15 +44,18 @@ from megatron.tokenizer.tokenizer import (
     _GPT2BPETokenizer,
     _GPTSentencePieceTokenizer,
 )
-from megatron.training import (
-    build_train_valid_test_datasets,
-    get_train_valid_test_num_samples,
-    update_train_iters,
-)
-from pretrain_gpt import is_dataset_built_on_rank
+# >>>
+# from megatron.training import (
+#     build_train_valid_test_datasets,
+#     get_train_valid_test_num_samples,
+#     update_train_iters,
+# )
+# <<<
+# >>>
+# from pretrain_gpt import is_dataset_built_on_rank
+# <<<
 from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
 from tools.retro.config_utils import add_config_args
-
 
 
 def add_retro_args(parser):
@@ -71,16 +76,37 @@ def get_bert_embedders(config):
     )
 
 
+# >>>
 def get_gpt_datasets(config):
 
     # Dataset config.
-    data_config = core_multi_split_gpt_dataset_config_from_retro_preprocessing_config(
-        config=config,
+    # >>>
+    # data_config = core_multi_split_gpt_dataset_config_from_retro_preprocessing_config(
+    #     config=config,
+    #     split=config.retro_gpt_split,
+    #     return_document_ids=True,
+    #     is_dataset_built_on_rank=is_dataset_built_on_rank,
+    #     custom_data_path=None,
+    # )
+    data_dir = get_gpt_data_dir(config.retro_project_dir)
+    blend = list(config.retro_gpt_data_path)
+    for i in range(len(blend) - 1, -1, -2):
+        blend[i] = os.path.join(data_dir, blend[i])
+    data_config = MultiSplitGPTDatasetConfig(
+        is_built_on_rank=is_dataset_built_on_rank,
+        random_seed=config.retro_gpt_seed,
+        sequence_length=config.retro_gpt_seq_length,
+        blend=blend,
         split=config.retro_gpt_split,
+        split_preprocessing=None, # config.retro_gpt_split,
+        path_to_cache=config.retro_gpt_data_cache_path,
         return_document_ids=True,
-        is_dataset_built_on_rank=is_dataset_built_on_rank,
-        custom_data_path=None,
     )
+    # <<<
+
+    # >>>
+    pax("config, data_config")
+    # <<<
 
     # Datasets.
     print_rank_0(" > datasets.")
@@ -97,6 +123,7 @@ def get_gpt_datasets(config):
     )
 
     return datasets
+# <<<
 
 
 def get_gpt_tokenizer(config):
@@ -171,7 +198,15 @@ def get_retro_preprocessing_config():
 
     # Add tools.
     config.retro_bert_embedders = get_bert_embedders(config)
+    # >>>
     config.retro_gpt_datasets = get_gpt_datasets(config)
+    # config.retro_gpt_datasets = get_gpt_datasets(
+    #     config=config,
+    #     split=config.retro_gpt_split,
+    #     return_document_ids=True,
+    #     custom_data_path=None,
+    # )
+    # <<<
     config.retro_tokenizers = get_tokenizers(config)
 
     return config

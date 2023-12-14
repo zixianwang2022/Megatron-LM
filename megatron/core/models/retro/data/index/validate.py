@@ -75,6 +75,7 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
             embeddings = embedder.embed_text_dataset(sub_dataset)
 
             # Check equality.
+            print_rank_0(" > validate.")
             assert np.array_equal(existing_embeddings, embeddings)
 
         # Synchronize progress across all ranks. (for easier observation)
@@ -139,6 +140,7 @@ def validate_added_encodings(config):
             embeddings, codes = index.encode_block(inner_index, embedder, text_dataset, block)
 
             # Check equality.
+            print_rank_0(" > validate.")
             assert np.array_equal(existing_codes, codes)
 
         # Synchronize progress across all ranks. (for easier observation)

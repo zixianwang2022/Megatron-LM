@@ -11,7 +11,7 @@ from megatron.core.models.retro.data.utils import (
 )
 
 from .multi_split_gpt_dataset import MultiSplitGPTDataset
-# from .utils import get_neighbor_dir
+from .utils import get_neighbor_dir
 # +++
 # import os
 # import torch
@@ -73,25 +73,6 @@ class ChunkDataset(torch.utils.data.Dataset):
             "doc_ids" : sample_doc_ids,
             "text" : chunk_token_ids,
         }
-
-
-def train_valid_test_datasets_provider(data_config, train_valid_test_num_samples):
-    """Build train, valid, and test datasets."""
-
-    print_rank_0('> building multi-split train, validation, and test datasets '
-                 'for GPT ...')
-    
-    train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
-        # >>>
-        # GPTDataset,
-        MultiSplitGPTDataset,
-        # <<<
-        train_valid_test_num_samples,
-        data_config,
-    ).build()
-    print_rank_0("> finished creating multi-split GPT datasets ...")
-
-    return train_ds, valid_ds, test_ds
 
 
 def get_chunk_dataset_map(project_dir, gpt_datasets, sample_length, chunk_length):

@@ -31,6 +31,10 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
+# >>>
+from lutil import pax
+# <<<
+
 
 def build_partial_db(
     config: RetroPreprocessingConfig,
@@ -318,6 +322,7 @@ def build_individual_db(
                         existing_doc_offsets = np.copy(f["doc_offsets"])
 
                     # Check equality.
+                    print_rank_0(" > validate.")
                     assert np.array_equal(existing_chunks_valid, chunk_db_valid)
                     assert np.array_equal(existing_chunks_invalid, chunk_db_invalid)
                     assert np.array_equal(existing_doc_offsets, doc_offsets)
@@ -537,6 +542,9 @@ def build_db(config):
         indexed_dataset_infos = init_indexed_dataset_infos(config)
     else:
         indexed_dataset_infos = get_indexed_dataset_infos(config.retro_project_dir)
+        # >>>
+        pax(dict(enumerate(indexed_dataset_infos)))
+        # <<<
 
     # Build individual dbs.
     build_individual_dbs(config, indexed_dataset_infos)

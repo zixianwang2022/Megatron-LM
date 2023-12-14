@@ -3,8 +3,8 @@
 import types
 from dataclasses import dataclass
 
+from megatron.core.models.retro.data.config import RetroTokenizers
 from megatron.core.transformer import TransformerConfig
-
 
 @dataclass
 class RetroConfig(TransformerConfig):
@@ -35,6 +35,7 @@ class RetroConfig(TransformerConfig):
         retro_retrieved_length (int): Cached value of retro_num_retrieved_chunks *
             retro_chunk_length (i.e., the total number of retrieved tokens;
             neighbor + continuation).
+        retro_split_preprocessing (str): Data split used during data preprocessing.
         retro_tokenizers (RetroTokenizers): GPT ('gpt') and Bert ('bert')
             tokenizers.
         retro_verify_neighbor_count (bool): Verify that len(GPT dataset) ==
@@ -51,11 +52,19 @@ class RetroConfig(TransformerConfig):
     retro_num_neighbors: int = 2
     retro_num_retrieved_chunks: int = 2
     retro_retrieved_length: int = None
+    # >>>
+    retro_split_preprocessing: str = None
+    retro_tokenizers: RetroTokenizers = None
+    # <<<
     retro_verify_neighbor_count: bool = True
 
     def __post_init__(self):
 
         super().__post_init__()
+
+        # >>>
+        assert self.retro_split_preprocessing is not None
+        # <<<
 
         # Pre-compute 
         self.retro_retrieved_length = self.retro_num_retrieved_chunks * self.retro_chunk_length

@@ -52,6 +52,7 @@ LOG_INTERVAL=1 # 20
 EXIT_INTERVAL=10
 
 # --dataloader-type cyclic \
+# --split 98,2,0 \
 TP=1 # 8
 ARGS=" \
     --exit-interval ${EXIT_INTERVAL} \
@@ -68,7 +69,7 @@ ARGS=" \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
     --log-interval ${LOG_INTERVAL} \
-    --split 98,2,0 \
+    --split 99,1,0 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \

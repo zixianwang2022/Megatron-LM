@@ -17,12 +17,12 @@ unset NCCL_DEBUG
 
 # RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
-RETRO_TASKS="index-add"
-# RETRO_TASKS="query-neighbors"
+# RETRO_TASKS="index-add"
+RETRO_TASKS="query-neighbors"
 
-RETRO_TASK_VALIDATE=""
+# RETRO_TASK_VALIDATE=""
 # RETRO_TASK_VALIDATE=1
-# RETRO_TASK_VALIDATE=0.1
+RETRO_TASK_VALIDATE=0.1
 
 ######## Megatron, Retro dirs. ########
 

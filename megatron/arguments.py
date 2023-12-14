@@ -93,19 +93,34 @@ def load_retro_args(args):
 
             # Update args.
             args.data_cache_path = retro_config.retro_gpt_data_cache_path
-            args.data_path = data_path
+            # >>>
+            # args.data_path = data_path
+            args.data_path = data_path if args.data_path is None else args.data_path
+            # <<<
             args.eval_interval = retro_config.retro_gpt_eval_interval
             args.eval_iters = retro_config.retro_gpt_eval_iters
             args.global_batch_size = retro_config.retro_gpt_global_batch_size
             args.max_position_embeddings = retro_config.retro_gpt_seq_length
-            args.merge_file = retro_config.retro_gpt_merge_file
+            args.merge_file = os.path.join(
+                args.retro_project_dir,
+                retro_config.retro_gpt_merge_file,
+            ) if retro_config.retro_gpt_merge_file is not None else None
             args.seed = retro_config.retro_gpt_seed
             args.seq_length = retro_config.retro_gpt_seq_length
-            args.split = retro_config.retro_gpt_split
-            args.tokenizer_model = retro_config.retro_gpt_tokenizer_model
+            # >>>
+            # args.split = retro_config.retro_gpt_split
+            args.retro_split_preprocessing = retro_config.retro_gpt_split
+            # <<<
+            args.tokenizer_model = os.path.join(
+                args.retro_project_dir,
+                retro_config.retro_gpt_tokenizer_model,
+            ) if retro_config.retro_gpt_tokenizer_model is not None else None
             args.tokenizer_type = retro_config.retro_gpt_tokenizer_type
             args.train_samples = retro_config.retro_gpt_train_samples
-            args.vocab_file = retro_config.retro_gpt_vocab_file
+            args.vocab_file = os.path.join(
+                args.retro_project_dir,
+                retro_config.retro_gpt_vocab_file,
+            ) if retro_config.retro_gpt_vocab_file is not None else None
 
             args.retro_block_size = retro_config.retro_block_size
             args.retro_chunk_length = retro_config.retro_gpt_chunk_length

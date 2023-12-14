@@ -16,9 +16,13 @@ from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.enums import ModelType
 from megatron.core.models.retro.data.config import RetroGPTDatasets
 from megatron.core.models.retro.data.query import get_retro_datasets
+from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDatasetConfig
+# from megatron.core.models.retro.data.query import train_valid_test_datasets_provider as multi_split_gpt_train_valid_test_datasets_provider
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
+from pretrain_gpt import is_dataset_built_on_rank
+# from tools.retro.utils import get_gpt_datasets as get_multi_split_gpt_datasets
 # >>>
 # from pretrain_gpt import (
 #     loss_func,
@@ -26,8 +30,6 @@ from megatron.utils import get_ltor_masks_and_position_ids
 #     train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
 # )
 # +++
-from tools.retro.query.chunk_dataset import train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider
-from tools.retro.query.retro_dataset import get_retro_datasets
 # <<<
 
 
@@ -169,19 +171,75 @@ def forward_step(data_iterator, model):
     return output_tensor, partial(loss_func, loss_mask)
 
 
+# >>>
+# def get_gpt_datasets(config):
+
+
+#     num_train_samples, num_valid_samples, num_test_samples = \
+#         get_train_valid_test_num_samples()
+
+#     datasets = RetroGPTDatasets(
+#         train=(train_ds, num_train_samples),
+#         valid=(valid_ds, num_valid_samples),
+#         test=(test_ds, num_test_samples),
+#     )
+
+#     return datasets
 def train_valid_test_datasets_provider(train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
     args = get_args()
     if args.retro_add_retriever:
+
+        # Dataset config.
         config = get_retro_config()
-        train_ds, valid_ds, test_ds = \
-            gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
-        gpt_datasets = RetroGPTDatasets(
-            train=(train_ds, train_valid_test_num_samples[0]),
-            valid=(valid_ds, train_valid_test_num_samples[1]),
-            test=(test_ds, train_valid_test_num_samples[2]),
+        pax("config")
+        # >>>
+        # data_config = core_multi_split_gpt_dataset_config_from_retro_preprocessing_config(
+        #     config=retro_config,
+        #     split=config.retro_gpt_split,
+        #     return_document_ids=True,
+        #     is_dataset_built_on_rank=is_dataset_built_on_rank,
+        #     custom_data_path=None,
+        # )
+        data_config = MultiSplitGPTDatasetConfig(
+            is_built_on_rank=is_dataset_built_on_rank,
+            random_seed=args.seed,
+            sequence_length=args.seq_length,
+            blend=args.data_path,
+            split=args.split,
+            split_preprocessing=config.retro_gpt_split,
+            path_to_cache=args.data_cache_path,
+            return_document_ids=True,
         )
-        raise Exception("hi.")
+        # <<<
+
+        # >>>
+        pax("config, data_config")
+        # <<<
+
+
+        # # GPT datasets.
+        # print_rank_0(" > multi-split gpt datasets.")
+        # train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
+        #     lambda n : multi_split_gpt_train_valid_test_datasets_provider(data_config, n))
+
+        # train_ds, valid_ds, test_ds = multi_split_gpt_train_valid_test_datasets_provider(train_valid_test_num_samples)
+        # gpt_datasets = RetroGPTDatasets(
+        #     train=(train_ds, train_valid_test_num_samples[0]),
+        #     valid=(valid_ds, train_valid_test_num_samples[1]),
+        #     test=(test_ds, train_valid_test_num_samples[2]),
+        # )
+        #+++
+        gpt_datasets = get_multi_split_gpt_datasets(
+            config=config.retro_preprocessing_config,
+            split=args.split,
+            return_document_ids=False,
+            custom_data_path=args.data_path,
+        )
+        # <<<
+
+        pax("gpt_datasets")
+
         retro_datasets = get_retro_datasets(
             config=config,
             gpt_datasets=gpt_datasets,
@@ -194,6 +252,7 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         return retro_datasets
     else:
         return gpt_train_valid_test_datasets_provider(train_val_test_num_samples)
+# <<<
 
 
 if __name__ == "__main__":
