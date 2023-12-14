@@ -1,14 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
 import os
-# from typing import List
-
-# from megatron.core.models.retro.data.config import RetroPreprocessingConfig
-# from megatron.core.models.retro.data.utils import get_gpt_data_dir
-
-# from .multi_split_gpt_dataset import MultiSplitGPTDatasetConfig
-# <<<
 
 
 def get_query_dir(project_dir):

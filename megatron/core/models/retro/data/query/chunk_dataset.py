@@ -1,34 +1,10 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
 import torch
 
-from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
-# from megatron.core.models.retro.data.db.utils import get_indexed_dataset_infos
-from megatron.core.models.retro.data.utils import (
-    get_num_chunks_per_sample,
-    print_rank_0,
-)
+from megatron.core.models.retro.data.utils import get_num_chunks_per_sample
 
-from .multi_split_gpt_dataset import MultiSplitGPTDataset
 from .utils import get_neighbor_dir
-# +++
-# import os
-# import torch
-
-# from megatron import get_args, get_retro_args, print_rank_0
-# from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
-# from megatron.training import (
-#     build_train_valid_test_datasets as build_pretraining_train_valid_test_datasets,
-#     update_train_iters,
-# )
-# from pretrain_gpt import is_dataset_built_on_rank
-# from tools.retro.db.utils import get_indexed_dataset_infos
-# from tools.retro.utils import get_num_chunks_per_sample
-
-# from .multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
-# from .utils import get_neighbor_dirname, get_query_workdir
-# <<<
 
 
 class ChunkDataset(torch.utils.data.Dataset):

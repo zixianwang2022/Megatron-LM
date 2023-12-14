@@ -8,13 +8,14 @@ Stages (see argument '--retro-tasks'):
 - Query pretraining neighbors.
 """
 
+# >>>
 import json
 import os
 import torch
-import types
 
 from megatron import get_args, initialize_megatron, print_rank_0
 from megatron.arguments import core_transformer_config_from_args
+from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.models.retro.data.db import build_db
 from megatron.core.models.retro.data.index import add_to_index, train_index
 from megatron.core.models.retro.data.config import (
@@ -25,37 +26,32 @@ from megatron.core.models.retro.data.config import (
 )
 from megatron.core.models.retro.data.query import (
     query_neighbors,
-    # >>>
     # train_valid_test_datasets_provider,
-    # <<<
 )
-# >>>
-# from megatron.core.models.retro.data.query.multi_split_gpt_dataset import \
-#     core_multi_split_gpt_dataset_config_from_retro_preprocessing_config
-# <<<
+from megatron.core.models.retro.data.query.multi_split_gpt_dataset import (
+    # core_multi_split_gpt_dataset_config_from_retro_preprocessing_config,
+    MultiSplitGPTDataset,
+    MultiSplitGPTDatasetConfig,
+)
 from megatron.core.models.retro.data.utils import (
-    # >>>
     # core_gpt_dataset_config_from_retro_preprocessing_config,
-    # <<<
     get_config_path,
+    get_gpt_data_dir,
 )
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
     _GPT2BPETokenizer,
     _GPTSentencePieceTokenizer,
 )
-# >>>
-# from megatron.training import (
-#     build_train_valid_test_datasets,
-#     get_train_valid_test_num_samples,
-#     update_train_iters,
-# )
-# <<<
-# >>>
-# from pretrain_gpt import is_dataset_built_on_rank
-# <<<
+from megatron.training import (
+    # build_train_valid_test_datasets,
+    get_train_valid_test_num_samples,
+    # update_train_iters,
+)
+from pretrain_gpt import is_dataset_built_on_rank
 from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
 from tools.retro.config_utils import add_config_args
+# <<<
 
 
 def add_retro_args(parser):
@@ -98,29 +94,31 @@ def get_gpt_datasets(config):
         sequence_length=config.retro_gpt_seq_length,
         blend=blend,
         split=config.retro_gpt_split,
-        split_preprocessing=None, # config.retro_gpt_split,
+        split_preprocessing=config.retro_gpt_split,
         path_to_cache=config.retro_gpt_data_cache_path,
         return_document_ids=True,
     )
     # <<<
 
-    # >>>
-    pax("config, data_config")
-    # <<<
-
-    # Datasets.
-    print_rank_0(" > datasets.")
-    train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
-        lambda n : train_valid_test_datasets_provider(data_config, n))
-
-    num_train_samples, num_valid_samples, num_test_samples = \
-        get_train_valid_test_num_samples()
-
+    # GPT datasets.
+    print_rank_0(" > multi-split gpt datasets.")
+    train_valid_test_num_samples = get_train_valid_test_num_samples()
+    train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
+        MultiSplitGPTDataset,
+        train_valid_test_num_samples,
+        data_config,
+    ).build()
+    
     datasets = RetroGPTDatasets(
-        train=(train_ds, num_train_samples),
-        valid=(valid_ds, num_valid_samples),
-        test=(test_ds, num_test_samples),
+        train=(train_ds, train_valid_test_num_samples[0]),
+        valid=(valid_ds, train_valid_test_num_samples[1]),
+        test=(test_ds, train_valid_test_num_samples[2]),
     )
+
+    # >>>
+    # from lutil import pax
+    # pax("config, data_config, train_valid_test_num_samples, datasets")
+    # <<<
 
     return datasets
 # <<<
