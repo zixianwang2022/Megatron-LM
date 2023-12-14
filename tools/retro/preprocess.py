@@ -100,6 +100,11 @@ def get_gpt_datasets(config):
     )
     # <<<
 
+    # >>>
+    # from lutil import pax
+    # pax("config, data_config")
+    # <<<
+
     # GPT datasets.
     print_rank_0(" > multi-split gpt datasets.")
     train_valid_test_num_samples = get_train_valid_test_num_samples()

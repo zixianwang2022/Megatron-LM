@@ -183,8 +183,16 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
             split=args.split,
             split_preprocessing=retro_config.retro_split_preprocessing,
             path_to_cache=args.data_cache_path,
+            # >>>
             return_document_ids=False,
+            # return_document_ids=True,
+            # <<<
         )
+
+        # >>>
+        # from lutil import pax
+        # pax("data_config")
+        # <<<
 
         # GPT datasets.
         print_rank_0(" > multi-split gpt datasets.")

@@ -62,16 +62,25 @@ class BlendedDataset(torch.utils.data.Dataset):
         self.size = size
         self.config = config
 
-        unique_identifiers = OrderedDict()
-        unique_identifiers["class"] = type(self).__name__
-        unique_identifiers["datasets"] = [dataset.unique_identifiers for dataset in self.datasets]
-        unique_identifiers["weights"] = self.weights
-        unique_identifiers["size"] = self.size
+        # >>>
+        # unique_identifiers = OrderedDict()
+        # unique_identifiers["class"] = type(self).__name__
+        # unique_identifiers["datasets"] = [dataset.unique_identifiers for dataset in self.datasets]
+        # unique_identifiers["weights"] = self.weights
+        # unique_identifiers["size"] = self.size
 
-        self.unique_description = json.dumps(unique_identifiers, indent=4)
-        self.unique_description_hash = hashlib.md5(
-            self.unique_description.encode("utf-8")
-        ).hexdigest()
+        # self.unique_description = json.dumps(unique_identifiers, indent=4)
+        # self.unique_description_hash = hashlib.md5(
+        #     self.unique_description.encode("utf-8")
+        # ).hexdigest()
+        # +++
+        self.unique_identifiers, self.unique_description, self.unique_description_hash = \
+            self.build_unique_identifiers(
+                [dataset.unique_identifiers for dataset in self.datasets],
+                self.weights,
+                self.size,
+            )
+        # <<<
 
         self.dataset_index, self.dataset_sample_index = self._build_indices()
 
@@ -93,6 +102,23 @@ class BlendedDataset(torch.utils.data.Dataset):
             "dataset_id": dataset_id,
             **self.datasets[dataset_id][dataset_sample_id],
         }
+
+    @classmethod
+    def _build_unique_identifiers(cls, child_identifiers, weights, size):
+        identifier = OrderedDict()
+        identifier["class"] = cls.__name__
+        identifier["datasets"] = [c for c in child_identifiers]
+        identifier["weights"] = self.weights
+        identifier["size"] = self.size
+
+        self.unique_description = json.dumps(identifier, indent=4)
+        self.unique_description_hash = hashlib.md5(
+            self.unique_description.encode("utf-8")
+        ).hexdigest()
+
+        pax("unique_identifiers, unique_description, unique_description_hash")
+
+        return all_three_3_?
 
     def _build_indices(self) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """Build and optionally cache the dataset index and the dataset sample index
