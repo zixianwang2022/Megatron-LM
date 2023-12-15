@@ -13,9 +13,10 @@ from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.factory import IndexFactory
 from megatron.core.models.retro.data.index.utils import get_index_dir
 from megatron.core.models.retro.data.utils import (
-    get_blocks_by_rank,
     GPTToTextDataset,
+    get_blocks_by_rank,
     print_rank_0,
+    retro_makedir,
 )
 
 from .gpt_chunk_dataset import build_gpt_chunk_datasets_from_gpt_datasets
@@ -164,7 +165,7 @@ def query_block_neighbors(config, db_dataset, query_dataset,
     if config.retro_task_validate is None:
         # Save neighbors.
         print_rank_0("save neighbors.")
-        os.makedirs(os.path.dirname(block["path"]), exist_ok=True)
+        retro_makedir(config, os.path.dirname(block["path"]))
         f = h5py.File(block["path"], "w")
         f.create_dataset("neighbors", data=filtered_neighbor_ids)
         f.close()

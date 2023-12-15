@@ -16,6 +16,7 @@ from megatron.core.models.retro.data.utils import (
     extract_data_config,
     get_blocks_by_rank,
     print_rank_0,
+    retro_makedir,
 )
 
 from .utils import (
@@ -232,20 +233,20 @@ def build_individual_db(
 
     # Make directory.
     db_dir = get_individual_db_dir(config.retro_project_dir, dataset_info["prefix"])
-    os.makedirs(db_dir, exist_ok=True)
+    retro_makedir(config, db_dir)
 
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
 
     # >>>
-    # blocks = get_blocks_by_rank(
-    #     db_dir,
-    #     len(indexed_dataset),
-    #     config.retro_doc_block_size,
-    #     validate=lambda f : f["chunks_valid"].shape == (0,) \
-    #         or f["chunks_valid"].shape[1] == 4,
-    # )
-    # pax("dataset_info, blocks")
+    blocks = get_blocks_by_rank(
+        db_dir,
+        len(indexed_dataset),
+        config.retro_doc_block_size,
+        validate=lambda f : f["chunks_valid"].shape == (0,) \
+            or f["chunks_valid"].shape[1] == 4,
+    )
+    pax("dataset_info, blocks, db_dir", {"retro_task_validate": config.retro_task_validate})
     # <<<
 
     # Missing DB blocks (split by documents).
@@ -461,7 +462,7 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
     # Build merged chunk db.
     if not os.path.exists(db_path):
 
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        retro_makedir(config, os.path.dirname(db_path))
         f = h5py.File(db_path, "w")
 
         # Initialize output arrays.
@@ -543,7 +544,7 @@ def build_db(config):
     else:
         indexed_dataset_infos = get_indexed_dataset_infos(config.retro_project_dir)
         # >>>
-        pax(dict(enumerate(indexed_dataset_infos)))
+        # pax(dict(enumerate(indexed_dataset_infos)))
         # <<<
 
     # Build individual dbs.

@@ -34,6 +34,7 @@ from megatron.core.models.retro.data.query.utils import get_query_dir
 from megatron.core.models.retro.data.utils import (
     get_config_path,
     get_gpt_data_dir,
+    retro_makedir,
 )
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,
@@ -71,18 +72,9 @@ def initialize_megatron_retro():
     config = get_retro_preprocessing_config()
 
     # Save retro config.
-    os.makedirs(config.retro_project_dir, exist_ok=True)
-    save_config(config)
-
-    # >>>
-    # from lutil import pax
-    # pax({
-    #     "argv" : sys.argv,
-    #     "project_dir_idx" : project_dir_idx,
-    #     "args / retro_project_dir" : get_args().retro_project_dir,
-    #     "config / retro_project_dir" : config.retro_project_dir,
-    # })
-    # <<<
+    if config.retro_task_validate is None:
+        retro_makedir(config, config.retro_project_dir)
+        save_config(config)
 
     return config
 

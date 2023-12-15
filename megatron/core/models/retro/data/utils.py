@@ -23,6 +23,11 @@ def print_rank_0(message):
         print(message, flush=True)
 
 
+def retro_makedir(config, path):
+    if config.retro_task_validate is None:
+        os.makedirs(path, exist_ok=True)
+
+
 def extract_data_config(config):
     return config.retro_gpt_datasets.train[0].config
 

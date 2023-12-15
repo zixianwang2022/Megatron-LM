@@ -3,6 +3,8 @@
 import glob
 import os
 
+from megatron.core.models.retro.data.utils import retro_makedir
+
 
 def get_index_dir(config):
     """Create sub-directory for this index."""
@@ -16,7 +18,7 @@ def get_index_dir(config):
     )
 
     # Make directory.
-    os.makedirs(index_dir_path, exist_ok=True)
+    retro_makedir(config, index_dir_path)
 
     return index_dir_path
 

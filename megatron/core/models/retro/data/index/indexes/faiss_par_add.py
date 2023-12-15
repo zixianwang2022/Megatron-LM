@@ -17,7 +17,11 @@ from tqdm import tqdm
 
 from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
-from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0
+from megatron.core.models.retro.data.utils import (
+    get_blocks_by_rank,
+    print_rank_0,
+    retro_makedir,
+)
 
 from .faiss_base import FaissBaseIndex
 
@@ -46,10 +50,10 @@ class FaissParallelAddIndex(FaissBaseIndex):
         # Return embeddings for validation purposes.
         return embeddings, codes
 
-    def save_block(self, block, codes):
+    def save_block(self, config, block, codes):
         # Save neighbors.
         print_rank_0("save codes.")
-        os.makedirs(os.path.dirname(block["path"]), exist_ok=True)
+        retro_makedir(config, os.path.dirname(block["path"]))
         with h5py.File(block["path"], "w") as f:
             f.create_dataset("data", data=codes)
 
@@ -88,7 +92,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
 
                 # Encode and save.
                 _, codes = self.encode_block(index, embedder, text_dataset, block)
-                self.save_block(block, codes)
+                self.save_block(config, block, codes)
 
             # Synchronize progress across all ranks. (for easier observation)
             print_rank_0(" > waiting for other ranks to finish block.")

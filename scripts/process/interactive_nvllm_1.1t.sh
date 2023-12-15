@@ -19,7 +19,9 @@ set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
+# >>>
 NPROCS=1 # 8
+# <<<
 
 ######## tasks. ########
 
@@ -28,6 +30,7 @@ RETRO_TASKS="db-build"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 
+# RETRO_TASK_VALIDATE=""
 # RETRO_TASK_VALIDATE=1
 RETRO_TASK_VALIDATE=0.1
 
@@ -208,7 +211,7 @@ CMD="\
     --node_rank ${NODE_RANK} \
     --master_addr ${MASTER_ADDR} \
     --master_port 6000 \
-    tools/retro/preprocess.py ${ARGS} \
+    tools/retro/preprocess_data.py ${ARGS} \
 "
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "CMD = '$CMD'."
