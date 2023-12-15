@@ -197,9 +197,6 @@ def core_gpt_dataset_config_from_args(args):
         blend_per_split=[args.train_data_path, args.valid_data_path, args.test_data_path],
         split=args.split,
         path_to_cache=args.data_cache_path,
-        # >>>
-        # return_document_ids=False,
-        # <<<
     )
 
 

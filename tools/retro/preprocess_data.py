@@ -10,6 +10,7 @@ Stages (see argument '--retro-tasks'):
 
 import json
 import os
+import sys
 import torch
 
 from megatron import get_args, initialize_megatron, print_rank_0
@@ -49,6 +50,41 @@ def add_retro_args(parser):
     group = parser.add_argument_group(title="Retro preprocessing")
     add_config_args(group, RetroPreprocessingConfig)
     return parser
+
+
+def initialize_megatron_retro():
+    '''Initialize megatron & save Retro config.'''
+
+    # Prevent arguments.py from overriding preprocessing args.
+    project_dir_idx = sys.argv.index("--retro-project-dir")
+    retro_project_dir = sys.argv[project_dir_idx + 1]
+    del sys.argv[project_dir_idx] # delete key
+    del sys.argv[project_dir_idx] # delete value
+
+    # Initialize.
+    initialize_megatron(extra_args_provider=add_retro_args)
+
+    args = get_args()
+    args.retro_project_dir = retro_project_dir
+
+    # Retro config.
+    config = get_retro_preprocessing_config()
+
+    # Save retro config.
+    os.makedirs(config.retro_project_dir, exist_ok=True)
+    save_config(config)
+
+    # >>>
+    # from lutil import pax
+    # pax({
+    #     "argv" : sys.argv,
+    #     "project_dir_idx" : project_dir_idx,
+    #     "args / retro_project_dir" : get_args().retro_project_dir,
+    #     "config / retro_project_dir" : config.retro_project_dir,
+    # })
+    # <<<
+
+    return config
 
 
 def get_bert_embedders(config):
@@ -169,17 +205,6 @@ def get_retro_preprocessing_config():
     # update_train_iters(args)
     # <<<
 
-    # >>>
-    # # Update project-dir-relative paths.
-    # args.load = os.path.join(args.retro_project_dir, args.load)
-    # if args.vocab_file is not None:
-    #     args.vocab_file = os.path.join(args.retro_project_dir, args.vocab_file)
-    # if args.merge_file is not None:
-    #     args.merge_file = os.path.join(args.retro_project_dir, args.merge_file)
-    # if args.tokenizer_model is not None:
-    #     args.tokenizer_model = os.path.join(args.retro_project_dir, args.tokenizer_model)
-    # <<<
-
     # Retro config.
     config = core_transformer_config_from_args(
         args, config_class=RetroPreprocessingConfig)
@@ -222,14 +247,7 @@ def save_config(config):
 if __name__ == "__main__":
 
     # Initalize Megatron.
-    initialize_megatron(extra_args_provider=add_retro_args)
-
-    # Retro config.
-    config = get_retro_preprocessing_config()
-
-    # Save retro config.
-    os.makedirs(config.retro_project_dir, exist_ok=True)
-    save_config(config)
+    config = initialize_megatron_retro()
 
     # Expand tasks.
     task_remap = {
