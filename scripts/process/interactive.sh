@@ -23,7 +23,7 @@ CMD="\
     --node_rank ${NODE_RANK} \
     --master_addr ${MASTER_ADDR} \
     --master_port 6000 \
-    tools/retro/preprocess.py ${ARGS} \
+    tools/retro/preprocess_data.py ${ARGS} \
 "
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "CMD = '$CMD'."

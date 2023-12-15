@@ -2,5 +2,5 @@
 
 from .bert_embedders import RetroBertEmbedders
 from .config import RetroPreprocessingConfig
-from .gpt_datasets import RetroGPTDatasets
+from .gpt_chunk_datasets import RetroGPTChunkDatasets
 from .tokenizers import RetroTokenizers

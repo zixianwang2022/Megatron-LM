@@ -11,7 +11,9 @@ from typing import Callable
 
 from megatron.core import parallel_state
 
-from .config import RetroPreprocessingConfig
+# >>>
+# from .config import RetroPreprocessingConfig
+# <<<
 from .external_libs import h5py
 
 

@@ -7,7 +7,10 @@ from megatron.core.models.retro.data.utils import get_num_chunks_per_sample
 from .utils import get_neighbor_dir
 
 
-class ChunkDataset(torch.utils.data.Dataset):
+# >>>
+# class ChunkDataset(torch.utils.data.Dataset):
+class GPTChunkDataset(torch.utils.data.Dataset):
+# <<<
     '''Pretraining chunk dataset wraps a standard GPT dataset.
 
     This dataset conceptually divides each sample (e.g., length 2048)
@@ -51,8 +54,15 @@ class ChunkDataset(torch.utils.data.Dataset):
         }
 
 
-def get_chunk_dataset_map(project_dir, gpt_datasets, sample_length, chunk_length):
-    '''Get train, valid, test chunk datasets.'''
+# >>>
+# def get_gpt_chunk_dataset_map(
+def build_gpt_chunk_datasets_from_gpt_datasets(
+    project_dir,
+    gpt_datasets,
+    sample_length,
+    chunk_length,
+):
+    '''Get train, valid, test GPT chunk datasets.'''
 
     # Reset iteration.
     # >>>
@@ -60,14 +70,30 @@ def get_chunk_dataset_map(project_dir, gpt_datasets, sample_length, chunk_length
     # config.consumed_train_samples = 0
     # <<<
 
-    # Info dict.
-    chunk_dataset_map = {
+    # GPT chunk datasets.
+    # >>>
+    # chunk_datasets = {
+    #     key : {
+    #         "dataset" : GPTChunkDataset(sample_ds, sample_length, chunk_length),
+    #         "neighbor_dir" : get_neighbor_dir(project_dir, key, sample_ds),
+    #         "num_active_chunks" : num_active_samples * get_num_chunks_per_sample(sample_length, chunk_length),
+    #     }
+    #     for key, (sample_ds, num_active_samples) in vars(gpt_datasets).items() if sample_ds
+    # }
+    chunk_datasets = {
         key : {
-            "dataset" : ChunkDataset(sample_ds, sample_length, chunk_length),
+            "dataset" : GPTChunkDataset(sample_ds, sample_length, chunk_length),
             "neighbor_dir" : get_neighbor_dir(project_dir, key, sample_ds),
             "num_active_chunks" : num_active_samples * get_num_chunks_per_sample(sample_length, chunk_length),
-        }
-        for key, (sample_ds, num_active_samples) in vars(gpt_datasets).items() if sample_ds
+        } if sample_ds else None
+        for key, (sample_ds, num_active_samples) in gpt_datasets.items()
     }
+    # <<<
 
-    return chunk_dataset_map
+    # >>>
+    # from lutil import pax
+    # pax(chunk_datasets)
+    # <<<
+
+    return chunk_datasets
+# <<<

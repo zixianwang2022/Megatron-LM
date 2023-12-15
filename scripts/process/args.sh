@@ -12,7 +12,7 @@ unset NCCL_DEBUG
 # RETRO_TASKS=$1
 
 # >>>
-# NPROCS=1
+NPROCS=1
 # <<<
 
 # RETRO_TASKS="db-build"
