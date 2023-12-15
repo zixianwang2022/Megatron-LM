@@ -82,6 +82,8 @@ def get_blocks(
     missing blocks.
     '''
 
+    assert os.path.isdir(dirname), "missing directory '%s.'" % dirname
+
     # Block ranges.
     block_start_idxs = list(range(0, n_samples, block_size))
     block_end_idxs = [ min(n_samples, i + block_size) for i in block_start_idxs ]

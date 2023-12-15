@@ -239,14 +239,17 @@ def build_individual_db(
     indexed_dataset = dataset_info["dataset"]
 
     # >>>
-    blocks = get_blocks_by_rank(
-        db_dir,
-        len(indexed_dataset),
-        config.retro_doc_block_size,
-        validate=lambda f : f["chunks_valid"].shape == (0,) \
-            or f["chunks_valid"].shape[1] == 4,
-    )
-    pax("dataset_info, blocks, db_dir", {"retro_task_validate": config.retro_task_validate})
+    if os.path.basename(db_dir) not in (
+            "Books3_shuf_text_document",
+    ):
+        blocks = get_blocks_by_rank(
+            db_dir,
+            len(indexed_dataset),
+            config.retro_doc_block_size,
+            validate=lambda f : f["chunks_valid"].shape == (0,) \
+                or f["chunks_valid"].shape[1] == 4,
+        )
+        pax("dataset_info, blocks, db_dir", {"retro_task_validate": config.retro_task_validate})
     # <<<
 
     # Missing DB blocks (split by documents).
