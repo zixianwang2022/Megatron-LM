@@ -6,10 +6,7 @@ from dataclasses import dataclass
 from megatron.core.transformer import TransformerConfig
 
 from .bert_embedders import RetroBertEmbedders
-# >>>
-# from .gpt_datasets import RetroGPTDatasets
 from .gpt_chunk_datasets import RetroGPTChunkDatasets
-# <<<
 from .tokenizers import RetroTokenizers
 
 @dataclass
@@ -169,10 +166,7 @@ class RetroPreprocessingConfig(TransformerConfig):
 
     # Tools.
     retro_bert_embedders: RetroBertEmbedders = None
-    # >>>
-    # retro_gpt_datasets: RetroGPTDatasets = None
     retro_gpt_chunk_datasets: RetroGPTChunkDatasets = None
-    # <<<
     retro_tokenizers: RetroTokenizers = None
 
     def __post_init__(self):

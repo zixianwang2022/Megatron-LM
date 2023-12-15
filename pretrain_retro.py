@@ -2,9 +2,8 @@
 
 """Pretrain Retro."""
 
-# >>>
-# from functools import partial
-# import torch
+from functools import partial
+import torch
 
 from megatron import get_args
 from megatron import get_timers
@@ -14,16 +13,21 @@ from megatron.arguments import core_transformer_config_from_args
 from megatron.core import tensor_parallel
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.enums import ModelType
-from megatron.core.models.retro.data.config import RetroGPTDatasets
-from megatron.core.models.retro.data.query import get_retro_datasets
+# >>>
+# from megatron.core.models.retro.data.config import RetroGPTDatasets
+# <<<
+from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets
 from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
+# >>>
 # from megatron.core.models.retro.data.query import train_valid_test_datasets_provider as multi_split_gpt_train_valid_test_datasets_provider
+# <<<
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
+# >>>
 from pretrain_gpt import (
     is_dataset_built_on_rank,
-    # loss_func,
+    loss_func,
     # model_provider as default_model_provider,
     # train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
 )
@@ -81,6 +85,7 @@ def get_batch(data_iterator):
 
     args = get_args()
     tokenizer = get_tokenizer()
+    config = get_retro_config()
 
     # Items and their type.
     keys = ['text']
@@ -105,7 +110,7 @@ def get_batch(data_iterator):
         # note: [bs * l * k, r]
         # note: 2x == neighbor, continuation
         neighbor_tokens = data_b['neighbor_tokens'] \
-            .view(-1, retro_args.retro_gpt_retrieved_length).long()
+            .view(-1, config.retro_retrieved_length).long()
 
     # Get the masks and postition ids.
     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
@@ -206,11 +211,23 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         ).build()
         # <<<
 
-        gpt_datasets = RetroGPTDatasets(
-            train=(train_ds, train_valid_test_num_samples[0]),
-            valid=(valid_ds, train_valid_test_num_samples[1]),
-            test=(test_ds, train_valid_test_num_samples[2]),
-        )
+        # >>>
+        # gpt_datasets = RetroGPTDatasets(
+        #     train=(train_ds, train_valid_test_num_samples[0]),
+        #     valid=(valid_ds, train_valid_test_num_samples[1]),
+        #     test=(test_ds, train_valid_test_num_samples[2]),
+        # )
+        gpt_datasets = {
+            "train" : (train_ds, train_valid_test_num_samples[0]),
+            "valid" : (valid_ds, train_valid_test_num_samples[1]),
+            "test"  : (test_ds, train_valid_test_num_samples[2]),
+        }
+        # <<<
+
+        # >>>
+        # from lutil import pax
+        # pax("gpt_datasets")
+        # <<<
 
         # Retro datasets.
         retro_datasets = get_retro_datasets(
@@ -221,8 +238,8 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         )
 
         # >>>
-        from lutil import pax
-        pax("train_ds, valid_ds, test_ds, gpt_datasets, retro_datasets")
+        # from lutil import pax
+        # pax("train_ds, valid_ds, test_ds, gpt_datasets, retro_datasets, data_config")
         # <<<
 
         return retro_datasets

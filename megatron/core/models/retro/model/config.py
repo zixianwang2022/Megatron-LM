@@ -28,6 +28,8 @@ class RetroConfig(TransformerConfig):
             encoder.
         retro_encoder_attention_dropout (float): Attention dropout for retrieval
             encoder.
+        retro_neighbor_dirs (dict): Directory names of saved neighbor id files
+            for train, valid, and test datasets.
         retro_num_neighbors (int): Number of neighbors to retrieve during
             pretraining.
         retro_num_retrieved_chunks (int): Number of chunks to retrieve from the
@@ -49,6 +51,7 @@ class RetroConfig(TransformerConfig):
     retro_encoder_num_layers: int = 2
     retro_encoder_hidden_dropout: float = 0.1
     retro_encoder_attention_dropout: float = 0.1
+    retro_neighbor_dirs: dict = None
     retro_num_neighbors: int = 2
     retro_num_retrieved_chunks: int = 2
     retro_retrieved_length: int = None

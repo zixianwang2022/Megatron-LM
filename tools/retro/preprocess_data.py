@@ -8,7 +8,6 @@ Stages (see argument '--retro-tasks'):
 - Query pretraining neighbors.
 """
 
-# >>>
 import json
 import os
 import torch
@@ -40,14 +39,10 @@ from megatron.tokenizer.tokenizer import (
     _GPT2BPETokenizer,
     _GPTSentencePieceTokenizer,
 )
-from megatron.training import (
-    get_train_valid_test_num_samples,
-    # update_train_iters,
-)
+from megatron.training import get_train_valid_test_num_samples
 from pretrain_gpt import is_dataset_built_on_rank
 from tools.bert_embedding import BertEmbedder, DiskDataParallelBertEmbedder
 from tools.retro.config_utils import add_config_args
-# <<<
 
 
 def add_retro_args(parser):
@@ -68,62 +63,6 @@ def get_bert_embedders(config):
     )
 
 
-# >>>
-# def get_gpt_datasets(config):
-
-#     # Dataset config.
-#     # >>>
-#     # data_config = core_multi_split_gpt_dataset_config_from_retro_preprocessing_config(
-#     #     config=config,
-#     #     split=config.retro_gpt_split,
-#     #     return_document_ids=True,
-#     #     is_dataset_built_on_rank=is_dataset_built_on_rank,
-#     #     custom_data_path=None,
-#     # )
-#     data_dir = get_gpt_data_dir(config.retro_project_dir)
-#     blend = list(config.retro_gpt_data_path)
-#     for i in range(len(blend) - 1, -1, -2):
-#         blend[i] = os.path.join(data_dir, blend[i])
-#     data_config = MultiSplitGPTDatasetConfig(
-#         is_built_on_rank=is_dataset_built_on_rank,
-#         random_seed=config.retro_gpt_seed,
-#         sequence_length=config.retro_gpt_seq_length,
-#         blend=blend,
-#         split=config.retro_gpt_split,
-#         split_preprocessing=config.retro_gpt_split,
-#         path_to_cache=config.retro_gpt_data_cache_path,
-#         return_document_ids=True,
-#     )
-#     # <<<
-
-#     # >>>
-#     # from lutil import pax
-#     # pax("config, data_config")
-#     # <<<
-
-#     # GPT datasets.
-#     print_rank_0(" > multi-split gpt datasets.")
-#     train_valid_test_num_samples = get_train_valid_test_num_samples()
-#     train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
-#         MultiSplitGPTDataset,
-#         train_valid_test_num_samples,
-#         data_config,
-#     ).build()
-
-#     # >>>
-#     datasets = RetroGPTDatasets(
-#         train=(train_ds, train_valid_test_num_samples[0]),
-#         valid=(valid_ds, train_valid_test_num_samples[1]),
-#         test=(test_ds, train_valid_test_num_samples[2]),
-#     )
-#     # <<<
-
-#     # >>>
-#     # from lutil import pax
-#     # pax("config, data_config, train_valid_test_num_samples, datasets")
-#     # <<<
-
-#     return datasets
 def get_gpt_chunk_datasets(config):
 
     # Reset iteration.
@@ -172,13 +111,7 @@ def get_gpt_chunk_datasets(config):
     )
     chunk_datasets = RetroGPTChunkDatasets(**chunk_datasets)
 
-    # >>>
-    # from lutil import pax
-    # pax("gpt_datasets, chunk_datasets")
-    # <<<
-
     return chunk_datasets
-# <<<
 
 
 def get_gpt_tokenizer(config):
@@ -256,11 +189,6 @@ def get_retro_preprocessing_config():
     config.retro_gpt_chunk_datasets = get_gpt_chunk_datasets(config)
     config.retro_tokenizers = get_tokenizers(config)
 
-    # >>>
-    # from lutil import pax
-    # pax("config")
-    # <<<
-
     return config
 
 
@@ -276,21 +204,12 @@ def save_config(config):
         }
         config_subset["retro_block_size"] = config.retro_block_size
 
-        # >>>
         # Neighbor directories.
         query_dir = get_query_dir(config.retro_project_dir)
         config_subset["retro_neighbor_dirs"] = {
             k : (os.path.relpath(v["neighbor_dir"], query_dir) if v is not None else None)
             for k, v in vars(config.retro_gpt_chunk_datasets).items()
         }
-        # <<<
-
-        # >>>
-        # from lutil import pax
-        # pax("config_subset, query_dir", {
-        #     "retro_neighbor_dirs" : config_subset["retro_neighbor_dirs"]
-        # })
-        # <<<
 
         # Save.
         config_path = get_config_path(config.retro_project_dir)

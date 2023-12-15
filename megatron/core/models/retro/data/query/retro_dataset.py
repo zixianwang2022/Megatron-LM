@@ -4,14 +4,19 @@ import numpy as np
 import os
 import torch
 
-from megatron.core.models.retro.data.config import RetroGPTDatasets
+# >>>
+# from megatron.core.models.retro.data.config import RetroGPTDatasets
+# <<<
 from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import BlockPathMap
 from megatron.core.models.retro.model import RetroConfig
 
-from .chunk_dataset import get_chunk_dataset_map
-from .utils import get_neighbor_dir
+from .gpt_chunk_dataset import build_gpt_chunk_datasets_from_gpt_datasets
+# >>>
+# from .utils import get_neighbor_dir
+from .utils import get_query_dir
+# <<<
 
 
 class RetroDataset(torch.utils.data.Dataset):
@@ -104,7 +109,10 @@ class RetroDataset(torch.utils.data.Dataset):
 
 def get_retro_datasets(
     config: RetroConfig,
-    gpt_datasets: RetroGPTDatasets,
+    # >>>
+    # gpt_datasets: RetroGPTDatasets,
+    gpt_datasets: dict,
+    # <<<
     sample_length: int,
     eod_token_id: int,
 ):
@@ -118,30 +126,61 @@ def get_retro_datasets(
     )
 
     # GPT chunk datasets.
-    chunk_ds_info_map = get_chunk_dataset_map(
+    # >>>
+    # chunk_ds_info_map = get_chunk_dataset_map(
+    #     project_dir=config.retro_project_dir,
+    #     gpt_datasets=gpt_datasets,
+    #     sample_length=sample_length,
+    #     chunk_length=config.retro_chunk_length,
+    # )
+    chunk_ds_info_map = build_gpt_chunk_datasets_from_gpt_datasets(
         project_dir=config.retro_project_dir,
         gpt_datasets=gpt_datasets,
         sample_length=sample_length,
         chunk_length=config.retro_chunk_length,
     )
+    # <<<
+
+    # # >>>
+    # # Update neighbor directories from loaded config.
+    # for key, info in chunk_ds_info_map.items():
+    #     if info 
+    # # <<<
+
+    # >>>
+    # from lutil import pax
+    # pax({"retro_neighbor_dirs": config.retro_neighbor_dirs}, chunk_ds_info_map)
+    # <<<
 
     # Retro datasets.
     retro_dataset_map = {}
+    query_dir = get_query_dir(config.retro_project_dir)
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 
+        # >>>
+        if chunk_ds_info is None:
+            retro_dataset_map[data_key] = None
+            continue
+        # <<<
+
         chunk_dataset = chunk_ds_info["dataset"]
+        # >>>
+        chunk_ds_info["neighbor_dir"] = os.path.join(query_dir, config.retro_neighbor_dirs[data_key])
+        # <<<
         neighbor_dir = chunk_ds_info["neighbor_dir"]
         neighbor_path_map = BlockPathMap.from_dir(dir=neighbor_dir,
                                                   block_size=config.retro_block_size)
 
-        # Verify dataset prefixes.
-        expected_dir = get_neighbor_dir(project_dir=config.retro_project_dir,
-                                        key=data_key,
-                                        dataset=chunk_dataset.sample_dataset,
-        )
-        assert expected_dir == neighbor_dir, \
-            "inconsistent dataset source; '%s' vs. '%s'." % \
-            (expected_dir, neighbor_dir)
+        # >>>
+        # # Verify dataset prefixes.
+        # expected_dir = get_neighbor_dir(project_dir=config.retro_project_dir,
+        #                                 key=data_key,
+        #                                 dataset=chunk_dataset.sample_dataset,
+        # )
+        # assert expected_dir == neighbor_dir, \
+        #     "inconsistent dataset source; '%s' vs. '%s'." % \
+        #     (expected_dir, neighbor_dir)
+        # <<<
 
         # Verify num chunks.
         n_active_chunks = chunk_ds_info["num_active_chunks"]
@@ -178,9 +217,22 @@ def get_retro_datasets(
             neighbor_path_map=neighbor_path_map,
         )
 
-    # Extract datasets.
-    train_ds = retro_dataset_map.get("train", None)
-    valid_ds = retro_dataset_map.get("valid", None)
-    test_ds = retro_dataset_map.get("test", None)
+    # >>>
+    # from lutil import pax
+    # pax(retro_dataset_map)
+    # <<<
 
-    return train_ds, valid_ds, test_ds
+    # >>>
+    # # Extract datasets.
+    # train_ds = retro_dataset_map.get("train", None)
+    # valid_ds = retro_dataset_map.get("valid", None)
+    # test_ds = retro_dataset_map.get("test", None)
+
+    # return train_ds, valid_ds, test_ds
+    # +++
+    return (
+        retro_dataset_map["train"],
+        retro_dataset_map["valid"],
+        retro_dataset_map["test"],
+    )
+    # <<<

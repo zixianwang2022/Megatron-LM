@@ -81,7 +81,7 @@ def load_retro_args(args):
             # Parse config.
             retro_config = types.SimpleNamespace(**json.load(f))
 
-            # Retro data path is relative to data path (via hard or soft links).
+            # Retro data path is relative to project dir (via hard or soft links).
             data_dir = get_retro_data_dir(args.retro_project_dir)
             data_path = list(retro_config.retro_gpt_data_path)
             if len(data_path) % 2 == 0:
@@ -109,7 +109,6 @@ def load_retro_args(args):
             args.seq_length = retro_config.retro_gpt_seq_length
             # >>>
             # args.split = retro_config.retro_gpt_split
-            args.retro_split_preprocessing = retro_config.retro_gpt_split
             # <<<
             args.tokenizer_model = os.path.join(
                 args.retro_project_dir,
@@ -122,8 +121,11 @@ def load_retro_args(args):
                 retro_config.retro_gpt_vocab_file,
             ) if retro_config.retro_gpt_vocab_file is not None else None
 
+            # Retro-specific args.
             args.retro_block_size = retro_config.retro_block_size
             args.retro_chunk_length = retro_config.retro_gpt_chunk_length
+            args.retro_neighbor_dirs = retro_config.retro_neighbor_dirs
+            args.retro_split_preprocessing = retro_config.retro_gpt_split
 # <<<
 
 
