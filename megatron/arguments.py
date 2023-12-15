@@ -59,74 +59,68 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     return args
 
 
-# >>>
 def load_retro_args(args):
     """Load predefined args from Retro config (if applicable).
 
-    ? ? ?
+    When using Retro (or GPT for comparison purposes), data arguments are
+    overridden by the saved config.json within the Retro project directory. This
+    is to ensure that the data used for pretraining is consistent with the data
+    that was preprocessed using the Retro preprocessing pipeline (see
+    `tools/retro/preprocess_data.py`).
     """
-    if args.retro_add_retriever:
 
-        assert args.retro_project_dir is not None, \
-            "`--retro-project-dir` must be set to use Retro."
+    # Return if no project directory is specified.
+    if args.retro_project_dir is None:
+        return
 
-        # Retro config path.
-        retro_config_path = get_retro_config_path(args.retro_project_dir)
-        assert os.path.exists(retro_config_path), \
-            "retro project dir missing config.json."
+    # Retro config path.
+    retro_config_path = get_retro_config_path(args.retro_project_dir)
+    assert os.path.exists(retro_config_path), \
+        "Retro project dir missing config.json."
 
-        # Load retro config.
-        with open(retro_config_path) as f:
+    # Load retro config.
+    with open(retro_config_path) as f:
+        retro_config = types.SimpleNamespace(**json.load(f))
 
-            # Parse config.
-            retro_config = types.SimpleNamespace(**json.load(f))
+    # Retro data path is relative to project dir (via hard or soft links).
+    data_dir = get_retro_data_dir(args.retro_project_dir)
+    data_path = list(retro_config.retro_gpt_data_path)
+    if len(data_path) % 2 == 0:
+        for i in range(len(data_path) - 1, -1, -2):
+            data_path[i] = os.path.join(data_dir, data_path[i])
+    else:
+        assert len(data_path) == 1
+        data_path[0] = os.path.join(data_dir, data_path[0])
 
-            # Retro data path is relative to project dir (via hard or soft links).
-            data_dir = get_retro_data_dir(args.retro_project_dir)
-            data_path = list(retro_config.retro_gpt_data_path)
-            if len(data_path) % 2 == 0:
-                for i in range(len(data_path) - 1, -1, -2):
-                    data_path[i] = os.path.join(data_dir, data_path[i])
-            else:
-                assert len(data_path) == 1
-                data_path[0] = os.path.join(data_dir, data_path[0])
+    # Update args.
+    args.data_cache_path = retro_config.retro_gpt_data_cache_path
+    args.data_path = data_path if args.data_path is None else args.data_path
+    args.eval_interval = retro_config.retro_gpt_eval_interval
+    args.eval_iters = retro_config.retro_gpt_eval_iters
+    args.global_batch_size = retro_config.retro_gpt_global_batch_size
+    args.max_position_embeddings = retro_config.retro_gpt_seq_length
+    args.merge_file = os.path.join(
+        args.retro_project_dir,
+        retro_config.retro_gpt_merge_file,
+    ) if retro_config.retro_gpt_merge_file is not None else None
+    args.seed = retro_config.retro_gpt_seed
+    args.seq_length = retro_config.retro_gpt_seq_length
+    args.tokenizer_model = os.path.join(
+        args.retro_project_dir,
+        retro_config.retro_gpt_tokenizer_model,
+    ) if retro_config.retro_gpt_tokenizer_model is not None else None
+    args.tokenizer_type = retro_config.retro_gpt_tokenizer_type
+    args.train_samples = retro_config.retro_gpt_train_samples
+    args.vocab_file = os.path.join(
+        args.retro_project_dir,
+        retro_config.retro_gpt_vocab_file,
+    ) if retro_config.retro_gpt_vocab_file is not None else None
 
-            # Update args.
-            args.data_cache_path = retro_config.retro_gpt_data_cache_path
-            # >>>
-            # args.data_path = data_path
-            args.data_path = data_path if args.data_path is None else args.data_path
-            # <<<
-            args.eval_interval = retro_config.retro_gpt_eval_interval
-            args.eval_iters = retro_config.retro_gpt_eval_iters
-            args.global_batch_size = retro_config.retro_gpt_global_batch_size
-            args.max_position_embeddings = retro_config.retro_gpt_seq_length
-            args.merge_file = os.path.join(
-                args.retro_project_dir,
-                retro_config.retro_gpt_merge_file,
-            ) if retro_config.retro_gpt_merge_file is not None else None
-            args.seed = retro_config.retro_gpt_seed
-            args.seq_length = retro_config.retro_gpt_seq_length
-            # >>>
-            # args.split = retro_config.retro_gpt_split
-            # <<<
-            args.tokenizer_model = os.path.join(
-                args.retro_project_dir,
-                retro_config.retro_gpt_tokenizer_model,
-            ) if retro_config.retro_gpt_tokenizer_model is not None else None
-            args.tokenizer_type = retro_config.retro_gpt_tokenizer_type
-            args.train_samples = retro_config.retro_gpt_train_samples
-            args.vocab_file = os.path.join(
-                args.retro_project_dir,
-                retro_config.retro_gpt_vocab_file,
-            ) if retro_config.retro_gpt_vocab_file is not None else None
-
-            # Retro-specific args.
-            args.retro_block_size = retro_config.retro_block_size
-            args.retro_chunk_length = retro_config.retro_gpt_chunk_length
-            args.retro_neighbor_dirs = retro_config.retro_neighbor_dirs
-            args.retro_split_preprocessing = retro_config.retro_gpt_split
-# <<<
+    # Retro-specific args.
+    args.retro_block_size = retro_config.retro_block_size
+    args.retro_chunk_length = retro_config.retro_gpt_chunk_length
+    args.retro_neighbor_dirs = retro_config.retro_neighbor_dirs
+    args.retro_split_preprocessing = retro_config.retro_gpt_split
 
 
 def validate_args(args, defaults={}):
@@ -445,20 +439,6 @@ def validate_args(args, defaults={}):
         assert args.pipeline_model_parallel_size == 1, \
             "retro currently does not support pipeline parallelism."
 
-    # >>>
-    # # Load retro args (used by both Retro & GPT).
-    # if args.retro_workdir:
-    #     retro_args_path = get_retro_args_path(args.retro_workdir)
-    #     assert os.path.exists(retro_args_path), "retro workdir missing args.json"
-    #     with open(retro_args_path) as f:
-    #         retro_args = types.SimpleNamespace(**json.load(f))
-    #         retro_args.retro_return_doc_ids = args.retro_return_doc_ids
-    #         retro_args.retro_gpt_retrieved_length = \
-    #             args.retro_num_retrieved_chunks * \
-    #             retro_args.retro_gpt_chunk_length
-    #         set_retro_args(retro_args)
-    # <<<
-
     # Legacy RoPE arguments
     if args.use_rotary_position_embeddings:
         args.position_embedding_type = 'rope'
@@ -633,10 +613,6 @@ def _add_retro_args(parser):
     group.add_argument("--retro-num-retrieved-chunks", type=int, default=2,
                        help='Number of chunks to retrieve from the retrieval '
                        'database.')
-    # >>>
-    # group.add_argument("--retro-return-doc-ids", action="store_true",
-    #                    help="Turn this on when preprocessing retro data.")
-    # <<<
     group.add_argument("--retro-attention-gate", type=float, default=1,
                        help="Gated cross attention.")
     group.add_argument("--retro-no-verify-neighbor-count", action="store_false",

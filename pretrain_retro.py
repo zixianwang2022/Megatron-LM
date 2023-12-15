@@ -13,25 +13,17 @@ from megatron.arguments import core_transformer_config_from_args
 from megatron.core import tensor_parallel
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.enums import ModelType
-# >>>
-# from megatron.core.models.retro.data.config import RetroGPTDatasets
-# <<<
 from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets
 from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
-# >>>
-# from megatron.core.models.retro.data.query import train_valid_test_datasets_provider as multi_split_gpt_train_valid_test_datasets_provider
-# <<<
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
-# >>>
 from pretrain_gpt import (
     is_dataset_built_on_rank,
     loss_func,
-    # model_provider as default_model_provider,
-    # train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
+    model_provider as default_model_provider,
+    train_valid_test_datasets_provider as gpt_train_valid_test_datasets_provider,
 )
-# <<<
 
 
 def get_retro_config():
@@ -176,77 +168,50 @@ def forward_step(data_iterator, model):
 def train_valid_test_datasets_provider(train_valid_test_num_samples):
     """Build train, valid, and test datasets."""
     args = get_args()
+
+    # Dataset config.
+    retro_config = get_retro_config()
+    data_config = MultiSplitGPTDatasetConfig(
+        is_built_on_rank=is_dataset_built_on_rank,
+        random_seed=args.seed,
+        sequence_length=args.seq_length,
+        blend=args.data_path,
+        split=args.split,
+        split_preprocessing=retro_config.retro_split_preprocessing,
+        path_to_cache=args.data_cache_path,
+        return_document_ids=False,
+    )
+
+    # GPT datasets.
+    print_rank_0(" > multi-split gpt datasets.")
+    train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
+        MultiSplitGPTDataset,
+        train_valid_test_num_samples,
+        data_config,
+    ).build()
+
+    gpt_datasets = {
+        "train" : (train_ds, train_valid_test_num_samples[0]),
+        "valid" : (valid_ds, train_valid_test_num_samples[1]),
+        "test"  : (test_ds, train_valid_test_num_samples[2]),
+    }
+
+    # Retro datasets.
     if args.retro_add_retriever:
-
-        # Dataset config.
-        retro_config = get_retro_config()
-        data_config = MultiSplitGPTDatasetConfig(
-            is_built_on_rank=is_dataset_built_on_rank,
-            random_seed=args.seed,
-            sequence_length=args.seq_length,
-            blend=args.data_path,
-            split=args.split,
-            split_preprocessing=retro_config.retro_split_preprocessing,
-            path_to_cache=args.data_cache_path,
-            # >>>
-            return_document_ids=False,
-            # return_document_ids=True,
-            # <<<
-        )
-
-        # >>>
-        # from lutil import pax
-        # pax("data_config")
-        # <<<
-
-        # GPT datasets.
-        print_rank_0(" > multi-split gpt datasets.")
-        # >>>
-        # train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
-        #     lambda n : multi_split_gpt_train_valid_test_datasets_provider(data_config, n))
-        train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(
-            MultiSplitGPTDataset,
-            train_valid_test_num_samples,
-            data_config,
-        ).build()
-        # <<<
-
-        # >>>
-        # gpt_datasets = RetroGPTDatasets(
-        #     train=(train_ds, train_valid_test_num_samples[0]),
-        #     valid=(valid_ds, train_valid_test_num_samples[1]),
-        #     test=(test_ds, train_valid_test_num_samples[2]),
-        # )
-        gpt_datasets = {
-            "train" : (train_ds, train_valid_test_num_samples[0]),
-            "valid" : (valid_ds, train_valid_test_num_samples[1]),
-            "test"  : (test_ds, train_valid_test_num_samples[2]),
-        }
-        # <<<
-
-        # >>>
-        # from lutil import pax
-        # pax("gpt_datasets")
-        # <<<
-
-        # Retro datasets.
-        retro_datasets = get_retro_datasets(
+        return get_retro_datasets(
             config=retro_config,
             gpt_datasets=gpt_datasets,
             sample_length=args.seq_length,
             eod_token_id=get_tokenizer().eod,
         )
 
-        # >>>
-        # from lutil import pax
-        # pax("train_ds, valid_ds, test_ds, gpt_datasets, retro_datasets, data_config")
-        # <<<
-
-        return retro_datasets
-
+    # Multi-split GPT datasets.
     else:
-        return gpt_train_valid_test_datasets_provider(train_val_test_num_samples)
-# <<<
+        return (
+            gpt_datasets["train"][0],
+            gpt_datasets["valid"][0],
+            gpt_datasets["test"][0],
+        )
 
 
 if __name__ == "__main__":
