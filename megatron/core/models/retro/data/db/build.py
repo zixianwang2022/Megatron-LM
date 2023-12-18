@@ -76,7 +76,15 @@ def build_partial_db(
         ))
 
     # Progress bars (snapshot of overall progress).
+    # >>>
     doc_id_iter = range(doc_start_id, doc_end_id)
+    # +++
+    # doc_id_iter = range(
+    #     doc_start_id,
+    #     doc_end_id,
+    #     1 if config.task_validate is None else int(1. / config.task_validate),
+    # )
+    # <<<
     pbar = tqdm(
         doc_id_iter,
         "parse doc chunks",
@@ -140,7 +148,10 @@ def build_partial_db(
                 len(bert_token_ids),
             ))
 
-    return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map
+    # >>>
+    # return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map
+    return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map, list(doc_id_iter)
+    # <<<
 
 
 def build_block_db(
@@ -206,7 +217,20 @@ def build_block_db(
         np.array([item[0] for item in doc_sizes], dtype="uint64"),
         doc_offsets), axis=1)
 
-    return chunk_db_valid, chunk_db_invalid, doc_offsets
+    # Active document ids.
+    active_doc_ids = [ i
+                       for partial_chunk_db in partial_chunk_dbs
+                       for i in partial_chunk_db[4] ]
+
+    # >>>
+    # from lutil import pax
+    # pax("active_doc_ids")
+    # <<<
+
+    # >>>
+    # return chunk_db_valid, chunk_db_invalid, doc_offsets
+    return chunk_db_valid, chunk_db_invalid, doc_offsets, active_doc_ids
+    # <<<
 
 
 def save_block_db(
@@ -297,7 +321,10 @@ def build_individual_db(
             if block is not None:
 
                 # Build block DB.
-                chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
+                # >>>
+                # chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
+                chunk_db_valid, chunk_db_invalid, doc_offsets, active_doc_ids = build_block_db(
+                # <<<
                     config=config,
                     dataset_idx=dataset_idx,
                     n_datasets=n_datasets,
@@ -319,11 +346,93 @@ def build_individual_db(
                     )
 
                 else:
+
                     # Load existing block DB.
                     with h5py.File(block["path"]) as f:
                         existing_chunks_valid = np.copy(f["chunks_valid"])
                         existing_chunks_invalid = np.copy(f["chunks_invalid"])
                         existing_doc_offsets = np.copy(f["doc_offsets"])
+
+                    # >>>
+                    # active_doc_ids = set(active_doc_ids)
+
+                    # active_existing_chunks_valid = [
+                    #     r for r in existing_chunks_valid
+                    #     if r[0] in active_doc_ids
+                    # ]
+                    # active_existing_chunks_invalid = [
+                    #     r for r in existing_chunks_invalid
+                    #         if r[0] in active_doc_ids
+                    # ]
+                    # active_existing_doc_offsets = [
+                    #     r for r in existing_doc_offsets
+                    #     if r[0] in active_doc_ids
+                    # ]
+
+                    # if active_existing_chunks_valid:
+                    #     assert np.array_equal(
+                    #         np.stack(active_existing_chunks_valid),
+                    #         chunk_db_valid,
+                    #     ), "inconsistent chunks_valid, %d vs. %d." % (
+                    #         len(active_existing_chunks_valid),
+                    #         chunk_db_valid.shape[0],
+                    #     )
+                    # if active_existing_chunks_invalid:
+                    #     assert np.array_equal(
+                    #         np.stack(active_existing_chunks_invalid),
+                    #         chunk_db_invalid,
+                    #     ), "inconsistent chunks_invalid, %d vs. %d." % (
+                    #         len(active_existing_chunks_invalid),
+                    #         chunk_db_invalid.shape[0],
+                    #     )
+                    # if active_existing_doc_offsets:
+                    #     # >>>
+                    #     from lutil import pax
+                    #     pax({
+                    #         "existing_doc_offsets" : existing_doc_offsets,
+                    #         "active_existing_doc_offsets" : np.stack(active_existing_doc_offsets),
+                    #         "doc_offsets" : doc_offsets,
+                    #     })
+                    #     # <<<
+                    #     assert np.array_equal(
+                    #         np.stack(active_existing_doc_offsets),
+                    #         doc_offsets,
+                    #     ), "inconsistent doc_offsets, %s vs. %s." % (
+                    #         (
+                    #             len(active_existing_doc_offsets),
+                    #             *active_existing_doc_offsets[0].shape,
+                    #         ),
+                    #         doc_offsets.shape,
+                    #     )
+
+                    # from lutil import pax
+                    # pax({
+
+                    #     "existing_chunks_valid" :
+                    #     str(existing_chunks_valid.shape),
+                    #     "existing_chunks_invalid" :
+                    #     str(existing_chunks_invalid.shape),
+                    #     "existing_doc_offsets" :
+                    #     str(existing_doc_offsets.shape),
+
+                    #     "active_existing_chunks_valid" :
+                    #     str(active_existing_chunks_valid.shape),
+                    #     "active_existing_chunks_invalid" :
+                    #     str(active_existing_chunks_invalid.shape),
+                    #     "active_existing_doc_offsets" :
+                    #     str(active_existing_doc_offsets.shape),
+
+                    #     "chunk_db_valid" :
+                    #     str(chunk_db_valid.shape),
+                    #     "chunk_db_invalid" :
+                    #     str(chunk_db_invalid.shape),
+                    #     "doc_offsets" :
+                    #     str(doc_offsets.shape),
+
+                    #     "active_doc_ids":
+                    #     str(sorted(active_doc_ids)),
+                    # })
+                    # <<<
 
                     # Check equality.
                     print_rank_0(" > validate.")
@@ -539,6 +648,7 @@ def build_db(config):
     chunks, and save to a 'DB' (hdf5 file).
     '''
 
+
     project_dir = config.retro_project_dir
 
     # Indexed dataset info.
@@ -548,6 +658,16 @@ def build_db(config):
         indexed_dataset_infos = get_indexed_dataset_infos(config.retro_project_dir)
         # >>>
         # pax(dict(enumerate(indexed_dataset_infos)))
+        # <<<
+
+        # >>>
+        # if torch.distributed.get_rank() == 0:
+        #     for info in indexed_dataset_infos:
+        #         db_dir = get_individual_db_dir(config.retro_project_dir, info["prefix"])
+        #         print("db_dir = %s." % db_dir)
+        #         assert os.path.isdir(db_dir), "missing dir '%s'." % db_dir
+        # torch.distributed.barrier()
+        # exit()
         # <<<
 
     # Build individual dbs.

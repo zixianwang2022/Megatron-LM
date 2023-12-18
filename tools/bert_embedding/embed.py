@@ -166,7 +166,7 @@ def get_data_loader(dataset, batch_size):
     return data_loader
 
 
-def embed_data_loader(models, data_loader):
+def embed_data_loader(models, data_loader, tag):
     '''Iterate data loader and compute embeddings.'''
 
     # Verify no model parallelism.
@@ -186,7 +186,7 @@ def embed_data_loader(models, data_loader):
     embeddings = []
     for _ in tqdm(
         range(len(data_loader)),
-        "  embed",
+        "  embed%s" % ("" if tag is None else " / '%s'" % tag),
         miniters=len(data_loader) // 10,
         disable=torch.distributed.get_rank() != 0,
     ):
@@ -219,7 +219,7 @@ class TextDataset(torch.utils.data.Dataset):
 class BertEmbedder:
     '''Compute Bert embeddings, from a text dataset.'''
 
-    def __init__(self, batch_size, max_bert_seq_length, embedder_type):
+    def __init__(self, batch_size, max_bert_seq_length, embedder_type, warmup=True):
 
         args = get_args()
 
@@ -244,18 +244,21 @@ class BertEmbedder:
         # - Important to separately warm up:
         #   1. batch_size == 1
         #   2. batch_size > 1
-        warmup_dataset = TextDataset([
-            "great fleas have lesser fleas, upon their backs to bite’em,",
-            "and lesser fleas have lesser fleas, and so, ad infinitum,",
-            "and those great fleas, themselves, in turn have greater fleas to go on,",
-            "while those again have greater still, and greater still, and so on.",
-        ])
-        for _ in range(3):
-            self.embed_text("hi, bert.")            # batch size == 1
-        for _ in range(3):
-            self.embed_text_dataset(warmup_dataset) # batch size > 1
+        # >>>
+        # if warmup:
+        #     warmup_dataset = TextDataset([
+        #         "great fleas have lesser fleas, upon their backs to bite’em,",
+        #         "and lesser fleas have lesser fleas, and so, ad infinitum,",
+        #         "and those great fleas, themselves, in turn have greater fleas to go on,",
+        #         "while those again have greater still, and greater still, and so on.",
+        #     ])
+        #     for _ in range(3):
+        #         self.embed_text("hi, bert.")            # batch size == 1
+        #     for _ in range(3):
+        #         self.embed_text_dataset(warmup_dataset) # batch size > 1
+        # <<<
 
-    def embed_text_dataset(self, text_dataset):
+    def embed_text_dataset(self, text_dataset, tag=None):
         '''Embed a text dataset.'''
 
         # Huggingface.
@@ -268,7 +271,7 @@ class BertEmbedder:
 
         # Embed.
         data_loader = get_data_loader(bert_dataset, self.batch_size)
-        embeddings = embed_data_loader(self.models, data_loader)
+        embeddings = embed_data_loader(self.models, data_loader, tag)
 
         return embeddings
 

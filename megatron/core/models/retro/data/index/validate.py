@@ -72,7 +72,25 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
 
             # Embed block.
             sub_dataset = Subset(text_dataset, range(*block["range"]))
-            embeddings = embedder.embed_text_dataset(sub_dataset)
+            embeddings = embedder.embed_text_dataset(sub_dataset, "train")
+
+            # >>>
+            # from tools.bert_embedding import BertEmbedder
+            # cold_embedder = BertEmbedder(
+            #     batch_size = config.retro_bert_batch_size,
+            #     max_bert_seq_length = config.retro_bert_max_chunk_length,
+            #     embedder_type = "megatron",
+            #     warmup=False,
+            # )
+            # cold_embeddings = cold_embedder.embed_text_dataset(sub_dataset, "cold")
+            # cold_embeddings_1 = cold_embedder.embed_text_dataset(sub_dataset, "cold-1")
+            torch.jit._state.disable()
+            embeddings_1 = embedder.embed_text_dataset(sub_dataset, "no jit")
+            torch.jit._state.enable()
+
+            from lutil import pax
+            pax("existing_embeddings, embeddings, embeddings_1")
+            # <<<
 
             # Check equality.
             print_rank_0(" > validate.")
