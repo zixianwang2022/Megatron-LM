@@ -75,26 +75,22 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
             embeddings = embedder.embed_text_dataset(sub_dataset, "train")
 
             # >>>
-            # from tools.bert_embedding import BertEmbedder
-            # cold_embedder = BertEmbedder(
-            #     batch_size = config.retro_bert_batch_size,
-            #     max_bert_seq_length = config.retro_bert_max_chunk_length,
-            #     embedder_type = "megatron",
-            #     warmup=False,
-            # )
-            # cold_embeddings = cold_embedder.embed_text_dataset(sub_dataset, "cold")
-            # cold_embeddings_1 = cold_embedder.embed_text_dataset(sub_dataset, "cold-1")
-            torch.jit._state.disable()
-            embeddings_1 = embedder.embed_text_dataset(sub_dataset, "no jit")
-            torch.jit._state.enable()
+            # # embeddings_1 = embedder.embed_text_dataset(sub_dataset, "train-1")
 
-            from lutil import pax
-            pax("existing_embeddings, embeddings, embeddings_1")
+            # import math
+            # # import torch.nn.functional as F
+            # from lutil import pax
+            # # err = math.sqrt(F.mse_loss(embeddings, existing_embeddings).item())
+            # err = math.sqrt(((embeddings - existing_embeddings)**2).mean().item())
+            # print("~~~~~~~~~~~ err: %f ~~~~~~~~~~~" % err)
+            # # pax("block, existing_embeddings, embeddings, err")
             # <<<
 
             # Check equality.
+            # >>>
             print_rank_0(" > validate.")
             assert np.array_equal(existing_embeddings, embeddings)
+            # <<<
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")
@@ -157,9 +153,22 @@ def validate_added_encodings(config):
             # Encode block.
             embeddings, codes = index.encode_block(inner_index, embedder, text_dataset, block)
 
+            # >>>
+            # import math
+            # import os
+            # n = (existing_codes != codes).sum() / existing_codes.size
+            # e = math.sqrt(((existing_codes - codes)**2).mean().item())
+            # print("~~~~~~~~~~~ n %f, e %f ... '%s' ~~~~~~~~~~~" % (n, e, os.path.basename(block["path"])))
+
+            # from lutil import pax
+            # pax("existing_codes, codes")
+            # <<<
+
             # Check equality.
+            # >>>
             print_rank_0(" > validate.")
             assert np.array_equal(existing_codes, codes)
+            # <<<
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")

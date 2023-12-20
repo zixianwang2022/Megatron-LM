@@ -71,12 +71,12 @@ class GPTDataset(MegatronDataset):
             int: The length of the dataset
         """
         # >>>
-        from lutil import pax
-        pax({
-            "document_idx" : self.document_index.shape,
-            "sample_idx" : self.sample_index.shape,
-            "shuffle_idx" : self.shuffle_index.shape,
-        })
+        # from lutil import pax
+        # pax({
+        #     "document_idx" : self.document_index.shape,
+        #     "sample_idx" : self.sample_index.shape,
+        #     "shuffle_idx" : self.shuffle_index.shape,
+        # })
         # <<<
         return self.sample_index.shape[0] - 1
 

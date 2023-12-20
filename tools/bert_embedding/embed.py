@@ -244,19 +244,19 @@ class BertEmbedder:
         # - Important to separately warm up:
         #   1. batch_size == 1
         #   2. batch_size > 1
-        # >>>
-        # if warmup:
-        #     warmup_dataset = TextDataset([
-        #         "great fleas have lesser fleas, upon their backs to bite’em,",
-        #         "and lesser fleas have lesser fleas, and so, ad infinitum,",
-        #         "and those great fleas, themselves, in turn have greater fleas to go on,",
-        #         "while those again have greater still, and greater still, and so on.",
-        #     ])
-        #     for _ in range(3):
-        #         self.embed_text("hi, bert.")            # batch size == 1
-        #     for _ in range(3):
-        #         self.embed_text_dataset(warmup_dataset) # batch size > 1
-        # <<<
+        if warmup:
+            warmup_dataset = TextDataset([
+                "great fleas have lesser fleas, upon their backs to bite’em,",
+                "and lesser fleas have lesser fleas, and so, ad infinitum,",
+                "and those great fleas, themselves, in turn have greater fleas to go on,",
+                "while those again have greater still, and greater still, and so on.",
+            ])
+            print_rank_0("bert / warmup single.")
+            for _ in range(3):
+                self.embed_text("hi, bert.")            # batch size == 1
+            print_rank_0("bert / warmup batch.")
+            for _ in range(3):
+                self.embed_text_dataset(warmup_dataset) # batch size > 1
 
     def embed_text_dataset(self, text_dataset, tag=None):
         '''Embed a text dataset.'''

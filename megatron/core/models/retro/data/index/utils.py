@@ -53,7 +53,10 @@ def get_training_data_merged_path(config):
 
 
 def get_added_codes_dir(config):
+    # >>>
     return os.path.join(get_index_dir(config), "add_codes")
+    # return os.path.join(get_index_dir(config), "add_codes", "hdf5")
+    # <<<
 
 
 def get_added_code_paths(config):

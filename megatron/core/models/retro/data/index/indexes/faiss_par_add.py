@@ -61,6 +61,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         '''Encode text dataset, to be later added to index.'''
 
         codes_dir = get_added_codes_dir(config)
+        retro_makedir(config, codes_dir)
 
         # Index.
         index = self.get_empty_index(config)

@@ -28,8 +28,12 @@ def retro_makedir(config, path):
         os.makedirs(path, exist_ok=True)
 
 
+# >>>
+# def extract_data_config(config):
+#     return config.retro_gpt_chunk_datasets.train[0].config
 def extract_data_config(config):
-    return config.retro_gpt_datasets.train[0].config
+    return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
+# <<<
 
 
 def get_config_path(project_dir):
@@ -104,27 +108,29 @@ def get_blocks(
     validate = (lambda f : None) if validate is None else validate
 
     # Delete corrupt files.
-    if torch.distributed.get_rank() == 0:
-        existing_block_paths = [block["path"]
-                                for block in all_blocks
-                                if os.path.exists(block["path"])]
-        for index, path in enumerate(
-                tqdm(existing_block_paths, "validating block.")):
+    # >>> [ uncommmmmmmmmmmment !!!!!!! ]
+    # if torch.distributed.get_rank() == 0:
+    #     existing_block_paths = [block["path"]
+    #                             for block in all_blocks
+    #                             if os.path.exists(block["path"])]
+    #     for index, path in enumerate(
+    #             tqdm(existing_block_paths, "validating block.")):
 
-            assert path in all_block_path_set, "unexpected filename, '%s'." % path
+    #         assert path in all_block_path_set, "unexpected filename, '%s'." % path
 
-            try:
-                f = h5py.File(path, "r")
-            except:
-                os.remove(path)
-                continue
+    #         try:
+    #             f = h5py.File(path, "r")
+    #         except:
+    #             os.remove(path)
+    #             continue
 
-            try:
-                validate(f)
-            except:
-                os.remove(path)
-            finally:
-                f.close()
+    #         try:
+    #             validate(f)
+    #         except:
+    #             os.remove(path)
+    #         finally:
+    #             f.close()
+    # <<<
 
     # Wait for files to be deleted.
     torch.distributed.barrier()

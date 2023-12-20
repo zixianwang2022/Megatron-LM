@@ -263,17 +263,17 @@ def build_individual_db(
     indexed_dataset = dataset_info["dataset"]
 
     # >>>
-    if os.path.basename(db_dir) not in (
-            "Books3_shuf_text_document",
-    ):
-        blocks = get_blocks_by_rank(
-            db_dir,
-            len(indexed_dataset),
-            config.retro_doc_block_size,
-            validate=lambda f : f["chunks_valid"].shape == (0,) \
-                or f["chunks_valid"].shape[1] == 4,
-        )
-        pax("dataset_info, blocks, db_dir", {"retro_task_validate": config.retro_task_validate})
+    # if os.path.basename(db_dir) not in (
+    #         "Books3_shuf_text_document",
+    # ):
+    #     blocks = get_blocks_by_rank(
+    #         db_dir,
+    #         len(indexed_dataset),
+    #         config.retro_doc_block_size,
+    #         validate=lambda f : f["chunks_valid"].shape == (0,) \
+    #             or f["chunks_valid"].shape[1] == 4,
+    #     )
+    #     pax("dataset_info, blocks, db_dir", {"retro_task_validate": config.retro_task_validate})
     # <<<
 
     # Missing DB blocks (split by documents).
@@ -574,7 +574,7 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
     # Build merged chunk db.
     if not os.path.exists(db_path):
 
-        retro_makedir(config, os.path.dirname(db_path))
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         f = h5py.File(db_path, "w")
 
         # Initialize output arrays.

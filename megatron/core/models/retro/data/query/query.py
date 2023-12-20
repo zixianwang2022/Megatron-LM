@@ -174,7 +174,20 @@ def query_block_neighbors(config, db_dataset, query_dataset,
         # Validate neighbors.
         with h5py.File(block["path"]) as f:
             existing_neighbor_ids = np.copy(f["neighbors"])
+            # >>>
+            # import math
+            # import os
+            # n = (existing_neighbor_ids != filtered_neighbor_ids).sum() / existing_neighbor_ids.size
+            # e = math.sqrt(((existing_neighbor_ids - filtered_neighbor_ids)**2).mean().item())
+            # print("~~~~~~~~~~~ n %f, e %f ... '%s' ~~~~~~~~~~~" % (n, e, os.path.basename(block["path"])))
+
+            # from lutil import pax
+            # pax("existing_neighbor_ids, neighbor_ids")
+            # <<<
+
+            # >>>
             assert np.array_equal(existing_neighbor_ids, filtered_neighbor_ids)
+            # <<<
 
 
 def query_dataset_neighbors(config, db_dataset,

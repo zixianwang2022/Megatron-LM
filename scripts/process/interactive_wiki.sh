@@ -1,14 +1,18 @@
 #!/bin/bash
 
 set -u
-unset NCCL_DEBUG
-export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NPROCS=8
+export CUDA_DEVICE_MAX_CONNECTIONS=1
+export NCCL_IB_QPS_PER_CONNECTION=4
+export NCCL_SOCKET_IFNAME=^vlan,lo
+unset NCCL_DEBUG
+
+DIR=$(readlink -f `pwd`)
+DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
+mkdir -p $DIR/logs
 
 ######## Arguments. ########
 
-# . args.sh
 . args_wiki.sh
 
 ######## Command. ########
@@ -31,4 +35,4 @@ echo "CMD = '$CMD'."
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~"
 eval $CMD
 
-# eof.
+# eof
