@@ -388,7 +388,8 @@ class TransformerBlock(MegatronModule):
 
         return hidden_states
 
-    def sharded_state_dict(self, prefix: str = '', sharded_offsets: tuple = ()) -> ShardedStateDict:
+    def sharded_state_dict(self, prefix: str = '', sharded_offsets: tuple = (),
+                           homogeneous_layers: bool = True) -> ShardedStateDict:
         assert not sharded_offsets, "Unexpected sharded offsets"
         sharded_state_dict = {}
 
@@ -399,13 +400,17 @@ class TransformerBlock(MegatronModule):
 
             global_layer_offset = layer.layer_number - 1  # self.layer_number starts at 1
             state_dict_prefix = f'{layer_prefix}{global_layer_offset - offset}.'  # module list index in TransformerBlock
-            sharded_pp_offset = [
-                (0, global_layer_offset, num_layers)
-            ]  # PP sharding offset for ShardedTensors
+            if homogeneous_layers:
+                sharded_pp_offset = [
+                    (0, global_layer_offset, num_layers)
+                ]  # PP sharding offset for ShardedTensors
+            else:
+                sharded_pp_offset = []
             layer_sharded_state_dict = layer.sharded_state_dict(
                 prefix=state_dict_prefix, sharded_offsets=sharded_pp_offset
             )
-            replace_prefix_for_sharding(layer_sharded_state_dict, state_dict_prefix, layer_prefix)
+            if homogeneous_layers:
+                replace_prefix_for_sharding(layer_sharded_state_dict, state_dict_prefix, layer_prefix)
             sharded_state_dict.update(layer_sharded_state_dict)
 
         # Add modules other than self.layers
