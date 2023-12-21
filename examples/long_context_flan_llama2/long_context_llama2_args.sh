@@ -115,4 +115,3 @@ fi
 
 # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
 # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
-DOCKER="/lustre/fsw/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.12-py3-eval.sqsh"
