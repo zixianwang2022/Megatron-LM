@@ -63,7 +63,13 @@ def preprocess(data_file, inference_only=False, retrieved_neighbours=False, fix_
                 contexts = instance["ctxs"]
                 neighbours = ["title: " + ctx["title"] + ", source: " + ctx["text"] for ctx in contexts] 
             else:
-                if "sub-paragraphs" in instance:
+                if "document" in instance:
+                    doc = instance["document"]
+                    if type(doc) == list:
+                        neighbours = [" ".join(doc)]
+                    else:
+                        neighbours = [doc]
+                elif "sub-paragraphs" in instance:
                     neighbours = ["title: , source: " + instance["sub-paragraphs"]]
                 elif fix_newsqa and "sub_paragraph" in instance:
                     neighbours = ["title: , source: " + instance["sub_paragraph"]]

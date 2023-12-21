@@ -76,7 +76,7 @@ else
         --no-load-optim "
     if [[ ${model_card} == *itp-32k* ]]; then
         # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
-	DOCKER="/lustre/fs3/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.04-py3-eval.sqsh"
+	DOCKER="/lustre/fsw/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.04-py3-eval.sqsh"
     fi
 fi
 
