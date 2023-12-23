@@ -83,7 +83,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo $COMMAND
-# export SUBMIT_ACCOUNT=llmservice_nlp_fm
+export SUBMIT_ACCOUNT=llmservice_nlp_fm
 # submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}_${SAVENAME}_${use_retrieved_neighbours}" --duration 4 --exclude ${bad_nodes} # --dependency afterany:102618
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}_${use_retrieved_neighbours}" --duration 3 --exclude ${bad_nodes} # --dependency afterany:102618
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}_${use_retrieved_neighbours}" --duration 1 --exclude ${bad_nodes} # --dependency afterany:102618
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 

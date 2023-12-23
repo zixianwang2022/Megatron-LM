@@ -110,4 +110,4 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 echo ${run_cmd}
 # export SUBMIT_ACCOUNT=llmservice_nlp_fm
-submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude ${bad_nodes} # --dependent_clones 10 # --dependency afterany:100750 
+submit_job --gpu ${num_gpus} --nodes ${num_nodes} --email_mode never  --mounts $MOUNTS --partition $PARTITION  --image $DOCKER -c "$LAUNCH ${run_cmd}" -n "${SAVENAME}" --duration 4  --exclude ${bad_nodes} --dependent_clones 10 # --dependency afterany:100750 
