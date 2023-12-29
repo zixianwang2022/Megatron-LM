@@ -156,6 +156,7 @@ class BlendableDataset(torch.utils.data.Dataset):
                                        self.dataset_sample_index,
                                        weights, num_datasets, self.size,
                                        torch.distributed.get_rank() == 0)
+        print("size", self.size, self.dataset_index[:16])
         print_rank_0('> elapsed time for building blendable dataset indices: '
                      '{:.2f} (sec)'.format(time.time() - start_time))
 

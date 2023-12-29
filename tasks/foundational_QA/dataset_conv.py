@@ -332,7 +332,7 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
     short_span_with_context = ["drop", "NarrativeQA", "QASC", "Quoref", "ROPES", "squad1.1", "squad2.0", "newsqa", "nq", "qasper", "narrative_qa", "quality", "musique", "hotpotqa", "multifieldqa_en"]
     yes_no_without_context = ["BoolQ"]
     multichoices = [""]
-    formatted_dataset_name = ["convqa", "chatgptgen", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturn600"]
+    formatted_dataset_name = ["convqa", "chatgptgen", "chatgptgennoanswer", "doc2dial", "doc2dialv2", "quac", "quacv2", "qrecc", "sharc", "nvolvemultiturnfiltered1000", "nvolvemultiturn1000", "nvolvemultiturn1300", "nvolvemultiturn4k", "nvolvemultiturnfiltered4k", "steerlmgen", "doqa_cooking", "doqa_movies", "doqa_travel", "hybriddial", "inscit"]
     summary_dataset_name = ["gov_report", "summ_screen_fd"]
     nli_dataset_name = ["contract_nli"]
     user_template = ""
@@ -391,7 +391,6 @@ def reformat_prompt_v2(query, neighbours, dataset_name, ft_neighbours, \
         input_tokens = tokenizer.tokenize(all_input)
 
     # print(dataset_name, all_input)
-
     return  input_tokens
 
 def build_normal_training_sample_v2(sample,
