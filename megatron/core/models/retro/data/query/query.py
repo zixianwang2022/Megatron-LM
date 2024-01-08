@@ -202,6 +202,7 @@ def query_dataset_neighbors(config, db_dataset,
                 config.retro_num_neighbors_target,
             )
     if config.retro_task_validate is None:
+        retro_makedir(config, neighbor_dir)
         blocks = get_blocks_by_rank(
             neighbor_dir,
             num_active_chunks,

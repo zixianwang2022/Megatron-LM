@@ -241,6 +241,32 @@ if __name__ == "__main__":
     # Initalize Megatron.
     config = initialize_megatron_retro()
 
+    # >>>
+    # from lutil import pax, print_seq
+    # print_seq("local id = %s, proc id = %s." % (
+    #     os.environ["SLURM_LOCALID"],
+    #     os.environ["SLURM_PROCID"],
+    # ))
+    # pax({ f"slurm_{k}" : os.environ[f"SLURM_{k.upper()}"] for k in (
+    #     "cpus_on_node",
+    #     # "cpus_per_task",
+    #     "job_id",
+    #     # "jobid",
+    #     "job_name",
+    #     "job_nodelist",
+    #     "job_num_nodes",
+    #     "localid",
+    #     "nodeid",
+    #     # "nnodes",
+    #     # "nodelist",
+    #     "ntasks",
+    #     "procid",
+    #     "submit_dir",
+    #     "submit_host",
+    #     "tasks_per_node",
+    # )})
+    # <<<
+
     # Expand tasks.
     task_remap = {
         "build" : [ "db-build", "index-train", "index-add", "query-neighbors" ],
