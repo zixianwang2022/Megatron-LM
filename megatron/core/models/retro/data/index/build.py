@@ -1,8 +1,9 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import numpy as np
 import os
 import shutil
+
+import numpy as np
 import torch
 from tqdm import tqdm
 
@@ -20,7 +21,6 @@ from .utils import (
     get_training_data_merged_path,
     get_training_data_root_dir,
 )
-
 
 ##################################################
 # Train index.

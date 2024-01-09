@@ -3,6 +3,7 @@
 """Retro preprocessing config."""
 
 from dataclasses import dataclass
+
 from megatron.core.transformer import TransformerConfig
 
 from .bert_embedders import RetroBertEmbedders

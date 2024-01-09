@@ -7,8 +7,9 @@ instantiable, it is meant to be extended with optimizations in classes that
 inherit from this class (see FaissParAddIndex, for an example).
 """
 
-import numpy as np
 import os
+
+import numpy as np
 import torch
 from tqdm import tqdm
 

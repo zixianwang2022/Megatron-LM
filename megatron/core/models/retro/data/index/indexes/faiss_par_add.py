@@ -8,20 +8,17 @@ FaissBaseIndex. This allows 'add()' to scale out to very large datasets, since
 the vast majority of the computational effort is embarrassingly parallel.
 """
 
-import numpy as np
 import os
-import psutil
 import shutil
+
+import numpy as np
+import psutil
 import torch
 from tqdm import tqdm
 
 from megatron.core.models.retro.data.external_libs import faiss, h5py
-from megatron.core.models.retro.data.index.utils import get_added_codes_dir, get_added_code_paths
-from megatron.core.models.retro.data.utils import (
-    get_blocks_by_rank,
-    print_rank_0,
-    retro_makedir,
-)
+from megatron.core.models.retro.data.index.utils import get_added_code_paths, get_added_codes_dir
+from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0, retro_makedir
 
 from .faiss_base import FaissBaseIndex
 

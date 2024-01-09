@@ -1,13 +1,17 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-from concurrent.futures import as_completed, ProcessPoolExecutor
 import glob
-import numpy as np
 import os
-import torch
-from tqdm import tqdm
 import types
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import List, Tuple
+
+import numpy as np
+import torch
+
+# >>>
+from lutil import pax
+from tqdm import tqdm
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
@@ -22,18 +26,15 @@ from megatron.core.models.retro.data.utils import (
 from .utils import (
     get_indexed_dataset_infos,
     get_indexed_dataset_infos_path,
+    get_individual_chunk_db,
     get_individual_db_dir,
     get_individual_db_paths,
-    get_individual_chunk_db,
     get_individual_doc_offsets,
     get_merged_db_path_map,
     init_indexed_dataset_infos,
     load_indexed_datasets,
     save_indexed_dataset_infos,
 )
-
-# >>>
-from lutil import pax
 
 # <<<
 

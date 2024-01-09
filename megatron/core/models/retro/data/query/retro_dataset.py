@@ -1,7 +1,8 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import numpy as np
 import os
+
+import numpy as np
 import torch
 
 from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset

@@ -1,13 +1,14 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-from collections import defaultdict
 import glob
-import numpy as np
 import os
-import torch
-from tqdm import tqdm
+from collections import defaultdict
 from types import SimpleNamespace
 from typing import Callable
+
+import numpy as np
+import torch
+from tqdm import tqdm
 
 from megatron.core import parallel_state
 

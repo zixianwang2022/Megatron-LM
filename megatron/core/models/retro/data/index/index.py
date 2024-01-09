@@ -2,6 +2,7 @@
 
 import abc
 import os
+
 import torch
 
 from megatron.core.models.retro.data.external_libs import faiss

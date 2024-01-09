@@ -1,9 +1,10 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import numpy as np
 import os
-import psutil
 import time
+
+import numpy as np
+import psutil
 import torch
 from tqdm import tqdm
 
