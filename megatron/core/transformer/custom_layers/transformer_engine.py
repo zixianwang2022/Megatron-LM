@@ -432,3 +432,14 @@ class TEDotProductAttention:
             )
         else:
             return super().forward(query, key, value, attention_mask)
+
+
+try:
+
+    from transformer_engine.pytorch.attention import _SplitAlongDim
+
+    SplitAlongDim = _SplitAlongDim.apply
+
+except ImportError:
+
+    SplitAlongDim = None
