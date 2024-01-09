@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH -p batch_block1,batch_block2,batch_block3,batch_block4
-#SBATCH --nodes=1
+#SBATCH --nodes=16
 #SBATCH --ntasks-per-node=1
-#SBATCH --gpus-per-node=8
+#SBATCH --gpus-per-node=1
 #SBATCH -A llmservice_nlp_fm
-#SBATCH -t 1:00:00
+#SBATCH -t 4:00:00
 #SBATCH --exclusive
 #SBATCH --job-name=adlr-nlp:retro-mcore
 #SBATCH --dependency=singleton
