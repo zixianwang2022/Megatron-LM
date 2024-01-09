@@ -1,6 +1,6 @@
 #! /bin/bash
 
-. ./examples/fqa_llama2/config_llama2.sh
+. ./examples/fqa_llama2/config_llama2_sft.sh
 
 ## nvllm
 if [[ $model_size == "843m" ]]; then
@@ -78,8 +78,7 @@ fi
 
 
 ## --use-flash-attn \ remove flash attention for reproducable results. 
-GPT_ARGS="--use-flash-attn \
-        --untie-embeddings-and-output-weights \
+GPT_ARGS="--untie-embeddings-and-output-weights \
         --disable-bias-linear \
         --no-position-embedding \
         --use-rotary-position-embeddings \

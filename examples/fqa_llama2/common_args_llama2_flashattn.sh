@@ -77,7 +77,8 @@ if [[ $model_size == "70b" ]]; then
 fi
 
 
-## --use-flash-attn \ remove flash attention for reproducable results. 
+## --use-flash-attn \ remove flash attention for reproducable results.
+## add --use-flash-attn for finetuning
 GPT_ARGS="--use-flash-attn \
         --untie-embeddings-and-output-weights \
         --disable-bias-linear \

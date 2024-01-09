@@ -51,12 +51,19 @@ fi
 if [[ $model_card == *llama2_text_70b_with_qc* ]]; then
     CHECKPOINT_PATH=${llama2_text_70b_with_qc}
 fi
+if [[ $model_card == *llama2_text_13b_with_qc* ]]; then
+    CHECKPOINT_PATH=${llama2_text_13b_with_qc}
+fi
+if [[ $model_card == *llama2_text_7b_with_qc* ]]; then
+    CHECKPOINT_PATH=${llama2_text_7b_with_qc}
+fi
 
 
 SAVE_PATH="${QA_HOME}/checkpoints/applications/${model_card}"
-sample_output_file="${SAVE_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}.txt.v2"
+# sample_output_file="${SAVE_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}.txt.v2"
+sample_output_file="${SAVE_PATH}/${TASK}_${ft_neighbours}_changeformat_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}.txt.v2"
 if [[ $use_retrieved_neighbours ]]; then
-    sample_output_file="${SAVE_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_ret.txt.v2"
+    sample_output_file="${SAVE_PATH}/${TASK}_${ft_neighbours}_changeformat_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_ret.txt.v2"
 fi
 
 DIR=`pwd`
@@ -84,7 +91,15 @@ if [[ $model_size == "43b" ]]; then
    COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
 fi
 
+if [[ $model_size == "7b" ]]; then
+   COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
+fi
+
 if [[ $model_size == "70b" ]]; then
+   COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
+fi
+
+if [[ $model_size == "13b" ]]; then
    COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
 fi
 
@@ -107,7 +122,7 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_zeroshot_${model_size}_${TASK}" --duration 4 --exclude luna-0534,luna-0253,luna-0377
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_zeroshot_${model_size}_${TASK}" --duration 4 --exclude luna-0534,luna-0253,luna-0377,luna-0524,luna-0527
 
 echo $COMMAND
 # $COMMAND

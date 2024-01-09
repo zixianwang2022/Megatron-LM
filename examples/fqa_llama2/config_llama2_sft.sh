@@ -1,5 +1,6 @@
 # DATA_HOME="/lustre/fsw/portfolios/llmservice/users/chankyul/s3_data/" #"/lustre/fsw/portfolios/adlr/users/pengx/projects/retro/"
-DATA_HOME="/lustre/fsw/adlr/adlr-nlp/pengx/data/foundational_qa/s3_data/"
+# DATA_HOME="/lustre/fsw/adlr/adlr-nlp/pengx/data/foundational_qa/s3_data/"
+DATA_HOME="/lustre/fsw/adlr/adlr-nlp/boxinw/instruction_tuning_data/"
 data_folder="$DATA_HOME"
 
 QA_HOME="/lustre/fsw/adlr/adlr-nlp/zihanl/inform/foundational-qa/llama-2"
@@ -39,8 +40,6 @@ llama2_chat_70b="/lustre/fsw/adlr/adlr-nlp/pengx/shared_ckpts/llama2_megatron_ch
 llama2_text_70b="/lustre/fsw/adlr/adlr-nlp/pengx/shared_ckpts/llama2_megatron_text_70b_pp4/"
 
 llama2_text_70b_with_qc="/lustre/fsw/adlr/adlr-nlp/pengx/sft_70b_llama2_qa/checkpoints/applications/qc_llama2_text_70b_base_70b_128_5e-6/"
-llama2_text_13b_with_qc="/lustre/fsw/adlr/adlr-nlp/zihanl/inform/foundational-qa/llama-2/checkpoints/applications/sft_blend_llama2_text_13b_same_format_ctx1_13b_128_5e-6"
-llama2_text_7b_with_qc="/lustre/fsw/adlr/adlr-nlp/zihanl/inform/foundational-qa/llama-2/checkpoints/applications/sft_blend_llama2_text_7b_same_format_ctx1_7b_128_5e-6"
 
 TOKENIZER_MODEL="/lustre/fsw/adlr/adlr-nlp/mpatwary/data/multilingual/multi-1.1t-gtc/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model"
 TOKENIZER_MODEL_LLAMA2="/lustre/fsw/adlr/adlr-nlp/adlr-nlp-sharing/llama-2/tokenizer.model"

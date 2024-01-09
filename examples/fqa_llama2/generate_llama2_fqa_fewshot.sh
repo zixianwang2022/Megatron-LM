@@ -11,6 +11,7 @@ ft_neighbours=$8
 SAVENAME=$9
 model_card=$9
 use_retrieved_neighbours=${10}
+n_shot=${11}
 
 . ./examples/fqa_llama2/common_args_llama2.sh
 . ./examples/foundational_qa/gen_input.sh
@@ -25,22 +26,13 @@ if [[ $sampling == "beam" ]]; then
 fi
 
 CHECKPOINT_PATH="${QA_HOME}/checkpoints/applications/${SAVENAME}"
-sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}.txt"
+sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_fewshot_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}.txt"
 
 if [[ $use_retrieved_neighbours ]]; then
-    sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}_ret.txt"
+    sample_output_file="${CHECKPOINT_PATH}/${TASK}_${ft_neighbours}_generate_fewshot_${model_size}_${split}_${sampling}_${gen_start}_${num_gen}_${ckpt_step}_ret.txt"
 fi
 
 sample_output_file="${sample_output_file}.v2"
-
-## reverse ordering of ctxs
-# sample_output_file="${sample_output_file}.reverse_ctxs"
-
-## swing ordering of ctxs
-# sample_output_file="${sample_output_file}.swing_ctxs"
-
-## random shuffle ordering of ctxs
-# sample_output_file="${sample_output_file}.shuffle_ctxs"
 
 DIR=`pwd`
 
@@ -49,9 +41,10 @@ GEN_ARGS="$SAMPLE_ARGS \
           --num-gen $num_gen \
           --ckpt-step ${ckpt_step} \
           --sample-input-file $sample_input_file \
+          --fewshot-input-file $fewshot_input_file \
           --sample-output-file $sample_output_file \
-          --out-seq-length 64 \
-          --model-name $model_card "
+          --incontext-fewshot \
+          --n-shot ${n_shot}"
 
 DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
                   --nnodes ${pip_par} \
@@ -61,22 +54,13 @@ DISTRIBUTED_ARGS="--nproc_per_node ${mod_par} \
 # COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/prompt_learning/text_generation.py \
 # COMMAND="python -u ${DIR}/tasks/retro_qa/text_generation.py \
 
-# COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/foundational_QA/text_generation_conv.py"
-COMMAND="python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
+COMMAND="python -m torch.distributed.launch $DISTRIBUTED_ARGS ${DIR}/tasks/foundational_QA/text_generation_conv.py"
 
 if [[ $model_size == "43b" ]]; then
    COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
 fi
 
 if [[ $model_size == "70b" ]]; then
-   COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
-fi
-
-if [[ $model_size == "13b" ]]; then
-   COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
-fi
-
-if [[ $model_size == "7b" ]]; then
    COMMAND="$LAUNCH python -u ${DIR}/tasks/foundational_QA/text_generation_conv.py"
 fi
 
@@ -99,6 +83,6 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 4 --exclude luna-0534,luna-0253,luna-0377
+submit_job --gpu ${mod_par} --nodes ${pip_par} --email_mode never  --mounts $MOUNTS --partition $PARTITION --image $DOCKER  -c "$COMMAND" -n "generate_cross_${model_size}_${TASK}" --duration 3 --exclude luna-0534,luna-0253,luna-0377
 # echo $COMMAND
 # -m torch.distributed.launch $DISTRIBUTED_ARGS 
