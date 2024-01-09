@@ -33,6 +33,8 @@ def retro_makedir(config, path):
 #     return config.retro_gpt_chunk_datasets.train[0].config
 def extract_data_config(config):
     return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
+
+
 # <<<
 
 
@@ -71,10 +73,7 @@ class GPTToTextDataset(torch.utils.data.Dataset):
 
 
 def get_blocks(
-    dirname: str,
-    n_samples: int,
-    block_size: int,
-    validate: Callable = None,
+    dirname: str, n_samples: int, block_size: int, validate: Callable = None,
 ):
     '''Divide range [0, num_samples) to sequence of block ranges.
 
@@ -90,22 +89,24 @@ def get_blocks(
 
     # Block ranges.
     block_start_idxs = list(range(0, n_samples, block_size))
-    block_end_idxs = [ min(n_samples, i + block_size) for i in block_start_idxs ]
+    block_end_idxs = [min(n_samples, i + block_size) for i in block_start_idxs]
     block_ranges = list(zip(block_start_idxs, block_end_idxs))
 
     # All block files (existing + missing).
     n_digits = int(np.ceil(np.log(n_samples) / np.log(10)) + 1)
-    all_blocks = [{
-        "range" : r,
-        "path" : os.path.join(
-            dirname,
-            "%s-%s.hdf5" % tuple([ str(i).zfill(n_digits) for i in r ]),
-        )
-    } for r in block_ranges]
+    all_blocks = [
+        {
+            "range": r,
+            "path": os.path.join(
+                dirname, "%s-%s.hdf5" % tuple([str(i).zfill(n_digits) for i in r]),
+            ),
+        }
+        for r in block_ranges
+    ]
     all_block_path_set = set(block["path"] for block in all_blocks)
 
     # Validate function.
-    validate = (lambda f : None) if validate is None else validate
+    validate = (lambda f: None) if validate is None else validate
 
     # Delete corrupt files.
     # >>> [ uncommmmmmmmmmmment !!!!!!! ]
@@ -137,19 +138,15 @@ def get_blocks(
 
     # Collect blocks.
     blocks = SimpleNamespace(
-        existing=[ b for b in all_blocks if os.path.exists(b["path"]) ],
-        missing=[ b for b in all_blocks if not os.path.exists(b["path"]) ],
+        existing=[b for b in all_blocks if os.path.exists(b["path"])],
+        missing=[b for b in all_blocks if not os.path.exists(b["path"])],
     )
 
     return blocks
 
 
 def get_blocks_by_rank(
-    dirname: str,
-    n_samples: int,
-    block_size: int,
-    validate: Callable = None,
-    sample: float = None,
+    dirname: str, n_samples: int, block_size: int, validate: Callable = None, sample: float = None,
 ):
     '''Divide existing and missing blocks evenly across all ranks.
 
@@ -165,8 +162,12 @@ def get_blocks_by_rank(
     # This rank's existing and missing files.
     data_parallel_rank = parallel_state.get_data_parallel_rank()
     data_parallel_world_size = parallel_state.get_data_parallel_world_size()
-    rank_existing_blocks = blocks.existing[data_parallel_rank:len(blocks.existing):data_parallel_world_size]
-    rank_missing_blocks = blocks.missing[data_parallel_rank:len(blocks.missing):data_parallel_world_size]
+    rank_existing_blocks = blocks.existing[
+        data_parallel_rank : len(blocks.existing) : data_parallel_world_size
+    ]
+    rank_missing_blocks = blocks.missing[
+        data_parallel_rank : len(blocks.missing) : data_parallel_world_size
+    ]
 
     # Extend rank's existing and missing blocks (with None) such that all ranks
     # have equal length lists. This allows for easier tracking of global progress.
@@ -183,10 +184,10 @@ def get_blocks_by_rank(
 
     # Collect blocks.
     blocks = SimpleNamespace(
-        n_existing_world = len(blocks.existing),
-        n_missing_world = len(blocks.missing),
-        existing = rank_existing_blocks,
-        missing = rank_missing_blocks,
+        n_existing_world=len(blocks.existing),
+        n_missing_world=len(blocks.missing),
+        existing=rank_existing_blocks,
+        missing=rank_missing_blocks,
     )
 
     if sample is not None:
@@ -197,7 +198,7 @@ def get_blocks_by_rank(
         # Randomly sample blocks.
         def sample_blocks(_blocks):
             n_blocks_sample = int(np.ceil(sample * len(_blocks)))
-            sampled_blocks = [ b for b in _blocks if b is not None ]
+            sampled_blocks = [b for b in _blocks if b is not None]
 
             np.random.seed(None)
             np.random.shuffle(sampled_blocks)
@@ -235,7 +236,7 @@ class BlockPathMap:
         self.block_path_map = {}
         for block_path in block_paths:
             name = os.path.splitext(os.path.basename(block_path))[0]
-            start_idx, end_idx = [ int(i) for i in name.split("-") ]
+            start_idx, end_idx = [int(i) for i in name.split("-")]
             self.block_path_map[start_idx] = block_path
             self.max_idx = max(self.max_idx, end_idx)
         self.block_size = block_size

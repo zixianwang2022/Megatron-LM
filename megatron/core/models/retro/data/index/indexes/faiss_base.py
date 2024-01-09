@@ -18,14 +18,13 @@ from megatron.core.models.retro.data.index.utils import get_training_data_merged
 
 
 class FaissBaseIndex(Index):
-
     def _train(self, config):
         '''Train index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
 
         # Set num threads (torch.distributed reset it to 1).
-        faiss.omp_set_num_threads(64) # 32, *64, 128
+        faiss.omp_set_num_threads(64)  # 32, *64, 128
 
         empty_index_path = self.get_empty_index_path(config)
 
@@ -35,21 +34,15 @@ class FaissBaseIndex(Index):
 
         # Load data.
         merged_path = get_training_data_merged_path(config)
-        inp = np.memmap(
-	    merged_path,
-            dtype = "f4",
-	    mode = "r",
-        ).reshape((-1, config.hidden_size))
+        inp = np.memmap(merged_path, dtype="f4", mode="r",).reshape((-1, config.hidden_size))
 
         # Init index.
-        index = faiss.index_factory(config.retro_index_nfeats,
-                                    config.retro_index_str)
+        index = faiss.index_factory(config.retro_index_nfeats, config.retro_index_str)
 
         # Move to GPU.
         print("> move faiss index to gpu.")
         index_ivf = faiss.extract_index_ivf(index)
-        clustering_index = \
-            faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+        clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
         index_ivf.clustering_index = clustering_index
         print("> finished moving to gpu.")
         self.c_verbose(index, True)
@@ -83,9 +76,11 @@ class FaissBaseIndex(Index):
         faiss.omp_set_num_threads(64)
 
         # Bert embedder.
-        embedder = BertEmbedder(config.retro_bert_batch_size,
-                                config.retro_bert_max_chunk_length,
-                                config.bert_embedder_type)
+        embedder = BertEmbedder(
+            config.retro_bert_batch_size,
+            config.retro_bert_max_chunk_length,
+            config.bert_embedder_type,
+        )
 
         # Empty/added index paths.
         empty_index_path = self.get_empty_index_path()
@@ -102,8 +97,7 @@ class FaissBaseIndex(Index):
         for sample_range in tqdm(dataset_sample_ranges, "faiss_base.add"):
 
             # Embed text.
-            embeds = self.embed_text_dataset_block(
-                embedder, text_dataset, sample_range)
+            embeds = self.embed_text_dataset_block(embedder, text_dataset, sample_range)
 
             # Add to index.
             index.add(embeds)

@@ -60,11 +60,10 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
         if block is not None:
 
             # Progress. (*note*: move world progress to here.)
-            print_rank_0("embed training block %d / %d ... %s." % (
-                block_idx,
-                len(blocks.existing),
-                block["path"],
-            ))
+            print_rank_0(
+                "embed training block %d / %d ... %s."
+                % (block_idx, len(blocks.existing), block["path"],)
+            )
 
             # Load existing block embeddings.
             with h5py.File(block["path"]) as f:
@@ -123,6 +122,7 @@ def validate_added_encodings(config):
     # Sample existing blocks.
     def validate(f):
         assert len(f["data"].shape) == 2
+
     blocks = get_blocks_by_rank(
         dirname=get_added_codes_dir(config),
         n_samples=len(text_dataset),
@@ -140,11 +140,9 @@ def validate_added_encodings(config):
         if block is not None:
 
             # Progress.
-            print_rank_0("encode block %d / %d ... %s." % (
-                block_idx,
-                len(blocks.existing),
-                block["path"],
-            ))
+            print_rank_0(
+                "encode block %d / %d ... %s." % (block_idx, len(blocks.existing), block["path"],)
+            )
 
             # Load existing codes.
             with h5py.File(block["path"]) as f:

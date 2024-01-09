@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from megatron.core.transformer import TransformerConfig
 
+
 @dataclass
 class RetroConfig(TransformerConfig):
 

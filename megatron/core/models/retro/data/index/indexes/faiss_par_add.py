@@ -27,7 +27,6 @@ from .faiss_base import FaissBaseIndex
 
 
 class FaissParallelAddIndex(FaissBaseIndex):
-
     def encode_block(self, index, embedder, text_dataset, block):
         '''Encode sub-dataset block, to be later added to index.
 
@@ -37,11 +36,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         '''
 
         # Embed block.
-        embeddings = self.embed_text_dataset_block(
-            embedder,
-            text_dataset,
-            block["range"],
-        )
+        embeddings = self.embed_text_dataset_block(embedder, text_dataset, block["range"],)
 
         # Encode block.
         print_rank_0("encode.")
@@ -72,11 +67,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
         # Missing code blocks.
         def validate(f):
             assert len(f["data"].shape) == 2
+
         blocks = get_blocks_by_rank(
-            codes_dir,
-            len(text_dataset),
-            config.retro_block_size,
-            validate=validate,
+            codes_dir, len(text_dataset), config.retro_block_size, validate=validate,
         )
 
         # Encode each block.
@@ -85,11 +78,10 @@ class FaissParallelAddIndex(FaissBaseIndex):
             if block is not None:
 
                 # Progress.
-                print_rank_0("encode block %d / %d ... %s." % (
-                    block_index,
-                    len(blocks.missing),
-                    block["path"],
-                ))
+                print_rank_0(
+                    "encode block %d / %d ... %s."
+                    % (block_index, len(blocks.missing), block["path"],)
+                )
 
                 # Encode and save.
                 _, codes = self.encode_block(index, embedder, text_dataset, block)
@@ -118,13 +110,13 @@ class FaissParallelAddIndex(FaissBaseIndex):
         code_paths = get_added_code_paths(config)
         pbar = tqdm(code_paths)
         for code_path in pbar:
-            pbar.set_description("add codes, mem %.3f gb, %.1f%%" % (
-                psutil.virtual_memory()[3] / 1024**3,
-                psutil.virtual_memory()[2],
-            ))
+            pbar.set_description(
+                "add codes, mem %.3f gb, %.1f%%"
+                % (psutil.virtual_memory()[3] / 1024 ** 3, psutil.virtual_memory()[2],)
+            )
             with h5py.File(code_path) as f:
 
-                nload = int(config.retro_index_add_load_fraction*f["data"].shape[0])
+                nload = int(config.retro_index_add_load_fraction * f["data"].shape[0])
                 offset = int(os.path.basename(code_path).split("-")[0])
                 xids = np.arange(offset, offset + nload)
                 codes = np.copy(f["data"][:nload])

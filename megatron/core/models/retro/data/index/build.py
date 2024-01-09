@@ -56,16 +56,18 @@ def merge_embedding_blocks(config):
     # Merge blocks.
     with open(bin_path, "wb") as fo:
         byte_offset = 0
-        for block_idx, block_path in enumerate(tqdm(
-            block_paths,
-            "merge train embeddings",
-            miniters=len(block_paths)//10,
-            disable=torch.distributed.get_rank() != 0,
-        )):
+        for block_idx, block_path in enumerate(
+            tqdm(
+                block_paths,
+                "merge train embeddings",
+                miniters=len(block_paths) // 10,
+                disable=torch.distributed.get_rank() != 0,
+            )
+        ):
             with h5py.File(block_path) as fi:
 
                 nload = get_block_nload(block_path, load_fraction)
-                block = np.array(fi["data"][:nload], copy = False)
+                block = np.array(fi["data"][:nload], copy=False)
 
                 fo.write(block.tobytes())
 
@@ -99,9 +101,7 @@ def embed_training_chunks(config):
 
     # Embed dataset.
     embedder = config.retro_bert_embedders.disk
-    embedder.embed_text_dataset("index",
-                                get_training_data_block_dir(config),
-                                text_dataset)
+    embedder.embed_text_dataset("index", get_training_data_block_dir(config), text_dataset)
 
     # Merge embeddings.
     merge_embedding_blocks(config)
@@ -152,6 +152,7 @@ def train_index(config):
     # Validate existing trained index.
     else:
         from .validate import validate_training_embeddings
+
         validate_training_embeddings(config)
 
 
@@ -194,6 +195,7 @@ def add_to_index(config):
     # Validate existing encodings.
     else:
         from .validate import validate_added_encodings
+
         validate_added_encodings(config)
 
 

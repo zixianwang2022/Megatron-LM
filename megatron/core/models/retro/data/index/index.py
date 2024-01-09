@@ -30,8 +30,7 @@ class Index(abc.ABC):
 
     def get_empty_index_path(self, config):
         return os.path.join(
-            get_index_dir(config),
-            "empty_%.3f.faissindex" % config.retro_index_train_load_fraction,
+            get_index_dir(config), "empty_%.3f.faissindex" % config.retro_index_train_load_fraction,
         )
 
     def get_empty_index(self, config):
@@ -40,10 +39,8 @@ class Index(abc.ABC):
     def get_added_index_path(self, config):
         return os.path.join(
             get_index_dir(config),
-            "added_%.3f_%.3f.faissindex" % (
-                config.retro_index_train_load_fraction,
-                config.retro_index_add_load_fraction,
-            ),
+            "added_%.3f_%.3f.faissindex"
+            % (config.retro_index_train_load_fraction, config.retro_index_add_load_fraction,),
         )
 
     def get_added_index(self, config):

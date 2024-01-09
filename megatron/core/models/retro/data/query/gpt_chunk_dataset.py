@@ -46,16 +46,13 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
         # Sample.
         return {
-            "doc_ids" : sample_doc_ids,
-            "text" : chunk_token_ids,
+            "doc_ids": sample_doc_ids,
+            "text": chunk_token_ids,
         }
 
 
 def build_gpt_chunk_datasets_from_gpt_datasets(
-    project_dir,
-    gpt_datasets,
-    sample_length,
-    chunk_length,
+    project_dir, gpt_datasets, sample_length, chunk_length,
 ):
     '''Get train, valid, test GPT chunk datasets.'''
 
@@ -67,11 +64,14 @@ def build_gpt_chunk_datasets_from_gpt_datasets(
 
     # GPT chunk datasets.
     chunk_datasets = {
-        key : {
-            "dataset" : GPTChunkDataset(sample_ds, sample_length, chunk_length),
-            "neighbor_dir" : get_neighbor_dir(project_dir, key, sample_ds),
-            "num_active_chunks" : num_active_samples * get_num_chunks_per_sample(sample_length, chunk_length),
-        } if sample_ds else None
+        key: {
+            "dataset": GPTChunkDataset(sample_ds, sample_length, chunk_length),
+            "neighbor_dir": get_neighbor_dir(project_dir, key, sample_ds),
+            "num_active_chunks": num_active_samples
+            * get_num_chunks_per_sample(sample_length, chunk_length),
+        }
+        if sample_ds
+        else None
         for key, (sample_ds, num_active_samples) in gpt_datasets.items()
     }
 

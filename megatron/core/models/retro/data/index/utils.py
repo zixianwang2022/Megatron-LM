@@ -11,10 +11,7 @@ def get_index_dir(config):
 
     # Directory path.
     index_dir_path = os.path.join(
-        config.retro_project_dir,
-        "index",
-        config.retro_index_type,
-        config.retro_index_str,
+        config.retro_project_dir, "index", config.retro_index_type, config.retro_index_str,
     )
 
     # Make directory.

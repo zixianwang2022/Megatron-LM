@@ -35,12 +35,10 @@ def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
     for i in range(0, len(data_blend), 2):
         ratio = float(data_blend[i])
         prefix = data_blend[i + 1]
-        assert os.path.exists(os.path.join(data_dir, prefix + ".bin")), \
-            "couldn't find '%s'." % path
-        infos.append({
-            "ratio" : ratio,
-            "prefix" : prefix,
-        })
+        assert os.path.exists(os.path.join(data_dir, prefix + ".bin")), "couldn't find '%s'." % path
+        infos.append(
+            {"ratio": ratio, "prefix": prefix,}
+        )
 
     # Load indexed datasets.
     load_indexed_datasets(config.retro_project_dir, infos)
@@ -107,7 +105,7 @@ def get_individual_chunk_db(project_dir, ds_id, ds_info):
     for path in paths:
         f = h5py.File(path, "r")
         n_chunks_current = f["chunks_valid"].shape[0]
-        db[start_idx:(start_idx+n_chunks_current), 1:] = f["chunks_valid"]
+        db[start_idx : (start_idx + n_chunks_current), 1:] = f["chunks_valid"]
         start_idx += n_chunks_current
         f.close()
 
@@ -129,8 +127,7 @@ def get_individual_doc_offsets(project_dir, ds_id, ds_info):
             current_doc_offsets = np.copy(f["doc_offsets"])
             current_doc_offsets[:, 1] += start_offset
             current_ndocs = current_doc_offsets.shape[0]
-            doc_offsets[start_idx:(start_idx+current_ndocs), 1:] = \
-                current_doc_offsets
+            doc_offsets[start_idx : (start_idx + current_ndocs), 1:] = current_doc_offsets
             start_idx += current_ndocs
             start_offset = current_doc_offsets[-1, 1].item()
 
@@ -141,14 +138,15 @@ def get_merged_db_path_map(project_dir):
     '''Paths to merged datasets.'''
     base_dir = get_db_dir(project_dir)
     return {
-        "sampled" : os.path.join(base_dir, "merged", "sampled.hdf5"),
-        "train" : os.path.join(base_dir, "merged", "train.hdf5"),
-        "valid" : os.path.join(base_dir, "merged", "valid.hdf5"),
+        "sampled": os.path.join(base_dir, "merged", "sampled.hdf5"),
+        "train": os.path.join(base_dir, "merged", "train.hdf5"),
+        "valid": os.path.join(base_dir, "merged", "valid.hdf5"),
     }
 
 
-def get_merged_dataset(project_dir, chunk_length, eod_token_id,
-                       db_type, indexed_dataset_infos=None):
+def get_merged_dataset(
+    project_dir, chunk_length, eod_token_id, db_type, indexed_dataset_infos=None
+):
     '''Get merged dataset.'''
 
     if not indexed_dataset_infos:
@@ -160,7 +158,7 @@ def get_merged_dataset(project_dir, chunk_length, eod_token_id,
     chunks = f["chunks"]
 
     # DB dataset.
-    indexed_datasets = [ info["dataset"] for info in indexed_dataset_infos ]
+    indexed_datasets = [info["dataset"] for info in indexed_dataset_infos]
     dataset = DBDataset(
         db_path=db_path,
         indexed_datasets=indexed_datasets,
@@ -172,31 +170,30 @@ def get_merged_dataset(project_dir, chunk_length, eod_token_id,
     return dataset
 
 
-def get_merged_sampled_dataset(project_dir, chunk_length, eod_token_id,
-                               indexed_dataset_infos=None):
-    return get_merged_dataset(project_dir, chunk_length, eod_token_id,
-                              "sampled", indexed_dataset_infos)
+def get_merged_sampled_dataset(project_dir, chunk_length, eod_token_id, indexed_dataset_infos=None):
+    return get_merged_dataset(
+        project_dir, chunk_length, eod_token_id, "sampled", indexed_dataset_infos
+    )
 
 
-def get_merged_train_dataset(project_dir, chunk_length, eod_token_id,
-                             indexed_dataset_infos=None):
-    return get_merged_dataset(project_dir, chunk_length, eod_token_id,
-                              "train", indexed_dataset_infos)
+def get_merged_train_dataset(project_dir, chunk_length, eod_token_id, indexed_dataset_infos=None):
+    return get_merged_dataset(
+        project_dir, chunk_length, eod_token_id, "train", indexed_dataset_infos
+    )
 
 
-def get_merged_valid_dataset(project_dir, chunk_length, eod_token_id,
-                             indexed_dataset_infos=None):
-    return get_merged_dataset(project_dir, chunk_length, eod_token_id,
-                              "valid", indexed_dataset_infos)
+def get_merged_valid_dataset(project_dir, chunk_length, eod_token_id, indexed_dataset_infos=None):
+    return get_merged_dataset(
+        project_dir, chunk_length, eod_token_id, "valid", indexed_dataset_infos
+    )
 
 
 def get_merged_datasets(project_dir, chunk_length, eod_token_id):
     '''Get all merged datasets.'''
     fns = {
-        "sampled" : get_merged_sampled_dataset,
-        "train" : get_merged_train_dataset,
-        "valid" : get_merged_valid_dataset,
+        "sampled": get_merged_sampled_dataset,
+        "train": get_merged_train_dataset,
+        "valid": get_merged_valid_dataset,
     }
-    datasets = { key : fn(project_dir, chunk_length, eod_token_id)
-                 for key, fn in fns.items() }
+    datasets = {key: fn(project_dir, chunk_length, eod_token_id) for key, fn in fns.items()}
     return datasets
