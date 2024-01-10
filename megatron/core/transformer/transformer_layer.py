@@ -59,9 +59,27 @@ class TransformerLayer(MegatronModule):
         )
 
         ## [Module 2: SelfAttention]
+        # >>>
         self.self_attention = build_module(
             submodules.self_attention, config=self.config, layer_number=layer_number,
         )
+        # +++
+        # try:
+        #     self.self_attention = build_module(
+        #         submodules.self_attention,
+        #         config=self.config,
+        #         layer_number=layer_number,
+        #     )
+        # except Exception as e:
+        #     raise e
+        #     from lutil import pax
+        #     pax({
+        #         "self_attention" : submodules.self_attention,
+        #         # "config" : self.config,
+        #         "layer_number" : layer_number,
+        #         "e" : e,
+        #     })
+        # <<<
 
         ## [Module 3: BiasDropoutFusion]
         self.self_attn_bda = build_module(submodules.self_attn_bda)

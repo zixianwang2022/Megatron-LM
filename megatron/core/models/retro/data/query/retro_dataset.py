@@ -24,6 +24,7 @@ class RetroDataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
+        num_queried_samples,
         num_neighbors,
         num_retrieved_chunks,
         block_size,
@@ -36,6 +37,11 @@ class RetroDataset(torch.utils.data.Dataset):
 
         super().__init__()
 
+        self.num_queried_samples = num_queried_samples
+        # >>>
+        # from lutil import pax
+        # pax("num_queried_samples")
+        # <<<
         self.num_neighbors = num_neighbors
         self.num_retrieved_chunks = num_retrieved_chunks
         self.block_size = block_size
@@ -49,6 +55,21 @@ class RetroDataset(torch.utils.data.Dataset):
     def __getitem__(self, sample_idx):
 
         n_chunks_per_sample = self.chunk_dataset.n_chunks_per_sample
+
+        # Wrap sample idx around number of queried samples.
+        sample_idx = sample_idx % self.num_queried_samples
+
+        # >>>
+        # # if sample_idx >= 2037248:
+        # if sample_idx >= self.num_queried_samples:
+        #     from lutil import pax
+        #     pax("self, sample_idx", {
+        #         # "chunk_dataset" : len(self.chunk_dataset),
+        #         # "sample_dataset" : len(self.chunk_dataset.sample_dataset),
+        #         "num_queried_samples" : self.num_queried_samples,
+        #         "new sample_idx" : sample_idx % self.num_queried_samples,
+        #     })
+        # <<<
 
         # Get standard sample.
         sample = self.chunk_dataset.sample_dataset[sample_idx]
@@ -64,7 +85,19 @@ class RetroDataset(torch.utils.data.Dataset):
         for chunk_idx in chunk_idxs:
 
             # Neighbor chunk ids.
-            neighbor_path = self.neighbor_path_map[chunk_idx]
+            # >>>
+            # neighbor_path = self.neighbor_path_map[chunk_idx]
+            # +++
+            try:
+                neighbor_path = self.neighbor_path_map[chunk_idx]
+            except Exception as e:
+                from lutil import pax
+                pax("chunk_idxs", {
+                    "neighbor_path_map" : self.neighbor_path_map,
+                    # "len(ds)" : len(self),
+                    "sample_idx" : f"{sample_idx} / {self.num_queried_samples}",
+                })
+            # <<<
             with h5py.File(neighbor_path, "r") as f:
                 neighbor_chunk_ids = f["neighbors"][
                     chunk_idx % self.block_size, : self.num_neighbors
@@ -109,6 +142,11 @@ def get_retro_datasets(
 ):
     '''Get train, valid, test retro datasets.'''
 
+    # >>>
+    # from lutil import pax
+    # pax("config, gpt_datasets")
+    # <<<
+
     # DB dataset.
     db_dataset = get_db_dataset(
         project_dir=config.retro_project_dir,
@@ -128,6 +166,11 @@ def get_retro_datasets(
     retro_dataset_map = {}
     query_dir = get_query_dir(config.retro_project_dir)
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
+
+        # >>>
+        # from lutil import pax
+        # pax("chunk_ds_info_map, chunk_ds_info")
+        # <<<
 
         # Skip unused datasets.
         if chunk_ds_info is None:
@@ -172,6 +215,7 @@ def get_retro_datasets(
 
         # Retro dataset.
         retro_dataset_map[data_key] = RetroDataset(
+            num_queried_samples=gpt_datasets[data_key][1],
             num_neighbors=config.retro_num_neighbors,
             num_retrieved_chunks=config.retro_num_retrieved_chunks,
             block_size=config.retro_block_size,

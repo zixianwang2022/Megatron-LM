@@ -182,6 +182,11 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         return_document_ids=False,
     )
 
+    # >>>
+    # from lutil import pax
+    # pax("args, data_config, train_valid_test_num_samples")
+    # <<<
+
     # GPT datasets.
     print_rank_0(" > multi-split gpt datasets.")
     train_ds, valid_ds, test_ds = BlendedMegatronDatasetBuilder(

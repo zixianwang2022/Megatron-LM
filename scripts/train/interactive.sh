@@ -15,8 +15,17 @@ ADD_RETRIEVER=$2
 NPROCS=1 # 8
 NWORKERS=32
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# NWORKERS=1
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/megatrons/retro-mcore-data"
-RETRO_PROJECT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/projects/wiki-tiny-core"
+# RETRO_PROJECT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/projects/wiki-tiny-core"
+RETRO_PROJECT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/projects/wiki-core"
 
 # CORPUS_ROOT="/lustre/fsw/portfolios/adlr/users/lmcafee/corpus-530b"
 # DATA_PATH=" \
@@ -81,18 +90,33 @@ ARGS=" \
     --no-data-sharding \
 "
 
-if [ "$ADD_RETRIEVER" = "0" ]; then
-    SCRIPT=pretrain_gpt.py
-else
+# >>>
+# if [ "$ADD_RETRIEVER" = "0" ]; then
+#     SCRIPT=pretrain_gpt.py
+# else
+#     # --retro-no-verify-neighbor-count \
+#     # --retro-cyclic-train-iters 750000 \
+#     ARGS+=" \
+#       --retro-project-dir ${RETRO_PROJECT_DIR} \
+#       --retro-add-retriever \
+#       --num-workers ${NWORKERS} \
+#     "
+#     SCRIPT=pretrain_retro.py
+# fi
+# +++
+SCRIPT="pretrain_retro.py"
+ARGS+=" --retro-project-dir ${RETRO_PROJECT_DIR}"
+ARGS+=" --dataloader-type cyclic"
+ARGS+=" --retro-cyclic-train-iters 750000"
+# ARGS+=" --retro-cyclic-train-iters 2037248"
+if [ "$ADD_RETRIEVER" = "1" ]; then
     # --retro-no-verify-neighbor-count \
-    # --retro-cyclic-train-iters 750000 \
     ARGS+=" \
-      --retro-project-dir ${RETRO_PROJECT_DIR} \
       --retro-add-retriever \
       --num-workers ${NWORKERS} \
     "
-    SCRIPT=pretrain_retro.py
 fi
+# <<<
 
 if [ "$USE_CORE" = "1" ]; then
     ARGS="${ARGS} --use-mcore-models"
