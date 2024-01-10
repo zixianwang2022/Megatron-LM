@@ -173,7 +173,11 @@ def pretrain(train_valid_test_dataset_provider,
     if not args.skip_train:
         print_rank_0('training ...')
 
-        if args.dataloader_type == 'cyclic' and args.retro_add_retriever:
+        # >>>
+        # if args.dataloader_type == 'cyclic' and args.retro_add_retriever:
+        if args.dataloader_type == 'cyclic' and args.retro_project_dir:
+            assert args.retro_cyclic_train_iters is not None
+        # <<<
             args.train_iters = args.retro_cyclic_train_iters
             print_rank_0("retro cyclic train iters : %d" % args.train_iters)
 

@@ -109,12 +109,10 @@ ARGS+=" --retro-project-dir ${RETRO_PROJECT_DIR}"
 ARGS+=" --dataloader-type cyclic"
 ARGS+=" --retro-cyclic-train-iters 750000"
 # ARGS+=" --retro-cyclic-train-iters 2037248"
+ARGS+="  --num-workers ${NWORKERS}"
+
 if [ "$ADD_RETRIEVER" = "1" ]; then
-    # --retro-no-verify-neighbor-count \
-    ARGS+=" \
-      --retro-add-retriever \
-      --num-workers ${NWORKERS} \
-    "
+    ARGS+=" --retro-add-retriever"
 fi
 # <<<
 
