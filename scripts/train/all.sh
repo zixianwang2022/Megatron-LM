@@ -4,11 +4,8 @@
 ACCOUNT=llmservice_dev_mcore
 # ACCOUNT=llmservice_nlp_fm
 
-# for USE_CORE in "0" "1"; do
-#     for ADD_RETRIEVER in "0" "1"; do
-#         for TP in "4"; do
-for USE_CORE in "1"; do
-    for ADD_RETRIEVER in "1"; do
+for USE_CORE in "0" "1"; do
+    for ADD_RETRIEVER in "0" "1"; do
         for TP in "1"; do
             echo "~~~~ launch c${USE_CORE}-r${ADD_RETRIEVER}-t${TP} ~~~~"
             sbatch \

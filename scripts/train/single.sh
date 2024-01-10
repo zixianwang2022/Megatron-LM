@@ -14,6 +14,7 @@
 
 set -u
 
+# export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NCCL_IB_QPS_PER_CONNECTION=4
 export NCCL_SOCKET_IFNAME=^vlan,lo
 # unset NCCL_DEBUG
@@ -40,30 +41,30 @@ mkdir -p ${LOG_DIR}
 # customize / end.
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-LOG_INTERVAL=5
-SAVE_INTERVAL=10 # 2000 # [2000], *10000
+# LOG_INTERVAL=5 SAVE_INTERVAL=10
+# LOG_INTERVAL=100 SAVE_INTERVAL=2000 # [2000], *10000
 ARGS+=" \
-    --log-interval ${LOG_INTERVAL} \
     --tensorboard-dir ${TENSORBOARD_DIR} \
     --log-validation-ppl-to-tensorboard \
-    --save-interval ${SAVE_INTERVAL} \
     --save ${CHECKPOINT_DIR} \
     --load ${CHECKPOINT_DIR} \
 "
+ARGS+=" --log-interval 5 --save-interval 10 --exit-interval 100"
+# ARGS+=" --log-interval 100 --save-interval 2000" # 2000, *10000
 
 ######## Command. ########
 
-CMD="export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && python -u ${REPO_DIR}/pretrain_retro.py ${ARGS}"
+CMD="python -u ${REPO_DIR}/pretrain_retro.py ${ARGS}"
 MOUNTS="/home/lmcafee:/home/lmcafee"
 MOUNTS+=",/lustre/fsw/portfolios/adlr/users/lmcafee:/lustre/fsw/portfolios/adlr/users/lmcafee"
 MOUNTS+=",/lustre/fs6/portfolios/adlr/users/lmcafee:/lustre/fs6/portfolios/adlr/users/lmcafee"
 IMAGE="gitlab-master.nvidia.com/adlr/megatron-lm/lmcafee/retro-process-23.04"
 
-export CUDA_DEVICE_MAX_CONNECTIONS=1
 srun -l \
      --container-image ${IMAGE} \
      --container-mounts ${MOUNTS} \
      --output=${LOG_DIR}/"%j.log" \
+     --export="PYTHONPATH=${REPO_DIR}:/home/lmcafee/src,CUDA_DEVICE_MAX_CONNECTIONS=1" \
      sh -c "${CMD}"
 
 # eof
