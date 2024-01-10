@@ -12,7 +12,7 @@ if [ "$#" != 2 ]; then
 fi
 USE_CORE=$1
 ADD_RETRIEVER=$2
-NPROCS=1 # 8
+NPROCS=8
 NWORKERS=32
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -53,32 +53,86 @@ RETRO_PROJECT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/projects/wiki
 #     --train-samples 100000  \
 # "
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# NUM_LAYERS=12 # 4, [*12]
+# HIDDEN_SIZE=768 # 256, [512], *768
+# NUM_HEADS=16 # 12 # [4], 8, *12
+# MICRO_BATCH_SIZE=4 # [4], *8
+# # LOG_INTERVAL=1 EXIT_INTERVAL=10
+# LOG_INTERVAL=10 EXIT_INTERVAL=100
+
+# # --dataloader-type cyclic \
+# # --split 98,2,0 \
+# TP=1 # 8
+# ARGS=" \
+#     --exit-interval ${EXIT_INTERVAL} \
+#     \
+#     --tensor-model-parallel-size ${TP} \
+#     --pipeline-model-parallel-size 1 \
+#     --num-layers ${NUM_LAYERS} \
+#     --hidden-size ${HIDDEN_SIZE} \
+#     --num-attention-heads ${NUM_HEADS} \
+#     --micro-batch-size ${MICRO_BATCH_SIZE} \
+#     --lr-decay-samples 99000 \
+#     --lr-warmup-samples 1000 \
+#     --lr 6.0e-4 \
+#     --min-lr 6.0e-5 \
+#     --lr-decay-style cosine \
+#     --log-interval ${LOG_INTERVAL} \
+#     --split 99,1,0 \
+#     --clip-grad 1.0 \
+#     --weight-decay 0.1 \
+#     --adam-beta1 0.9 \
+#     --adam-beta2 0.95 \
+#     --init-method-std 0.023 \
+#     --log-params-norm \
+#     --log-num-zeros-in-grad \
+#     --bf16 \
+#     --no-data-sharding \
+# "
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# --loss-scale 1024 \
 NUM_LAYERS=12 # 4, [*12]
 HIDDEN_SIZE=768 # 256, [512], *768
-NUM_HEADS=16 # 12 # [4], 8, *12
+NUM_HEADS=12 # [4], 8, *12
 MICRO_BATCH_SIZE=4 # [4], *8
-LOG_INTERVAL=1 # 20
-EXIT_INTERVAL=10
+SAVE_INTERVAL=2000 # [2000], *10000
+LOG_INTERVAL=10 EXIT_INTERVAL=100
 
+# --DDP-impl local \
 # --dataloader-type cyclic \
-# --split 98,2,0 \
-TP=1 # 8
+# --seq-length 2048 \
+# --max-position-embeddings 2048 \
+# --global-batch-size 256 \
+# --train-samples  2037248  \
+# --eval-iters 100 \
+# --eval-interval 2000 \
+# --data-path ${DATA_PATH} \
+# --vocab-file ${VOCAB_FILE} \
+# --merge-file ${MERGE_FILE} \
+ 
+# ARGS=" \
+#     --tensorboard-dir ${TENSORBOARD_DIR} \
+#     --log-validation-ppl-to-tensorboard \
+#     --save-interval ${SAVE_INTERVAL} \
+#     --save ${CHECKPOINT_DIR} \
+#     --load ${CHECKPOINT_DIR} \
 ARGS=" \
     --exit-interval ${EXIT_INTERVAL} \
     \
-    --tensor-model-parallel-size ${TP} \
+    --tensor-model-parallel-size 1 \
     --pipeline-model-parallel-size 1 \
     --num-layers ${NUM_LAYERS} \
     --hidden-size ${HIDDEN_SIZE} \
     --num-attention-heads ${NUM_HEADS} \
     --micro-batch-size ${MICRO_BATCH_SIZE} \
-    --lr-decay-samples 99000 \
-    --lr-warmup-samples 1000 \
+    --lr-decay-samples 166400000 \
+    --lr-warmup-samples 162761 \
     --lr 6.0e-4 \
     --min-lr 6.0e-5 \
     --lr-decay-style cosine \
     --log-interval ${LOG_INTERVAL} \
-    --split 99,1,0 \
+    --split 98,2,0 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
@@ -89,6 +143,8 @@ ARGS=" \
     --bf16 \
     --no-data-sharding \
 "
+
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 # >>>
 # if [ "$ADD_RETRIEVER" = "0" ]; then

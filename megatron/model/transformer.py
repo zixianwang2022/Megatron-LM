@@ -1159,10 +1159,17 @@ class ParallelTransformerLayer(MegatronModule):
         # TODO: better redesign with inference param
         args = get_args()
         if args.retro_add_retriever:
-            retro_args = get_retro_args()
+            # >>>
+            # retro_args = get_retro_args()
+            # self.retro_num_neighbors = args.retro_num_neighbors
+            # self.retro_chunk_length = retro_args.retro_gpt_chunk_length
+            # self.retro_retrieved_length = retro_args.retro_gpt_retrieved_length
+            # +++
             self.retro_num_neighbors = args.retro_num_neighbors
-            self.retro_chunk_length = retro_args.retro_gpt_chunk_length
-            self.retro_retrieved_length = retro_args.retro_gpt_retrieved_length
+            self.retro_chunk_length = args.retro_chunk_length
+            self.retro_retrieved_length = \
+                args.retro_num_retrieved_chunks * args.retro_chunk_length
+            # <<<
 
         # hidden_states: [s, b, h]
 
