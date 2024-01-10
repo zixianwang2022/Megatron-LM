@@ -86,17 +86,17 @@ class RetroDataset(torch.utils.data.Dataset):
 
             # Neighbor chunk ids.
             # >>>
-            # neighbor_path = self.neighbor_path_map[chunk_idx]
+            neighbor_path = self.neighbor_path_map[chunk_idx]
             # +++
-            try:
-                neighbor_path = self.neighbor_path_map[chunk_idx]
-            except Exception as e:
-                from lutil import pax
-                pax("chunk_idxs", {
-                    "neighbor_path_map" : self.neighbor_path_map,
-                    # "len(ds)" : len(self),
-                    "sample_idx" : f"{sample_idx} / {self.num_queried_samples}",
-                })
+            # try:
+            #     neighbor_path = self.neighbor_path_map[chunk_idx]
+            # except Exception as e:
+            #     from lutil import pax
+            #     pax("chunk_idxs", {
+            #         "neighbor_path_map" : self.neighbor_path_map,
+            #         # "len(ds)" : len(self),
+            #         "sample_idx" : f"{sample_idx} / {self.num_queried_samples}",
+            #     })
             # <<<
             with h5py.File(neighbor_path, "r") as f:
                 neighbor_chunk_ids = f["neighbors"][

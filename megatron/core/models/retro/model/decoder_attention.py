@@ -153,11 +153,6 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
             )
 
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
-            # >>>
-            if hidden_states is None:
-                from lutil import pax
-                pax("key_value_states")
-            # <<<
             key_value_states = self.encoder(
                 hidden_states=key_value_states,
                 attention_mask=attention_mask,
