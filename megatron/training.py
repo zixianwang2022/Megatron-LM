@@ -174,10 +174,6 @@ def pretrain(train_valid_test_dataset_provider,
         print_rank_0('training ...')
 
         if args.dataloader_type == 'cyclic' and args.retro_add_retriever:
-            # >>>
-            # from lutil import pax
-            # pax("args")
-            # <<<
             args.train_iters = args.retro_cyclic_train_iters
             print_rank_0("retro cyclic train iters : %d" % args.train_iters)
 

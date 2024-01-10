@@ -260,6 +260,11 @@ class TransformerBlock(MegatronModule):
         #   likely redundant, since p2p_communication.py (likely originator)
         #   already creates viewless tensors. That said, make_viewless_tensor()
         #   is called here to be future-proof and corner-case-proof.
+        # >>>
+        if hidden_states is None:
+            from lutil import pax
+            pax("hidden_states")
+        # <<<
         hidden_states = make_viewless_tensor(
             inp=hidden_states, requires_grad=True, keep_graph=True,
         )
