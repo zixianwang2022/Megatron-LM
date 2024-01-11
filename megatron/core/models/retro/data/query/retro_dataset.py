@@ -54,6 +54,12 @@ class RetroDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, sample_idx):
 
+        # >>>
+        # from megatron.core.models.retro.data.utils import print_rank_0
+        # print_rank_0 = lambda s : None
+        # print_rank_0("0")
+        # <<<
+
         n_chunks_per_sample = self.chunk_dataset.n_chunks_per_sample
 
         # Wrap sample idx around number of queried samples.
@@ -78,6 +84,10 @@ class RetroDataset(torch.utils.data.Dataset):
         chunk_idxs = list(
             range(sample_idx * n_chunks_per_sample, (sample_idx + 1) * n_chunks_per_sample,)
         )
+
+        # >>>
+        # print_rank_0("1")
+        # <<<
 
         # Collect retrieved tokens.
         all_retrieved_chunk_ids = []
@@ -119,6 +129,10 @@ class RetroDataset(torch.utils.data.Dataset):
             all_retrieved_chunk_ids.append(retrieved_chunk_ids)
             all_retrieved_token_ids.append(retrieved_token_ids)
 
+        # >>>
+        # print_rank_0("2")
+        # <<<
+
         # Reshape retrieved tokens.
         all_retrieved_chunk_ids = np.array(all_retrieved_chunk_ids).reshape(
             (n_chunks_per_sample, self.num_neighbors, -1)
@@ -133,6 +147,10 @@ class RetroDataset(torch.utils.data.Dataset):
             "neighbor_chunks": all_retrieved_chunk_ids,
             "neighbor_tokens": all_retrieved_token_ids,
         }
+
+        # >>>
+        # print_rank_0("3")
+        # <<<
 
         return sample
 

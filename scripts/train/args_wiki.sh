@@ -104,8 +104,9 @@ ARGS+=" --retro-project-dir ${RETRO_PROJECT_DIR}"
 ARGS+=" --dataloader-type cyclic"
 ARGS+=" --retro-cyclic-train-iters 750000"
 # ARGS+=" --retro-cyclic-train-iters 2037248"
-# ARGS+=" --num-workers ${NWORKERS}"
-ARGS+=" --num-workers 32"
+ARGS+=" --num-workers ${NWORKERS}"
+# ARGS+=" --num-workers 32"
+# ARGS+=" --num-workers 1"
 
 if [ "$ADD_RETRIEVER" = "1" ]; then
     ARGS+=" --retro-add-retriever"

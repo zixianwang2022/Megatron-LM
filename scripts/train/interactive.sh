@@ -20,7 +20,8 @@ REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/megatrons/retro-mcore-
 
 . args_wiki.sh
 
-LOG_INTERVAL=10 EXIT_INTERVAL=100
+LOG_INTERVAL=1 EXIT_INTERVAL=10
+# LOG_INTERVAL=10 EXIT_INTERVAL=100
 ARGS+=" \
     --log-interval ${LOG_INTERVAL} \
     --exit-interval ${EXIT_INTERVAL} \

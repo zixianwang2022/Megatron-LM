@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH -p batch_block1,batch_block2,batch_block3,batch_block4
-#SBATCH --nodes=1
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=8
 #SBATCH --gpus-per-node=8
 #SBATCH -A llmservice_nlp_fm
-#SBATCH -t 0:30:00
+#SBATCH -t 4:00:00
 #SBATCH --exclusive
 #SBATCH --job-name=adlr-nlp:retro-mcore
 #SBATCH --dependency=singleton
@@ -30,7 +30,7 @@ REPO_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee/retro/megatrons/retro-mcore-
 # customize / begin.
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-CHECKPOINT_DIR="${RETRO_PROJECT_DIR}/checkpoints/models/c${USE_CORE}-r${ADD_RETRIEVER}-t${TP}"
+CHECKPOINT_DIR="${RETRO_PROJECT_DIR}/checkpoints/models/c${USE_CORE}-r${ADD_RETRIEVER}-w${NWORKERS}"
 TENSORBOARD_DIR="${CHECKPOINT_DIR}/tb"
 LOG_DIR="${CHECKPOINT_DIR}/logs"
 
@@ -41,16 +41,14 @@ mkdir -p ${LOG_DIR}
 # customize / end.
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-# LOG_INTERVAL=5 SAVE_INTERVAL=10
-# LOG_INTERVAL=100 SAVE_INTERVAL=2000 # [2000], *10000
 ARGS+=" \
     --tensorboard-dir ${TENSORBOARD_DIR} \
     --log-validation-ppl-to-tensorboard \
     --save ${CHECKPOINT_DIR} \
     --load ${CHECKPOINT_DIR} \
 "
-ARGS+=" --log-interval 5 --save-interval 10 --exit-interval 100"
-# ARGS+=" --log-interval 100 --save-interval 2000" # 2000, *10000
+# ARGS+=" --log-interval 1 --save-interval 10 --exit-interval 100"
+ARGS+=" --log-interval 100 --save-interval 2000" # 2000, *10000
 
 ######## Command. ########
 
