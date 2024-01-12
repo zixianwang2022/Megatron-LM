@@ -4,7 +4,6 @@ import glob
 import os
 from collections import defaultdict
 from types import SimpleNamespace
-from typing import Callable
 
 import numpy as np
 import torch
@@ -15,7 +14,7 @@ from megatron.core import parallel_state
 from .external_libs import h5py
 
 
-def print_rank_0(message):
+def print_rank_0(message: str) -> None:
     """If distributed is initialized, print only on rank 0."""
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
@@ -24,58 +23,52 @@ def print_rank_0(message):
         print(message, flush=True)
 
 
-def retro_makedir(config, path):
+def retro_makedir(config: RetroPreprocessingConfig, path: str) -> None:
     if config.retro_task_validate is None:
         os.makedirs(path, exist_ok=True)
 
 
-# >>>
-# def extract_data_config(config):
-#     return config.retro_gpt_chunk_datasets.train[0].config
-def extract_data_config(config):
+def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatasetConfig:
     return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
 
 
-# <<<
-
-
-def get_config_path(project_dir):
+def get_config_path(project_dir: str) -> str:
     '''Config copy stored within retro project dir.'''
     return os.path.join(project_dir, "config.json")
 
 
-def get_num_chunks_per_sample(sample_length, chunk_length):
+def get_num_chunks_per_sample(sample_length: int, chunk_length: int) -> int:
     '''Compute seq_length // chunk_length.'''
     assert sample_length % chunk_length == 0
     return sample_length // chunk_length
 
 
-def get_gpt_data_dir(project_dir):
+def get_gpt_data_dir(project_dir: str) -> str:
     return os.path.join(project_dir, "data")
 
 
 class GPTToTextDataset(torch.utils.data.Dataset):
     '''Dataset to convert GPT tokens to text.'''
 
-    def __init__(self, gpt_dataset, gpt_tokenizer):
+    def __init__(self, gpt_dataset: MultiSplitGPTDataset, gpt_tokenizer: typing.Any):
 
         super().__init__()
 
         self.gpt_dataset = gpt_dataset
         self.gpt_tokenizer = gpt_tokenizer
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.gpt_dataset)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict:
         gpt_token_ids = self.gpt_dataset[idx]["text"].tolist()
         text = self.gpt_tokenizer.detokenize(gpt_token_ids)
         return {"text": text}
 
 
 def get_blocks(
-    dirname: str, n_samples: int, block_size: int, validate: Callable = None,
-):
+    dirname: str, n_samples: int, block_size: int, validate: typing.Callable = None,
+) -> typing.List[dict]:
     '''Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
@@ -110,29 +103,27 @@ def get_blocks(
     validate = (lambda f: None) if validate is None else validate
 
     # Delete corrupt files.
-    # >>> [ uncommmmmmmmmmmment !!!!!!! ]
-    # if torch.distributed.get_rank() == 0:
-    #     existing_block_paths = [block["path"]
-    #                             for block in all_blocks
-    #                             if os.path.exists(block["path"])]
-    #     for index, path in enumerate(
-    #             tqdm(existing_block_paths, "validating block.")):
+    if torch.distributed.get_rank() == 0:
+        existing_block_paths = [block["path"]
+                                for block in all_blocks
+                                if os.path.exists(block["path"])]
+        for index, path in enumerate(
+                tqdm(existing_block_paths, "validating block.")):
 
-    #         assert path in all_block_path_set, "unexpected filename, '%s'." % path
+            assert path in all_block_path_set, "unexpected filename, '%s'." % path
 
-    #         try:
-    #             f = h5py.File(path, "r")
-    #         except:
-    #             os.remove(path)
-    #             continue
+            try:
+                f = h5py.File(path, "r")
+            except:
+                os.remove(path)
+                continue
 
-    #         try:
-    #             validate(f)
-    #         except:
-    #             os.remove(path)
-    #         finally:
-    #             f.close()
-    # <<<
+            try:
+                validate(f)
+            except:
+                os.remove(path)
+            finally:
+                f.close()
 
     # Wait for files to be deleted.
     torch.distributed.barrier()
@@ -147,8 +138,8 @@ def get_blocks(
 
 
 def get_blocks_by_rank(
-    dirname: str, n_samples: int, block_size: int, validate: Callable = None, sample: float = None,
-):
+    dirname: str, n_samples: int, block_size: int, validate: typing.Callable = None, sample: float = None,
+) -> typing.List[dict]:
     '''Divide existing and missing blocks evenly across all ranks.
 
     See 'get_blocks()' above for description. The returned lists of existing and
@@ -227,12 +218,12 @@ class BlockPathMap:
     '''
 
     @classmethod
-    def from_dir(cls, dir, block_size, ext="hdf5"):
+    def from_dir(cls, dir: str, block_size: int, ext: str="hdf5") -> BlockPathMap:
         '''Get list of block files, and create map.'''
         assert os.path.isdir(dir), f"directory not found, '{dir}'."
         return cls(sorted(glob.glob(dir + f"/*.{ext}")), block_size)
 
-    def __init__(self, block_paths, block_size):
+    def __init__(self, block_paths: typing.List[str], block_size: int):
         self.max_idx = 0
         self.block_path_map = {}
         for block_path in block_paths:
@@ -242,10 +233,10 @@ class BlockPathMap:
             self.max_idx = max(self.max_idx, end_idx)
         self.block_size = block_size
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%d paths" % len(self.block_path_map)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> str:
         '''Get block path from index.'''
         block_start_idx = self.block_size * (idx // self.block_size)
         block_path = self.block_path_map[block_start_idx]

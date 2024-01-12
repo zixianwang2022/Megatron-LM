@@ -3,8 +3,8 @@
 # >>>
 # import json
 # import numpy as np
-# import os
-# import torch
+import os
+import torch
 # import types
 
 # from megatron.core.models.retro.data.db.utils import (
@@ -13,7 +13,7 @@
 # )
 # from megatron.core.models.retro.data.main import add_retro_args
 # from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets
-# from megatron.core.models.retro.data.utils import get_args_path, get_bert_tokenizer, get_gpt_tokenizer
+from megatron.core.models.retro.data.utils import get_config_path
 # from megatron.global_vars import set_global_variables, set_retro_args
 # from megatron.initialize import (
 #     initialize_megatron,
@@ -24,7 +24,7 @@
 # <<<
 
 
-def shorten_str(s, n):
+def shorten_str(s: str, n: int) -> str:
     s = "\\n".join(s.splitlines())
     return s if len(s) <= n else "%s ... %s" % (s[: n // 2], s[-n // 2 :])
 
@@ -38,7 +38,7 @@ class retro:
     ##############################################
 
     @classmethod
-    def parse_dtype_str(cls, dtype_str):
+    def parse_dtype_str(cls, dtype_str: str) -> type:
         return {
             "torch.float16": torch.float16,
             "torch.float32": torch.float32,
@@ -46,7 +46,7 @@ class retro:
         }[dtype_str]
 
     @classmethod
-    def init_megatron(cls, project_dir):
+    def init_megatron(cls, project_dir: str) -> None:
         '''Custom initialization of Megatron.'''
 
         # Load config.
@@ -67,7 +67,7 @@ class retro:
         _compile_dependencies()
 
     @classmethod
-    def init(cls, project_dir):
+    def init(cls, project_dir: str) -> None:
         '''Initialize Megatron, tokenizers, and datasets.'''
 
         # Load args.
@@ -78,8 +78,12 @@ class retro:
         # Load data.
         cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos()
         cls.db_dataset = get_db_dataset()
-        pt_train_ds, pt_valid_ds, _ = get_retro_datasets()
-        cls.pt_datasets = types.SimpleNamespace(train=pt_train_ds, valid=pt_valid_ds,)
+        pt_train_ds, pt_valid_ds, pt_test_ds = get_retro_datasets()
+        cls.pt_datasets = types.SimpleNamespace(
+            train=pt_train_ds,
+            valid=pt_valid_ds,
+            test=pt_test_ds,
+        )
 
         # Retrieve max saved neighbors.
         for key in vars(cls.pt_datasets):
@@ -93,14 +97,14 @@ class retro:
     ##############################################
 
     @classmethod
-    def gpt_to_text(cls, token_ids):
+    def gpt_to_text(cls, token_ids: np.ndarray) -> str:
         '''GPT tokens to text.'''
         return cls.tokenizers.gpt.detokenize(
             token_ids.tolist() if isinstance(token_ids, np.ndarray) else token_ids
         )
 
     @classmethod
-    def text_to_bert(cls, text):
+    def text_to_bert(cls, text: str) -> np.ndarray:
         '''Text to Bert tokens.'''
         return cls.tokenizers.bert.tokenize(text)
 
@@ -109,41 +113,41 @@ class retro:
     ##############################################
 
     @classmethod
-    def get_db_num_indexed_datasets(cls):
+    def get_db_num_indexed_datasets(cls) -> int:
         '''Number of indexed datasets within blended dataset.'''
         return len(cls.db_indexed_dataset_infos)
 
     @classmethod
-    def get_db_indexed_dataset_infos(cls):
+    def get_db_indexed_dataset_infos(cls) -> list[dict]:
         '''Dataset infos, including number of training & sampled sets.'''
         return [(info["ratio"], info["name"]) for info in cls.db_indexed_dataset_infos]
 
     @classmethod
-    def get_db_dataset(cls):
+    def get_db_dataset(cls) -> DBDataset:
         return cls.db_dataset
 
     @classmethod
-    def get_db_num_chunks(cls):
+    def get_db_num_chunks(cls) -> int:
         '''Number of DB chunks.'''
         return len(cls.get_db_dataset())
 
     @classmethod
-    def get_db_chunk_gpt(cls, idx):
+    def get_db_chunk_gpt(cls, idx: int) -> list[int]:
         '''Get DB chunk as GPT token ids.'''
         return cls.get_db_dataset()[idx]["text"].tolist()
 
     @classmethod
-    def get_db_chunk_bert(cls, idx):
+    def get_db_chunk_bert(cls, idx: int) -> list[int]:
         '''Get DB chunk as Bert token ids.'''
         return cls.text_to_bert(cls.get_db_chunk_text(idx))
 
     @classmethod
-    def get_db_chunk_text(cls, idx):
+    def get_db_chunk_text(cls, idx: int) -> str:
         '''Get DB chunk as text.'''
         return cls.gpt_to_text(cls.get_db_chunk_gpt(idx))
 
     @classmethod
-    def get_db_chunk_and_continuation_text(cls, idx):
+    def get_db_chunk_and_continuation_text(cls, idx: int) -> list[str]:
         '''Get DB chunk along with continuation, as text.'''
 
         # Modulus used here to match original implementation (i.e., last
@@ -158,7 +162,7 @@ class retro:
     ##############################################
 
     @classmethod
-    def get_pt_num_samples_and_chunks(cls, data_key):
+    def get_pt_num_samples_and_chunks(cls, data_key: str) -> tuple(int, int):
         '''Number of samples & chunks (e.g., 32*n_samples) in corpus.'''
         assert hasattr(cls.pt_datasets, data_key), (
             "pretraining set '%s' not found (choices: %s)."
@@ -171,25 +175,25 @@ class retro:
         )
 
     @classmethod
-    def get_pt_num_samples(cls, data_key):
+    def get_pt_num_samples(cls, data_key: str) -> int:
         '''Number of pretraining samples.'''
         return cls.get_pt_num_samples_and_chunks(data_key)[0]
 
     @classmethod
-    def get_pt_num_chunks(cls, data_key):
+    def get_pt_num_chunks(cls, data_key: str) -> int:
         '''Number of pretraining chunks (e.g., 32*n_samples).'''
         return cls.get_pt_num_samples_and_chunks(data_key)[1]
 
     @classmethod
-    def get_pt_dataset(cls, data_key):
+    def get_pt_dataset(cls, data_key: str) -> RetroDataset:
         return getattr(cls.pt_datasets, data_key)
 
     @classmethod
-    def get_pt_sample(cls, data_key, idx):
+    def get_pt_sample(cls, data_key: str, idx: int) -> dict:
         return getattr(cls.pt_datasets, data_key)[idx]
 
     @classmethod
-    def get_neighbor_tokens(cls, sample_id, chunk_id, data_key="train"):
+    def get_neighbor_tokens(cls, sample_id: int, chunk_id: int, data_key: str="train") -> dict:
         try:
             sample = cls.get_pt_sample(data_key, sample_id)
             sample_token_ids = sample["text"]
@@ -206,7 +210,7 @@ class retro:
             return None
 
     @classmethod
-    def print_neighbor_texts(cls, sample_id, chunk_id, data_key="train"):
+    def print_neighbor_texts(cls, sample_id: int, chunk_id: int, data_key: str="train") -> None:
         tokens = cls.get_neighbor_tokens(sample_id, chunk_id, data_key)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         try:
@@ -223,7 +227,7 @@ class retro:
     ##############################################
 
     @classmethod
-    def print_usage(cls):
+    def print_usage(cls) -> None:
         '''Print usage.'''
 
         print()
