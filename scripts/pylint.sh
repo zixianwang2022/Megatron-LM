@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# megatron/core/models/retro/data/
+# megatron/core/models/retro/model/
+
 pylint \
   --disable=duplicate-code \
   --disable=abstract-method \
@@ -36,7 +39,7 @@ pylint \
   --disable=undefined-variable \
   --disable=relative-beyond-top-level \
   --disable=no-else-return \
-  megatron/core/models/retro/data/
+  megatron/core/models/retro/model/
 #   --missing-docstring \
 #   --no-docstring-rgx=__.*__ \
 

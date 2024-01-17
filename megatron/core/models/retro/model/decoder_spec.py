@@ -1,5 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+'''Specs for Retro decoder.'''
+
 import typing
 
 from megatron.core import parallel_state

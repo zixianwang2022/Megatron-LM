@@ -1,5 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+'''Configuration dataclass for a RetroModel.'''
+
 import types
 from dataclasses import dataclass
 

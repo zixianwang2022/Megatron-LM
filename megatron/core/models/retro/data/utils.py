@@ -1,5 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''Utilities for Retro preprocessing.'''
+
 import glob
 import numpy as np
 import os
@@ -18,7 +20,7 @@ from .external_libs import h5py
 
 
 def print_rank_0(message: str) -> None:
-    """If distributed is initialized, print only on rank 0."""
+    '''If distributed is initialized, print only on rank 0.'''
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
             print(message, flush=True)
@@ -27,6 +29,7 @@ def print_rank_0(message: str) -> None:
 
 
 def retro_makedir(config: RetroPreprocessingConfig, path: str) -> None:
+    '''Make a directory, conditional on not being in validation mode.'''
     if config.retro_task_validate is None:
         os.makedirs(path, exist_ok=True)
 
@@ -35,6 +38,7 @@ def retro_makedir(config: RetroPreprocessingConfig, path: str) -> None:
 # def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatasetConfig:
 #     return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
 def extract_data_config(config: RetroPreprocessingConfig) -> BlendedMegatronDatasetConfig:
+    '''Extract dataset config from nested GPT dataset.'''
     return config.retro_gpt_chunk_datasets.train.sample_dataset.config
 # <<<
 
@@ -51,6 +55,7 @@ def get_num_chunks_per_sample(sample_length: int, chunk_length: int) -> int:
 
 
 def get_gpt_data_dir(project_dir: str) -> str:
+    '''Get project-relative directory of GPT bin/idx datasets.'''
     return os.path.join(project_dir, "data")
 
 
