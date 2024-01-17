@@ -12,7 +12,7 @@ if [ "$#" != 2 ]; then
 fi
 USE_CORE=$1
 ADD_RETRIEVER=$2
-# NWORKERS=32
+NWORKERS=8 # 32
 
 ######## Arguments. ########
 
