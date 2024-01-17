@@ -12,13 +12,13 @@ unset NCCL_DEBUG
 # RETRO_TASKS=$1
 
 # >>>
-# NPROCS=1
+NPROCS=1
 # <<<
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="query-neighbors"
+# RETRO_TASKS="query-neighbors"
 
 RETRO_TASK_VALIDATE=""
 # RETRO_TASK_VALIDATE=1
@@ -29,7 +29,7 @@ RETRO_TASK_VALIDATE=""
 ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee"
 
 REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
-RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/wiki-tiny-core"
+RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/tiny-wiki-core"
 # CORPUS_ROOT="${ROOT_DIR}/corpus-530b"
 # DATA_BLEND=" \
 #   0.5 ${CORPUS_ROOT}/wiki-tiny-0/ds-0 \

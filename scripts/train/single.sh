@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH -p batch_block1,batch_block2,batch_block3,batch_block4
-#SBATCH --nodes=4
+#SBATCH --nodes=8
 #SBATCH --ntasks-per-node=8
 #SBATCH --gpus-per-node=8
 #SBATCH -A llmservice_nlp_fm

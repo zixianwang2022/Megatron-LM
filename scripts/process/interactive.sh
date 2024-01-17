@@ -8,8 +8,8 @@ NPROCS=8
 
 ######## Arguments. ########
 
-# . args.sh
-. args_wiki.sh
+. args_tiny_wiki.sh
+# . args_wiki.sh
 
 ######## Command. ########
 
