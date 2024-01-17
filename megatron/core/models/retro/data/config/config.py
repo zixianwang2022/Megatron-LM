@@ -3,9 +3,6 @@
 """Retro preprocessing config."""
 
 from dataclasses import dataclass
-# >>>
-# from typing import List, Optional, Union
-# <<<
 
 from megatron.core.transformer import TransformerConfig
 
@@ -175,15 +172,6 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_tokenizers: RetroTokenizers = None
 
     def __post_init__(self) -> None:
-
-        # >>>
-        # # Enforce argument naming convention.
-        # for action in group._group_actions:
-        #     prefix = action.dest.split("_")[0]
-        #     assert prefix == "retro", \
-        #         "Retro args must be prefixed with '--retro-*', for consistent " \
-        #         "styling. Please fix '%s'." % ", ".join(action.option_strings)
-        # <<<
 
         # Split retro tasks.
         self.retro_tasks = self.retro_tasks.split(",")

@@ -51,10 +51,6 @@ class RetroDataset(torch.utils.data.Dataset):
         super().__init__()
 
         self.num_queried_samples = num_queried_samples
-        # >>>
-        # from lutil import pax
-        # pax("num_queried_samples")
-        # <<<
         self.num_neighbors = num_neighbors
         self.num_retrieved_chunks = num_retrieved_chunks
         self.block_size = block_size
