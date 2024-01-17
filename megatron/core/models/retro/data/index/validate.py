@@ -1,7 +1,22 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''Validate an index's data.
+
+This module contains functionality for checking for bitwise equality across code
+changes. The training and adding steps of index construction can be validated
+separately. The following high-level checks are supported:
+
+  - Training: Validate that saved training embeddings are bitwise equal with a
+      sample set of freshly computed embeddings. (*Note*:
+      `--no-retro-index-delete-training-embeddings` must be used.)
+  - Adding: Validate that the saved encodings are bitwise equal with a sample of
+      sample set of freshly computed encodings. (*Note*:
+      `--no-retro-index-delete-added-codes` must be used.)
+'''
+
 import numpy as np
 import torch
+import typing
 from torch.utils.data import Subset
 
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
@@ -92,7 +107,7 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
 ##################################################
 
 
-def validate_added_encodings(config):
+def validate_added_encodings(config: RetroPreprocessingConfig) -> None:
     '''Validate added encodings.
 
     Steps:
@@ -109,7 +124,7 @@ def validate_added_encodings(config):
     text_dataset = get_text_dataset_for_adding(config)
 
     # Sample existing blocks.
-    def validate(f):
+    def validate(f: h5py.File) -> None:
         assert len(f["data"].shape) == 2
 
     blocks = get_blocks_by_rank(
@@ -169,7 +184,7 @@ def validate_added_encodings(config):
 ##################################################
 
 
-def validate_index(config):
+def validate_index(config: RetroPreprocessingConfig) -> None:
     '''Validate index.
 
     Validating index involves sequentially running stages above:
@@ -181,4 +196,4 @@ def validate_index(config):
     validate_training_embeddings(config)
 
     # Validate added codes.
-    validate_added_codes(config)
+    validate_added_encodings(config)

@@ -1,5 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+'''Configuration dataclass for a RetroModel.'''
+
 import types
 from dataclasses import dataclass
 
@@ -56,7 +58,7 @@ class RetroConfig(TransformerConfig):
     retro_split_preprocessing: str = None
     retro_verify_neighbor_count: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
 
         super().__post_init__()
 

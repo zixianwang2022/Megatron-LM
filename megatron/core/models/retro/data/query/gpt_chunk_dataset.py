@@ -1,7 +1,17 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''
+A GPTChunkDataset is a wrapper around a regular GPTDataset, that sequentially
+chunks the sample tokens into `retro_chunk_length` sized smaller samples.
+
+For example, if the GPTDataset has 100 samples and a sequence length of 2048, and
+retro_chunk_length is 64, then the GPTChunkDataset will contain 100*(2048/64) =
+3200 samples, each with length 64.
+'''
+
 import torch
 
+from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.models.retro.data.utils import get_num_chunks_per_sample
 
 from .utils import get_neighbor_dir
@@ -15,7 +25,7 @@ class GPTChunkDataset(torch.utils.data.Dataset):
     chunks (e.g., length num_samples * num_chunks_per_sample).
     '''
 
-    def __init__(self, sample_dataset, sample_length, chunk_length):
+    def __init__(self, sample_dataset: GPTDataset, sample_length: int, chunk_length: int):
 
         super().__init__()
 
@@ -25,10 +35,12 @@ class GPTChunkDataset(torch.utils.data.Dataset):
         self.n_samples = len(sample_dataset)
         self.n_chunks = self.n_samples * self.n_chunks_per_sample
 
-    def __len__(self):
+    def __len__(self) -> int:
+        '''Get dataset length.'''
         return self.n_chunks
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict:
+        '''Get sample, including represented document IDs.'''
 
         # Convert global chunk index to global sample index & local chunk index.
         sample_idx = idx // self.n_chunks_per_sample
@@ -52,8 +64,8 @@ class GPTChunkDataset(torch.utils.data.Dataset):
 
 
 def build_gpt_chunk_datasets_from_gpt_datasets(
-    project_dir, gpt_datasets, sample_length, chunk_length,
-):
+    project_dir: str, gpt_datasets: dict, sample_length: int, chunk_length: int,
+) -> dict:
     '''Get train, valid, test GPT chunk datasets.'''
 
     # Reset iteration.

@@ -1,5 +1,8 @@
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
+'''A MultiSplitGPTDataset can handle multiple intersecting split strings, as well
+as returning all of the document IDs of a sample.'''
+
 import logging
 from dataclasses import dataclass
 from typing import Dict, List
@@ -33,7 +36,7 @@ class MultiSplitGPTDatasetConfig(GPTDatasetConfig):
 
     split_preprocessing: str = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         assert self.split is not None, "the Retro data pipeline does not support 'blend_per_split'"
         assert self.return_document_ids is not None, "this attribute must be user defined"

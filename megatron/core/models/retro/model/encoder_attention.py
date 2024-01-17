@@ -3,7 +3,7 @@
 """Retro's cross attention modules for the encoder block."""
 
 from functools import partial
-from typing import Callable, Optional, Tuple, Type
+from typing import Callable, List, Optional, Tuple, Type
 
 import torch
 from torch import Tensor
@@ -40,7 +40,7 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
         key_value_states: Tensor = None,
         inference_params: InferenceParams = None,
         # rotary_pos_emb: Tensor = None, # unsupported for retro.
-    ) -> Tensor:
+    ) -> List[Tuple[Tensor, Optional[Tensor], Tensor]]:
         """Cross attention for Retro encoder.
 
         Notation:
@@ -117,7 +117,7 @@ class RetroEncoderBiasDropoutAdd(MegatronModule):
     @classmethod
     def _forward(
         cls,
-        x_with_bias: Tuple[Tensor, Optional[Tensor]],
+        x_with_bias: List[Tuple[Tensor, Optional[Tensor], Tensor]],
         residual: Tensor,
         prob: float,
         retro_num_neighbors: int,
@@ -164,7 +164,7 @@ class RetroEncoderBiasDropoutAdd(MegatronModule):
         # Output. [ r, k*bs*l, d ]
         return output
 
-    def forward(self, training: bool, fused: bool) -> Tensor:
+    def forward(self, training: bool, fused: bool) -> partial:
         """Retro decoder bias-dropout-add.
 
         Arguments:
@@ -192,7 +192,7 @@ class RetroEncoderLayerNorm(MegatronModule):
     """
 
     def __init__(
-        self, config: RetroConfig, submodules: Type, **kwargs,
+        self, config: RetroConfig, submodules: Type, **kwargs: dict,
     ):
         super().__init__(config=config)
         norm_class = submodules

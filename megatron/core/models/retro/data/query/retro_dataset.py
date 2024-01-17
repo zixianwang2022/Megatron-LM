@@ -1,16 +1,29 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import os
+'''
+A RetroDataset wraps both:
+
+  - A GPTDataset (which is nested as GPTChunkDataset -> MultiSplitGPTDataset ->
+      GPTDataset).
+  - Neighbor IDs of chunks in the chunk database, that were saved during
+      preprocessing.
+
+Both the GPT sample data and the neighbor IDs are returned within a sample from
+this dataset.
+'''
 
 import numpy as np
+import os
 import torch
+from typing import Any, Dict, Optional, Tuple, Union
 
+from megatron.core.models.retro.data.db.dataset import DBDataset
 from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import BlockPathMap
 from megatron.core.models.retro.model import RetroConfig
 
-from .gpt_chunk_dataset import build_gpt_chunk_datasets_from_gpt_datasets
+from .gpt_chunk_dataset import GPTChunkDataset, build_gpt_chunk_datasets_from_gpt_datasets
 from .utils import get_query_dir
 
 
@@ -24,13 +37,13 @@ class RetroDataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        num_queried_samples,
-        num_neighbors,
-        num_retrieved_chunks,
-        block_size,
-        db_dataset,
-        chunk_dataset,
-        neighbor_path_map,
+        num_queried_samples: int,
+        num_neighbors: int,
+        num_retrieved_chunks: int,
+        block_size: int,
+        db_dataset: DBDataset,
+        chunk_dataset: GPTChunkDataset,
+        neighbor_path_map: BlockPathMap,
     ):
         '''Note: chunk dataset wraps original GPT dataset (see
         chunk_dataset.py).'''
@@ -49,33 +62,15 @@ class RetroDataset(torch.utils.data.Dataset):
         self.chunk_dataset = chunk_dataset
         self.neighbor_path_map = neighbor_path_map
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.chunk_dataset.sample_dataset)
 
-    def __getitem__(self, sample_idx):
-
-        # >>>
-        # from megatron.core.models.retro.data.utils import print_rank_0
-        # print_rank_0 = lambda s : None
-        # print_rank_0("0")
-        # <<<
+    def __getitem__(self, sample_idx: int) -> dict:
 
         n_chunks_per_sample = self.chunk_dataset.n_chunks_per_sample
 
         # Wrap sample idx around number of queried samples.
         sample_idx = sample_idx % self.num_queried_samples
-
-        # >>>
-        # # if sample_idx >= 2037248:
-        # if sample_idx >= self.num_queried_samples:
-        #     from lutil import pax
-        #     pax("self, sample_idx", {
-        #         # "chunk_dataset" : len(self.chunk_dataset),
-        #         # "sample_dataset" : len(self.chunk_dataset.sample_dataset),
-        #         "num_queried_samples" : self.num_queried_samples,
-        #         "new sample_idx" : sample_idx % self.num_queried_samples,
-        #     })
-        # <<<
 
         # Get standard sample.
         sample = self.chunk_dataset.sample_dataset[sample_idx]
@@ -85,29 +80,13 @@ class RetroDataset(torch.utils.data.Dataset):
             range(sample_idx * n_chunks_per_sample, (sample_idx + 1) * n_chunks_per_sample,)
         )
 
-        # >>>
-        # print_rank_0("1")
-        # <<<
-
         # Collect retrieved tokens.
         all_retrieved_chunk_ids = []
         all_retrieved_token_ids = []
         for chunk_idx in chunk_idxs:
 
             # Neighbor chunk ids.
-            # >>>
             neighbor_path = self.neighbor_path_map[chunk_idx]
-            # +++
-            # try:
-            #     neighbor_path = self.neighbor_path_map[chunk_idx]
-            # except Exception as e:
-            #     from lutil import pax
-            #     pax("chunk_idxs", {
-            #         "neighbor_path_map" : self.neighbor_path_map,
-            #         # "len(ds)" : len(self),
-            #         "sample_idx" : f"{sample_idx} / {self.num_queried_samples}",
-            #     })
-            # <<<
             with h5py.File(neighbor_path, "r") as f:
                 neighbor_chunk_ids = f["neighbors"][
                     chunk_idx % self.block_size, : self.num_neighbors
@@ -129,10 +108,6 @@ class RetroDataset(torch.utils.data.Dataset):
             all_retrieved_chunk_ids.append(retrieved_chunk_ids)
             all_retrieved_token_ids.append(retrieved_token_ids)
 
-        # >>>
-        # print_rank_0("2")
-        # <<<
-
         # Reshape retrieved tokens.
         all_retrieved_chunk_ids = np.array(all_retrieved_chunk_ids).reshape(
             (n_chunks_per_sample, self.num_neighbors, -1)
@@ -142,28 +117,19 @@ class RetroDataset(torch.utils.data.Dataset):
         )
 
         # Sample.
-        sample = {
+        sample: Dict[str, Any] = {
             **sample,
             "neighbor_chunks": all_retrieved_chunk_ids,
             "neighbor_tokens": all_retrieved_token_ids,
         }
-
-        # >>>
-        # print_rank_0("3")
-        # <<<
 
         return sample
 
 
 def get_retro_datasets(
     config: RetroConfig, gpt_datasets: dict, sample_length: int, eod_token_id: int,
-):
+) -> Tuple[Optional[RetroDataset], Optional[RetroDataset], Optional[RetroDataset]]:
     '''Get train, valid, test retro datasets.'''
-
-    # >>>
-    # from lutil import pax
-    # pax("config, gpt_datasets")
-    # <<<
 
     # DB dataset.
     db_dataset = get_db_dataset(
@@ -181,14 +147,9 @@ def get_retro_datasets(
     )
 
     # Retro datasets.
-    retro_dataset_map = {}
+    retro_dataset_map: Dict[str, Union[RetroDataset, None]] = {}
     query_dir = get_query_dir(config.retro_project_dir)
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
-
-        # >>>
-        # from lutil import pax
-        # pax("chunk_ds_info_map, chunk_ds_info")
-        # <<<
 
         # Skip unused datasets.
         if chunk_ds_info is None:

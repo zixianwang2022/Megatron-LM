@@ -1,8 +1,17 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''A DBDataset is for iterating the chunks of the chunk database.
+
+This dataset is used for both training a vector index, and adding vectors to a
+trained index.
+'''
+
 import numpy as np
 import torch
 from tqdm import tqdm
+import typing
+
+from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 
 
 class DBDataset(torch.utils.data.Dataset):
@@ -14,7 +23,7 @@ class DBDataset(torch.utils.data.Dataset):
         [dataset_idx, doc_id, start_idx, end_idx, bert_length])
     '''
 
-    def __init__(self, db_path, indexed_datasets, chunks, chunk_length, eod_token_id):
+    def __init__(self, db_path: str, indexed_datasets: typing.List[MMapIndexedDataset], chunks: np.ndarray, chunk_length: int, eod_token_id: int):
 
         assert chunks.shape[1] == 5, (
             "expected 5 columns (dataset_idx, "
@@ -30,10 +39,10 @@ class DBDataset(torch.utils.data.Dataset):
         self.max_chunk_length = chunk_length
         self.eod_token_id = eod_token_id
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.chunks.shape[0]
 
-    def __getitem__(self, chunk_id):
+    def __getitem__(self, chunk_id: int) -> dict:
 
         # Chunk start/end indexes.
         indexed_dataset_id, doc_id, token_start_idx, token_end_idx, _ = [
@@ -56,7 +65,7 @@ class DBDataset(torch.utils.data.Dataset):
             "text": np.array(token_ids, dtype=np.int64),
         }
 
-    def load_doc_tuples(self):
+    def load_doc_tuples(self) -> None:
         '''Load the dataset & document ids.
 
         Load the dataset id & document id of each chunk in the database, to

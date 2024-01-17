@@ -8,23 +8,31 @@ FaissBaseIndex. This allows 'add()' to scale out to very large datasets, since
 the vast majority of the computational effort is embarrassingly parallel.
 """
 
-import os
-import shutil
-
 import numpy as np
+import os
 import psutil
+import shutil
 import torch
 from tqdm import tqdm
+from typing import Tuple
 
+from megatron.core.models.retro.data.config import Embedder, RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.utils import get_added_code_paths, get_added_codes_dir
-from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0, retro_makedir
+from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0, retro_makedir, GPTToTextDataset
 
 from .faiss_base import FaissBaseIndex
 
 
 class FaissParallelAddIndex(FaissBaseIndex):
-    def encode_block(self, index, embedder, text_dataset, block):
+    '''
+    This class parallelizes both 1) encoding vectors, and 2) adding codes to the
+    index. This class is more performant than naive use of Faiss, because most
+    of the computational work is in encoding the vectors, which is an
+    embarassingly parallel operation.
+    '''
+
+    def encode_block(self, index: faiss.Index, embedder: Embedder, text_dataset: GPTToTextDataset, block: dict) -> Tuple[np.ndarray, np.ndarray]:
         '''Encode sub-dataset block, to be later added to index.
 
         Encode the data subset, generally in blocks of 1M vectors each. For
@@ -42,14 +50,15 @@ class FaissParallelAddIndex(FaissBaseIndex):
         # Return embeddings for validation purposes.
         return embeddings, codes
 
-    def save_block(self, config, block, codes):
+    def save_block(self, config: RetroPreprocessingConfig, block: dict, codes: np.ndarray) -> None:
+        '''Save block of codes to disk.'''
         # Save neighbors.
         print_rank_0("save codes.")
         retro_makedir(config, os.path.dirname(block["path"]))
         with h5py.File(block["path"], "w") as f:
             f.create_dataset("data", data=codes)
 
-    def encode(self, config, text_dataset):
+    def encode(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> None:
         '''Encode text dataset, to be later added to index.'''
 
         codes_dir = get_added_codes_dir(config)
@@ -62,7 +71,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         embedder = config.retro_bert_embedders.mem
 
         # Missing code blocks.
-        def validate(f):
+        def validate(f: h5py.File) -> None:
             assert len(f["data"].shape) == 2
 
         blocks = get_blocks_by_rank(
@@ -88,7 +97,8 @@ class FaissParallelAddIndex(FaissBaseIndex):
             print_rank_0(" > waiting for other ranks to finish block.")
             torch.distributed.barrier()
 
-    def add_codes(self, config):
+    def add_codes(self, config: RetroPreprocessingConfig) -> None:
+        '''Read codes from disk, and add them to the index.'''
 
         if torch.distributed.get_rank() != 0:
             return
@@ -126,7 +136,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         print_rank_0("write added index.")
         faiss.write_index(index, added_index_path)
 
-    def remove_codes(self, config):
+    def remove_codes(self, config: RetroPreprocessingConfig) -> None:
         '''Remove added codes after adding to index.'''
         if torch.distributed.get_rank() != 0:
             return
@@ -136,7 +146,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             raise Exception("remove?")
             shutil.rmtree(get_added_codes_dir(config), ignore_errors=True)
 
-    def add(self, config, text_dataset):
+    def add(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> None:
 
         # Encode chunks.
         self.encode(config, text_dataset)

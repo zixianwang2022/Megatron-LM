@@ -1,17 +1,24 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''Build a chunk database from a list of indexed datasets.
+
+Building a chunk database consists of.
+
+  - Breaking each document of each indexed dataset into consecutive
+      retro_gpt_chunk_length chunks.
+  - Re-tokenize each chunk into Bert, and discard any chunks with empty Bert
+      tokens.
+  - Save chunk offsets to disk for each indexed dataset.
+'''
+
 import glob
+import numpy as np
 import os
+import torch
 import types
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import List, Tuple
-
-import numpy as np
-import torch
-
-# >>>
-from lutil import pax
 from tqdm import tqdm
+from typing import List, Tuple
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
@@ -36,11 +43,9 @@ from .utils import (
     save_indexed_dataset_infos,
 )
 
-# <<<
-
 
 def build_partial_db(
-    config: RetroPreprocessingConfig,
+    config: types.SimpleNamespace,
     dataset_idx: int,
     n_datasets: int,
     indexed_dataset: MMapIndexedDataset,
@@ -74,15 +79,7 @@ def build_partial_db(
         )
 
     # Progress bars (snapshot of overall progress).
-    # >>>
     doc_id_iter = range(doc_start_id, doc_end_id)
-    # +++
-    # doc_id_iter = range(
-    #     doc_start_id,
-    #     doc_end_id,
-    #     1 if config.task_validate is None else int(1. / config.task_validate),
-    # )
-    # <<<
     pbar = (
         tqdm(doc_id_iter, "parse doc chunks", miniters=len(doc_id_iter) // 20,)
         if proc_id in progress_proc_ids
@@ -90,8 +87,8 @@ def build_partial_db(
     )
 
     # Iterate documents & parse chunks.
-    chunk_db_valid = []
-    chunk_db_invalid = []
+    chunk_db_valid: List[tuple] = []
+    chunk_db_invalid: List[tuple] = []
     doc_size_map = {}
     for doc_id in pbar:
 
@@ -142,10 +139,7 @@ def build_partial_db(
                 doc_size_map[doc_id] += 1
             _chunk_db.append((doc_id, chunk_start_idx, chunk_end_idx, len(bert_token_ids),))
 
-    # >>>
-    # return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map
-    return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map, list(doc_id_iter)
-    # <<<
+    return proc_id, chunk_db_valid, chunk_db_invalid, doc_size_map
 
 
 def build_block_db(
@@ -158,7 +152,15 @@ def build_block_db(
     n_missing_blocks: int,
     block_idx: int,
     block: dict,
-):
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    '''Split each document within block into consecutive retro_gpt_chunk_length
+    size chunks.
+
+    This function returns:
+      - Valid chunk offsets: chunks that convert to a non-empty Bert chunks.
+      - Invalid chunk offsets: chunks that convert to empty Bert chunks.
+      - Document offsets: document offsets of valid chunks.
+    '''
 
     # Build partial dbs.
     print_rank_0(' > build partial dbs.')
@@ -212,23 +214,14 @@ def build_block_db(
         (np.array([item[0] for item in doc_sizes], dtype="uint64"), doc_offsets), axis=1
     )
 
-    # Active document ids.
-    active_doc_ids = [i for partial_chunk_db in partial_chunk_dbs for i in partial_chunk_db[4]]
-
-    # >>>
-    # from lutil import pax
-    # pax("active_doc_ids")
-    # <<<
-
-    # >>>
-    # return chunk_db_valid, chunk_db_invalid, doc_offsets
-    return chunk_db_valid, chunk_db_invalid, doc_offsets, active_doc_ids
-    # <<<
+    return chunk_db_valid, chunk_db_invalid, doc_offsets
 
 
 def save_block_db(
     block: dict, chunk_db_valid: np.ndarray, chunk_db_invalid: np.ndarray, doc_offsets: np.ndarray,
 ) -> None:
+    '''Save block of chunked tokens to disk. These blocks are later used for
+    training and adding to the vector index.'''
     print_rank_0(" > saving individual db.")
     with h5py.File(block["path"], "w") as f:
         dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
@@ -248,20 +241,6 @@ def build_individual_db(
     # Indexed dataset.
     indexed_dataset = dataset_info["dataset"]
 
-    # >>>
-    # if os.path.basename(db_dir) not in (
-    #         "Books3_shuf_text_document",
-    # ):
-    #     blocks = get_blocks_by_rank(
-    #         db_dir,
-    #         len(indexed_dataset),
-    #         config.retro_doc_block_size,
-    #         validate=lambda f : f["chunks_valid"].shape == (0,) \
-    #             or f["chunks_valid"].shape[1] == 4,
-    #     )
-    #     pax("dataset_info, blocks, db_dir", {"retro_task_validate": config.retro_task_validate})
-    # <<<
-
     # Missing DB blocks (split by documents).
     blocks = get_blocks_by_rank(
         db_dir,
@@ -273,10 +252,6 @@ def build_individual_db(
     if config.retro_task_validate is None:
         active_blocks = blocks.missing
     else:
-        # >>>
-        if blocks.n_missing_world != 0:
-            pax("blocks")
-        # <<<
         assert blocks.n_missing_world == 0
         active_blocks = blocks.existing
 
@@ -306,10 +281,7 @@ def build_individual_db(
             if block is not None:
 
                 # Build block DB.
-                # >>>
-                # chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
-                chunk_db_valid, chunk_db_invalid, doc_offsets, active_doc_ids = build_block_db(
-                    # <<<
+                chunk_db_valid, chunk_db_invalid, doc_offsets = build_block_db(
                     config=config,
                     dataset_idx=dataset_idx,
                     n_datasets=n_datasets,
@@ -337,87 +309,6 @@ def build_individual_db(
                         existing_chunks_valid = np.copy(f["chunks_valid"])
                         existing_chunks_invalid = np.copy(f["chunks_invalid"])
                         existing_doc_offsets = np.copy(f["doc_offsets"])
-
-                    # >>>
-                    # active_doc_ids = set(active_doc_ids)
-
-                    # active_existing_chunks_valid = [
-                    #     r for r in existing_chunks_valid
-                    #     if r[0] in active_doc_ids
-                    # ]
-                    # active_existing_chunks_invalid = [
-                    #     r for r in existing_chunks_invalid
-                    #         if r[0] in active_doc_ids
-                    # ]
-                    # active_existing_doc_offsets = [
-                    #     r for r in existing_doc_offsets
-                    #     if r[0] in active_doc_ids
-                    # ]
-
-                    # if active_existing_chunks_valid:
-                    #     assert np.array_equal(
-                    #         np.stack(active_existing_chunks_valid),
-                    #         chunk_db_valid,
-                    #     ), "inconsistent chunks_valid, %d vs. %d." % (
-                    #         len(active_existing_chunks_valid),
-                    #         chunk_db_valid.shape[0],
-                    #     )
-                    # if active_existing_chunks_invalid:
-                    #     assert np.array_equal(
-                    #         np.stack(active_existing_chunks_invalid),
-                    #         chunk_db_invalid,
-                    #     ), "inconsistent chunks_invalid, %d vs. %d." % (
-                    #         len(active_existing_chunks_invalid),
-                    #         chunk_db_invalid.shape[0],
-                    #     )
-                    # if active_existing_doc_offsets:
-                    #     # >>>
-                    #     from lutil import pax
-                    #     pax({
-                    #         "existing_doc_offsets" : existing_doc_offsets,
-                    #         "active_existing_doc_offsets" : np.stack(active_existing_doc_offsets),
-                    #         "doc_offsets" : doc_offsets,
-                    #     })
-                    #     # <<<
-                    #     assert np.array_equal(
-                    #         np.stack(active_existing_doc_offsets),
-                    #         doc_offsets,
-                    #     ), "inconsistent doc_offsets, %s vs. %s." % (
-                    #         (
-                    #             len(active_existing_doc_offsets),
-                    #             *active_existing_doc_offsets[0].shape,
-                    #         ),
-                    #         doc_offsets.shape,
-                    #     )
-
-                    # from lutil import pax
-                    # pax({
-
-                    #     "existing_chunks_valid" :
-                    #     str(existing_chunks_valid.shape),
-                    #     "existing_chunks_invalid" :
-                    #     str(existing_chunks_invalid.shape),
-                    #     "existing_doc_offsets" :
-                    #     str(existing_doc_offsets.shape),
-
-                    #     "active_existing_chunks_valid" :
-                    #     str(active_existing_chunks_valid.shape),
-                    #     "active_existing_chunks_invalid" :
-                    #     str(active_existing_chunks_invalid.shape),
-                    #     "active_existing_doc_offsets" :
-                    #     str(active_existing_doc_offsets.shape),
-
-                    #     "chunk_db_valid" :
-                    #     str(chunk_db_valid.shape),
-                    #     "chunk_db_invalid" :
-                    #     str(chunk_db_invalid.shape),
-                    #     "doc_offsets" :
-                    #     str(doc_offsets.shape),
-
-                    #     "active_doc_ids":
-                    #     str(sorted(active_doc_ids)),
-                    # })
-                    # <<<
 
                     # Check equality.
                     print_rank_0(" > validate.")
@@ -451,7 +342,7 @@ def build_individual_dbs(
         build_individual_db(config, ds_idx, len(indexed_dataset_infos), ds_info)
 
 
-def update_chunk_counts(config, indexed_dataset_infos):
+def update_chunk_counts(config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict]) -> None:
     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -468,11 +359,7 @@ def update_chunk_counts(config, indexed_dataset_infos):
     print_rank_0(" > compute n_chunks.")
     for ds_index, ds_info in enumerate(indexed_dataset_infos):
 
-        # >>>
-        # db_dir = get_individual_db_dir(config.retro_project_dir, ds_info["prefix"])
-        # db_paths = sorted(glob.glob(db_dir + "/*.hdf5"))
         db_paths = get_individual_db_paths(config.retro_project_dir, ds_info["prefix"])
-        # <<<
 
         # Update counts.
         ds_info["n_docs"] = len(ds_info["dataset"].document_indices) - 1
@@ -505,7 +392,7 @@ def update_chunk_counts(config, indexed_dataset_infos):
         )
 
 
-def merge_dbs(project_dir, indexed_dataset_infos, db_type):
+def merge_dbs(project_dir: str, indexed_dataset_infos: List[dict], db_type: str) -> None:
     '''Merge individual DBs into single DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -563,8 +450,8 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
         f = h5py.File(db_path, "w")
 
         # Initialize output arrays.
-        merged_chunk_db = f.create_dataset("chunks", (n_chunks, 5), dtype="uint32")
-        merged_doc_offsets = (
+        merged_chunk_db: np.ndarray = f.create_dataset("chunks", (n_chunks, 5), dtype="uint32")
+        merged_doc_offsets: np.ndarray = (
             None
             if n_docs_key is None
             else f.create_dataset("doc_offsets", (n_docs, 3), dtype="uint64")
@@ -581,8 +468,8 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
                 " > merging dbs; '%s', dataset %d / %d ... '%s'."
                 % (db_type, ds_idx, len(indexed_dataset_infos), ds_info["prefix"]),
             )
-            individual_chunk_db = get_individual_chunk_db(project_dir, ds_idx, ds_info)
-            individual_doc_offsets = (
+            individual_chunk_db: np.ndarray = get_individual_chunk_db(project_dir, ds_idx, ds_info)
+            individual_doc_offsets: np.ndarray = (
                 None
                 if n_docs_key is None
                 else get_individual_doc_offsets(project_dir, ds_idx, ds_info)
@@ -593,6 +480,9 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
                 if n_docs_key is None:
                     individual_doc_offsets = None
                 else:
+                    # >>>
+                    # individual_doc_offsets = cast(np.ndarray, individual_doc_offsets)
+                    # <<<
                     train_doc_offset = individual_doc_offsets[ds_info["n_docs_train"] - 1, 2]
                     individual_doc_offsets = np.copy(
                         individual_doc_offsets[ds_info["n_docs_train"] :]
@@ -626,13 +516,19 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
         f.close()
 
 
-def build_merged_dbs(project_dir, indexed_dataset_infos):
+def build_merged_dbs(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
+    '''
+    Merge individual dataset chunks for:
+      - Sampled: used for training the vector index.
+      - Train: used for adding to the trained vector index.
+      - Valid: can be used for validating/testing the vector index.
+    '''
     merge_dbs(project_dir, indexed_dataset_infos, "sampled")
     merge_dbs(project_dir, indexed_dataset_infos, "train")
     merge_dbs(project_dir, indexed_dataset_infos, "valid")
 
 
-def build_db(config):
+def build_db(config: RetroPreprocessingConfig) -> None:
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
@@ -646,20 +542,6 @@ def build_db(config):
         indexed_dataset_infos = init_indexed_dataset_infos(config)
     else:
         indexed_dataset_infos = get_indexed_dataset_infos(config.retro_project_dir)
-        # >>>
-        # pax(dict(enumerate(indexed_dataset_infos)))
-        # <<<
-
-        # >>>
-        # if torch.distributed.get_rank() == 0:
-        #     for info in indexed_dataset_infos:
-        #         db_dir = get_individual_db_dir(config.retro_project_dir, info["prefix"])
-        #         print("db_dir = %s." % db_dir)
-        #         assert os.path.isdir(db_dir), "missing dir '%s'." % db_dir
-        # torch.distributed.barrier()
-        # exit()
-        # <<<
-
     # Build individual dbs.
     build_individual_dbs(config, indexed_dataset_infos)
 

@@ -89,7 +89,7 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         key_value_states: Tensor = None,
         inference_params: InferenceParams = None,
         # rotary_pos_emb: Tensor = None, # ... unsupported for retro.
-    ) -> Tensor:
+    ) -> dict:
         """Cross attention for Retro decoder.
 
         Notation:
@@ -286,7 +286,7 @@ class RetroDecoderBiasDropoutAdd(MegatronModule):
         # Output. [ ns, bs, d ]
         return x
 
-    def forward(self, training: bool, fused: bool) -> Tensor:
+    def forward(self, training: bool, fused: bool) -> partial:
         """Retro decoder bias-dropout-add.
 
         Arguments:

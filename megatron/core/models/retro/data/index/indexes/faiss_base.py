@@ -13,13 +13,23 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import faiss
 from megatron.core.models.retro.data.index.index import Index
-from megatron.core.models.retro.data.index.utils import get_training_data_merged_path
+from megatron.core.models.retro.data.index.utils import get_training_data_merged_path, num_samples_to_block_ranges
+from megatron.core.models.retro.data.utils import GPTToTextDataset
 
 
 class FaissBaseIndex(Index):
-    def _train(self, config):
+    '''Base class for Faiss-base indexes.
+
+    This class wraps a Faiss index, and adds additional functionality for training
+    and adding codes. This base class performs a naive sequential code adding,
+    while the optimized FaissParallelAddIndex class performs a parallel
+    index.add().
+    '''
+
+    def _train(self, config: RetroPreprocessingConfig) -> None:
         '''Train index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
@@ -57,7 +67,7 @@ class FaissBaseIndex(Index):
         # Save index.
         faiss.write_index(index, empty_index_path)
 
-    def train(self, config):
+    def train(self, config: RetroPreprocessingConfig) -> None:
         '''Train index.'''
 
         # Single process only.
@@ -66,7 +76,7 @@ class FaissBaseIndex(Index):
 
         torch.distributed.barrier()
 
-    def _add(self, config, text_dataset):
+    def _add(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> None:
         '''Add to index (rank 0's method).'''
 
         assert torch.distributed.get_rank() == 0
@@ -77,11 +87,7 @@ class FaissBaseIndex(Index):
         faiss.omp_set_num_threads(64)
 
         # Bert embedder.
-        embedder = BertEmbedder(
-            config.retro_bert_batch_size,
-            config.retro_bert_max_chunk_length,
-            config.bert_embedder_type,
-        )
+        embedder = config.bert_embedders.mem
 
         # Empty/added index paths.
         empty_index_path = self.get_empty_index_path()
@@ -106,7 +112,7 @@ class FaissBaseIndex(Index):
         # Write index.
         faiss.write_index(index, added_index_path)
 
-    def add(self, config, text_dataset):
+    def add(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> str:
         '''Add to index.'''
 
         # Single process only.
