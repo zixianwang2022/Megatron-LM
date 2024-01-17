@@ -35,6 +35,7 @@ pylint \
   --disable=raise-missing-from \
   --disable=undefined-variable \
   --disable=relative-beyond-top-level \
+  --disable=no-else-return \
   megatron/core/models/retro/data/
 #   --missing-docstring \
 #   --no-docstring-rgx=__.*__ \

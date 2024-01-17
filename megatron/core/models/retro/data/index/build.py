@@ -1,5 +1,13 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''Construct an index.
+
+Constructing an index generally happens in two phases:
+
+  - index.train(): Train an index on a representative set of vectors.
+  - index.add(): Add vectors to an index, to be available for retrieval.
+'''
+
 import numpy as np
 import os
 import shutil
@@ -35,11 +43,19 @@ def get_empty_index_path(config: RetroPreprocessingConfig) -> str:
 
 
 def get_block_nload(block_path: str, load_fraction: float) -> int:
+    '''Compute number of blocks to load, by multiplying the total number of
+    available blocks with the fraction of blocks to load.'''
     with h5py.File(block_path) as fi:
         return int(load_fraction * fi["data"].shape[0])
 
 
 def merge_embedding_blocks(config: RetroPreprocessingConfig) -> None:
+    '''Merge individual embedding blocks into a single binary mmap file.
+
+    The embeddings are initially stored in block-sized (e.g., ~100k embeddings per
+    block) HDF5 files. These individual block files must be merged into a single
+    file before training, to be based as a numpy mmap array to the index.
+    '''
 
     if torch.distributed.get_rank() != 0:
         return
@@ -76,6 +92,8 @@ def merge_embedding_blocks(config: RetroPreprocessingConfig) -> None:
 
 
 def get_text_dataset_for_training(config: RetroPreprocessingConfig) -> GPTToTextDataset:
+    '''Convert GPT token chunk dataset to a text dataset for passing to the
+    embedder.'''
     gpt_dataset = get_merged_sampled_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_gpt_chunk_length,
@@ -144,6 +162,10 @@ def _train_index(config: RetroPreprocessingConfig) -> None:
 
 
 def train_index(config: RetroPreprocessingConfig) -> None:
+    '''Entry point for training the index.
+
+    We select whether to train a new index, or validate an existing index.
+    '''
 
     # Train new index.
     if config.retro_task_validate is None:
@@ -162,6 +184,8 @@ def train_index(config: RetroPreprocessingConfig) -> None:
 
 
 def get_text_dataset_for_adding(config: RetroPreprocessingConfig) ->GPTToTextDataset:
+    '''Convert GPT token chunk dataset to a text dataset for passing to the
+    embedder.'''
     gpt_dataset = get_merged_train_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_gpt_chunk_length,
@@ -187,6 +211,10 @@ def _add_to_index(config: RetroPreprocessingConfig) -> str:
 
 
 def add_to_index(config: RetroPreprocessingConfig) -> None:
+    '''Entry point for adding to the index.
+
+    We select whether to add to a new index, or validate an existing index.
+    '''
 
     # Add to new index.
     if config.retro_task_validate is None:

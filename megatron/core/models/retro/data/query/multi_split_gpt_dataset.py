@@ -1,5 +1,8 @@
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
+'''A MultiSplitGPTDataset can handle multiple intersecting split strings, as well
+as returning all of the document IDs of a sample.'''
+
 import logging
 from dataclasses import dataclass
 from typing import Dict, List

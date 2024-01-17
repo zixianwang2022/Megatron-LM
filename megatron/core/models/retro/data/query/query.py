@@ -1,5 +1,15 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''Entry point for querying an index using a GPTChunkDataset.
+
+Querying involves:
+
+  - Iterate all chunks in the GPTChunkDataset.
+  - Query index for neighbor chunk IDs (i.e., chunks from the chunk database).
+  - Save neighbor chunk IDs to disk, for use in building a RetroDataset sample
+      during pretraining.
+'''
+
 import numpy as np
 import os
 import psutil
@@ -72,7 +82,12 @@ def query_embeddings(
     n_chunks_per_sample: int,
     verbose: bool=True,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
-    '''Query neighbors of a block of embeddings.'''
+    '''Query neighbors of a block of embeddings.
+
+    Querying includes:
+      - Query index for neighbor chunk IDs.
+      - Filter chunk IDs that have the same document ID as the queried embedding.
+    '''
 
     # Query neighbor ids.
     if verbose:
@@ -125,6 +140,12 @@ def query_embedding_block(
     sample_map: dict,
     n_chunks_per_sample: int,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
+    '''Query a block of embeddings.
+
+    The block is broken into smaller sub-blocks, for easier tracking of progress.
+    Both the raw neighbor IDs and the filtered neighbor IDs (i.e., chunks with the
+    same document ID are removed) are collected.
+    '''
 
     query_neighbor_ids = []
     filtered_neighbor_ids = []

@@ -21,6 +21,14 @@ from megatron.core.models.retro.data.utils import GPTToTextDataset
 
 
 class FaissBaseIndex(Index):
+    '''Base class for Faiss-base indexes.
+
+    This class wraps a Faiss index, and adds additional functionality for training
+    and adding codes. This base class performs a naive sequential code adding,
+    while the optimized FaissParallelAddIndex class performs a parallel
+    index.add().
+    '''
+
     def _train(self, config: RetroPreprocessingConfig) -> None:
         '''Train index (rank 0's method).'''
 

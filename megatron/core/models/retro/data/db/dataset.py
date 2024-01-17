@@ -1,5 +1,11 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''A DBDataset is for iterating the chunks of the chunk database.
+
+This dataset is used for both training a vector index, and adding vectors to a
+trained index.
+'''
+
 import numpy as np
 import torch
 from tqdm import tqdm

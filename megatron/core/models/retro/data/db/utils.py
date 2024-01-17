@@ -1,5 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''Utilities for building a chunk database.'''
+
 import glob
 import json
 import numpy as np
@@ -68,6 +70,7 @@ def save_indexed_dataset_infos(project_dir: str, indexed_dataset_infos: List[dic
 
 
 def load_indexed_datasets(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
+    '''Loaded indexed datasets into memory-mapped datasets.'''
     data_dir = get_gpt_data_dir(project_dir)
     for info in indexed_dataset_infos:
         info["dataset"] = MMapIndexedDataset(os.path.join(data_dir, info["prefix"]))
@@ -93,6 +96,7 @@ def get_individual_db_dir(project_dir: str, prefix: str) -> str:
 
 
 def get_individual_db_paths(project_dir: str, prefix: str) -> List[str]:
+    '''Get paths of all database blocks of an individual dataset.'''
     return sorted(glob.glob(get_individual_db_dir(project_dir, prefix) + "/*hdf5"))
 
 
@@ -172,18 +176,21 @@ def get_merged_dataset(
 
 
 def get_merged_sampled_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
+    '''Get sampled dataset (for training the vector index).'''
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "sampled", indexed_dataset_infos
     )
 
 
 def get_merged_train_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
+    '''Get training dataset (for adding to the vector index).'''
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "train", indexed_dataset_infos
     )
 
 
 def get_merged_valid_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
+    '''Get validation dataset (for testing the vector index).'''
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "valid", indexed_dataset_infos
     )

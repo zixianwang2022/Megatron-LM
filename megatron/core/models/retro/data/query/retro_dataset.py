@@ -1,5 +1,17 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''
+A RetroDataset wraps both:
+
+  - A GPTDataset (which is nested as GPTChunkDataset -> MultiSplitGPTDataset ->
+      GPTDataset).
+  - Neighbor IDs of chunks in the chunk database, that were saved during
+      preprocessing.
+
+Both the GPT sample data and the neighbor IDs are returned within a sample from
+this dataset.
+'''
+
 import numpy as np
 import os
 import torch

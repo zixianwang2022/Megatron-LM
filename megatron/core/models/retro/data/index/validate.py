@@ -1,5 +1,19 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+'''Validate an index's data.
+
+This module contains functionality for checking for bitwise equality across code
+changes. The training and adding steps of index construction can be validated
+separately. The following high-level checks are supported:
+
+  - Training: Validate that saved training embeddings are bitwise equal with a
+      sample set of freshly computed embeddings. (*Note*:
+      `--no-retro-index-delete-training-embeddings` must be used.)
+  - Adding: Validate that the saved encodings are bitwise equal with a sample of
+      sample set of freshly computed encodings. (*Note*:
+      `--no-retro-index-delete-added-codes` must be used.)
+'''
+
 import numpy as np
 import torch
 import typing
