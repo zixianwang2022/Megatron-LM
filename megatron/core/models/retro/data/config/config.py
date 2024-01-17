@@ -3,6 +3,7 @@
 """Retro preprocessing config."""
 
 from dataclasses import dataclass
+from typing import Optional, Union
 
 from megatron.core.transformer import TransformerConfig
 
@@ -123,7 +124,7 @@ class RetroPreprocessingConfig(TransformerConfig):
 
     # Basic.
     retro_project_dir: str = None
-    retro_tasks: str = 'build'
+    retro_tasks: Union[str, List[str]] = 'build'
     retro_task_validate: float = None
     retro_block_size: int = 100000
     retro_doc_block_size: int = 100000
@@ -167,11 +168,11 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_query_num_neighbors_save: int = 20
 
     # Tools.
-    retro_bert_embedders: RetroBertEmbedders = None
-    retro_gpt_chunk_datasets: RetroGPTChunkDatasets = None
-    retro_tokenizers: RetroTokenizers = None
+    retro_bert_embedders: Optional[RetroBertEmbedders] = None
+    retro_gpt_chunk_datasets: Optional[RetroGPTChunkDatasets] = None
+    retro_tokenizers: Optional[RetroTokenizers] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
 
         # >>>
         # # Enforce argument naming convention.

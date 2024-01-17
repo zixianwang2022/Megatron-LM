@@ -1,5 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
+import typing
+
 from megatron.core import parallel_state
 from megatron.core.fusions.fused_layer_norm import FusedLayerNorm
 from megatron.core.models.gpt.gpt_layer_specs import (
@@ -28,7 +30,7 @@ from megatron.core.transformer.transformer_block import (
 )
 
 
-def get_retro_decoder_layer_te_spec(encoder_block_spec: ModuleSpec = None) -> ModuleSpec:
+def get_retro_decoder_layer_te_spec(encoder_block_spec: typing.Union[ModuleSpec, TransformerBlockSubmodules, None] = None) -> ModuleSpec:
     """Retro decoder TE spec (uses Transformer Engine components).
 
     A Retro decoder layer uses custom attention and bias-dropout-add operators
@@ -57,7 +59,7 @@ def get_retro_decoder_layer_te_spec(encoder_block_spec: ModuleSpec = None) -> Mo
     return spec
 
 
-def get_retro_decoder_layer_local_spec(encoder_block_spec: ModuleSpec = None) -> ModuleSpec:
+def get_retro_decoder_layer_local_spec(encoder_block_spec: typing.Optional[ModuleSpec] = None) -> ModuleSpec:
     """Retro decoder local spec (uses Megatron-Core components).
 
     A Retro decoder layer uses custom attention and bias-dropout-add operators

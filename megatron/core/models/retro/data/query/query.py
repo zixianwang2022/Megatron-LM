@@ -1,19 +1,23 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import os
-import time
-
 import numpy as np
+import os
 import psutil
+import time
 import torch
+import typing
 from tqdm import tqdm
 
+from megatron.core.models.retro.data.config import RetroPreprocessingConfig
+from megatron.core.models.retro.data.db.dataset import DBDataset
 from megatron.core.models.retro.data.db.utils import (
     get_merged_train_dataset as get_db_merged_train_dataset,
 )
 from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.factory import IndexFactory
+from megatron.core.models.retro.data.index.index import Index
 from megatron.core.models.retro.data.index.utils import get_index_dir
+from megatron.core.models.retro.data.query.chunk_dataset import GPTChunkDataset
 from megatron.core.models.retro.data.utils import (
     GPTToTextDataset,
     get_blocks_by_rank,
@@ -24,7 +28,10 @@ from megatron.core.models.retro.data.utils import (
 from .gpt_chunk_dataset import build_gpt_chunk_datasets_from_gpt_datasets
 
 
-def get_index(config, ondisk=False):
+def get_index(
+    config: RetroPreprocessingConfig,
+    ondisk: bool=False,
+) -> faiss.Index:
     '''Read index from disk.'''
 
     # Load index.
@@ -43,7 +50,11 @@ def get_index(config, ondisk=False):
     return index
 
 
-def embed_block(config, gpt_dataset, block):
+def embed_block(
+    config: RetroPreprocessingConfig,
+    gpt_dataset: GPTChunkDataset,
+    block: dict,
+) -> np.ndarray:
     '''Embed block of chunks.'''
     text_block_dataset = torch.utils.data.Subset(
         GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt), range(*block["range"]),
@@ -52,15 +63,15 @@ def embed_block(config, gpt_dataset, block):
 
 
 def query_embeddings(
-    config,
-    db_dataset,
-    index,
-    embeddings,
-    chunk_id_range,
-    sample_map,
-    n_chunks_per_sample,
-    verbose=True,
-):
+    config: RetroPreprocessingConfig,
+    db_dataset: DBDataset,
+    index: Index,
+    embeddings: np.ndarray,
+    chunk_id_range: range,
+    sample_map: dict,
+    n_chunks_per_sample: int,
+    verbose: bool=True,
+) -> typing.Tuple[np.ndarray, np.ndarray]:
     '''Query neighbors of a block of embeddings.'''
 
     # Query neighbor ids.
@@ -106,8 +117,14 @@ def query_embeddings(
 
 
 def query_embedding_block(
-    config, db_dataset, index, embeddings, chunk_id_range, sample_map, n_chunks_per_sample
-):
+    config: RetroPreprocessingConfig,
+    db_dataset: DBDataset,
+    index: Index,
+    embeddings: np.ndarray,
+    chunk_id_range: range,
+    sample_map: dict,
+    n_chunks_per_sample: int,
+) -> typing.Tuple[np.ndarray, np.ndarray]:
 
     query_neighbor_ids = []
     filtered_neighbor_ids = []
@@ -146,7 +163,13 @@ def query_embedding_block(
     return query_neighbor_ids, filtered_neighbor_ids
 
 
-def query_block_neighbors(config, db_dataset, query_dataset, index, block):
+def query_block_neighbors(
+    config: RetroPreprocessingConfig,
+    db_dataset: DBDataset,
+    query_dataset: GPTChunkDataset,
+    index: Index,
+    block: dict,
+) -> None:
     '''Query neighbors of a dataset block (i.e., range).'''
 
     n_chunks_per_sample = query_dataset.n_chunks_per_sample
@@ -200,11 +223,17 @@ def query_block_neighbors(config, db_dataset, query_dataset, index, block):
 
 
 def query_dataset_neighbors(
-    config, db_dataset, query_dataset, num_active_chunks, prefix, neighbor_dir, index
-):
+    config: RetroPreprocessingConfig,
+    db_dataset: DBDataset,
+    query_dataset: GPTChunkDataset,
+    num_active_chunks: int,
+    prefix: str,
+    neighbor_dir: str,
+    index: Index,
+) -> None:
     '''Query neighbors of each chunk within a dataset.'''
 
-    def validate(f):
+    def validate(f: h5py.File) -> None:
         assert f["neighbors"].shape[1] == config.retro_query_num_neighbors_save, (
             "neighbors.shape == %s; num_neighbors_target == %d."
             % (str(f["neighbors"].shape), config.retro_num_neighbors_target,)
@@ -254,7 +283,7 @@ def query_dataset_neighbors(
         torch.distributed.barrier()
 
 
-def query_neighbors(config):
+def query_neighbors(config: RetroPreprocessingConfig) -> None:
     '''Query pretraining datasets (train & valid).'''
 
     # Num threads.

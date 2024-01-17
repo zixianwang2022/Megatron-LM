@@ -141,7 +141,7 @@ def build_block_db(
     n_missing_blocks: int,
     block_idx: int,
     block: dict,
-):
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     # Build partial dbs.
     print_rank_0(' > build partial dbs.')
@@ -321,7 +321,7 @@ def build_individual_dbs(
         build_individual_db(config, ds_idx, len(indexed_dataset_infos), ds_info)
 
 
-def update_chunk_counts(config, indexed_dataset_infos):
+def update_chunk_counts(config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict]) -> None:
     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -371,7 +371,7 @@ def update_chunk_counts(config, indexed_dataset_infos):
         )
 
 
-def merge_dbs(project_dir, indexed_dataset_infos, db_type):
+def merge_dbs(project_dir: str, indexed_dataset_infos: List[dict], db_type: str) -> None:
     '''Merge individual DBs into single DB.'''
 
     if torch.distributed.get_rank() != 0:
@@ -429,8 +429,8 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
         f = h5py.File(db_path, "w")
 
         # Initialize output arrays.
-        merged_chunk_db = f.create_dataset("chunks", (n_chunks, 5), dtype="uint32")
-        merged_doc_offsets = (
+        merged_chunk_db: np.ndarray = f.create_dataset("chunks", (n_chunks, 5), dtype="uint32")
+        merged_doc_offsets: np.ndarray = (
             None
             if n_docs_key is None
             else f.create_dataset("doc_offsets", (n_docs, 3), dtype="uint64")
@@ -447,8 +447,8 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
                 " > merging dbs; '%s', dataset %d / %d ... '%s'."
                 % (db_type, ds_idx, len(indexed_dataset_infos), ds_info["prefix"]),
             )
-            individual_chunk_db = get_individual_chunk_db(project_dir, ds_idx, ds_info)
-            individual_doc_offsets = (
+            individual_chunk_db: np.ndarray = get_individual_chunk_db(project_dir, ds_idx, ds_info)
+            individual_doc_offsets: np.ndarray = (
                 None
                 if n_docs_key is None
                 else get_individual_doc_offsets(project_dir, ds_idx, ds_info)
@@ -459,6 +459,9 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
                 if n_docs_key is None:
                     individual_doc_offsets = None
                 else:
+                    # >>>
+                    # individual_doc_offsets = cast(np.ndarray, individual_doc_offsets)
+                    # <<<
                     train_doc_offset = individual_doc_offsets[ds_info["n_docs_train"] - 1, 2]
                     individual_doc_offsets = np.copy(
                         individual_doc_offsets[ds_info["n_docs_train"] :]
@@ -492,13 +495,13 @@ def merge_dbs(project_dir, indexed_dataset_infos, db_type):
         f.close()
 
 
-def build_merged_dbs(project_dir, indexed_dataset_infos):
+def build_merged_dbs(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
     merge_dbs(project_dir, indexed_dataset_infos, "sampled")
     merge_dbs(project_dir, indexed_dataset_infos, "train")
     merge_dbs(project_dir, indexed_dataset_infos, "valid")
 
 
-def build_db(config):
+def build_db(config: RetroPreprocessingConfig) -> None:
     '''Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's

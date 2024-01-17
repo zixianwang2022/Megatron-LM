@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+import typing
 from torch.utils.data import Subset
 
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
@@ -92,7 +93,7 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
 ##################################################
 
 
-def validate_added_encodings(config):
+def validate_added_encodings(config: RetroPreprocessingConfig) -> None:
     '''Validate added encodings.
 
     Steps:
@@ -109,7 +110,7 @@ def validate_added_encodings(config):
     text_dataset = get_text_dataset_for_adding(config)
 
     # Sample existing blocks.
-    def validate(f):
+    def validate(f: h5py.File) -> None:
         assert len(f["data"].shape) == 2
 
     blocks = get_blocks_by_rank(
@@ -169,7 +170,7 @@ def validate_added_encodings(config):
 ##################################################
 
 
-def validate_index(config):
+def validate_index(config: RetroPreprocessingConfig) -> None:
     '''Validate index.
 
     Validating index involves sequentially running stages above:
@@ -181,4 +182,4 @@ def validate_index(config):
     validate_training_embeddings(config)
 
     # Validate added codes.
-    validate_added_codes(config)
+    validate_added_encodings(config)

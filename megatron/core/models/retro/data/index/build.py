@@ -1,12 +1,12 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
+import numpy as np
 import os
 import shutil
-
-import numpy as np
 import torch
 from tqdm import tqdm
 
+from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.db.utils import (
     get_merged_sampled_dataset,
     get_merged_train_dataset,
@@ -27,19 +27,19 @@ from .utils import (
 ##################################################
 
 
-def get_empty_index_path(config):
+def get_empty_index_path(config: RetroPreprocessingConfig) -> str:
     '''Path of empty index.'''
     index = IndexFactory.get_index(config.retro_index_type)
     empty_index_path = index.get_empty_index_path(config)
     return empty_index_path
 
 
-def get_block_nload(block_path, load_fraction):
+def get_block_nload(block_path: str, load_fraction: float) -> int:
     with h5py.File(block_path) as fi:
         return int(load_fraction * fi["data"].shape[0])
 
 
-def merge_embedding_blocks(config):
+def merge_embedding_blocks(config: RetroPreprocessingConfig) -> None:
 
     if torch.distributed.get_rank() != 0:
         return
@@ -75,7 +75,7 @@ def merge_embedding_blocks(config):
                 fo.seek(byte_offset)
 
 
-def get_text_dataset_for_training(config):
+def get_text_dataset_for_training(config: RetroPreprocessingConfig) -> GPTToTextDataset:
     gpt_dataset = get_merged_sampled_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_gpt_chunk_length,
@@ -85,7 +85,7 @@ def get_text_dataset_for_training(config):
     return text_dataset
 
 
-def embed_training_chunks(config):
+def embed_training_chunks(config: RetroPreprocessingConfig) -> None:
     '''Embed DB chunks.
 
     Store chunks in blocks on disk. These blocks will later be merged into
@@ -107,13 +107,13 @@ def embed_training_chunks(config):
     merge_embedding_blocks(config)
 
 
-def train_on_embeddings(config):
+def train_on_embeddings(config: RetroPreprocessingConfig) -> None:
     '''Train index on embedded DB chunks.'''
     index = IndexFactory.get_index(config.retro_index_type)
     index.train(config)
 
 
-def remove_embeddings(config):
+def remove_embeddings(config: RetroPreprocessingConfig) -> None:
     '''Remove embeddings after training.'''
     torch.distributed.barrier()
     if torch.distributed.get_rank() != 0:
@@ -123,7 +123,7 @@ def remove_embeddings(config):
     shutil.rmtree(get_training_data_root_dir(config), ignore_errors=True)
 
 
-def _train_index(config):
+def _train_index(config: RetroPreprocessingConfig) -> None:
     '''Train index on DB chunks.'''
 
     # Check if trained index already exists.
@@ -143,7 +143,7 @@ def _train_index(config):
         remove_embeddings(config)
 
 
-def train_index(config):
+def train_index(config: RetroPreprocessingConfig) -> None:
 
     # Train new index.
     if config.retro_task_validate is None:
@@ -161,7 +161,7 @@ def train_index(config):
 ##################################################
 
 
-def get_text_dataset_for_adding(config):
+def get_text_dataset_for_adding(config: RetroPreprocessingConfig) ->GPTToTextDataset:
     gpt_dataset = get_merged_train_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_gpt_chunk_length,
@@ -171,7 +171,7 @@ def get_text_dataset_for_adding(config):
     return text_dataset
 
 
-def _add_to_index(config):
+def _add_to_index(config: RetroPreprocessingConfig) -> str:
     '''Add DB chunks to index.'''
 
     # Get index.
@@ -186,7 +186,7 @@ def _add_to_index(config):
     return output_index_path
 
 
-def add_to_index(config):
+def add_to_index(config: RetroPreprocessingConfig) -> None:
 
     # Add to new index.
     if config.retro_task_validate is None:
@@ -204,7 +204,7 @@ def add_to_index(config):
 ##################################################
 
 
-def build_index(config):
+def build_index(config: RetroPreprocessingConfig) -> None:
     '''Build index.
 
     Building index involves sequentially running stages above:

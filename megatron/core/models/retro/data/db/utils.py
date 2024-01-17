@@ -2,10 +2,9 @@
 
 import glob
 import json
-import os
-from typing import List
-
 import numpy as np
+import os
+from typing import List, Optional
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
@@ -36,7 +35,8 @@ def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
     for i in range(0, len(data_blend), 2):
         ratio = float(data_blend[i])
         prefix = data_blend[i + 1]
-        assert os.path.exists(os.path.join(data_dir, prefix + ".bin")), "couldn't find '%s'." % path
+        path = os.path.join(data_dir, prefix + ".bin")
+        assert os.path.exists(path), "couldn't find '%s'." % path
         infos.append(
             {"ratio": ratio, "prefix": prefix,}
         )
@@ -146,7 +146,7 @@ def get_merged_db_path_map(project_dir: str) -> dict:
 
 
 def get_merged_dataset(
-    project_dir: str, chunk_length: int, eod_token_id: int, db_type: str, indexed_dataset_infos: List[dict]=None
+    project_dir: str, chunk_length: int, eod_token_id: int, db_type: str, indexed_dataset_infos: Optional[List[dict]]=None
 ) -> DBDataset:
     '''Get merged dataset.'''
 
@@ -171,19 +171,19 @@ def get_merged_dataset(
     return dataset
 
 
-def get_merged_sampled_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: List[dict]=None) -> DBDataset:
+def get_merged_sampled_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "sampled", indexed_dataset_infos
     )
 
 
-def get_merged_train_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: List[dict]=None) -> DBDataset:
+def get_merged_train_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "train", indexed_dataset_infos
     )
 
 
-def get_merged_valid_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: List[dict]=None) -> DBDataset:
+def get_merged_valid_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "valid", indexed_dataset_infos
     )
