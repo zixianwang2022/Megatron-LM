@@ -68,21 +68,8 @@ def model_provider(pre_process=True, post_process=True):
     """
 
     args = get_args()
-    # >>>
-    # provider = core_model_provider if args.use_mcore_models else default_model_provider
     provider = core_model_provider if (args.use_mcore_models and args.retro_add_retriever) else default_model_provider
-    # <<<
     model = provider(pre_process=pre_process, post_process=post_process)
-    # >>>
-    # import inspect
-    # from lutil import pax
-    # pax({ # "model", {
-    #     "model ty" : "%s ... '%s'." % (
-    #         model.__class__.__name__,
-    #         inspect.getfile(model.__class__),
-    #     ),
-    # })
-    # <<<
     return model
 
 
@@ -160,14 +147,6 @@ def forward_step(data_iterator, model):
     timers('batch-generator').stop()
 
     # Model call.
-    # >>>
-    # if args.use_mcore_models:
-    #     forward_kwargs = {
-    #         "context_input_ids" : neighbor_tokens,
-    #         "context_position_ids" : neighbor_position_ids,
-    #         "context_mask" : neighbor_attention_mask,
-    #     }
-    # +++
     if args.use_mcore_models:
         if args.retro_add_retriever:
             forward_kwargs = {
@@ -177,7 +156,6 @@ def forward_step(data_iterator, model):
             }
         else:
             forward_kwargs = {}
-    # <<<
     else:
         forward_kwargs = {
             "retriever_input_ids" : neighbor_tokens,
@@ -207,11 +185,6 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         path_to_cache=args.data_cache_path,
         return_document_ids=False,
     )
-
-    # >>>
-    # from lutil import pax
-    # pax("args, data_config, train_valid_test_num_samples")
-    # <<<
 
     # GPT datasets.
     print_rank_0(" > multi-split gpt datasets.")

@@ -93,12 +93,6 @@ def get_bert_embedders(config):
 
 def get_gpt_chunk_datasets(config):
 
-    # Reset iteration.
-    # >>>
-    # config.iteration = 0
-    # config.consumed_train_samples = 0
-    # <<<
-
     # Dataset config.
     data_dir = get_gpt_data_dir(config.retro_project_dir)
     blend = list(config.retro_gpt_data_path)
@@ -193,9 +187,6 @@ def get_retro_preprocessing_config():
 
     # Arguments.
     args = get_args()
-    # >>>
-    # update_train_iters(args)
-    # <<<
 
     # Retro config.
     config = core_transformer_config_from_args(
