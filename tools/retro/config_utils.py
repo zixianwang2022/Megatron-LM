@@ -305,11 +305,8 @@ class GoogleDocstringParser:
             return self._build_single_meta(section, text)
 
         if ":" not in text:
-            # >>>
-            # raise Exception(f"text '{text}', title '{title}'.")
+            # raise ParseError(f"Expected a colon in {text!r}.")
             return None
-            # <<<
-            raise ParseError(f"Expected a colon in {text!r}.")
 
         # Split spec and description
         before, desc = text.split(":", 1)
@@ -509,11 +506,10 @@ def verify_and_get_config_attr_descs(config_cls, strict_docstring_match=True):
     if strict_docstring_match:
         assert not missing_attr_keys and not extra_attr_keys, f"{config_cls.__name__} docstring is either missing attributes ({', '.join(missing_attr_keys) if missing_attr_keys else '--'}) or contains extra attributes ({', '.join(extra_attr_keys) if extra_attr_keys else '--'})."
 
-    # >>>
+    # @todo
     # Verify attribute type names.
     # for key in config_attr_keys:
     #     ... todo ...
-    # <<<
 
     # Verify base class attributes.
     attrs = {k:v for base_cls in config_cls.__bases__ if dataclasses.is_dataclass(base_cls) for k,v in verify_and_get_config_attr_descs(base_cls, strict_docstring_match=strict_docstring_match).items()}
