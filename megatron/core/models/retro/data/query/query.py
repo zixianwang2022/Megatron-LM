@@ -27,7 +27,7 @@ from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.factory import IndexFactory
 from megatron.core.models.retro.data.index.index import Index
 from megatron.core.models.retro.data.index.utils import get_index_dir
-from megatron.core.models.retro.data.query.chunk_dataset import GPTChunkDataset
+from megatron.core.models.retro.data.query.gpt_chunk_dataset import GPTChunkDataset
 from megatron.core.models.retro.data.utils import (
     GPTToTextDataset,
     get_blocks_by_rank,

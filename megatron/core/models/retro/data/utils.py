@@ -12,9 +12,8 @@ from types import SimpleNamespace
 from typing import Any, Callable, List, Optional
 
 from megatron.core import parallel_state
-from megatron.core.datasets.blended_megatron_dataset_config import BlendedMegatronDatasetConfig
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
-from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset
+from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
 
 from .external_libs import h5py
 
@@ -34,13 +33,8 @@ def retro_makedir(config: RetroPreprocessingConfig, path: str) -> None:
         os.makedirs(path, exist_ok=True)
 
 
-# >>>
-# def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatasetConfig:
-#     return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
-def extract_data_config(config: RetroPreprocessingConfig) -> BlendedMegatronDatasetConfig:
-    '''Extract dataset config from nested GPT dataset.'''
-    return config.retro_gpt_chunk_datasets.train.sample_dataset.config
-# <<<
+def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatasetConfig:
+    return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
 
 
 def get_config_path(project_dir: str) -> str:
@@ -230,7 +224,7 @@ class BlockPathMap:
     '''
 
     @classmethod
-    def from_dir(cls, dir: str, block_size: int, ext: str="hdf5") -> BlockPathMap:
+    def from_dir(cls, dir: str, block_size: int, ext: str="hdf5") -> Any:
         '''Get list of block files, and create map.'''
         assert os.path.isdir(dir), f"directory not found, '{dir}'."
         return cls(sorted(glob.glob(dir + f"/*.{ext}")), block_size)
