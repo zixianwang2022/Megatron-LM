@@ -25,6 +25,12 @@ from .faiss_base import FaissBaseIndex
 
 
 class FaissParallelAddIndex(FaissBaseIndex):
+    '''
+    This class parallelizes both 1) encoding vectors, and 2) adding codes to the
+    index. This class is more performant than naive use of Faiss, because most
+    of the computational work is in encoding the vectors, which is an
+    embarassingly parallel operation.
+    '''
 
     def encode_block(self, index: faiss.Index, embedder: Embedder, text_dataset: GPTToTextDataset, block: dict) -> Tuple[np.ndarray, np.ndarray]:
         '''Encode sub-dataset block, to be later added to index.
@@ -45,6 +51,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         return embeddings, codes
 
     def save_block(self, config: RetroPreprocessingConfig, block: dict, codes: np.ndarray) -> None:
+        '''Save block of codes to disk.'''
         # Save neighbors.
         print_rank_0("save codes.")
         retro_makedir(config, os.path.dirname(block["path"]))
@@ -91,6 +98,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             torch.distributed.barrier()
 
     def add_codes(self, config: RetroPreprocessingConfig) -> None:
+        '''Read codes from disk, and add them to the index.'''
 
         if torch.distributed.get_rank() != 0:
             return
