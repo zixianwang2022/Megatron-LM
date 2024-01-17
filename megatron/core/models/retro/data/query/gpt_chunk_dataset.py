@@ -2,6 +2,7 @@
 
 import torch
 
+from megatron.core.datasets.gpt_dataset import GPTDataset
 from megatron.core.models.retro.data.utils import get_num_chunks_per_sample
 
 from .utils import get_neighbor_dir

@@ -3,7 +3,7 @@
 """Retro preprocessing config."""
 
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from megatron.core.transformer import TransformerConfig
 
@@ -123,39 +123,39 @@ class RetroPreprocessingConfig(TransformerConfig):
     """
 
     # Basic.
-    retro_project_dir: str = None
+    retro_project_dir: Optional[str] = None
     retro_tasks: Union[str, List[str]] = 'build'
-    retro_task_validate: float = None
+    retro_task_validate: Optional[float] = None
     retro_block_size: int = 100000
     retro_doc_block_size: int = 100000
 
     # GPT.
     retro_gpt_seed: int = 1234
-    retro_gpt_data_path: list = None
-    retro_gpt_data_cache_path: str = None
+    retro_gpt_data_path: Optional[List[str]] = None
+    retro_gpt_data_cache_path: Optional[str] = None
     retro_gpt_split: str = '969,30,1'
-    retro_gpt_train_samples: int = None
-    retro_gpt_eval_interval: int = None
-    retro_gpt_eval_iters: int = None
-    retro_gpt_tokenizer_type: str = None
-    retro_gpt_tokenizer_model: str = None
-    retro_gpt_vocab_file: str = None
-    retro_gpt_merge_file: str = None
-    retro_gpt_seq_length: int = None
-    retro_gpt_global_batch_size: int = None
+    retro_gpt_train_samples: Optional[int] = None
+    retro_gpt_eval_interval: Optional[int] = None
+    retro_gpt_eval_iters: Optional[int] = None
+    retro_gpt_tokenizer_type: Optional[str] = None
+    retro_gpt_tokenizer_model: Optional[str] = None
+    retro_gpt_vocab_file: Optional[str] = None
+    retro_gpt_merge_file: Optional[str] = None
+    retro_gpt_seq_length: Optional[int] = None
+    retro_gpt_global_batch_size: Optional[int] = None
     retro_gpt_chunk_length: int = 64
 
     # Bert.
-    retro_bert_vocab_file: str = None
-    retro_bert_tokenizer_type: str = None
+    retro_bert_vocab_file: Optional[str] = None
+    retro_bert_tokenizer_type: Optional[str] = None
     retro_bert_batch_size: int = 128
     retro_bert_max_chunk_length: int = 256
 
     # Index.
     retro_index_nfeats: int = 1024
     retro_index_type: str = 'faiss-par-add'
-    retro_index_str: str = None
-    retro_index_ntrain: int = None
+    retro_index_str: Optional[str] = None
+    retro_index_ntrain: Optional[int] = None
     retro_index_train_load_fraction: float = 1.0
     retro_index_add_load_fraction: float = 1.0
     retro_index_delete_training_embeddings: bool = True

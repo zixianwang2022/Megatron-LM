@@ -33,7 +33,7 @@ class MultiSplitGPTDatasetConfig(GPTDatasetConfig):
 
     split_preprocessing: str = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         assert self.split is not None, "the Retro data pipeline does not support 'blend_per_split'"
         assert self.return_document_ids is not None, "this attribute must be user defined"

@@ -56,7 +56,7 @@ class RetroConfig(TransformerConfig):
     retro_split_preprocessing: str = None
     retro_verify_neighbor_count: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
 
         super().__post_init__()
 

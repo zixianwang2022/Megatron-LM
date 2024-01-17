@@ -59,7 +59,7 @@ class DBDataset(torch.utils.data.Dataset):
             "text": np.array(token_ids, dtype=np.int64),
         }
 
-    def load_doc_tuples(self):
+    def load_doc_tuples(self) -> None:
         '''Load the dataset & document ids.
 
         Load the dataset id & document id of each chunk in the database, to

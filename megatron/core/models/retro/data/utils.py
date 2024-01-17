@@ -1,15 +1,18 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 import glob
-import os
-from collections import defaultdict
-from types import SimpleNamespace
-
 import numpy as np
+import os
 import torch
+from collections import defaultdict
 from tqdm import tqdm
+from types import SimpleNamespace
+from typing import Any, Callable, List, Optional
 
 from megatron.core import parallel_state
+from megatron.core.datasets.blended_megatron_dataset_config import BlendedMegatronDatasetConfig
+from megatron.core.models.retro.data.config import RetroPreprocessingConfig
+from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset
 
 from .external_libs import h5py
 
@@ -28,8 +31,12 @@ def retro_makedir(config: RetroPreprocessingConfig, path: str) -> None:
         os.makedirs(path, exist_ok=True)
 
 
-def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatasetConfig:
-    return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
+# >>>
+# def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatasetConfig:
+#     return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
+def extract_data_config(config: RetroPreprocessingConfig) -> BlendedMegatronDatasetConfig:
+    return config.retro_gpt_chunk_datasets.train.sample_dataset.config
+# <<<
 
 
 def get_config_path(project_dir: str) -> str:
@@ -50,7 +57,7 @@ def get_gpt_data_dir(project_dir: str) -> str:
 class GPTToTextDataset(torch.utils.data.Dataset):
     '''Dataset to convert GPT tokens to text.'''
 
-    def __init__(self, gpt_dataset: MultiSplitGPTDataset, gpt_tokenizer: typing.Any):
+    def __init__(self, gpt_dataset: MultiSplitGPTDataset, gpt_tokenizer: Any):
 
         super().__init__()
 
@@ -67,8 +74,8 @@ class GPTToTextDataset(torch.utils.data.Dataset):
 
 
 def get_blocks(
-    dirname: str, n_samples: int, block_size: int, validate: typing.Callable = None,
-) -> typing.List[dict]:
+    dirname: str, n_samples: int, block_size: int, validate: Callable = None,
+) -> SimpleNamespace:
     '''Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
@@ -138,8 +145,8 @@ def get_blocks(
 
 
 def get_blocks_by_rank(
-    dirname: str, n_samples: int, block_size: int, validate: typing.Callable = None, sample: float = None,
-) -> typing.List[dict]:
+    dirname: str, n_samples: int, block_size: int, validate: Callable = None, sample: float = None,
+) -> SimpleNamespace:
     '''Divide existing and missing blocks evenly across all ranks.
 
     See 'get_blocks()' above for description. The returned lists of existing and
@@ -163,7 +170,7 @@ def get_blocks_by_rank(
 
     # Extend rank's existing and missing blocks (with None) such that all ranks
     # have equal length lists. This allows for easier tracking of global progress.
-    def get_world_max(n):
+    def get_world_max(n: int) -> int:
         n_tensor = torch.cuda.LongTensor([n])
         torch.distributed.all_reduce(n_tensor, op=torch.distributed.ReduceOp.MAX)
         return n_tensor.item()
@@ -188,9 +195,9 @@ def get_blocks_by_rank(
         # to yield `sample * len(blocks)` number of blocks.
 
         # Randomly sample blocks.
-        def sample_blocks(_blocks):
+        def sample_blocks(_blocks: List[Optional[dict]]) -> List[Optional[dict]]:
             n_blocks_sample = int(np.ceil(sample * len(_blocks)))
-            sampled_blocks = [b for b in _blocks if b is not None]
+            sampled_blocks: List[Optional[dict]] = [b for b in _blocks if b is not None]
 
             np.random.seed(None)
             np.random.shuffle(sampled_blocks)
@@ -223,7 +230,7 @@ class BlockPathMap:
         assert os.path.isdir(dir), f"directory not found, '{dir}'."
         return cls(sorted(glob.glob(dir + f"/*.{ext}")), block_size)
 
-    def __init__(self, block_paths: typing.List[str], block_size: int):
+    def __init__(self, block_paths: List[str], block_size: int):
         self.max_idx = 0
         self.block_path_map = {}
         for block_path in block_paths:

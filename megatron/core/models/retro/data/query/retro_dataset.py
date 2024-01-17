@@ -1,10 +1,9 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import os
-
 import numpy as np
+import os
 import torch
-import typing
+from typing import Any, Dict, Optional, Tuple, Union
 
 from megatron.core.models.retro.data.db.dataset import DBDataset
 from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset
@@ -54,7 +53,7 @@ class RetroDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.chunk_dataset.sample_dataset)
 
-    def __getitem__(self, sample_idx: int) -> int:
+    def __getitem__(self, sample_idx: int) -> dict:
 
         n_chunks_per_sample = self.chunk_dataset.n_chunks_per_sample
 
@@ -106,7 +105,7 @@ class RetroDataset(torch.utils.data.Dataset):
         )
 
         # Sample.
-        sample = {
+        sample: Dict[str, Any] = {
             **sample,
             "neighbor_chunks": all_retrieved_chunk_ids,
             "neighbor_tokens": all_retrieved_token_ids,
@@ -117,7 +116,7 @@ class RetroDataset(torch.utils.data.Dataset):
 
 def get_retro_datasets(
     config: RetroConfig, gpt_datasets: dict, sample_length: int, eod_token_id: int,
-) -> typing.Tuple[typing.Optional[RetroDataset], typing.Optional[RetroDataset], typing.Optional[RetroDataset]]:
+) -> Tuple[Optional[RetroDataset], Optional[RetroDataset], Optional[RetroDataset]]:
     '''Get train, valid, test retro datasets.'''
 
     # DB dataset.
@@ -136,7 +135,7 @@ def get_retro_datasets(
     )
 
     # Retro datasets.
-    retro_dataset_map: typing.Dict[str, typing.Union[RetroDataset, None]] = {}
+    retro_dataset_map: Dict[str, Union[RetroDataset, None]] = {}
     query_dir = get_query_dir(config.retro_project_dir)
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 

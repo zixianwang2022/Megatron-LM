@@ -1,18 +1,20 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# >>>
-# import json
-# import numpy as np
+import json
+import numpy as np
 import os
 import torch
-# import types
+import types
+from typing import List, Optional, Tuple
 
-# from megatron.core.models.retro.data.db.utils import (
-#     get_indexed_dataset_infos as get_db_indexed_dataset_infos,
-#     get_merged_train_dataset as get_db_dataset,
-# )
+# >>>
+from megatron.core.models.retro.data.db.dataset import DBDataset
+from megatron.core.models.retro.data.db.utils import (
+    get_indexed_dataset_infos as get_db_indexed_dataset_infos,
+    get_merged_train_dataset as get_db_dataset,
+)
 # from megatron.core.models.retro.data.main import add_retro_args
-# from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets
+from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets, RetroDataset
 from megatron.core.models.retro.data.utils import get_config_path
 # from megatron.global_vars import set_global_variables, set_retro_args
 # from megatron.initialize import (
@@ -118,7 +120,7 @@ class retro:
         return len(cls.db_indexed_dataset_infos)
 
     @classmethod
-    def get_db_indexed_dataset_infos(cls) -> list[dict]:
+    def get_db_indexed_dataset_infos(cls) -> List[Tuple[float, str]]:
         '''Dataset infos, including number of training & sampled sets.'''
         return [(info["ratio"], info["name"]) for info in cls.db_indexed_dataset_infos]
 
@@ -132,12 +134,12 @@ class retro:
         return len(cls.get_db_dataset())
 
     @classmethod
-    def get_db_chunk_gpt(cls, idx: int) -> list[int]:
+    def get_db_chunk_gpt(cls, idx: int) -> List[int]:
         '''Get DB chunk as GPT token ids.'''
         return cls.get_db_dataset()[idx]["text"].tolist()
 
     @classmethod
-    def get_db_chunk_bert(cls, idx: int) -> list[int]:
+    def get_db_chunk_bert(cls, idx: int) -> List[int]:
         '''Get DB chunk as Bert token ids.'''
         return cls.text_to_bert(cls.get_db_chunk_text(idx))
 
@@ -147,7 +149,7 @@ class retro:
         return cls.gpt_to_text(cls.get_db_chunk_gpt(idx))
 
     @classmethod
-    def get_db_chunk_and_continuation_text(cls, idx: int) -> list[str]:
+    def get_db_chunk_and_continuation_text(cls, idx: int) -> List[str]:
         '''Get DB chunk along with continuation, as text.'''
 
         # Modulus used here to match original implementation (i.e., last
@@ -162,7 +164,7 @@ class retro:
     ##############################################
 
     @classmethod
-    def get_pt_num_samples_and_chunks(cls, data_key: str) -> tuple(int, int):
+    def get_pt_num_samples_and_chunks(cls, data_key: str) -> Tuple[int, int]:
         '''Number of samples & chunks (e.g., 32*n_samples) in corpus.'''
         assert hasattr(cls.pt_datasets, data_key), (
             "pretraining set '%s' not found (choices: %s)."
@@ -193,7 +195,7 @@ class retro:
         return getattr(cls.pt_datasets, data_key)[idx]
 
     @classmethod
-    def get_neighbor_tokens(cls, sample_id: int, chunk_id: int, data_key: str="train") -> dict:
+    def get_neighbor_tokens(cls, sample_id: int, chunk_id: int, data_key: str="train") -> Optional[dict]:
         try:
             sample = cls.get_pt_sample(data_key, sample_id)
             sample_token_ids = sample["text"]
@@ -211,7 +213,7 @@ class retro:
 
     @classmethod
     def print_neighbor_texts(cls, sample_id: int, chunk_id: int, data_key: str="train") -> None:
-        tokens = cls.get_neighbor_tokens(sample_id, chunk_id, data_key)
+        tokens: dict = cls.get_neighbor_tokens(sample_id, chunk_id, data_key)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         try:
             print("PRETRAINING CHUNK:")

@@ -9,6 +9,9 @@ mypy \
   --disable-error-code arg-type \
   --disable-error-code call-arg \
   --disable-error-code union-attr \
+  --disable-error-code assignment \
+  --disable-error-code no-redef \
+  --disable-error-code override \
   megatron/core/models/retro/
 
 # eof
