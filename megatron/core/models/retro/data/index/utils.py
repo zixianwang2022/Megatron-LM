@@ -59,10 +59,7 @@ def get_training_data_merged_path(config: RetroPreprocessingConfig) -> str:
 
 def get_added_codes_dir(config: RetroPreprocessingConfig) -> str:
     '''Get directory of saved encodings.'''
-    # >>>
     return os.path.join(get_index_dir(config), "add_codes")
-    # return os.path.join(get_index_dir(config), "add_codes", "hdf5")
-    # <<<
 
 
 def get_added_code_paths(config: RetroPreprocessingConfig) -> List[str]:

@@ -77,23 +77,9 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
             sub_dataset = Subset(text_dataset, range(*block["range"]))
             embeddings = embedder.embed_text_dataset(sub_dataset, "train")
 
-            # >>>
-            # # embeddings_1 = embedder.embed_text_dataset(sub_dataset, "train-1")
-
-            # import math
-            # # import torch.nn.functional as F
-            # from lutil import pax
-            # # err = math.sqrt(F.mse_loss(embeddings, existing_embeddings).item())
-            # err = math.sqrt(((embeddings - existing_embeddings)**2).mean().item())
-            # print("~~~~~~~~~~~ err: %f ~~~~~~~~~~~" % err)
-            # # pax("block, existing_embeddings, embeddings, err")
-            # <<<
-
             # Check equality.
-            # >>>
             print_rank_0(" > validate.")
             assert np.array_equal(existing_embeddings, embeddings)
-            # <<<
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")
@@ -155,22 +141,9 @@ def validate_added_encodings(config: RetroPreprocessingConfig) -> None:
             # Encode block.
             embeddings, codes = index.encode_block(inner_index, embedder, text_dataset, block)
 
-            # >>>
-            # import math
-            # import os
-            # n = (existing_codes != codes).sum() / existing_codes.size
-            # e = math.sqrt(((existing_codes - codes)**2).mean().item())
-            # print("~~~~~~~~~~~ n %f, e %f ... '%s' ~~~~~~~~~~~" % (n, e, os.path.basename(block["path"])))
-
-            # from lutil import pax
-            # pax("existing_codes, codes")
-            # <<<
-
             # Check equality.
-            # >>>
             print_rank_0(" > validate.")
             assert np.array_equal(existing_codes, codes)
-            # <<<
 
         # Synchronize progress across all ranks. (for easier observation)
         print_rank_0(" > waiting for other ranks to finish block.")

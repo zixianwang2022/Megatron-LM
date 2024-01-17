@@ -68,12 +68,6 @@ def build_gpt_chunk_datasets_from_gpt_datasets(
 ) -> dict:
     '''Get train, valid, test GPT chunk datasets.'''
 
-    # Reset iteration.
-    # >>>
-    # config.iteration = 0
-    # config.consumed_train_samples = 0
-    # <<<
-
     # GPT chunk datasets.
     chunk_datasets = {
         key: {

@@ -480,9 +480,6 @@ def merge_dbs(project_dir: str, indexed_dataset_infos: List[dict], db_type: str)
                 if n_docs_key is None:
                     individual_doc_offsets = None
                 else:
-                    # >>>
-                    # individual_doc_offsets = cast(np.ndarray, individual_doc_offsets)
-                    # <<<
                     train_doc_offset = individual_doc_offsets[ds_info["n_docs_train"] - 1, 2]
                     individual_doc_offsets = np.copy(
                         individual_doc_offsets[ds_info["n_docs_train"] :]
