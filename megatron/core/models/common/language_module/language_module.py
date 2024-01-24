@@ -29,11 +29,11 @@ class LanguageModule(MegatronModule):
             Tensor: Loss tensor of dimensions [batch size, sequence_length]
         """
         # [b s] => [s b]
-        labels = labels.transpose(0, 1).contiguous()
+        labels = labels.contiguous()
         loss = tensor_parallel.vocab_parallel_cross_entropy(logits.float(), labels)
 
         # [s b] => [b, s]
-        loss = loss.transpose(0, 1).contiguous()
+        loss = loss.contiguous()
         return loss
 
     def initialize_last_stage_with_word_embeddings(self) -> None:

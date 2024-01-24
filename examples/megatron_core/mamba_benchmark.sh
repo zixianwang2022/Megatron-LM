@@ -15,13 +15,13 @@ export MASTER_ADDR="localhost"
 export MASTER_PORT=54321
 
 python pretrain_mamba.py \
-       --num-layers 24 \
-       --hidden-size 1024 \
+       --num-layers 48 \
+       --hidden-size 2048 \
        --num-attention-heads 16 \
        --micro-batch-size 4 \
        --global-batch-size 4 \
        --seq-length 1024 \
-       --max-position-embeddings 1024 \
+       --max-position-embeddings 2048 \
        --train-iters 10000 \
        --lr-decay-iters 320000 \
        --save $CHECKPOINT_PATH \

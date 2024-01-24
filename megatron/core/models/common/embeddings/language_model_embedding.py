@@ -102,7 +102,7 @@ class LanguageModelEmbedding(MegatronModule):
             embeddings = word_embeddings
 
         # Data format change to avoid explicit tranposes : [b s h] --> [s b h].
-        embeddings = embeddings.transpose(0, 1).contiguous()
+        embeddings = embeddings.contiguous()
 
         if tokentype_ids is not None:
             assert self.tokentype_embeddings is not None
