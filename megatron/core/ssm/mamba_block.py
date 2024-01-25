@@ -8,7 +8,7 @@ from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
 
 from megatron.core.transformer.spec_utils import ModuleSpec, build_module
 from megatron.core.transformer.transformer_config import TransformerConfig
-from megatron.core.transformer.transformer_layer import TransformerLayer, TransformerLayerSubmodules
+from megatron.core.transformer.custom_layers.transformer_engine import TENorm
 from megatron.core.ssm.mamba_layer import MambaLayer
 
 
@@ -98,8 +98,10 @@ class MambaStack(MegatronModule):
             ]
         )
 
-        self.final_norm = (nn.LayerNorm if not rms_norm else RMSNorm)(
-            self.config.hidden_size, eps=self.config.layernorm_epsilon, **factory_kwargs
+        self.final_norm = TENorm(
+                config=self.config,
+                hidden_size=self.config.hidden_size,
+                eps=self.config.layernorm_epsilon,
         )
 
         self.apply(
