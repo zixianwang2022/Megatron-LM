@@ -185,7 +185,7 @@ class T5Model(LanguageModule):
                 self.pre_process,
                 self.share_embeddings_and_output_weights,
             )
-        self.output_layer = self.lm_head.output_layer
+            self.output_layer = self.lm_head.output_layer
 
         if self.share_embeddings_and_output_weights and (self.pre_process or self.post_process):
             self.initialize_last_stage_with_word_embeddings()
