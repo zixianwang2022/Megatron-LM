@@ -132,6 +132,12 @@ class MambaStack(MegatronModule):
         if hidden_states == None:
             hidden_states = self.input_tensor
 
+        if inference_params:
+            # NOTE(bnorick): match InferenceParams attributes for mamba_ssm.utils.generation.InferenceParams,
+            # this hack supports eval
+            inference_params.max_seqlen = inference_params.max_sequence_length
+            inference_params.seqlen_offset = inference_params.sequence_len_offset
+
         for layer in self.layers:
             hidden_states = layer(
                 hidden_states, inference_params=inference_params

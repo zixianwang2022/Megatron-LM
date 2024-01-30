@@ -65,6 +65,9 @@ def score_and_return_on_first_stage(model, tokens, lengths):
         # logits will be meanigful only in the last pipeline stage.
         logits = forward_step(tokens, position_ids, attention_mask)
 
+        # NOTE(bnorick): logits coming from the model had the wrong shape, this hack supports eval
+        logits = torch.transpose(logits, 0, 1)
+
         if mpu.is_pipeline_last_stage():
             # Always the last stage should have an output.
             assert logits is not None
