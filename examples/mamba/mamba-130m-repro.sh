@@ -11,14 +11,11 @@ NAME="mamba-130m-repro"
 IMAGE="/lustre/fsw/portfolios/adlr/users/bnorick/images/mamba-ssm.sqsh"
 OUTPUT_ROOT="/lustre/fsw/portfolios/adlr/users/${USER}"
 
-# ref: https://stackoverflow.com/a/246128
-SOURCE=${BASH_SOURCE[0]}
-while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-  DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
-  SOURCE=$(readlink "$SOURCE")
-  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-done
-SCRIPT_DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+if [ -n "${SLURM_JOB_ID:-}" ] ; then
+SCRIPT_DIR=$(dirname $(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}'))
+else
+SCRIPT_DIR=$(dirname $(realpath "$0"))
+fi
 EXAMPLES_DIR=$(dirname "${SCRIPT_DIR}")
 MEGATRON_LM_DIR=$(dirname "${EXAMPLES_DIR}")
 
