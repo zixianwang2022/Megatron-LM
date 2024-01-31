@@ -4,41 +4,42 @@
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
-
 export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
-# export CUDA_DEVICE_MAX_CONNECTIONS=1
-# export MASTER_ADDR="localhost"
-# export MASTER_PORT=54321
-
 NAME="mamba-130m-repro"
-IMAGE="mamba-ssm-fix.sqsh"
-ROOT_DIR="/lustre/fsw/portfolios/adlr/users/bnorick"
-CODE_DIR="${ROOT_DIR}/dev/experiments/mamba/code/megatron-lm"
-IMAGES_DIR="${ROOT_DIR}/images"
+IMAGE="/lustre/fsw/portfolios/adlr/users/bnorick/images/mamba-ssm.sqsh"
+OUTPUT_ROOT="/lustre/fsw/portfolios/adlr/users/${USER}"
 
-RUN_DIR="${ROOT_DIR}/runs/${NAME}"
+# ref: https://stackoverflow.com/a/246128
+SOURCE=${BASH_SOURCE[0]}
+while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+  SOURCE=$(readlink "$SOURCE")
+  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+SCRIPT_DIR=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
+EXAMPLES_DIR=$(dirname "${SCRIPT_DIR}")
+MEGATRON_LM_DIR=$(dirname "${EXAMPLES_DIR}")
+
+RUN_DIR="${OUTPUT_ROOT}/runs/${NAME}"
 LOGS_DIR="${RUN_DIR}/logs"
 CHECKPOINT_DIR="${RUN_DIR}/checkpoints"
 DATACACHE_DIR="${RUN_DIR}/data-cache"
 TENSORBOARD_DIR="${RUN_DIR}/tensorboard"
-IMAGE_PATH="${IMAGES_DIR}/${IMAGE}"
 
 mkdir -p ${LOGS_DIR}
 mkdir -p ${CHECKPOINT_DIR}
 mkdir -p ${DATACACHE_DIR}
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_PATH=/lustre/fsw/portfolios/llmservice/users/bnorick/data/datasets/pile/gpt-neox-20b
+DATA_PATH=/lustre/fsw/portfolios/adlr/users/bnorick/data/binidx/pile/gpt-neox-20b
 
 SEQ_LEN=2048
 TRAIN_SAMPLES=146484375  # 300B tokens / 2048
 LR_WARMUP_SAMPLES=3906252  # 0.026666679773866397 * 146484375
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
 
-       # --train-iters 10000 \
-       # --lr-decay-iters 320000 \
 options=" \
        --num-layers 24 \
        --hidden-size 768 \
@@ -78,15 +79,13 @@ options=" \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_layer_spec \
        --tensorboard-dir ${TENSORBOARD_DIR}"
 
-# single node test command
-# run_cmd="torchrun --nproc_per_node 8 ${CODE_DIR}/pretrain_mamba.py ${options}"
-run_cmd="python -u ${CODE_DIR}/pretrain_mamba.py ${options}"
+# single node interactive test command
+# run_cmd="torchrun --nproc_per_node 8 ${MEGATRON_LM_DIR}/pretrain_mamba.py ${options}"
+run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_mamba.py ${options}"
 
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
-# echo srun -l --container-image "${IMAGE_PATH}" --container-mounts "/lustre:/lustre" --output="${LOGS_DIR}/%x_%j_${DATETIME}.log" sh -c "${run_cmd}"
-# exit
 srun -l \
-       --container-image "${IMAGE_PATH}" \
+       --container-image "${IMAGE}" \
        --container-mounts "/lustre:/lustre" \
        --output="${LOGS_DIR}/%x_%j_${DATETIME}.log" \
        sh -c "${run_cmd}"
