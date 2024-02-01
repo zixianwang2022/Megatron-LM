@@ -1,6 +1,27 @@
 #!/bin/bash
 
-#SBATCH -p batch_block1,batch_block2,batch_block3,batch_block4 -A llmservice_nlp_fm -t 4:00:00 --nodes=4 --exclusive --gres=gpu:8 --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-adlr-nlp-largelm:mamba-130m-repro
+#SBATCH --ntasks-per-node=8
+#SBATCH --nodes=4
+#SBATCH --partition=large_runs_block1
+#SBATCH --account=adlr_nlp_arch
+#SBATCH --time=1-12:00:00
+#SBATCH --exclusive
+#SBATCH --gres=gpu:8
+#SBATCH --mem=0
+#SBATCH --overcommit
+#SBATCH --dependency=singleton
+#SBATCH --job-name=mamba-repro
+
+# Notes for above:
+# --nodes=1 for getting working on one node
+# --account may be different for you
+#   run `sacctmgr -nP show assoc where user=$(whoami) format=account`
+# --ntasks-per-node=1 when using torchrun
+# --partition=polar for short testing runs
+# --partition=large_runs_block1 for long training runs
+# --time=4:00:00 or less for short testing runs
+
+# set -x
 
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -36,6 +57,14 @@ SEQ_LEN=2048
 TRAIN_SAMPLES=146484375  # 300B tokens / 2048
 LR_WARMUP_SAMPLES=3906252  # 0.026666679773866397 * 146484375
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
+
+# options notes:
+# 32 x 8 = 256 global ("mini-") batch size
+# --micro-batch-size 32 for single node, 8 GPUs total, no grad accum
+# --micro-batch-size 8 for four nodes, 32 GPUs total, no grad accum
+# If the global batch size cannot be computed in one iteration, then there will
+# be more than one iteration, and the gradient will be accumulated over
+# iterations before being applied.
 
 options=" \
        --num-layers 24 \
@@ -76,15 +105,23 @@ options=" \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_layer_spec \
        --tensorboard-dir ${TENSORBOARD_DIR}"
 
-# single node interactive test command
+# We can use torchrun to launch eight processes on a single node using a single
+# SLURM-allocated process on that node (set #SBATCH --ntasks-per-node=1).
+# This is useful if we want to start an eight-GPU training job on a node, from
+# an interactive session (a single SLURM-allocated process).
 # run_cmd="torchrun --nproc_per_node 8 ${MEGATRON_LM_DIR}/pretrain_mamba.py ${options}"
+
+# A job spread over multiple nodes and processes (all allocated via SLURM) will
+# be properly coordinated using the following command (i.e. without using
+# torchrun). I don't know if torchrun works with multi-GPU/multi-node.
 run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_mamba.py ${options}"
 
-DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
+DATETIME=`date +'date_%Y-%m-%d_time_%H-%M-%S'`
+# --container-mount-home doesn't seem to work. Explicit mapping added below.
 srun -l \
-       --container-image "${IMAGE}" \
-       --container-mounts "/lustre:/lustre" \
-       --output="${LOGS_DIR}/%x_%j_${DATETIME}.log" \
-       sh -c "${run_cmd}"
+     --container-image=${IMAGE} \
+     --container-mounts=/lustre:/lustre,/home/${USER}:/home/${USER} \
+     --output="${LOGS_DIR}/%x_%j_${DATETIME}.log" \
+     sh -c "${run_cmd}"
 
 set +x
