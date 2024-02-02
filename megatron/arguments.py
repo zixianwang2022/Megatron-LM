@@ -611,7 +611,7 @@ def _add_network_size_args(parser):
                        help='Maximum number of position embeddings to use. '
                        'This is the size of position embedding.')
     group.add_argument('--position-embedding-type', type=str, default='learned_absolute',
-                       choices=['learned_absolute', 'rope'],
+                       choices=['learned_absolute', 'rope', 'none'],
                        help='Position embedding type.')
     group.add_argument('--use-rotary-position-embeddings', action='store_true',
                        help='Use rotary positional embeddings or not. '
