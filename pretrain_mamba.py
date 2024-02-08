@@ -63,6 +63,7 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
             fp16_lm_cross_entropy=args.fp16_lm_cross_entropy,
             parallel_output=True,
             share_embeddings_and_output_weights=not args.untie_embeddings_and_output_weights,
+            position_embedding_type=args.position_embedding_type
         )
     else:
         raise("Mamba only supported in Mcore!")

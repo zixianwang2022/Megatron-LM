@@ -48,6 +48,7 @@ class MambaModel(LanguageModule):
         fp16_lm_cross_entropy: bool = False,
         parallel_output: bool = True,
         share_embeddings_and_output_weights: bool = False,
+        position_embedding_type: Literal['learned_absolute', 'rope', 'none'] = 'learned_absolute'
     ) -> None:
         super().__init__(config=config)
 
@@ -69,6 +70,7 @@ class MambaModel(LanguageModule):
                 config=self.config,
                 vocab_size=self.vocab_size,
                 max_sequence_length=self.max_sequence_length,
+                position_embedding_type=position_embedding_type
             )
 
         self.decoder = MambaStack(
