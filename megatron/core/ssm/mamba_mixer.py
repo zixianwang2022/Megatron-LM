@@ -87,6 +87,8 @@ class Mamba(MegatronModule):
                 device=torch.cuda.current_device(),
                 dtype=config.params_dtype
             )
+            setattr(self.conv1d.weight, 'tensor_model_parallel', True)
+            setattr(self.conv1d.bias, 'tensor_model_parallel', True)
 
         self.activation = "silu"
         self.act = nn.SiLU()
@@ -150,10 +152,14 @@ class Mamba(MegatronModule):
         A_log = torch.log(A)  # Keep A_log in fp32
         self.A_log = nn.Parameter(A_log)
         self.A_log._no_weight_decay = True
+        setattr(self.A_log, 'tensor_model_parallel', True)
+
 
         # D "skip" parameter
         self.D = nn.Parameter(torch.ones(self.d_inner_local, device=torch.cuda.current_device()))  # Keep in fp32
         self.D._no_weight_decay = True
+        setattr(self.D, 'tensor_model_parallel', True)
+
 
         #self.out_proj = nn.Linear(self.d_inner, self.d_model, bias=bias, **factory_kwargs)
         # assume sequence parallelism: input is partitioned along d_innear and output is partitioned along sequence dimension
@@ -208,16 +214,13 @@ class Mamba(MegatronModule):
         # l b pd --> l b d
         x_dbl = x @ self.x_proj.weight.t()
         x_dbl = reduce_from_tensor_model_parallel_region(x_dbl)
+        x_dbl = copy_to_tensor_model_parallel_region(x_dbl)
 
         # B, C --> l b d_state
         dt, B, C = torch.split(x_dbl, [self.dt_rank, self.d_state, self.d_state], dim=-1)
         
         # l b d --> l b pd
-        dt_dup = copy_to_tensor_model_parallel_region(dt)
-        dt = dt_dup @ self.dt_proj.weight.t()
-
-        #print("u shape", x.size())
-        #print("a shape", A.size())
+        dt = dt @ self.dt_proj.weight.t()
 
         # TODO Vijay: fuse most of the transposes with the GEMMS
         x = rearrange(x, "l b d -> b d l").contiguous()
