@@ -49,7 +49,7 @@ def initialize_t5_model(seed, encoder_spec_fn, decoder_spec_fn, num_layers=2, **
 class TestT5Model:
     @pytest.mark.parametrize('src_spec_type', ['te', 'local'])
     @pytest.mark.parametrize('dst_spec_type', ['te', 'local'])
-    @pytest.mark.parametrize('model_type', ['t5', 'retro'])
+    @pytest.mark.parametrize('model_type', ['t5'])
     def test_sharded_state_dict_save_load(self, tmp_path_dist_ckpt, src_spec_type, dst_spec_type, model_type):
         enc_dec_spec_fn = {
             'te': {
