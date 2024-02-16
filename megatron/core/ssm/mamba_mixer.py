@@ -26,6 +26,12 @@ from megatron.core.parallel_state import (
 )
 from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 
+try:
+    from causal_conv1d import causal_conv1d_fn
+except ImportError:
+    causal_conv1d_fn = None
+
+
 class Mamba(MegatronModule):
     def __init__(
         self,
@@ -178,17 +184,16 @@ class Mamba(MegatronModule):
         hidden_states: (nL, B, D)
         Returns: same shape as hidden_states
         """
-        #print("processing layer_idx", self.layer_idx)
         _, batch, dim = hidden_states.shape
+
+        # (pd, d_state)
+        A = -torch.exp(self.A_log.float())
 
         # pl b d ->  l b p(2d)
         # TODO move transpose to GEMM
         # gather data along sequenece dimension
         hidden_states = gather_from_sequence_parallel_region(hidden_states)
         xz = hidden_states @ self.in_proj.weight.t()
-        #print("xz shape", xz.size())
-
-        A = -torch.exp(self.A_log.float())  # (pd, d_state)
 
         # l b p(2d) --> l b pd  ; l b pd
         x, z = xz.chunk(2, dim=-1)
@@ -198,14 +203,17 @@ class Mamba(MegatronModule):
         x = x.contiguous()
 
         # Compute short convolution
-        ''''
-        if conv_state is not None:
-            # If we just take x[:, :, -self.d_conv :], it will error if seqlen < self.d_conv
-            # Instead F.pad will pad with zeros if seqlen < self.d_conv, and truncate otherwise.
-            conv_state.copy_(F.pad(x, (self.d_conv - x.shape[-1], 0)))  # Update state (B D W)
-        '''
         seqlen = x.size(2)
-        x = self.act(self.conv1d(x)[..., :seqlen])
+        if causal_conv1d_fn is None:
+            x = self.act(self.conv1d(x)[..., :seqlen])
+        else:
+            assert self.activation in ["silu", "swish"]
+            x = causal_conv1d_fn(
+                x=x,
+                weight=rearrange(self.conv1d.weight, "d 1 w -> d w"),
+                bias=self.conv1d.bias,
+                activation=self.activation,
+            )
 
         # transpose b pd l --> l b pd
         x = rearrange(x, "b d l ->  l b d")
@@ -228,7 +236,6 @@ class Mamba(MegatronModule):
         B = rearrange(B, "l b n -> b n l").contiguous()
         C = rearrange(C, "l b n -> b n l").contiguous()
         z = rearrange(z, "l b d -> b d l").contiguous()
-        #print("z shape and x shape", z.size(), x.size())
         y = selective_scan_fn(
             x,
             dt,
