@@ -27,9 +27,15 @@ from megatron.core.parallel_state import (
 from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 
 try:
-    from causal_conv1d import causal_conv1d_fn
+    from mamba_ssm.ops.triton.selective_state_update import selective_state_update
+except ImportError:
+    selective_state_update = None
+
+try:
+    from causal_conv1d import causal_conv1d_fn, causal_conv1d_update
 except ImportError:
     causal_conv1d_fn = None
+    causal_conv1d_update = None
 
 
 class Mamba(MegatronModule):
@@ -99,9 +105,6 @@ class Mamba(MegatronModule):
         self.activation = "silu"
         self.act = nn.SiLU()
 
-        #self.x_proj = nn.Linear(
-        #    self.d_inner, self.dt_rank + self.d_state * 2, bias=False, **factory_kwargs
-        #)
         # assume sequence parallelism is false : output would be allreduced and input is parallel
         # no communication in the backward pass
         self.x_proj = RowParallelLinear( 
@@ -114,8 +117,6 @@ class Mamba(MegatronModule):
             skip_bias_add=False,
         )
 
-        # assume
-        #self.dt_proj = nn.Linear(self.dt_rank, self.d_inner, bias=True, **factory_kwargs)
         # assume no sequence parallelism : input is duplicated and output is partitioned across d_inner
         # communication is only required in backward pass
         self.dt_proj = ColumnParallelLinear(
@@ -181,18 +182,30 @@ class Mamba(MegatronModule):
 
     def forward(self, hidden_states, inference_params=None):
         """
-        hidden_states: (nL, B, D)
+        hidden_states: (nL, B, D) / (L B D)
         Returns: same shape as hidden_states
         """
         _, batch, dim = hidden_states.shape
+
+        conv_state, ssm_state = None, None
+        if inference_params is not None:
+            assert not self.config.sequence_parallel
+            conv_state, ssm_state = self._get_states_from_cache(inference_params, batch)
+            if inference_params.seqlen_offset > 0:
+                # The states are updated inplace
+                out, _, _ = self.step(hidden_states, conv_state, ssm_state)
+                return out
 
         # (pd, d_state)
         A = -torch.exp(self.A_log.float())
 
         # pl b d ->  l b p(2d)
         # TODO move transpose to GEMM
-        # gather data along sequenece dimension
-        hidden_states = gather_from_sequence_parallel_region(hidden_states)
+        if (self.config.sequence_parallel):
+            # gather data along sequenece dimension
+            hidden_states = gather_from_sequence_parallel_region(hidden_states)
+        else:
+            hidden_states = copy_to_tensor_model_parallel_region(hidden_states)
         xz = hidden_states @ self.in_proj.weight.t()
 
         # l b p(2d) --> l b pd  ; l b pd
@@ -203,6 +216,11 @@ class Mamba(MegatronModule):
         x = x.contiguous()
 
         # Compute short convolution
+        if conv_state is not None:
+            # If we just take x[:, :, -self.d_conv :], it will error if seqlen < self.d_conv
+            # Instead F.pad will pad with zeros if seqlen < self.d_conv, and truncate otherwise.
+            conv_state.copy_(F.pad(x, (self.d_conv - x.shape[-1], 0)))  # Update state (B D W)
+
         seqlen = x.size(2)
         if causal_conv1d_fn is None:
             x = self.act(self.conv1d(x)[..., :seqlen])
@@ -246,13 +264,21 @@ class Mamba(MegatronModule):
             z=z,
             delta_bias=self.dt_proj.bias.float(),
             delta_softplus=True,
-            return_last_state=False,
+            return_last_state=ssm_state is not None,
         )
+
+        if ssm_state is not None:
+            y, last_state = y
+            ssm_state.copy_(last_state)
+
         y = rearrange(y, "b d l -> l b d").contiguous()
 
         #  l b pd --> pl b d
         out_full = y @ self.out_proj.weight.t()
-        out = reduce_scatter_to_sequence_parallel_region(out_full)
+        if (self.config.sequence_parallel):
+            out = reduce_scatter_to_sequence_parallel_region(out_full)
+        else:
+            out = reduce_from_tensor_model_parallel_region(out_full)
         return out
 
     def selective_scan_ref(self, u, delta, A, B, C, D=None, z=None, delta_bias=None, delta_softplus=False,
@@ -324,17 +350,103 @@ class Mamba(MegatronModule):
         out = out.to(dtype=dtype_in)
         return out if not return_last_state else (out, last_state)
 
+    def step(self, hidden_states, conv_state, ssm_state):
+        dtype = hidden_states.dtype
+        assert hidden_states.shape[0] == 1, "Only support decoding with 1 token at a time for now"
+
+        # l b d --> b d
+        hidden_states = hidden_states.squeeze(0)
+
+        #  b d_model --> b p(2d)
+        xz = hidden_states @ self.in_proj.weight.t()
+
+        # b p(2d) -->  b pd ; b pd
+        x, z = xz.chunk(2, dim=-1)
+
+        # Conv step
+        if causal_conv1d_update is None:
+            conv_state.copy_(torch.roll(conv_state, shifts=-1, dims=-1))  # Update state (B D W)
+            conv_state[:, :, -1] = x
+            x = torch.sum(conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1)  # (B D)
+            if self.conv1d.bias is not None:
+                x = x + self.conv1d.bias
+            x = self.act(x).to(dtype=dtype)
+        else:
+            x = causal_conv1d_update(
+                x,
+                conv_state,
+                rearrange(self.conv1d.weight, "d 1 w -> d w"),
+                self.conv1d.bias,
+                self.activation,
+            )
+
+        # b pd ---> b d
+        x_db = x @ self.x_proj.weight.t()  # (B dt_rank+2*d_state)
+        x_db = reduce_from_tensor_model_parallel_region(x_db)
+
+        dt, B, C = torch.split(x_db, [self.dt_rank, self.d_state, self.d_state], dim=-1)
+        
+        # b dt_rank  --> b pd
+        dt = dt @ self.dt_proj.weight.t()
+        
+        # (pd, d_state)
+        A = -torch.exp(self.A_log.float())
+
+        # SSM step
+        if selective_state_update is None:
+            # Discretize A and B
+            dt = F.softplus(dt + self.dt_proj.bias.to(dtype=dt.dtype))
+            dA = torch.exp(torch.einsum("bd,dn->bdn", dt, A))
+            dB = torch.einsum("bd,bn->bdn", dt, B)
+            ssm_state.copy_(ssm_state * dA + rearrange(x, "b d -> b d 1") * dB)
+            y = torch.einsum("bdn,bn->bd", ssm_state.to(dtype), C)
+            y = y + self.D.to(dtype) * x
+            y = y * self.act(z)  # (B D)
+        else:
+            y = selective_state_update(
+                ssm_state, x, dt, A, B, C, self.D, z=z, dt_bias=self.dt_proj.bias, dt_softplus=True
+            )
+
+        # b pd --> b d
+        out = y @ self.out_proj.weight.t()
+        out = reduce_from_tensor_model_parallel_region(out)
+        return out.unsqueeze(0), conv_state, ssm_state
+
     def allocate_inference_cache(self, batch_size, max_seqlen, dtype=None, **kwargs):
         device = self.out_proj.weight.device
         conv_dtype = self.conv1d.weight.dtype if dtype is None else dtype
         conv_state = torch.zeros(
-            batch_size, self.d_model * self.expand, self.d_conv, device=device, dtype=conv_dtype
+            batch_size, self.d_inner_local, self.d_conv, device=device, dtype=conv_dtype
         )
         ssm_dtype = self.dt_proj.weight.dtype if dtype is None else dtype
         # ssm_dtype = torch.float32
         ssm_state = torch.zeros(
-            batch_size, self.d_model * self.expand, self.d_state, device=device, dtype=ssm_dtype
+            batch_size, self.d_inner_local, self.d_state, device=device, dtype=ssm_dtype
         )
         return conv_state, ssm_state
 
-
+    def _get_states_from_cache(self, inference_params, batch_size, initialize_states=False):
+        assert self.layer_idx is not None
+        if self.layer_idx not in inference_params.key_value_memory_dict:
+            conv_state = torch.zeros(
+                batch_size,
+                self.d_inner_local,
+                self.d_conv,
+                device=self.conv1d.weight.device,
+                dtype=self.conv1d.weight.dtype,
+            )
+            ssm_state = torch.zeros(
+                batch_size,
+                self.d_inner_local,
+                self.d_state,
+                device=self.dt_proj.weight.device,
+                dtype=self.dt_proj.weight.dtype,
+            )
+            inference_params.key_value_memory_dict[self.layer_idx] = (conv_state, ssm_state)
+        else:
+            conv_state, ssm_state = inference_params.key_value_memory_dict[self.layer_idx]
+            # TODO: What if batch size changes between generation, and we reuse the same states?
+            if initialize_states:
+                conv_state.zero_()
+                ssm_state.zero_()
+        return conv_state, ssm_state
