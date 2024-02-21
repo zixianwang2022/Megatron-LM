@@ -66,8 +66,9 @@ def score_and_return_on_first_stage(model, tokens, lengths):
         logits = forward_step(tokens, position_ids, attention_mask)
 
         # NOTE(bnorick): logits coming from the model had the wrong shape, this hack supports eval
-        if model.module.__class__.__name__ == 'MambaModel':
-            logits = torch.transpose(logits, 0, 1)
+        # RW Update 2/20/24: No longer needed, shapes are correct after TP implementation
+        # if model.module.__class__.__name__ == 'MambaModel':
+        #     logits = torch.transpose(logits, 0, 1)
 
         if mpu.is_pipeline_last_stage():
             # Always the last stage should have an output.
