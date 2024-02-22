@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List
 
-import numpy as np
+import numpy
 
 from megatron.core.datasets.blended_megatron_dataset_config import (
     convert_split_vector_to_split_matrix,
@@ -43,7 +43,7 @@ class MultiSplitGPTDatasetConfig(GPTDatasetConfig):
         assert self.split_preprocessing is not None, "this attribute must be user defined"
         split_vector = parse_and_normalize_split(self.split)
         split_preprocessing_vector = parse_and_normalize_split(self.split_preprocessing)
-        if not np.allclose(split_vector, split_preprocessing_vector):
+        if not numpy.allclose(split_vector, split_preprocessing_vector):
             self.split_matrix = convert_split_vector_to_split_matrix(
                 split_vector, split_preprocessing_vector
             )
@@ -83,14 +83,14 @@ class MultiSplitGPTDataset(GPTDataset):
     ) -> None:
         super().__init__(indexed_dataset, dataset_path, indexed_indices, num_samples, index_split, config)
 
-    def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, idx: int) -> Dict[str, numpy.ndarray]:
         """Abstract method implementation
 
         Args:
             idx (int): The index into the dataset
 
         Returns:
-            Dict[str, np.ndarray]: The text ids and (optionally) the document ids wrapped in a
+            Dict[str, numpy.ndarray]: The text ids and (optionally) the document ids wrapped in a
             dictionary
         """
         text, document_ids = self._query_document_sample_shuffle_indices(idx)

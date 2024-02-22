@@ -4,7 +4,11 @@ import numpy as np
 import torch
 
 from megatron import get_args, get_tokenizer
-from megatron.data.bert_dataset import build_training_sample
+# >>>
+# from megatron.data.bert_dataset import build_training_sample
+# from megatron.core.datasets.bert_dataset import build_training_sample
+from megatron.core.datasets.bert_dataset import BERTMaskedWordPieceDataset
+# <<<
 
 
 class BertEmbeddingDataset(torch.utils.data.Dataset):
@@ -28,10 +32,12 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         # Vocab stuff.
         self.vocab_id_list = list(self.bert_tokenizer.inv_vocab.keys())
         self.vocab_id_to_token_dict = self.bert_tokenizer.inv_vocab
-        self.cls_id = self.bert_tokenizer.cls
-        self.sep_id = self.bert_tokenizer.sep
-        self.mask_id = self.bert_tokenizer.mask
-        self.pad_id = self.bert_tokenizer.pad
+        # >>>
+        # self.cls_id = self.bert_tokenizer.cls
+        # self.sep_id = self.bert_tokenizer.sep
+        # self.mask_id = self.bert_tokenizer.mask
+        # self.pad_id = self.bert_tokenizer.pad
+        # <<<
 
     def __len__(self):
         return len(self.text_dataset)
@@ -55,14 +61,47 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2**32))
 
         # Build sample.
-        sample = build_training_sample([bert_token_ids],
-                                       len(bert_token_ids),
-                                       len(bert_token_ids) + 2, # for cls+sep
-                                       self.vocab_id_list,
-                                       self.vocab_id_to_token_dict,
-                                       self.cls_id, self.sep_id,
-                                       self.mask_id, self.pad_id,
-                                       self.masked_lm_prob, np_rng,
-                                       binary_head=False)
-        sample["seq_length"] = len(sample["text"])
-        return sample
+        # >>>
+        # sample = build_training_sample([bert_token_ids],
+        #                                len(bert_token_ids),
+        #                                len(bert_token_ids) + 2, # for cls+sep
+        #                                self.vocab_id_list,
+        #                                self.vocab_id_to_token_dict,
+        #                                self.cls_id, self.sep_id,
+        #                                self.mask_id, self.pad_id,
+        #                                self.masked_lm_prob, np_rng,
+        #                                binary_head=False)
+        # +++
+        sample = BERTMaskedWordPieceDataset.build_sample(
+            sample=[bert_token_ids],
+            target_sequence_length=len(bert_token_ids),
+            max_sequence_length=len(bert_token_ids) + 2, # for cls+sep
+            vocab_id_list=self.vocab_id_list,
+            vocab_id_to_token_dict=self.vocab_id_to_token_dict,
+            # >>>
+            # cls_id=self.cls_id,
+            # sep_id=self.sep_id,
+            # mask_id=self.mask_id,
+            # pad_id=self.pad_id,
+            tokenizer=self.bert_tokenizer,
+            # <<<
+            masked_lm_prob=self.masked_lm_prob,
+            np_rng=np_rng,
+            classification_head=None)
+        # <<<
+
+    # >>>
+    # def build_sample(cls,
+    #                  sample,
+    #                  target_sequence_length, max_seq_length,
+    #                  vocab_id_list, vocab_id_to_token_dict,
+    #                  cls_id, sep_id, mask_id, pad_id,
+    #                  masked_lm_prob, np_rng, classification_head):
+    #     # <<<
+    #     # >>>
+    #     from lutil import pax
+    #     pax("sample")
+    #     # <<<
+    #     sample["seq_length"] = len(sample["text"])
+    #     return sample
+    # <<<

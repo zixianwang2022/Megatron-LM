@@ -4,12 +4,13 @@ set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NPROCS=8
+NPROCS=1 # 8
 
 ######## Arguments. ########
 
-. args_tiny_wiki.sh
+# . args_tiny_wiki.sh
 # . args_wiki.sh
+. args_nextlm.sh
 
 ######## Command. ########
 
