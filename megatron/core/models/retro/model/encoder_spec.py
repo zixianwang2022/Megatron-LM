@@ -87,6 +87,9 @@ def get_retro_encoder_layer_local_spec() -> ModuleSpec:
         module=MLP,
         submodules=MLPSubmodules(linear_fc1=ColumnParallelLinear, linear_fc2=RowParallelLinear,),
     )
+    spec.submodules.sharded_state_dict_keys_map = {
+        'input_layernorm.': 'self_attention.linear_qkv.layer_norm_',
+    }  # pre_mlp_layernorm doesn't need remapping
     return spec
 
 

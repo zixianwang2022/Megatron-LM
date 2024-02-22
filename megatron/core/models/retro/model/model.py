@@ -1,10 +1,12 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 """Retro Model."""
+from typing import Optional
 
 from torch import Tensor
 
 from megatron.core import InferenceParams
+from megatron.core.dist_checkpointing.mapping import ShardedStateDict
 from megatron.core.models.gpt import GPTModel
 
 
@@ -87,3 +89,10 @@ class RetroModel(GPTModel):
             inference_params=inference_params,
             extra_block_kwargs={"context": context, "context_mask": context_mask,},
         )
+
+    def sharded_state_dict(
+        self, prefix: str = '', sharded_offsets: tuple = (), metadata: Optional[dict] = None
+    ) -> ShardedStateDict:
+        metadata = metadata or {}
+        metadata['non_homogeneous_layers'] = True
+        return super().sharded_state_dict(prefix, sharded_offsets, metadata)
