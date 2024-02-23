@@ -17,15 +17,15 @@ from megatron.core.models.retro.data.utils import get_blocks_by_rank
 from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.model import BertModel
 from megatron.training import setup_model_and_optimizer
-# >>>
-from pretrain_bert import model_provider, get_batch, loss_func, forward_step
-# <<<
 
 from .dataset import BertEmbeddingDataset
 from .external_libs import h5py
 from .huggingface import HuggingfaceEmbedder
 
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+from pretrain_bert import model_provider, get_batch, loss_func, forward_step
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # def model_provider(pre_process=True, post_process=True):
 #     """Build the model."""
 
@@ -49,8 +49,11 @@ from .huggingface import HuggingfaceEmbedder
 #     """Build the batch."""
 
 #     # Items and their type.
-#     keys = ['text', 'types', 'labels', 'is_random', 'loss_mask', 'padding_mask',
-#             'seq_length']
+#     # >>>
+#     # keys = ['text', 'types', 'labels', 'is_random', 'loss_mask', 'padding_mask',
+#     #         'seq_length']
+#     keys = ['text', 'types', 'labels', 'is_random', 'loss_mask', 'padding_mask']
+#     # <<<
 #     datatype = torch.int64
 
 #     # Broadcast data.
@@ -67,10 +70,15 @@ from .huggingface import HuggingfaceEmbedder
 #     loss_mask = data_b['loss_mask'].float()
 #     lm_labels = data_b['labels'].long()
 #     padding_mask = data_b['padding_mask'].long()
-#     seq_lengths = data_b['seq_length'].long()
+#     # >>>
+#     # seq_lengths = data_b['seq_length'].long()
+#     # <<<
 
-#     return tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
-#         seq_lengths
+#     # >>>
+#     # return tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
+#     #     seq_lengths
+#     return tokens, types, sentence_order, loss_mask, lm_labels, padding_mask
+#     # <<<
 
 
 # def loss_func(loss_mask, sentence_order, seq_lengths,
@@ -86,8 +94,12 @@ from .huggingface import HuggingfaceEmbedder
 #     args = get_args()
 
 #     # Get the batch.
+#     # >>>
+#     # tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
+#     #     seq_lengths = get_batch(data_iterator)
 #     tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
-#         seq_lengths = get_batch(data_iterator)
+#         = get_batch(data_iterator)
+#     # <<<
 
 #     if not args.bert_binary_head:
 #         types = None
@@ -96,8 +108,12 @@ from .huggingface import HuggingfaceEmbedder
 #     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
 #                           lm_labels=lm_labels)
 
-#     return output_tensor, partial(loss_func, loss_mask, sentence_order,
-#                                   seq_lengths)
+#     # >>>
+#     # return output_tensor, partial(loss_func, loss_mask, sentence_order,
+#     #                               seq_lengths)
+#     return output_tensor, partial(loss_func, loss_mask, sentence_order)
+#     # <<<
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 def collate_batch(samples):

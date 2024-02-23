@@ -17,9 +17,9 @@ def compare_db():
     def load_file(path):
         with h5py.File(path) as f:
             return {
-                "chunks_valid" : np.copy(f["chunks_valid"])
-                "chunks_invalid" : np.copy(f["chunks_invalid"])
-                "doc_offsets" : np.copy(f["doc_offsets"])
+                "chunks_valid" : np.copy(f["chunks_valid"]),
+                "chunks_invalid" : np.copy(f["chunks_invalid"]),
+                "doc_offsets" : np.copy(f["doc_offsets"]),
             }
 
     mlm_dir = get_db_dir("mlm")
@@ -29,18 +29,21 @@ def compare_db():
 
     assert len(mlm_paths) == len(core_paths)
 
-    for mlm_path, core_path in tqdm(zip(mlm_paths, core_paths), "compare"):
+    for mlm_path, core_path in tqdm(zip(mlm_paths, core_paths), "compare", total=len(mlm_paths)):
 
-        print("~~~")
-        print(f"mlm ... '{mlm_path}'.")
-        print(f"core ... '{core_path}'.")
+        # print("~~~")
+        # print(f"mlm ... '{mlm_path}'.")
+        # print(f"core ... '{core_path}'.")
 
         assert os.path.basename(mlm_path) == os.path.basename(core_path)
 
         mlm_dict = load_file(mlm_path)
         core_dict = load_file(core_path)
 
-        pax("mlm_dict, core_dict")
+        for k in mlm_dict.keys():
+            assert np.array_equal(mlm_dict[k], core_dict[k])
+
+        # pax("mlm_dict, core_dict")
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def compare_emb():
@@ -79,7 +82,7 @@ def compare_emb():
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
 
-    compare_db()
-    # compare_emb()
+    # compare_db()
+    compare_emb()
 
 # eof

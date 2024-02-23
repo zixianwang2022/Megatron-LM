@@ -166,6 +166,8 @@ class BertSampleBuilder(BERTMaskedWordPieceDataset):
 
         tokenizer = get_tokenizer()
 
+        pax({"seq_length": args.seq_length})
+
         config = BERTMaskedWordPieceDatasetConfig(
             is_built_on_rank=lambda: parallel_state.get_tensor_model_parallel_rank() == 0,
             random_seed=args.seed,
@@ -275,6 +277,8 @@ class BertEmbeddingDataset(torch.utils.data.Dataset):
         super().__init__()
 
         args = get_args()
+
+        pax("max_seq_length", {"seq_length": args.seq_length})
 
         # Dataset, tokenizer.
         self.text_dataset = text_dataset
