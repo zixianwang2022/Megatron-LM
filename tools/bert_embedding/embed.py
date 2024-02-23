@@ -17,84 +17,87 @@ from megatron.core.models.retro.data.utils import get_blocks_by_rank
 from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.model import BertModel
 from megatron.training import setup_model_and_optimizer
+# >>>
+from pretrain_bert import model_provider, get_batch, loss_func, forward_step
+# <<<
 
 from .dataset import BertEmbeddingDataset
 from .external_libs import h5py
 from .huggingface import HuggingfaceEmbedder
 
 
-def model_provider(pre_process=True, post_process=True):
-    """Build the model."""
+# def model_provider(pre_process=True, post_process=True):
+#     """Build the model."""
 
-    print_rank_0(" > build Bert model.")
+#     print_rank_0(" > build Bert model.")
 
-    args = get_args()
-    config = core_transformer_config_from_args(args)
-    num_tokentypes = 2 if args.bert_binary_head else 0
-    model = BertModel(
-        config=config,
-        num_tokentypes=num_tokentypes,
-        add_binary_head=args.bert_binary_head,
-        parallel_output=True,
-        pre_process=pre_process,
-        post_process=post_process)
+#     args = get_args()
+#     config = core_transformer_config_from_args(args)
+#     num_tokentypes = 2 if args.bert_binary_head else 0
+#     model = BertModel(
+#         config=config,
+#         num_tokentypes=num_tokentypes,
+#         add_binary_head=args.bert_binary_head,
+#         parallel_output=True,
+#         pre_process=pre_process,
+#         post_process=post_process)
 
-    return model
-
-
-def get_batch(data_iterator):
-    """Build the batch."""
-
-    # Items and their type.
-    keys = ['text', 'types', 'labels', 'is_random', 'loss_mask', 'padding_mask',
-            'seq_length']
-    datatype = torch.int64
-
-    # Broadcast data.
-    if data_iterator is not None:
-        data = next(data_iterator)
-    else:
-        data = None
-    data_b = core.tensor_parallel.broadcast_data(keys, data, datatype)
-
-    # Unpack.
-    tokens = data_b['text'].long()
-    types = data_b['types'].long()
-    sentence_order = data_b['is_random'].long()
-    loss_mask = data_b['loss_mask'].float()
-    lm_labels = data_b['labels'].long()
-    padding_mask = data_b['padding_mask'].long()
-    seq_lengths = data_b['seq_length'].long()
-
-    return tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
-        seq_lengths
+#     return model
 
 
-def loss_func(loss_mask, sentence_order, seq_lengths,
-              output_tensor, non_loss_data):
-    """Loss function. Sequence lengths returned here for progress print-outs."""
-    assert non_loss_data
-    return seq_lengths, output_tensor
+# def get_batch(data_iterator):
+#     """Build the batch."""
+
+#     # Items and their type.
+#     keys = ['text', 'types', 'labels', 'is_random', 'loss_mask', 'padding_mask',
+#             'seq_length']
+#     datatype = torch.int64
+
+#     # Broadcast data.
+#     if data_iterator is not None:
+#         data = next(data_iterator)
+#     else:
+#         data = None
+#     data_b = core.tensor_parallel.broadcast_data(keys, data, datatype)
+
+#     # Unpack.
+#     tokens = data_b['text'].long()
+#     types = data_b['types'].long()
+#     sentence_order = data_b['is_random'].long()
+#     loss_mask = data_b['loss_mask'].float()
+#     lm_labels = data_b['labels'].long()
+#     padding_mask = data_b['padding_mask'].long()
+#     seq_lengths = data_b['seq_length'].long()
+
+#     return tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
+#         seq_lengths
 
 
-def forward_step(data_iterator, model):
-    """Forward step."""
+# def loss_func(loss_mask, sentence_order, seq_lengths,
+#               output_tensor, non_loss_data):
+#     """Loss function. Sequence lengths returned here for progress print-outs."""
+#     assert non_loss_data
+#     return seq_lengths, output_tensor
 
-    args = get_args()
 
-    # Get the batch.
-    tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
-        seq_lengths = get_batch(data_iterator)
+# def forward_step(data_iterator, model):
+#     """Forward step."""
 
-    if not args.bert_binary_head:
-        types = None
+#     args = get_args()
 
-    # Forward pass through the model.
-    output_tensor = model(tokens, padding_mask, tokentype_ids=types,
-                          lm_labels=lm_labels)
+#     # Get the batch.
+#     tokens, types, sentence_order, loss_mask, lm_labels, padding_mask, \
+#         seq_lengths = get_batch(data_iterator)
 
-    return output_tensor, partial(loss_func, loss_mask, sentence_order,
-                                  seq_lengths)
+#     if not args.bert_binary_head:
+#         types = None
+
+#     # Forward pass through the model.
+#     output_tensor = model(tokens, padding_mask, tokentype_ids=types,
+#                           lm_labels=lm_labels)
+
+#     return output_tensor, partial(loss_func, loss_mask, sentence_order,
+#                                   seq_lengths)
 
 
 def collate_batch(samples):

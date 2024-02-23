@@ -93,6 +93,10 @@ def get_bert_embedders(config):
 
 def get_gpt_chunk_datasets(config):
 
+    # >>>
+    args = get_args()
+    # <<<
+
     # Dataset config.
     data_dir = get_gpt_data_dir(config.retro_project_dir)
     blend = list(config.retro_gpt_data_path)
@@ -107,6 +111,22 @@ def get_gpt_chunk_datasets(config):
         split_preprocessing=config.retro_gpt_split,
         path_to_cache=config.retro_gpt_data_cache_path,
         return_document_ids=True,
+        # >>>
+        tokenizer=config.retro_tokenizers.gpt,
+        # is_built_on_rank=is_dataset_built_on_rank,
+        # random_seed=args.seed,
+        # sequence_length=args.seq_length,
+        # blend=args.data_path,
+        # blend_per_split=[args.train_data_path, args.valid_data_path, args.test_data_path],
+        # split=args.split,
+        # path_to_cache=args.data_cache_path,
+        # mock=args.mock_data,
+        # tokenizer=tokenizer,
+        reset_position_ids=args.reset_position_ids,
+        reset_attention_mask=args.reset_attention_mask,
+        eod_mask_loss=args.eod_mask_loss,
+        # vocab_size=get_tokenizer().vocab_size,
+        # <<<
     )
 
     # GPT datasets.
@@ -193,9 +213,9 @@ def get_retro_preprocessing_config():
         args, config_class=RetroPreprocessingConfig)
 
     # Add tools.
+    config.retro_tokenizers = get_tokenizers(config)
     config.retro_bert_embedders = get_bert_embedders(config)
     config.retro_gpt_chunk_datasets = get_gpt_chunk_datasets(config)
-    config.retro_tokenizers = get_tokenizers(config)
 
     return config
 
