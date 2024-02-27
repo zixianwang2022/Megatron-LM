@@ -29,7 +29,7 @@ ARGS+=" \
 
 ######## Command. ########
 
-NPROCS=8
+NPROCS=1 # 8
 CMD="\
     cd ${REPO_DIR} && \
     export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && \

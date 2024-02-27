@@ -56,13 +56,14 @@ CMD="python -u ${REPO_DIR}/pretrain_retro.py ${ARGS}"
 MOUNTS="/home/lmcafee:/home/lmcafee"
 MOUNTS+=",/lustre/fsw/portfolios/adlr/users/lmcafee:/lustre/fsw/portfolios/adlr/users/lmcafee"
 MOUNTS+=",/lustre/fs6/portfolios/adlr/users/lmcafee:/lustre/fs6/portfolios/adlr/users/lmcafee"
-IMAGE="gitlab-master.nvidia.com/adlr/megatron-lm/lmcafee/retro-process-23.04"
+# IMAGE="gitlab-master.nvidia.com/adlr/megatron-lm/lmcafee/retro-process-23.04"
+IMAGE="/lustre/fs6/portfolios/adlr/users/lmcafee/images/retro-process-23.04.sqsh"
 
 srun -l \
      --container-image ${IMAGE} \
      --container-mounts ${MOUNTS} \
      --output=${LOG_DIR}/"%j.log" \
-     --export="PYTHONPATH=${REPO_DIR}:/home/lmcafee/src,CUDA_DEVICE_MAX_CONNECTIONS=1" \
+     --export="PYTHONPATH=${REPO_DIR}:/lustre/fsw/portfolios/adlr/users/lmcafee/lmind,CUDA_DEVICE_MAX_CONNECTIONS=1" \
      sh -c "${CMD}"
 
 # eof

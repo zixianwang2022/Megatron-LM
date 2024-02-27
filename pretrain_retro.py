@@ -184,6 +184,30 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
         split_preprocessing=retro_config.retro_split_preprocessing,
         path_to_cache=args.data_cache_path,
         return_document_ids=False,
+        # >>>
+        tokenizer=get_tokenizer(),
+        reset_position_ids=args.reset_position_ids,
+        reset_attention_mask=args.reset_attention_mask,
+        eod_mask_loss=args.eod_mask_loss,
+        vocab_size=get_tokenizer().vocab_size,
+
+
+
+
+        # is_built_on_rank=is_dataset_built_on_rank,
+        # random_seed=args.seed,
+        # sequence_length=args.seq_length,
+        # blend=args.data_path,
+        blend_per_split=[args.train_data_path, args.valid_data_path, args.test_data_path],
+        # split=args.split,
+        # path_to_cache=args.data_cache_path,
+        mock=args.mock_data,
+        # tokenizer=tokenizer,
+        # reset_position_ids=args.reset_position_ids,
+        # reset_attention_mask=args.reset_attention_mask,
+        # eod_mask_loss=args.eod_mask_loss,
+        # vocab_size=get_tokenizer().vocab_size,
+        # <<<
     )
 
     # GPT datasets.
