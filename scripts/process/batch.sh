@@ -2,8 +2,8 @@
 
 #SBATCH -p batch_block1,batch_block2,batch_block3,batch_block4
 #SBATCH --nodes=16
-#SBATCH --ntasks-per-node=1
-#SBATCH --gpus-per-node=1
+#SBATCH --ntasks-per-node=4
+#SBATCH --gpus-per-node=4
 #SBATCH -A llmservice_nlp_fm
 #SBATCH -t 4:00:00
 #SBATCH --exclusive
@@ -44,11 +44,13 @@ mkdir -p ${LOG_DIR}
 # ... sh -c "pip install h5py transformers faiss-gpu sentencepiece einops; ${CMD}
 
 # CMD="export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && python -u ${REPO_DIR}/tools/retro/preprocess_data.py ${ARGS}"
-CMD="export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && NCCL_CROSS_NIC=2 python -u ${REPO_DIR}/tools/retro/preprocess_data.py ${ARGS}"
+# CMD="export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && NCCL_CROSS_NIC=2 python -u ${REPO_DIR}/tools/retro/preprocess_data.py ${ARGS}"
+CMD="export PYTHONPATH=${REPO_DIR}:/lustre/fs6/portfolios/adlr/users/lmcafee/lmind && NCCL_CROSS_NIC=2 python -u ${REPO_DIR}/tools/retro/preprocess_data.py ${ARGS}"
 MOUNTS="/home/lmcafee:/home/lmcafee"
 MOUNTS+=",/lustre/fsw/portfolios/adlr/users/lmcafee:/lustre/fsw/portfolios/adlr/users/lmcafee"
 MOUNTS+=",/lustre/fs6/portfolios/adlr/users/lmcafee:/lustre/fs6/portfolios/adlr/users/lmcafee"
-IMAGE="gitlab-master.nvidia.com/adlr/megatron-lm/lmcafee/retro-process-23.04"
+# IMAGE="gitlab-master.nvidia.com/adlr/megatron-lm/lmcafee/retro-process-23.04"
+IMAGE="/lustre/fs6/portfolios/adlr/users/lmcafee/images/retro-process-23.04.sqsh"
 srun -l \
      --container-image ${IMAGE} \
      --container-mounts ${MOUNTS} \

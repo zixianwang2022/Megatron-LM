@@ -1,9 +1,9 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# import numpy as np
-# import torch
+import numpy as np
+import torch
 
-# from megatron import get_args, get_tokenizer
+from megatron import get_args, get_tokenizer
 # >>>
 # from megatron.data.bert_dataset import build_training_sample
 # from megatron.core.datasets.bert_dataset import build_training_sample

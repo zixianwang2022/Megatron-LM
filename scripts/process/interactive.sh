@@ -4,7 +4,7 @@ set -u
 unset NCCL_DEBUG
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-NPROCS=1 # 8
+NPROCS=8
 
 ######## Arguments. ########
 
