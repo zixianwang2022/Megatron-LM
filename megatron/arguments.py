@@ -1248,6 +1248,9 @@ def _add_data_args(parser):
                        'dataset2-path ...')
     group.add_argument('--data-cache-path', default=None,
                        help='Path to a directory to hold cached index files.')
+    group.add_argument('--no-mmap-bin-files', action='store_false',
+                       help='Enable mmap-ing of .bin files.',
+                       dest='mmap_bin_files')
     group.add_argument('--mock-data', action='store_true',
                        help='Skip data loading and validation and opt for artificial '
                        'generation of mock data when an implementation is available.')

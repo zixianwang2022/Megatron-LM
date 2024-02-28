@@ -172,7 +172,7 @@ class GPTDataset(MegatronDataset):
         Returns:
             MMapIndexedDataset: The underlying MMapIndexedDataset
         """
-        return MMapIndexedDataset(dataset_path, False)
+        return MMapIndexedDataset(dataset_path, False, mmap=config.mmap_bin_files)
 
     def __len__(self) -> int:
         """Abstract method implementation
