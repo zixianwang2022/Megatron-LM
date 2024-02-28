@@ -469,7 +469,8 @@ def get_optimizer_param_scheduler(optimizer):
         wd_incr_steps=wd_incr_steps,
         wd_incr_style=args.weight_decay_incr_style,
         use_checkpoint_opt_param_scheduler=args.use_checkpoint_opt_param_scheduler,
-        override_opt_param_scheduler=args.override_opt_param_scheduler)
+        override_opt_param_scheduler=args.override_opt_param_scheduler,
+        reset_lr_state=args.reset_lr_state)
 
     return opt_param_scheduler
 
@@ -1296,6 +1297,13 @@ def build_train_valid_test_data_loaders(
     (train_dataloader, valid_dataloader, test_dataloader) = (None, None, None)
 
     print_rank_0('> building train, validation, and test datasets ...')
+
+    if args.reset_dataloader_state:
+        args.iteration = 0
+        args.consumed_train_samples = 0
+        args.consumed_valid_samples = 0
+
+    print_rank_0(f"Data starts at iteration: {args.iteration}, with {args.consumed_train_samples} and {args.consumed_valid_samples} seen train and valid samples respectively")
 
     # Backward compatibility, assume fixed batch size.
     if args.iteration > 0 and args.consumed_train_samples == 0:
