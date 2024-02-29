@@ -1,11 +1,11 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-import json
+# import json
 import numpy as np
-import os
-import torch
-import types
-from typing import List, Optional, Tuple
+# import os
+# import torch
+# import types
+# from typing import List, Optional, Tuple
 
 # >>>
 from megatron.core.models.retro.data.db.dataset import DBDataset
@@ -16,13 +16,14 @@ from megatron.core.models.retro.data.db.utils import (
 # from megatron.core.models.retro.data.main import add_retro_args
 from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets, RetroDataset
 from megatron.core.models.retro.data.utils import get_config_path
-# from megatron.global_vars import set_global_variables, set_retro_args
+# from megatron.global_vars import set_global_variables # , set_retro_args
 # from megatron.initialize import (
 #     initialize_megatron,
 #     _initialize_distributed,
 #     _set_random_seed,
 #     _compile_dependencies,
 # )
+from tools.retro.preprocess_data import get_tokenizers
 # <<<
 
 
@@ -33,49 +34,65 @@ def shorten_str(s: str, n: int) -> str:
 
 class retro:
 
-    config = None
+    args = None
 
     ##############################################
     # initialize.
     ##############################################
 
-    @classmethod
-    def parse_dtype_str(cls, dtype_str: str) -> type:
-        return {
-            "torch.float16": torch.float16,
-            "torch.float32": torch.float32,
-            "torch.bfloat16": torch.bfloat16,
-        }[dtype_str]
+    # @classmethod
+    # def parse_dtype_str(cls, dtype_str: str) -> type:
+    #     return {
+    #         "torch.float16": torch.float16,
+    #         "torch.float32": torch.float32,
+    #         "torch.bfloat16": torch.bfloat16,
+    #     }[dtype_str]
 
-    @classmethod
-    def init_megatron(cls, project_dir: str) -> None:
-        '''Custom initialization of Megatron.'''
+    # @classmethod
+    # def init_megatron(cls, project_dir: str) -> None:
+    #     '''Custom initialization of Megatron.'''
 
-        # Load config.
+    #     # Load config.
+    #     config_path = get_config_path(project_dir)
+    #     assert os.path.exists(config_path), "config.json not found in project dir."
+    #     with open(config_path) as f:
+    #         cls.args = types.SimpleNamespace(**json.load(f))
+    #         cls.args.retro_project_dir = project_dir  # just in case project_dir moved
+    #         cls.args.rank = 0  # override env
+    #         cls.args.world_size = 1  # override env
+    #         # >>>
+    #         # cls.args.params_dtype = cls.parse_dtype_str(cls.args.params_dtype)
+    #         # from lutil import pax
+    #         # pax({"verify": cls.args.no_retro_verify_neighbor_count})
+    #         # cls.args.retro_verify_neighbor_count = False
+    #         # <<<
+    #         # >>>
+    #         # cls.args.rampup_batch_size = None
+    #         # <<<
+
+    #     set_global_variables(cls.args)
+    #     set_retro_args(cls.args)
+    #     _initialize_distributed()
+    #     _set_random_seed(cls.args.seed, cls.args.data_parallel_random_init)
+    #     _compile_dependencies()
+    @classmethod
+    def load_config(cls, project_dir: str) -> None:
+        '''Load Retro's config.json.'''
         config_path = get_config_path(project_dir)
         assert os.path.exists(config_path), "config.json not found in project dir."
         with open(config_path) as f:
-            cls.config = types.SimpleNamespace(**json.load(f))
-            cls.args.retro_project_dir = project_dir  # just in case project_dir moved
-            cls.args.rank = 0  # override env
-            cls.args.world_size = 1  # override env
-            cls.args.params_dtype = cls.parse_dtype_str(cls.args.params_dtype)
-            cls.args.retro_verify_neighbor_count = False
-
-        set_global_variables(cls.args)
-        set_retro_args(cls.args)
-        _initialize_distributed()
-        _set_random_seed(cls.args.seed, cls.args.data_parallel_random_init)
-        _compile_dependencies()
+            return types.SimpleNamespace(**json.load(f))
 
     @classmethod
     def init(cls, project_dir: str) -> None:
         '''Initialize Megatron, tokenizers, and datasets.'''
 
         # Load args.
-        cls.init_megatron(project_dir)
+        # cls.init_megatron(project_dir)
+        cls.config = cls.load_config(project_dir)
 
-        cls.tokenizers = types.SimpleNamespace(gpt=get_gpt_tokenizer(), bert=get_bert_tokenizer(),)
+        # cls.tokenizers = types.SimpleNamespace(gpt=get_gpt_tokenizer(), bert=get_bert_tokenizer(),)
+        cls.tokenizers = get_tokenizers(cls.config)
 
         # Load data.
         cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos()
