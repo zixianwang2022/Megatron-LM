@@ -115,7 +115,8 @@ fi
 # <<<
 
 if [ "$USE_CORE" = "1" ]; then
-    ARGS="${ARGS} --use-mcore-models"
+    ARGS+=" --use-mcore-models"
+    ARGS+=" --transformer-impl transformer_engine"
 fi
 
 # eof
