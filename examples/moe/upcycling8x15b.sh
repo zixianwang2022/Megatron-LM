@@ -20,20 +20,19 @@ NAME="upcycling8x15b"
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-# INIT_CHECKPOINT_DIR="/lustre/fs3/portfolios/adlr/users/rprenger/moe/843m_converted_8_experts"
+INIT_CHECKPOINT_DIR="/lustre/fsw/coreai_dlalgo_llm/yihuih/checkpoints/15b-pp8-tmp"
 
-# CHECKPOINT_DIR="${OUTPUT}/${NAME}"
-# RESET_STATE=""
-# if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
-#     CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
-#     RESET_STATE="--reset-dataloader-state \
-#     --override-opt_param-scheduler \
-#     --reset-lr-state"
-# fi
-
-    # --load ${CHECKPOINT_DIR} \
-    # --data-path ${DATA_BLEND} \
-    # --data-cache-path ${DATA_CACHE} \
+CHECKPOINT_DIR="${OUTPUT}/${NAME}"
+RESET_STATE=""
+if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
+    CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
+    RESET_STATE="--reset-dataloader-state \
+    --reset-lr-state \
+    --override-opt_param-scheduler \
+    --no-load-rng \
+    --no-load-optim
+"
+fi
 
 LOG_DIR="${OUTPUT}/${NAME}/logs"
 mkdir -p ${LOG_DIR}
@@ -44,7 +43,9 @@ DATA_CACHE="${OUTPUT}/data_cache"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
-. ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
+# . ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
+
+. /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
 
 options=" \
     --num-experts 8 \
@@ -88,7 +89,8 @@ options=" \
     --eval-interval 2000 \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model /lustre/share/llmservice_nlp_fm/adlr-nlp-sharing/nvllm-8t/utils/nemotron_2_256k.model \
-    --mock-data \
+    --data-path ${DATA_BLEND} \
+    --data-cache-path ${DATA_CACHE} \
     --save-interval 20000 \
     --save ${OUTPUT}/${NAME} \
     --split 99,1,0 \
@@ -105,6 +107,7 @@ options=" \
     --wandb-project upcycling \
     --wandb-exp-name $NAME $RESET_STATE
 "
+#       --load ${CHECKPOINT_DIR} \
 
 #  ([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && pip install git+https://github.com/fanshiqing/grouped_gemm@main) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 240) ;
 
@@ -112,11 +115,11 @@ options=" \
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
-# srun --jobid=360898 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
+srun --jobid=362390 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
 
 # srun -l \
-     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
-     --container-mounts "/lustre:/lustre/,/home:/home" \
-     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+    #  --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
+    #  --container-mounts "/lustre:/lustre/,/home:/home" \
+    #  --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
 
 set +x
