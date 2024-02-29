@@ -6,7 +6,7 @@
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
-export OUTPUT=/lustre/fsw/portfolios/llmservice/users/yihuih/moe
+export OUTPUT=/lustre/fsw/coreai_dlalgo_llm/yihuih/moe
 
 export SQSH=/lustre/fsw/portfolios/adlr/users/rprenger/sqsh
 
@@ -48,6 +48,8 @@ mkdir -p ${DATA_CACHE}
 
 options=" \
     --num-experts 8 \
+    --moe-grouped-gemm \
+    --transformer-impl transformer_engine \
     --use-mcore-models \
     --no-load-optim \
     --num-experts 8 \
@@ -63,9 +65,11 @@ options=" \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
     --tensor-model-parallel-size 8 \
-    --expert-model-parallel-size 8 \
-    --pipeline-model-parallel-size 1 \
+    --expert-model-parallel-size 1 \
+    --pipeline-model-parallel-size 8 \
+    --num-layers-per-virtual-pipeline-stage 1 \
     --sequence-parallel \
+    --use-distributed-optimizer \
     --num-layers 32 \
     --hidden-size 6144 \
     --num-attention-heads 48 \
@@ -73,8 +77,8 @@ options=" \
     --num-query-groups 8 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 1 \
-    --global-batch-size 128 \
+    --micro-batch-size 2 \
+    --global-batch-size 1024 \
     --train-samples 600000000 \
     --lr 4.5e-4 \
     --min-lr 4.5e-5 \
@@ -83,7 +87,7 @@ options=" \
     --eval-iters 32 \
     --eval-interval 2000 \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model ${ADLR_SHARING}/nvllm-8t/data/tokens-shuffle/utils/nemotron_2_256k.model \
+    --tokenizer-model /lustre/share/llmservice_nlp_fm/adlr-nlp-sharing/nvllm-8t/utils/nemotron_2_256k.model \
     --mock-data \
     --save-interval 20000 \
     --save ${OUTPUT}/${NAME} \
@@ -102,12 +106,17 @@ options=" \
     --wandb-exp-name $NAME $RESET_STATE
 "
 
-# ([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && pip install wandb) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 30) ;
+#  ([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && pip install git+https://github.com/fanshiqing/grouped_gemm@main) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 240) ;
 
-run_cmd="cd $DIR && python -u pretrain_gpt.py ${options}"
 
-srun -l \
-     --container-image "/lustre/fsw/portfolios/llmservice/users/yihuih/images/nemo:24.01.framework.sqsh" \
+run_cmd="
+cd $DIR && python -u pretrain_gpt.py ${options}"
+
+# srun --jobid=360898 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
+
+# srun -l \
+     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
      --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+
 set +x
