@@ -1,11 +1,11 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-# import json
+import json
 import numpy as np
-# import os
+import os
 # import torch
-# import types
-# from typing import List, Optional, Tuple
+import typing as T
+from types import SimpleNamespace
 
 # >>>
 from megatron.core.models.retro.data.db.dataset import DBDataset
@@ -24,6 +24,11 @@ from megatron.core.models.retro.data.utils import get_config_path
 #     _compile_dependencies,
 # )
 from tools.retro.preprocess_data import get_tokenizers
+# from tools.retro.preprocess_data import get_gpt_tokenizer
+# <<<
+
+# >>>
+from lutil import pax
 # <<<
 
 
@@ -56,13 +61,12 @@ class retro:
     #     config_path = get_config_path(project_dir)
     #     assert os.path.exists(config_path), "config.json not found in project dir."
     #     with open(config_path) as f:
-    #         cls.args = types.SimpleNamespace(**json.load(f))
+    #         cls.args = SimpleNamespace(**json.load(f))
     #         cls.args.retro_project_dir = project_dir  # just in case project_dir moved
     #         cls.args.rank = 0  # override env
     #         cls.args.world_size = 1  # override env
     #         # >>>
     #         # cls.args.params_dtype = cls.parse_dtype_str(cls.args.params_dtype)
-    #         # from lutil import pax
     #         # pax({"verify": cls.args.no_retro_verify_neighbor_count})
     #         # cls.args.retro_verify_neighbor_count = False
     #         # <<<
@@ -81,7 +85,7 @@ class retro:
         config_path = get_config_path(project_dir)
         assert os.path.exists(config_path), "config.json not found in project dir."
         with open(config_path) as f:
-            return types.SimpleNamespace(**json.load(f))
+            return SimpleNamespace(**json.load(f))
 
     @classmethod
     def init(cls, project_dir: str) -> None:
@@ -90,15 +94,36 @@ class retro:
         # Load args.
         # cls.init_megatron(project_dir)
         cls.config = cls.load_config(project_dir)
-
-        # cls.tokenizers = types.SimpleNamespace(gpt=get_gpt_tokenizer(), bert=get_bert_tokenizer(),)
+        cls.config.retro_project_dir = project_dir
+        # >>>
+        # cls.config.retro_bert_tokenizer_type = "BertWordPieceLowerCase"
+        # cls.config.retro_bert_vocab_file = os.path.join(
+        #     project_dir,
+        #     "tokenizer/bert-large-uncased-vocab.txt",
+        # )
+        # <<<
         cls.tokenizers = get_tokenizers(cls.config)
+        # cls.gpt_tokenizer = get_gpt_tokenizer(cls.config)
+        
+        # >>>
+        # pax({
+        #     "config" : cls.config,
+        #     "tokenizers" : cls.tokenizers,
+        #     # "gpt_tokenizer" : cls.gpt_tokenizer,
+        # })
+        # <<<
 
         # Load data.
-        cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos()
+        cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos(project_dir)
+        # >>>
+        # pax({f"db_indexed_dataset_infos / {i}":d for i,d in enumerate(cls.db_indexed_dataset_infos)})
+        # <<<
         cls.db_dataset = get_db_dataset()
+        # >>>
+        pax({"db_dataset": cls.db_dataset})
+        # <<<
         pt_train_ds, pt_valid_ds, pt_test_ds = get_retro_datasets()
-        cls.pt_datasets = types.SimpleNamespace(
+        cls.pt_datasets = SimpleNamespace(
             train=pt_train_ds,
             valid=pt_valid_ds,
             test=pt_test_ds,
@@ -137,7 +162,7 @@ class retro:
         return len(cls.db_indexed_dataset_infos)
 
     @classmethod
-    def get_db_indexed_dataset_infos(cls) -> List[Tuple[float, str]]:
+    def get_db_indexed_dataset_infos(cls) -> T.List[T.Tuple[float, str]]:
         '''Dataset infos, including number of training & sampled sets.'''
         return [(info["ratio"], info["name"]) for info in cls.db_indexed_dataset_infos]
 
@@ -151,12 +176,12 @@ class retro:
         return len(cls.get_db_dataset())
 
     @classmethod
-    def get_db_chunk_gpt(cls, idx: int) -> List[int]:
+    def get_db_chunk_gpt(cls, idx: int) -> T.List[int]:
         '''Get DB chunk as GPT token ids.'''
         return cls.get_db_dataset()[idx]["text"].tolist()
 
     @classmethod
-    def get_db_chunk_bert(cls, idx: int) -> List[int]:
+    def get_db_chunk_bert(cls, idx: int) -> T.List[int]:
         '''Get DB chunk as Bert token ids.'''
         return cls.text_to_bert(cls.get_db_chunk_text(idx))
 
@@ -166,7 +191,7 @@ class retro:
         return cls.gpt_to_text(cls.get_db_chunk_gpt(idx))
 
     @classmethod
-    def get_db_chunk_and_continuation_text(cls, idx: int) -> List[str]:
+    def get_db_chunk_and_continuation_text(cls, idx: int) -> T.List[str]:
         '''Get DB chunk along with continuation, as text.'''
 
         # Modulus used here to match original implementation (i.e., last
@@ -181,7 +206,7 @@ class retro:
     ##############################################
 
     @classmethod
-    def get_pt_num_samples_and_chunks(cls, data_key: str) -> Tuple[int, int]:
+    def get_pt_num_samples_and_chunks(cls, data_key: str) -> T.Tuple[int, int]:
         '''Number of samples & chunks (e.g., 32*n_samples) in corpus.'''
         assert hasattr(cls.pt_datasets, data_key), (
             "pretraining set '%s' not found (choices: %s)."
@@ -212,7 +237,7 @@ class retro:
         return getattr(cls.pt_datasets, data_key)[idx]
 
     @classmethod
-    def get_neighbor_tokens(cls, sample_id: int, chunk_id: int, data_key: str="train") -> Optional[dict]:
+    def get_neighbor_tokens(cls, sample_id: int, chunk_id: int, data_key: str="train") -> T.Optional[dict]:
         try:
             sample = cls.get_pt_sample(data_key, sample_id)
             sample_token_ids = sample["text"]

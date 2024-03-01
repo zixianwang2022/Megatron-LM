@@ -145,8 +145,8 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_gpt_chunk_length: int = 64
 
     # Bert.
-    retro_bert_vocab_file: str = None
     retro_bert_tokenizer_type: str = None
+    retro_bert_vocab_file: str = None
     retro_bert_batch_size: int = 128
     retro_bert_max_chunk_length: int = 256
 
