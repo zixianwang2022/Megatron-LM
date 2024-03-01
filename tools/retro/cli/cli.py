@@ -3,38 +3,20 @@
 import json
 import numpy as np
 import os
-# import torch
 import typing as T
 from types import SimpleNamespace
 
-# >>>
 from megatron.arguments import load_retro_config, parse_args, validate_args
 from megatron.core.models.retro.data.db.dataset import DBDataset
 from megatron.core.models.retro.data.db.utils import (
     get_indexed_dataset_infos as get_db_indexed_dataset_infos,
     get_merged_train_dataset as get_db_dataset,
 )
-# from megatron.core.models.retro.data.main import add_retro_args
 from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets, RetroDataset
-# from megatron.core.models.retro.data.utils import get_config_path
-from megatron.global_vars import set_global_variables # , set_retro_args
-# from megatron.initialize import (
-#     initialize_megatron,
-#     _initialize_distributed,
-#     _set_random_seed,
-#     _compile_dependencies,
-# )
-# from megatron.training import get_train_valid_test_num_samples, update_train_iters
+from megatron.global_vars import set_global_variables
 from megatron.training import build_train_valid_test_datasets, update_train_iters
 from pretrain_retro import train_valid_test_datasets_provider
-# from tools.retro.preprocess_data import get_gpt_chunk_datasets, get_tokenizers
 from tools.retro.preprocess_data import get_tokenizers
-# from tools.retro.preprocess_data import get_gpt_tokenizer
-# <<<
-
-# >>>
-from lutil import pax
-# <<<
 
 
 def shorten_str(s: str, n: int) -> str:
@@ -44,174 +26,17 @@ def shorten_str(s: str, n: int) -> str:
 
 class retro:
 
-    # >>>
-    # args = None
-    # <<<
+    config = None
 
     ##############################################
     # initialize.
     ##############################################
 
-    # @classmethod
-    # def parse_dtype_str(cls, dtype_str: str) -> type:
-    #     return {
-    #         "torch.float16": torch.float16,
-    #         "torch.float32": torch.float32,
-    #         "torch.bfloat16": torch.bfloat16,
-    #     }[dtype_str]
-
-    # @classmethod
-    # def init_megatron(cls, project_dir: str) -> None:
-    #     '''Custom initialization of Megatron.'''
-
-    #     # Load config.
-    #     config_path = get_config_path(project_dir)
-    #     assert os.path.exists(config_path), "config.json not found in project dir."
-    #     with open(config_path) as f:
-    #         cls.args = SimpleNamespace(**json.load(f))
-    #         cls.args.retro_project_dir = project_dir  # just in case project_dir moved
-    #         cls.args.rank = 0  # override env
-    #         cls.args.world_size = 1  # override env
-    #         # >>>
-    #         # cls.args.params_dtype = cls.parse_dtype_str(cls.args.params_dtype)
-    #         # pax({"verify": cls.args.no_retro_verify_neighbor_count})
-    #         # cls.args.retro_verify_neighbor_count = False
-    #         # <<<
-    #         # >>>
-    #         # cls.args.rampup_batch_size = None
-    #         # <<<
-
-    #     set_global_variables(cls.args)
-    #     set_retro_args(cls.args)
-    #     _initialize_distributed()
-    #     _set_random_seed(cls.args.seed, cls.args.data_parallel_random_init)
-    #     _compile_dependencies()
-    # @classmethod
-    # def load_config(cls, project_dir: str) -> None:
-    #     '''Load Retro's config.json.'''
-    #     config_path = get_config_path(project_dir)
-    #     assert os.path.exists(config_path), "config.json not found in project dir."
-    #     with open(config_path) as f:
-    #         config = SimpleNamespace(**json.load(f))
-
-    #     # >>>
-    #     # Parse arguments
-    #     args = parse_args(extra_args_provider=None, ignore_unknown_args=False)
-    #     args.retro_project_dir = project_dir
-    #     args.micro_batch_size = 1
-    #     args.num_layers = -1
-    #     args.hidden_size = -1
-    #     args.num_attention_heads = -1
-    #     args.async_tensor_model_parallel_allreduce = False
-    #     validate_args(args)
-    #     set_global_variables(args)
-
-    #     # pax("args")
-    #     # <<<
-
-    #     # >>>
-    #     # args = SimpleNamespace(
-    #     #     rampup_batch_size = None,
-    #     #     global_batch_size = 1,
-    #     #     micro_batch_size = 1,
-    #     #     data_parallel_size = 1,
-    #     #     tensor_model_parallel_size = 1,
-    #     #     pipeline_model_parallel_size = 1,
-    #     #     rank = 0,
-    #     #     # world_size = 1,
-    #     #     tokenizer_type = config.retro_gpt_tokenizer_type,
-    #     #     tokenizer_model = os.path.join(project_dir, config.retro_gpt_tokenizer_model),
-    #     #     make_vocab_size_divisible_by = 128,
-    #     #     enable_one_logger = False,
-    #     #     adlr_autoresume = False,
-    #     #     timing_log_level = 0,
-    #     #     timing_log_option = "minmax",
-    #     #     exit_signal_handler = False,
-
-    #     #     train_data_path = None,
-    #     #     valid_data_path = None,
-    #     #     test_data_path = None,
-    #     #     mock_data = False,
-    #     #     reset_position_ids = False,
-    #     #     reset_attention_mask = False,
-    #     #     eod_mask_loss = False,
-
-    #     #     retro_project_dir = project_dir,
-    #     # )
-
-    #     # from megatron.arguments import validate_args
-
-    #     # validate_args(args)
-    #     # set_global_variables(args)
-
-    #     # from megatron import get_args
-    #     # args = get_args()
-    #     # pax("args")
-    #     # <<<
-
-    #     # >>>
-    #     # from megatron import get_args
-    #     # pax({"args": get_args()}, "config")
-    #     # <<<
-
-    #     return config
-
-    # @classmethod
-    # def init(cls, project_dir: str) -> None:
-    #     '''Initialize Megatron, tokenizers, and datasets.'''
-
-    #     # Load args.
-    #     # >>>
-    #     # cls.init_megatron(project_dir)
-    #     # <<<
-    #     cls.config = cls.load_config(project_dir)
-    #     # cls.config.retro_project_dir = project_dir
-    #     cls.config.retro_tokenizers = get_tokenizers(cls.config)
-
-    #     # Load data.
-    #     cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos(project_dir)
-    #     cls.db_dataset = get_db_dataset(project_dir,
-    #                                     cls.config.retro_gpt_chunk_length,
-    #                                     cls.config.retro_tokenizers.gpt.eod)
-    #     # >>>
-    #     gpt_chunk_datasets = get_gpt_chunk_datasets(
-    #         cls.config,
-    #         # args=SimpleNamespace(
-    #         #     train_data_path = None,
-    #         #     valid_data_path = None,
-    #         #     test_data_path = None,
-    #         #     mock_data = False,
-    #         #     reset_position_ids = False,
-    #         #     reset_attention_mask = False,
-    #         #     eod_mask_loss = False,
-    #         # ),
-    #     )
-    #     pax("gpt_chunk_datasets")
-    #     # <<<
-    #     pt_train_ds, pt_valid_ds, pt_test_ds = get_retro_datasets(
-    #         cls.config,
-    #         ddd,
-    #     )
-    #     # >>>
-    #     pax({"db_dataset": cls.db_dataset}, "pt_train_ds")
-    #     # <<<
-    #     cls.pt_datasets = SimpleNamespace(
-    #         train=pt_train_ds,
-    #         valid=pt_valid_ds,
-    #         test=pt_test_ds,
-    #     )
-
-    #     # Retrieve max saved neighbors.
-    #     for key in vars(cls.pt_datasets):
-    #         getattr(cls.pt_datasets, key).num_neighbors = cls.args.retro_query_num_neighbors_save
-
-    #     # Print usage.
-    #     cls.print_usage()
     @classmethod
     def init(cls, project_dir: str) -> None:
         '''Initialize Megatron, tokenizers, and datasets.'''
 
-        # Init args.
+        # Megatron args.
         args = parse_args(extra_args_provider=None, ignore_unknown_args=False)
         args.retro_project_dir = project_dir
         args.micro_batch_size = 1
@@ -219,46 +44,23 @@ class retro:
         args.hidden_size = 1
         args.num_attention_heads = 1
         args.async_tensor_model_parallel_allreduce = False
+        args.retro_add_retriever = True # for building RetroDataset
         validate_args(args)
         set_global_variables(args)
         update_train_iters(args)
 
-        # Load Retro config.
-        config = load_retro_config(project_dir)
-        config.retro_project_dir = project_dir
-        # args.retro_gpt_tokenizer_type = args.tokenizer_type
-        # args.retro_gpt_tokenizer_model = args.tokenizer_model
-        # args.retro_gpt_data_path = args.data_path
-        # args.retro_gpt_seed = args.seed
+        # Retro config.
+        cls.config = load_retro_config(project_dir)
+        cls.config.retro_project_dir = project_dir
+        cls.config.retro_tokenizers = get_tokenizers(cls.config)
 
-        # pax("config")
-
-        # Tokenizers.
-        config.retro_tokenizers = get_tokenizers(config)
-
-        # >>>
-        # pax("args", {"retro tokenizers": args.retro_tokenizers})
-        # pax("config")
-        # <<<
-
-        # Load data.
+        # Chunk database dataset.
         cls.db_indexed_dataset_infos = get_db_indexed_dataset_infos(project_dir)
         cls.db_dataset = get_db_dataset(project_dir,
-                                        config.retro_gpt_chunk_length,
-                                        config.retro_tokenizers.gpt.eod)
+                                        cls.config.retro_gpt_chunk_length,
+                                        cls.config.retro_tokenizers.gpt.eod)
 
-        # # >>>
-        # gpt_chunk_datasets = get_gpt_chunk_datasets(config)
-        # pax("gpt_chunk_datasets")
-        # # <<<
-        # pt_train_ds, pt_valid_ds, pt_test_ds = get_retro_datasets(
-        #     config,
-        #     gpt_datasets: dict, sample_length: int, eod_token_id: int,
-
-        # train_valid_test_num_samples = get_train_valid_test_num_samples()
-        # pt_train_ds, pt_valid_ds, pt_test_ds = train_valid_test_datasets_provider
-        # pax("train_valid_test_num_samples")
-
+        # Pretraining datasets.
         pt_train_ds, pt_valid_ds, pt_test_ds = build_train_valid_test_datasets(
             train_valid_test_datasets_provider)
         cls.pt_datasets = SimpleNamespace(
@@ -266,21 +68,6 @@ class retro:
             valid=pt_valid_ds,
             test=pt_test_ds,
         )
-
-        pax("pt_train_ds, pt_valid_ds, pt_test_ds")
-
-        # >>>
-        pax({"db_dataset": cls.db_dataset}, "pt_train_ds")
-        # <<<
-
-        # Retrieve max saved neighbors.
-        for key in vars(cls.pt_datasets):
-            getattr(cls.pt_datasets, key).num_neighbors = cls.args.retro_query_num_neighbors_save
-
-        # >>>
-        # # Set args.
-        # cls.args = args
-        # <<<
 
         # Print usage.
         cls.print_usage()
@@ -292,14 +79,14 @@ class retro:
     @classmethod
     def gpt_to_text(cls, token_ids: np.ndarray) -> str:
         '''GPT tokens to text.'''
-        return cls.tokenizers.gpt.detokenize(
+        return cls.config.retro_tokenizers.gpt.detokenize(
             token_ids.tolist() if isinstance(token_ids, np.ndarray) else token_ids
         )
 
     @classmethod
     def text_to_bert(cls, text: str) -> np.ndarray:
         '''Text to Bert tokens.'''
-        return cls.tokenizers.bert.tokenize(text)
+        return cls.config.retro_tokenizers.bert.tokenize(text)
 
     ##############################################
     # chunk db.
@@ -313,7 +100,7 @@ class retro:
     @classmethod
     def get_db_indexed_dataset_infos(cls) -> T.List[T.Tuple[float, str]]:
         '''Dataset infos, including number of training & sampled sets.'''
-        return [(info["ratio"], info["name"]) for info in cls.db_indexed_dataset_infos]
+        return [(info["ratio"], info["prefix"]) for info in cls.db_indexed_dataset_infos]
 
     @classmethod
     def get_db_dataset(cls) -> DBDataset:
