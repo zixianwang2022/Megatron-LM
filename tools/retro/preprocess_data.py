@@ -91,17 +91,9 @@ def get_bert_embedders(config):
     )
 
 
-# >>>
-# def get_gpt_chunk_datasets(config, args=None):
-
-#     # Note: args is manually provided by CLI, because it skips initializing
-#     # Megatron.
-#     if args is None:
-#         args = get_args()
 def get_gpt_chunk_datasets(config):
 
     args = get_args()
-# <<<
 
     # Dataset config.
     data_dir = get_gpt_data_dir(config.retro_project_dir)

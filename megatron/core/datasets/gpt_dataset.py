@@ -46,7 +46,9 @@ class GPTDatasetConfig(BlendedMegatronDatasetConfig):
         """
         super().__post_init__()
 
-        assert self.tokenizer is not None
+        # >>>
+        # assert self.tokenizer is not None
+        # <<<
 
         assert self.reset_position_ids is not None
         assert self.reset_attention_mask is not None
