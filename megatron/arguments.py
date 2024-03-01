@@ -60,6 +60,21 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     return args
 
 
+def load_retro_config(retro_project_dir):
+    '''Load Retro's config.json.'''
+
+    # Retro config path.
+    retro_config_path = get_retro_config_path(retro_project_dir)
+    assert os.path.exists(retro_config_path), \
+        "Retro project dir missing config.json."
+
+    # Load retro config.
+    with open(retro_config_path) as f:
+        retro_config = types.SimpleNamespace(**json.load(f))
+
+    return retro_config
+
+
 def load_retro_args(args):
     """Load predefined args from Retro config (if applicable).
 
@@ -74,14 +89,8 @@ def load_retro_args(args):
     if args.retro_project_dir is None:
         return
 
-    # Retro config path.
-    retro_config_path = get_retro_config_path(args.retro_project_dir)
-    assert os.path.exists(retro_config_path), \
-        "Retro project dir missing config.json."
-
     # Load retro config.
-    with open(retro_config_path) as f:
-        retro_config = types.SimpleNamespace(**json.load(f))
+    retro_config = load_retro_config(args.retro_project_dir)
 
     # Retro data path is relative to project dir (via hard or soft links).
     data_dir = get_retro_data_dir(args.retro_project_dir)
@@ -122,6 +131,10 @@ def load_retro_args(args):
     args.retro_chunk_length = retro_config.retro_gpt_chunk_length
     args.retro_neighbor_dirs = retro_config.retro_neighbor_dirs
     args.retro_split_preprocessing = retro_config.retro_gpt_split
+    # >>>
+    args.retro_bert_tokenizer_type = retro_config.retro_bert_tokenizer_type
+    args.retro_bert_vocab_file = retro_config.retro_bert_vocab_file
+    # <<<
 
 
 def validate_args(args, defaults={}):
