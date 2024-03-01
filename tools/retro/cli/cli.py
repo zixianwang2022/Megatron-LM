@@ -24,8 +24,11 @@ from megatron.global_vars import set_global_variables # , set_retro_args
 #     _set_random_seed,
 #     _compile_dependencies,
 # )
-from megatron.training import update_train_iters
-from tools.retro.preprocess_data import get_gpt_chunk_datasets, get_tokenizers
+# from megatron.training import get_train_valid_test_num_samples, update_train_iters
+from megatron.training import build_train_valid_test_datasets, update_train_iters
+from pretrain_retro import train_valid_test_datasets_provider
+# from tools.retro.preprocess_data import get_gpt_chunk_datasets, get_tokenizers
+from tools.retro.preprocess_data import get_tokenizers
 # from tools.retro.preprocess_data import get_gpt_tokenizer
 # <<<
 
@@ -212,9 +215,9 @@ class retro:
         args = parse_args(extra_args_provider=None, ignore_unknown_args=False)
         args.retro_project_dir = project_dir
         args.micro_batch_size = 1
-        args.num_layers = -1
-        args.hidden_size = -1
-        args.num_attention_heads = -1
+        args.num_layers = 1
+        args.hidden_size = 1
+        args.num_attention_heads = 1
         args.async_tensor_model_parallel_allreduce = False
         validate_args(args)
         set_global_variables(args)
@@ -244,22 +247,31 @@ class retro:
                                         config.retro_gpt_chunk_length,
                                         config.retro_tokenizers.gpt.eod)
 
-        # >>>
-        gpt_chunk_datasets = get_gpt_chunk_datasets(config)
-        pax("gpt_chunk_datasets")
-        # <<<
-        pt_train_ds, pt_valid_ds, pt_test_ds = get_retro_datasets(
-            cls.config,
-            ddd,
-        )
-        # >>>
-        pax({"db_dataset": cls.db_dataset}, "pt_train_ds")
-        # <<<
+        # # >>>
+        # gpt_chunk_datasets = get_gpt_chunk_datasets(config)
+        # pax("gpt_chunk_datasets")
+        # # <<<
+        # pt_train_ds, pt_valid_ds, pt_test_ds = get_retro_datasets(
+        #     config,
+        #     gpt_datasets: dict, sample_length: int, eod_token_id: int,
+
+        # train_valid_test_num_samples = get_train_valid_test_num_samples()
+        # pt_train_ds, pt_valid_ds, pt_test_ds = train_valid_test_datasets_provider
+        # pax("train_valid_test_num_samples")
+
+        pt_train_ds, pt_valid_ds, pt_test_ds = build_train_valid_test_datasets(
+            train_valid_test_datasets_provider)
         cls.pt_datasets = SimpleNamespace(
             train=pt_train_ds,
             valid=pt_valid_ds,
             test=pt_test_ds,
         )
+
+        pax("pt_train_ds, pt_valid_ds, pt_test_ds")
+
+        # >>>
+        pax({"db_dataset": cls.db_dataset}, "pt_train_ds")
+        # <<<
 
         # Retrieve max saved neighbors.
         for key in vars(cls.pt_datasets):
