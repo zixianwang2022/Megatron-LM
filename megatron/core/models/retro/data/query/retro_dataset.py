@@ -152,6 +152,11 @@ def get_retro_datasets(
             retro_dataset_map[data_key] = None
             continue
 
+        # For consistency with preprocessing, the neighbor_dir is overwritten
+        # (from its setting in `build_gpt_chunk_datasets_from_gpt_datasets()`
+        # above). This is one piece -- along with setting data_path and
+        # train_samples from config.json -- of ensuring consistency between
+        # preprocessing and pretraining.
         chunk_dataset = chunk_ds_info["dataset"]
         chunk_ds_info["neighbor_dir"] = os.path.join(
             query_dir, config.retro_neighbor_dirs[data_key],
