@@ -1092,6 +1092,10 @@ def _add_checkpointing_args(parser):
                        help="If '--load' is set, but checkpoint is not found "
                        "(e.g., path typo), then exit instead of random "
                        "initialization.")
+    group.add_argument('--reset-lr-state', action='store_true', 
+                        help='Reset the value of the learning rate scheduler midway through training')
+    group.add_argument('--reset-dataloader-state', action='store_true', 
+                        help='To reset the dataloader state: consumed samples (train and valid) as well as iteration are all set to 0')                       
 
     return parser
 
