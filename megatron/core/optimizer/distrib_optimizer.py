@@ -1,20 +1,19 @@
-# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 
 """Megatron distributed optimizer."""
 
 
-from apex.optimizers import FusedAdam as Adam
-import math
-import torch
 import itertools
+from logging import getLogger
 
-from megatron import get_args
-from megatron import get_timers
-from megatron import print_rank_0
-from megatron.core import mpu, tensor_parallel
+import torch
+from apex.optimizers import FusedAdam as Adam
 
+from .. import tensor_parallel
+from ..distributed import shard_buffer
 from .optimizer import MixedPrecisionOptimizer, _zero_grad_group_helper
-from .utils import shard_buffer
+
+logger = getLogger(__name__)
 
 
 class Range:
@@ -46,7 +45,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         clip_grad: clip gradeints with this global L2 norm. Note
             that clipping is ignored if clip_grad == 0
         log_num_zeros_in_grad: return number of zeros in the gradients.
-        check_for_nan_in_grad: check if gradients have a NaN.
         params_have_main_grad: flag indicating if parameters have
             a `main_grad` field. If this is set, we are assuming
             that the model parameters are store in the `main_grad`
@@ -141,8 +139,8 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         reduce-scatter and all-gather.
         """
 
-        data_parallel_rank = mpu.get_data_parallel_rank(with_context_parallel=True)
-        data_parallel_world_size = mpu.get_data_parallel_world_size(with_context_parallel=True)
+        data_parallel_rank = torch.distributed.get_rank(grad_buffer.data_parallel_group)
+        data_parallel_world_size = grad_buffer.data_parallel_group.size()
 
         bucket = grad_buffer.buckets[bucket_index]
         bucket_buffer = bucket.data
@@ -375,13 +373,15 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         optimizer,
         clip_grad,
         log_num_zeros_in_grad,
-        check_for_nan_in_grad,
         params_have_main_grad,
         fp16,
         bf16,
         params_dtype,
         grad_scaler,
         per_model_grad_buffers,
+        overlap_param_gather,
+        data_parallel_group,
+        data_parallel_group_gloo,
     ):
         """
         See top of class definition for argument descriptions.
@@ -397,7 +397,6 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             optimizer,
             clip_grad,
             log_num_zeros_in_grad,
-            check_for_nan_in_grad,
             params_have_main_grad,
             fp16,
             bf16,
@@ -413,6 +412,8 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         assert per_model_grad_buffers, "grad_buffers must be provided"
         self.grad_buffers = list(itertools.chain(*per_model_grad_buffers.values()))
         self.per_model_grad_buffers = per_model_grad_buffers
+        self.data_parallel_group = data_parallel_group
+        self.data_parallel_group_gloo = data_parallel_group_gloo
         self.gbuf_idx_to_model_idx_map = {}
         gbuf_idx = 0
         for model_idx, grad_buffers in self.per_model_grad_buffers.items():
@@ -455,32 +456,13 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         self.param_buffers = []
         for gbuf_index, grad_buffer in enumerate(self.grad_buffers):
             size_ratio = torch.finfo(grad_buffer.dtype).bits // torch.finfo(params_dtype).bits
+            assert (
+                size_ratio >= 1
+            ), "param_dtype size should be smaller than or equal to grad_dtype size"
             current_param_buffers = []
             for bucket in grad_buffer.buckets:
-
-                # Handle older/newer method for getting untyped storage.
-                try:
-                    storage = bucket.data.untyped_storage()
-                except:
-                    try:
-                        storage = bucket.data.storage()._untyped()
-                    except:
-                        storage = bucket.data.storage().untyped()
-
-                # Typed param buffer.
-                param_buffer = torch.tensor(storage, dtype=params_dtype, device=bucket.data.device)
-
-                # .storage() ignores views / slices, so param_buffer now points to the start
-                # of the grad_buffer instead of to the start of each bucket. As a result,
-                # add bucket.offset to make sure param_buffers point to the right region of
-                # memory.
-                # Since we want the start of each bucket's param_buffer to coincide with the
-                # start of the same bucket's grad_buffer (this ensures that zeroing the grad
-                # buffer does not zero out params in the param_buffer before they are copied
-                # into the model_params), multiply the offset by the size ratio of grads and
-                # params.
-                offset = bucket.offset * size_ratio
-                param_buffer = param_buffer[offset : offset + bucket.data.numel()]
+                param_buffer = bucket.data.view(dtype=params_dtype)
+                param_buffer = param_buffer[: bucket.data.numel()]
                 assert (
                     param_buffer.data_ptr() == bucket.data.data_ptr()
                 ), "param_buffer and grad_buffer for same bucket should start at the same byte address"
@@ -519,7 +501,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             self.param_buffer_copied.append(False)
         self.num_all_gather_handles = len(self.all_gather_handle_index_to_bucket_index_map)
 
-        self.overlap_param_gather = get_args().overlap_param_gather
+        self.overlap_param_gather = overlap_param_gather
         self.remove_pre_hook_handle = None
         if self.overlap_param_gather:
             self.enable_pre_hook()
@@ -665,14 +647,14 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         # Grad scaler.
         if 'grad_scaler' not in state_dict:
             if self.fp16:
-                print_rank_0(
+                logger.info(
                     '***WARNING*** found an old checkpoint, will not ' 'load grad scaler ...'
                 )
         else:
             if self.grad_scaler:
                 self.grad_scaler.load_state_dict(state_dict['grad_scaler'])
             else:
-                print_rank_0(
+                logger.info(
                     '***WARNING*** fould the grad scaler in the '
                     'checkpoint but it is None in the class. '
                     'Skipping loading grad scaler ...'
@@ -690,10 +672,12 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         """
 
         # Data parallelism variables.
-        data_parallel_world_size = mpu.get_data_parallel_world_size(with_context_parallel=True)
-        data_parallel_rank = mpu.get_data_parallel_rank(with_context_parallel=True)
-        data_parallel_group_gloo = mpu.get_data_parallel_group_gloo(with_context_parallel=True)
-        data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS_WITH_CP)
+        data_parallel_world_size = self.data_parallel_group_gloo.size()
+        data_parallel_rank = torch.distributed.get_rank(self.data_parallel_group_gloo)
+        data_parallel_group_gloo = self.data_parallel_group_gloo
+        data_parallel_global_ranks = torch.distributed.get_process_group_ranks(
+            self.data_parallel_group_gloo
+        )
 
         # Collect param states.
         state = {
@@ -778,9 +762,8 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             filename (str): path to save parameter state to.
         """
 
-        data_parallel_rank = mpu.get_data_parallel_rank(with_context_parallel=True)
         state_dict = self.get_parameter_state()
-        if data_parallel_rank == 0:
+        if torch.distributed.get_rank(self.data_parallel_group) == 0:
             torch.save(state_dict, filename)
 
     def load_parameter_state_from_state_dict(self, state_dict):
@@ -795,10 +778,12 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         """
 
         # Data parallelism variables.
-        data_parallel_world_size = mpu.get_data_parallel_world_size(with_context_parallel=True)
-        data_parallel_rank = mpu.get_data_parallel_rank(with_context_parallel=True)
-        data_parallel_group_gloo = mpu.get_data_parallel_group_gloo(with_context_parallel=True)
-        data_parallel_global_ranks = list(mpu._DATA_PARALLEL_GLOBAL_RANKS_WITH_CP)
+        data_parallel_world_size = self.data_parallel_group_gloo.size()
+        data_parallel_rank = torch.distributed.get_rank(self.data_parallel_group_gloo)
+        data_parallel_group_gloo = self.data_parallel_group_gloo
+        data_parallel_global_ranks = torch.distributed.get_process_group_ranks(
+            self.data_parallel_group_gloo
+        )
 
         # Scatter tensors to all DP ranks.
         for gbuf_idx, gbuf_range_maps in enumerate(self.gbuf_ranges):
@@ -848,7 +833,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                                 )
                                 if world_tensor.numel() > numel:
                                     # Truncate extra values, which are padding anyway.
-                                    print_rank_0(
+                                    logger.info(
                                         f"Truncating extra values from checkpoint (numel_in_checkpoint={numel_in_checkpoint}, "
                                         f"numel={numel}, numel_unpadded={numel_unpadded})"
                                     )
@@ -856,7 +841,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                                 elif world_tensor.numel() < numel:
                                     # In this case, numel > world_tensor.numel() (which is numel_in_checkpoint).
                                     # Create new tensor with right number of values, then copy and use new tensor.
-                                    print_rank_0(
+                                    logger.info(
                                         f"Expanding tensor from checkpoint (numel_in_checkpoint={numel_in_checkpoint}, "
                                         f"numel={numel}, numel_unpadded={numel_unpadded})"
                                     )
@@ -868,7 +853,7 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
                                     world_tensor_reshaped[:numel_in_checkpoint].copy_(world_tensor)
                                     world_tensor = world_tensor_reshaped
                             else:
-                                print_rank_0(
+                                logger.info(
                                     "***WARNING*** Using older checkpoint so skipping padding checks"
                                 )
                             gbuf_start_idxs = list(range(0, gbuf_world_numel, gbuf_local_numel))
@@ -913,10 +898,8 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         Args:
             filename (str): path to load parameter state from.
         """
-
-        data_parallel_rank = mpu.get_data_parallel_rank(with_context_parallel=True)
         state_dict = None
-        if data_parallel_rank == 0:
+        if torch.distributed.get_rank(self.data_parallel_group) == 0:
             state_dict = torch.load(filename)
             if "per_bucket_numel_unpadded" in state_dict:
                 per_bucket_numel_unpadded_in_checkpoint = state_dict["per_bucket_numel_unpadded"]
@@ -985,7 +968,10 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
             view_items_per_model_chunk = []
             dtype = self.grad_buffers[gbuf_index].dtype
             for bucket_index, buf in enumerate(buffers):
-                buf_views = shard_buffer(buf)
+                data_parallel_world_size = torch.distributed.get_world_size(
+                    self.data_parallel_group
+                )
+                buf_views = shard_buffer(buf, data_parallel_world_size)
                 view_items_per_model_chunk.insert(
                     0, (gbuf_index, dtype, bucket_index, buf, buf_views)
                 )
@@ -1003,8 +989,8 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
         """
         async_op = self.overlap_param_gather and not force_sync
         if self.update_successful:
-            data_parallel_rank = mpu.get_data_parallel_rank(with_context_parallel=True)
-            data_parallel_group = mpu.get_data_parallel_group(with_context_parallel=True)
+            data_parallel_group = self.data_parallel_group
+            data_parallel_rank = torch.distributed.get_rank(data_parallel_group)
 
             # All-gather updated main params.
             # All param_buf views are guaranteed to have the same number of elements

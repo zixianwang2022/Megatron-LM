@@ -173,12 +173,21 @@ def validate_args(args, defaults={}):
             '--overlap-param-gather only supported with distributed optimizer'
         assert args.overlap_grad_reduce, \
             '--overlap-grad-reduce should be turned on when using --overlap-param-gather'
+        assert args.use_mcore_models, \
+            '--overlap-param-gather only supported with MCore models'
 
     # Parameters dtype.
     args.params_dtype = torch.float
     if args.fp16:
         assert not args.bf16
         args.params_dtype = torch.half
+        # Turn off checking for NaNs in loss and grads if using dynamic loss scaling,
+        # where NaNs in grads / loss are signal to the loss scaler.
+        if not args.loss_scale:
+            args.check_for_nan_in_loss_and_grad = False
+            if args.rank == 0:
+                print('WARNING: Setting args.check_for_nan_in_loss_and_grad to False since '
+                      'dynamic loss scaling is being used')
     if args.bf16:
         assert not args.fp16
         args.params_dtype = torch.bfloat16
@@ -1006,7 +1015,7 @@ def _add_learning_rate_args(parser):
 
     group.add_argument('--lr', type=float, default=None,
                        help='Initial learning rate. Depending on decay style '
-                       'and initial warmup, the learing rate at each '
+                       'and initial warmup, the learning rate at each '
                        'iteration would be different.')
     group.add_argument('--lr-decay-style', type=str, default='linear',
                        choices=['constant', 'linear', 'cosine', 'inverse-square-root'],
@@ -1101,7 +1110,7 @@ def _add_mixed_precision_args(parser):
     group.add_argument('--initial-loss-scale', type=float, default=2**32,
                        help='Initial loss-scale for dynamic loss scaling.')
     group.add_argument('--min-loss-scale', type=float, default=1.0,
-                       help='Minimum loss scale for dynamic loss scale.')
+                       help='Minimum loss scale for dynamic loss scaling.')
     group.add_argument('--loss-scale-window', type=float, default=1000,
                        help='Window over which to raise/lower dynamic scale.')
     group.add_argument('--hysteresis', type=int, default=2,
@@ -1246,6 +1255,9 @@ def _add_data_args(parser):
                        'dataset2-path ...')
     group.add_argument('--data-cache-path', default=None,
                        help='Path to a directory to hold cached index files.')
+    group.add_argument('--no-mmap-bin-files', action='store_false',
+                       help='Enable mmap-ing of .bin files.',
+                       dest='mmap_bin_files')
     group.add_argument('--mock-data', action='store_true',
                        help='Skip data loading and validation and opt for artificial '
                        'generation of mock data when an implementation is available.')
