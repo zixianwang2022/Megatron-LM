@@ -5,10 +5,10 @@ unset NCCL_DEBUG
 
 ######## Task (e.g., db, index, query). ########
 
-# RETRO_TASKS="db-build"
+RETRO_TASKS="db-build"
 # RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-RETRO_TASKS="query-neighbors"
+# RETRO_TASKS="query-neighbors"
 
 RETRO_TASK_VALIDATE=""
 # RETRO_TASK_VALIDATE=1
@@ -18,8 +18,13 @@ RETRO_TASK_VALIDATE=""
 
 ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee"
 
-REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
-RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/micro-wiki-core"
+# >>>
+# REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
+# RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/micro-wiki-core"
+# +++
+REPO_DIR="${ROOT_DIR}/retro/megatrons/bert-embed-mcore"
+RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/micro-wiki-core-bert-embed-core"
+# <<<
 
 # <<<
 # RETRO_INDEX_STR="IVF4096_HNSW4,Flat"
