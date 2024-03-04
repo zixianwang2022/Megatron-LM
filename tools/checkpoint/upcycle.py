@@ -60,6 +60,8 @@ if __name__ == '__main__':
     parser.add_argument('--input_dir', type=str, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--num_experts', type=int, required=True)
+    parser.add_argument('--transformer_impl', type=str, default='local')
+    parser.add_argument('--router_std', type=float, default=0.002)
     args = parser.parse_args()
 
     partitions = [name for name in glob.glob(args.input_dir+'/mp_rank_*')]
@@ -105,26 +107,34 @@ if __name__ == '__main__':
                 router = routers[layer_num]
 
                 # low init value helps upcycling
-                torch.nn.init.normal_(router.weight, mean=0.0, std=0.002)
+                torch.nn.init.normal_(router.weight, mean=0.0, std=args.router_std)
                 
                 new_key = 'decoder.layers.'+m.group(1)+'.mlp.router.weight'
                 router_weight = router.weight.to(v)
                 router_key_values.append((new_key, router_weight))
                 
-                for i in range(args.num_experts):
-                    #new_key = 'decoder.layers.'+m.group(1)+'.mlp.local_experts.'+str(i)+'.linear_fc1.weight'  #works for TE
-                    new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.local_experts.'+str(i)+'.linear_fc1.weight'  #works with local
-                    new_key_values.append((new_key, v.detach().clone()))
+                if args.transformer_impl == 'local':
+                    for i in range(args.num_experts):
+                        #new_key = 'decoder.layers.'+m.group(1)+'.mlp.local_experts.'+str(i)+'.linear_fc1.weight'  #works for TE
+                        new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.local_experts.'+str(i)+'.linear_fc1.weight'  #works with local
+                        new_key_values.append((new_key, v.detach().clone()))
+                else:
+                    new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1' 
+                    new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).view(v.shape[0])))
                 old_keys.append(k)
                 continue
             
             # Turn linear_fc2.weight into local_experts.?.linear_fc2.weight
             m = re.match('^decoder\.layers\.(\d+)\.mlp\.linear_fc2.weight', k)
             if m:
-                for i in range(args.num_experts):
-                    #new_key = 'decoder.layers.'+m.group(1)+'.mlp.local_experts.'+str(i)+'.linear_fc2.weight'  #works for TE
-                    new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.local_experts.'+str(i)+'.linear_fc2.weight'  #works with local
-                    new_key_values.append((new_key, v.detach().clone()))
+                if args.transformer_impl == 'local':
+                    for i in range(args.num_experts):
+                        #new_key = 'decoder.layers.'+m.group(1)+'.mlp.local_experts.'+str(i)+'.linear_fc2.weight'  #works for TE
+                        new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.local_experts.'+str(i)+'.linear_fc2.weight'  #works with local
+                        new_key_values.append((new_key, v.detach().clone()))
+                else:
+                    new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight2' 
+                    new_key_values.append((new_key, v.detach().clone().repeat(1, args.num_experts).t()))
                 old_keys.append(k)
                 continue
         

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b --array=1-30%1
+#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b_test --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -13,7 +13,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="upcycling8x15b"
+NAME="upcycling8x15b_test"
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
@@ -73,8 +73,8 @@ options=" \
     --num-query-groups 8 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 2 \
-    --global-batch-size 1152 \
+    --micro-batch-size 3 \
+    --global-batch-size 576 \
     --train-samples 195312500 \
     --lr-decay-samples 194921874 \
     --lr 4.5e-4 \
@@ -89,7 +89,6 @@ options=" \
     --data-cache-path ${DATA_CACHE} \
     --save-interval 10000 \
     --save ${OUTPUT}/${NAME} \
-    --load ${CHECKPOINT_DIR} \
     --split 99,1,0 \
     --clip-grad 1.0 \
     --weight-decay 0.1 \
@@ -105,17 +104,17 @@ options=" \
     --wandb-exp-name $NAME $RESET_STATE
 "
 
-#  ([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && pip install git+https://github.com/fanshiqing/grouped_gemm@main) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 240) ;
-
+ 
+# ([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && NVTE_FRAMEWORK=pytorch NVTE_WITH_USERBUFFERS=1 MPI_HOME=/usr/local/mpi pip install git+https://github.com/NVIDIA/TransformerEngine.git) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 240) ;
 
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
-# srun --jobid=368307 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
+srun --jobid=368775 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home" --mpi=pmix   bash -c "${run_cmd}"
 
-srun -l \
-     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
-     --container-mounts "/lustre:/lustre/,/home:/home" \
-     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+# srun -l \
+#      --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
+#      --container-mounts "/lustre:/lustre/,/home:/home" \
+#      --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
 
 set +x

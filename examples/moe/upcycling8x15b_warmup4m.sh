@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b --array=1-30%1
+#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=64 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b_warmup4m --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -13,7 +13,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="upcycling8x15b"
+NAME="upcycling8x15b_warmup4m"
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
@@ -77,6 +77,7 @@ options=" \
     --global-batch-size 1152 \
     --train-samples 195312500 \
     --lr-decay-samples 194921874 \
+    --lr-warmup-samples 390625 \
     --lr 4.5e-4 \
     --min-lr 4.5e-5 \
     --lr-decay-style cosine \

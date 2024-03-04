@@ -3,7 +3,7 @@
 #SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_8x843m_init002_it10_z_expmlp --array=1-10%1
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
-export OUTPUT=/lustre/fsw/portfolios/llmservice/users/yihuih/moe
+export OUTPUT=/lustre/fsw/coreai_dlalgo_llm/yihuih/moe
 
 export SQSH=/lustre/fsw/portfolios/adlr/users/rprenger/sqsh
 
@@ -40,7 +40,8 @@ DATA_CACHE="${OUTPUT}/data_cache"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
-. ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
+# . ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
+. /lustre/share/llmservice_nlp_fm/adlr-nlp-sharing/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1.sh
 
 options=" \
     --transformer-impl local \

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:ct8x15b --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -13,7 +13,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="upcycling8x15b"
+NAME="ct15b"
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
@@ -46,8 +46,6 @@ mkdir -p ${DATA_CACHE}
 . /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
 
 options=" \
-    --num-experts 8 \
-    --moe-z-loss-coeff 1e-3 \
     --moe-grouped-gemm \
     --transformer-impl transformer_engine \
     --use-mcore-models \
@@ -77,7 +75,7 @@ options=" \
     --global-batch-size 1152 \
     --train-samples 195312500 \
     --lr-decay-samples 194921874 \
-    --lr 4.5e-4 \
+    --lr 4.5e-5 \
     --min-lr 4.5e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
@@ -111,7 +109,7 @@ options=" \
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
-# srun --jobid=368307 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
+# srun --jobid=362390 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
 
 srun -l \
      --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
