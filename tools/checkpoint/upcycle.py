@@ -3,6 +3,7 @@ import argparse
 import glob
 import os
 import re
+import megatron
 
 def get_layer_num(local_num, partition, PP):
     """
@@ -102,6 +103,9 @@ if __name__ == '__main__':
                 if not (layer_num in routers):
                     routers[layer_num] = torch.nn.Linear(v.size(1), args.num_experts)
                 router = routers[layer_num]
+
+                # low init value helps upcycling
+                torch.nn.init.normal_(router.weight, mean=0.0, std=0.002)
                 
                 new_key = 'decoder.layers.'+m.group(1)+'.mlp.router.weight'
                 router_weight = router.weight.to(v)
