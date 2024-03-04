@@ -222,7 +222,7 @@ def save_config(config):
 
         # >>>
         # Bert config.
-        config_subset["retro_bert_tokenizer_type"] = retro_bert_tokenizer_type
+        config_subset["retro_bert_tokenizer_type"] = config.retro_bert_tokenizer_type
         config_subset["retro_bert_vocab_file"] = config.retro_bert_vocab_file
         # <<<
 
