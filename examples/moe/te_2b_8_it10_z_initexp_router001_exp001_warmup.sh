@@ -1,10 +1,9 @@
 #!/bin/bash
 
-#SBATCH -p batch,backfill,hp -A llmservice_nlp_fm -t 4:00:00 --nodes=32 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:upcycling8x15b_warmup400k_it1_initexp --array=1-10%1
-
+#SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it10_z_initexp_router001_exp001_warmup --array=1-30%1
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
-export OUTPUT=/lustre/fsw/coreai_dlalgo_llm/yihuih/moe
+export OUTPUT=/lustre/fsw/portfolios/llmservice/users/yihuih/moe
 
 export SQSH=/lustre/fsw/portfolios/adlr/users/rprenger/sqsh
 
@@ -13,20 +12,20 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="upcycling8x15b_warmup400k_it1_initexp"
+NAME="te_2b_8_it10_z_initexp_router001_exp001_warmup"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/lustre/fsw/coreai_dlalgo_llm/yihuih/checkpoints/15b/gpt3-8x15b-8t-tp8-pp8"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x2b_TP8_router001_exp001"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
 if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
     CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
     RESET_STATE="--reset-dataloader-state \
-    --reset-lr-state \
     --override-opt_param-scheduler \
+    --reset-lr-state \
     --no-load-rng \
     --no-load-optim
 "
@@ -41,15 +40,14 @@ DATA_CACHE="${OUTPUT}/data_cache"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
-# . ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
-
-. /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
+. ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
 
 options=" \
-    --num-experts 8 \
-    --moe-z-loss-coeff 1e-3 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
+    --use-distributed-optimizer \
+    --num-experts 8 \
+    --moe-z-loss-coeff 1e-3 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
@@ -57,38 +55,34 @@ options=" \
     --no-position-embedding \
     --use-rotary-position-embeddings \
     --rotary-percent 0.5 \
-    --squared-relu \
+    --swiglu \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
-    --exit-signal-handler \
     --tensor-model-parallel-size 8 \
-    --pipeline-model-parallel-size 8 \
+    --pipeline-model-parallel-size 1 \
     --sequence-parallel \
-    --use-distributed-optimizer \
-    --num-layers 32 \
-    --hidden-size 6144 \
-    --num-attention-heads 48 \
-    --group-query-attention \
-    --num-query-groups 8 \
+    --num-layers 24 \
+    --hidden-size 2048 \
+    --num-attention-heads 16 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 2 \
-    --global-batch-size 1152 \
-    --train-samples 19531250 \
-    --lr-decay-samples 19492187 \
-    --lr-warmup-samples 390625 \
-    --lr 4.5e-4 \
-    --min-lr 4.5e-5 \
+    --micro-batch-size 4 \
+    --global-batch-size 512 \
+    --train-samples 26855468 \
+    --lr-decay-samples 25512695 \
+    --lr-warmup-samples 25512 \
+    --lr 2e-4 \
+    --min-lr 1e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
     --eval-iters 32 \
-    --eval-interval 200 \
+    --eval-interval 500 \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model /lustre/share/llmservice_nlp_fm/adlr-nlp-sharing/nvllm-8t/utils/nemotron_2_256k.model \
+    --tokenizer-model $ADLR_SHARING/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_BLEND} \
     --data-cache-path ${DATA_CACHE} \
-    --save-interval 10000 \
+    --save-interval 20000 \
     --save ${OUTPUT}/${NAME} \
     --load ${CHECKPOINT_DIR} \
     --split 99,1,0 \
@@ -96,7 +90,7 @@ options=" \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
-    --init-method-std 0.0134 \
+    --init-method-std 0.014 \
     --log-params-norm \
     --log-num-zeros-in-grad \
     --log-throughput \
@@ -106,17 +100,17 @@ options=" \
     --wandb-exp-name $NAME $RESET_STATE
 "
 
-#  ([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && pip install git+https://github.com/fanshiqing/grouped_gemm@main) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 240) ;
-
-
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
-# srun --jobid=369250 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
+# 
+# srun --jobid=469860 -N1 --tasks-per-node=8 --gpus-per-node=8 -l \
+#      --container-image /lustre/fsw/portfolios/llmservice/users/yihuih/images/24.01.sqsh \
+#      --container-mounts "/lustre:/lustre/,/home:/home" \
+#      bash -c "${run_cmd}"
 
 srun -l \
-     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
+     --container-image /lustre/fsw/portfolios/llmservice/users/yihuih/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
      --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
-
 set +x

@@ -208,7 +208,7 @@ echo $MEGATRON_EXTRA_PARAM
 # Run command
 # ([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && pip install --no-cache-dir wandb sentencepiece git+https://github.com/fanshiqing/grouped_gemm@main) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 240) ;
 
-DIR=`pwd`
+DIR=/home/yihuih/llmservice/moe-mlm
 run_cmd="
     cd $DIR && \
     ${PROFILE_CMD} python -u ${MEGATRON_PATH}/pretrain_gpt.py \

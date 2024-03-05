@@ -14,7 +14,7 @@ export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
 NAME="te_2b_8_it10_z"
 
-DIR=`pwd`
+DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 INIT_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/rprenger/gpt3-2b_TP8_experts_8"

@@ -14,7 +14,7 @@ export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
 NAME="te_ct_2b"
 
-DIR=`pwd`
+DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 INIT_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing/nvllm-1.1t/checkpoints/mcore-version/2b"

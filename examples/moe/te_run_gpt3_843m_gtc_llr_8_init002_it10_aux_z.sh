@@ -14,7 +14,7 @@ export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
 NAME="te_gpt3-843m-multi-1.1t-gtc-llr_experts_8_init002_it25_aux_z"
 
-DIR=`pwd`
+DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 INIT_CHECKPOINT_DIR="/lustre/fs3/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing/nvllm-1.1t/checkpoints/mcore-version/843m"

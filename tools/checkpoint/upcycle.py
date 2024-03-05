@@ -62,6 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_experts', type=int, required=True)
     parser.add_argument('--transformer_impl', type=str, default='local')
     parser.add_argument('--router_std', type=float, default=0.002)
+    parser.add_argument('--expert_std', type=float, default=0)
     args = parser.parse_args()
 
     partitions = [name for name in glob.glob(args.input_dir+'/mp_rank_*')]
@@ -117,7 +118,12 @@ if __name__ == '__main__':
                     for i in range(args.num_experts):
                         #new_key = 'decoder.layers.'+m.group(1)+'.mlp.local_experts.'+str(i)+'.linear_fc1.weight'  #works for TE
                         new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.local_experts.'+str(i)+'.linear_fc1.weight'  #works with local
-                        new_key_values.append((new_key, v.detach().clone()))
+                        if args.expert_std == 0:
+                            new_key_values.append((new_key, v.detach().clone()))
+                        else:
+                            t = v.detach().clone()
+                            t += args.expert_std * torch.randn_like(t)
+                            new_key_values.append((new_key, t))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1' 
                     new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).view(v.shape[0])))
@@ -131,7 +137,12 @@ if __name__ == '__main__':
                     for i in range(args.num_experts):
                         #new_key = 'decoder.layers.'+m.group(1)+'.mlp.local_experts.'+str(i)+'.linear_fc2.weight'  #works for TE
                         new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.local_experts.'+str(i)+'.linear_fc2.weight'  #works with local
-                        new_key_values.append((new_key, v.detach().clone()))
+                        if args.expert_std == 0:
+                            new_key_values.append((new_key, v.detach().clone()))
+                        else:
+                            t = v.detach().clone()
+                            t += args.expert_std * torch.randn_like(t)
+                            new_key_values.append((new_key, t))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight2' 
                     new_key_values.append((new_key, v.detach().clone().repeat(1, args.num_experts).t()))

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_lr1e-5_z --array=1-30%1
+#SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_lr1e-5_z --array=1-30%1
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
 export OUTPUT=/lustre/fsw/portfolios/llmservice/users/yihuih/moe
@@ -14,7 +14,7 @@ export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
 NAME="te_2b_8_lr1e-5_z"
 
-DIR=`pwd`
+DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 INIT_CHECKPOINT_DIR="/lustre/fsw/portfolios/adlr/users/rprenger/gpt3-2b_TP8_experts_8"
@@ -48,7 +48,7 @@ options=" \
     --moe-grouped-gemm \
     --use-distributed-optimizer \
     --num-experts 8 \
-    --moe-z-loss-coeff 1e-3 \    
+    --moe-z-loss-coeff 1e-3 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \

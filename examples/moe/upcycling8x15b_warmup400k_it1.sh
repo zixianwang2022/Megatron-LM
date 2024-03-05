@@ -15,7 +15,7 @@ export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
 NAME="upcycling8x15b_warmup400k_it1"
 
-DIR=`pwd`
+DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
 INIT_CHECKPOINT_DIR="/lustre/fsw/coreai_dlalgo_llm/yihuih/checkpoints/15b/gpt3-15b-8t-tp8-pp8"
