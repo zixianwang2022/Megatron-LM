@@ -5,7 +5,7 @@ The following guide will show you how to quickly get started with Megatron Core.
 
 ### Preparing Your Environment 
 ```
-docker run --ipc=host --shm-size=512m --gpus all -it nvcr.io/nvidia/pytorch:23.09-py3
+docker run --ipc=host --shm-size=512m --gpus all -it nvcr.io/nvidia/pytorch:24.02-py3
 
 pip install megatron_core
 ```
