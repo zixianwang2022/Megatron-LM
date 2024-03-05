@@ -131,10 +131,8 @@ def load_retro_args(args):
     args.retro_chunk_length = retro_config.retro_gpt_chunk_length
     args.retro_neighbor_dirs = retro_config.retro_neighbor_dirs
     args.retro_split_preprocessing = retro_config.retro_gpt_split
-    # >>>
     args.retro_bert_tokenizer_type = retro_config.retro_bert_tokenizer_type
     args.retro_bert_vocab_file = retro_config.retro_bert_vocab_file
-    # <<<
 
 
 def validate_args(args, defaults={}):

@@ -46,9 +46,7 @@ class GPTDatasetConfig(BlendedMegatronDatasetConfig):
         """
         super().__post_init__()
 
-        # >>>
-        # assert self.tokenizer is not None
-        # <<<
+        assert self.tokenizer is not None
 
         assert self.reset_position_ids is not None
         assert self.reset_attention_mask is not None
@@ -323,10 +321,7 @@ class GPTDataset(MegatronDataset):
         num_tokens_per_epoch = self._get_num_tokens_per_epoch()
         num_epochs = self._get_num_epochs(num_tokens_per_epoch)
 
-        # >>>
-        # if not cache_hit and torch.distributed.get_rank() == 0:
         if not cache_hit and (not torch.distributed.is_initialized() or torch.distributed.get_rank() == 0):
-        # <<<
             log_single_rank(
                 logger,
                 logging.INFO,

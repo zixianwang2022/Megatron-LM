@@ -220,11 +220,9 @@ def save_config(config):
         }
         config_subset["retro_block_size"] = config.retro_block_size
 
-        # >>>
         # Bert config.
         config_subset["retro_bert_tokenizer_type"] = config.retro_bert_tokenizer_type
         config_subset["retro_bert_vocab_file"] = config.retro_bert_vocab_file
-        # <<<
 
         # Neighbor directories.
         query_dir = get_query_dir(config.retro_project_dir)
