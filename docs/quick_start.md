@@ -36,10 +36,7 @@ def initialize_distributed(tensor_model_parallel_size = 1, pipeline_model_parall
     rank = int(os.environ['LOCAL_RANK'])
     world_size = torch.cuda.device_count()
     torch.cuda.set_device(rank % torch.cuda.device_count())
-    init_method = 'tcp://'
-    master_ip = os.getenv('MASTER_ADDR', 'localhost')
-    master_port = os.getenv('MASTER_PORT', '6000')
-    init_method += master_ip + ':' + master_port
+    init_method = 'tcp://' + os.getenv('MASTER_ADDR', 'localhost') + ':' + os.getenv('MASTER_PORT', '6000')
     torch.distributed.init_process_group(backend='nccl', world_size=world_size, rank=rank, init_method=init_method)
 
     # Megatron core distributed training initialization
@@ -93,21 +90,14 @@ from functools import partial
 def forward_step_func(data_iterator, model):
    
     def loss_func(loss_mask: torch.Tensor, output_tensor: torch.Tensor):
-    
-        def average_losses_across_data_parallel_group(losses):
-            averaged_losses = torch.cat([loss.clone().detach().view(1) for loss in losses])
-            torch.distributed.all_reduce(averaged_losses, group=parallel_state.get_data_parallel_group())
-            averaged_losses = averaged_losses /torch.distributed.get_world_size(group=parallel_state.get_data_parallel_group())      
-            return averaged_losses
 
         losses = output_tensor.float()
         loss_mask = loss_mask.view(-1).float()
         loss = torch.sum(losses.view(-1) * loss_mask) / loss_mask.sum()
+        # If you have data parallel reduce loss across data parallel groups. 
+        # If pipeline parallel, loss computation is done only in last stage.
 
-        # Reduce loss across data parallel groups.
-        averaged_loss = average_losses_across_data_parallel_group([loss])
-
-        return loss, {'lm loss': averaged_loss[0]}
+        return loss, {'lm loss': loss}
 
     data = next(data_iterator)
     tokens = data['tokens'].to(device)
