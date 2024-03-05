@@ -159,3 +159,7 @@ Copy paste all of the above steps into a file run_simple_mcore_train_loop.py ins
 NUM_GPUS=2
 torchrun --nproc-per-node $NUM_GPUS run_simple_mcore_train_loop.py
 ```
+<br>
+
+### Extending Further
+The above example introduced you to a basic training loop in MCore. To see more advanced examples please look at [pretrain_gpt.py]. That will show you how you can write more complex training loops, involving pipeline parallel, context parallel, rope embeddings, mixture of experts and all other functionalities present in mcore. 
