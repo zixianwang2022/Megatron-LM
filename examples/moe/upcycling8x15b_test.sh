@@ -41,7 +41,7 @@ DATA_CACHE="${OUTPUT}/data_cache"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
-# . ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
+# . /home/yihuih/llmservice/data/8t.sh
 
 . /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
 

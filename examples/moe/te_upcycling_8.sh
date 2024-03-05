@@ -7,7 +7,7 @@
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
-export OUTPUT=/lustre/fsw/portfolios/llmservice/users/yihuih/moe
+export OUTPUT=/home/yihuih/llmservice/moe
 
 export SQSH=/lustre/fsw/portfolios/adlr/users/rprenger/sqsh
 
@@ -44,7 +44,7 @@ DATA_CACHE="${OUTPUT}/data_cache"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
-. ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
+. /home/yihuih/llmservice/data/8t.sh
 
 options=" \
     --transformer-impl transformer_engine \
@@ -79,7 +79,7 @@ options=" \
     --eval-iters 32 \
     --eval-interval 2000 \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model $ADLR_SHARING/nvllm-1.1t/utils/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
+    --tokenizer-model /home/yihuih/llmservice/data/nemotron_2_256k.model \
     --data-path ${DATA_BLEND} \
     --data-cache-path ${DATA_CACHE} \
     --save-interval 20000 \
@@ -104,7 +104,7 @@ run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 #  --jobid=451511 -N1 --gpus-per-node=8
 srun -l \
-     --container-image /lustre/fsw/portfolios/llmservice/users/yihuih/images/24.01.sqsh \
+     --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
      --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
 set +x
