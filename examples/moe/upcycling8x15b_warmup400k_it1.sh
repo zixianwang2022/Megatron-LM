@@ -2,11 +2,8 @@
 
 #SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=128 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b_warmup400k_it1 --array=1-30%1
 
-export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
-export OUTPUT=/lustre/fsw/coreai_dlalgo_llm/yihuih/moe
-
-export SQSH=/lustre/fsw/portfolios/adlr/users/rprenger/sqsh
+export OUTPUT=/home/yihuih/llmservice/moe
 
 export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
@@ -40,10 +37,8 @@ mkdir -p ${TENSORBOARD_DIR}
 DATA_CACHE="${OUTPUT}/data_cache"
 mkdir -p ${DATA_CACHE}
 
-# Get the data blend
-# . ${ADLR_SHARING}/nvllm-1.1t/data/tokens/multi-1.1t-gtc-blend-v0.1-localized.sh
 
-. /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
+. /home/yihuih/llmservice/data/8t.sh
 
 options=" \
     --num-experts 8 \
@@ -85,7 +80,7 @@ options=" \
     --eval-iters 32 \
     --eval-interval 200 \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model /lustre/share/llmservice_nlp_fm/adlr-nlp-sharing/nvllm-8t/utils/nemotron_2_256k.model \
+    --tokenizer-model /home/yihuih/llmservice/data/nemotron_2_256k.model \
     --data-path ${DATA_BLEND} \
     --data-cache-path ${DATA_CACHE} \
     --save-interval 10000 \
@@ -115,7 +110,7 @@ cd $DIR && python -u pretrain_gpt.py ${options}"
 # srun --jobid=368307 -l --nodes=8 --ntasks-per-node=8     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh      --container-mounts "/lustre:/lustre/,/home:/home"    bash -c "${run_cmd}"
 
 srun -l \
-     --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
+     --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
      --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
 
