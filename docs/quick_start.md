@@ -27,6 +27,9 @@ The following utility when called initalizes your distributed setup.
 import torch
 from megatron.core import parallel_state
 
+rank = int(os.environ['LOCAL_RANK'])
+world_size = torch.cuda.device_count()
+
 def initialize_distributed(tensor_model_parallel_size = 1, pipeline_model_parallel_size = 1):
     parallel_state.destroy_model_parallel() 
 
@@ -68,7 +71,7 @@ from megatron.core.datasets.utils import Split
 from megatron.core.datasets.gpt_dataset import GPTDatasetConfig, MockGPTDataset
 
 def get_train_data_iterator():
-    config = GPTDatasetConfig(is_built_on_rank=lambda:(parallel_state.is_pipeline_last_stage() or parallel_state.is_pipeline_first_stage()), random_seed = 0, sequence_length = 64, blend=[50,"dummy], mock=True, reset_position_ids=False, reset_attention_mask=False, eod_mask_loss=False, tokenizer="dummy")
+    config = GPTDatasetConfig(is_built_on_rank=lambda:(parallel_state.is_pipeline_last_stage() or parallel_state.is_pipeline_first_stage()), random_seed = 0, sequence_length = 64, blend=[50,"dummy"], mock=True, reset_position_ids=False, reset_attention_mask=False, eod_mask_loss=False, tokenizer="dummy")
 
     training_data= MockGPTDataset(Split.train, config)
 
