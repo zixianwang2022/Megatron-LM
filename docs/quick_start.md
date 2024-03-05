@@ -24,16 +24,17 @@ The following steps will walk you through how you can create a sample GPT model 
 The following utility when called initalizes your distributed setup. 
 
 ```
+import os
 import torch
 from megatron.core import parallel_state
 
-rank = int(os.environ['LOCAL_RANK'])
-world_size = torch.cuda.device_count()
 
 def initialize_distributed(tensor_model_parallel_size = 1, pipeline_model_parallel_size = 1):
     parallel_state.destroy_model_parallel() 
 
     # Torch setup for distributed training
+    rank = int(os.environ['LOCAL_RANK'])
+    world_size = torch.cuda.device_count()
     torch.cuda.set_device(rank % torch.cuda.device_count())
     init_method = 'tcp://'
     master_ip = os.getenv('MASTER_ADDR', 'localhost')
@@ -51,6 +52,7 @@ The following step shows you how you can quickly create a GPT model. For a list 
 ```
 from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.models.gpt.gpt_model import GPTModel
+from megatron.core.models.gpt.gpt_layer_specs import get_gpt_layer_local_spec
 
 def model_provider():
     """Build the model."""
@@ -91,6 +93,13 @@ from functools import partial
 def forward_step_func(data_iterator, model):
    
     def loss_func(loss_mask: torch.Tensor, output_tensor: torch.Tensor):
+    
+        def average_losses_across_data_parallel_group(losses):
+            averaged_losses = torch.cat([loss.clone().detach().view(1) for loss in losses])
+            torch.distributed.all_reduce(averaged_losses, group=parallel_state.get_data_parallel_group())
+            averaged_losses = averaged_losses /torch.distributed.get_world_size(group=parallel_state.get_data_parallel_group())      
+            return averaged_losses
+
         losses = output_tensor.float()
         loss_mask = loss_mask.view(-1).float()
         loss = torch.sum(losses.view(-1) * loss_mask) / loss_mask.sum()
@@ -119,10 +128,12 @@ The following is the main function that needs to go into your script.
 ```
 from torch.optim import Adam
 from megatron.core.pipeline_parallel.schedules import get_forward_backward_func
+from megatron.core.tensor_parallel.random import model_parallel_cuda_manual_seed
 
 if __name__ == "__main__":
     initialize_distributed(tensor_model_parallel_size=2, pipeline_model_parallel_size=1)
-    
+    model_parallel_cuda_manual_seed(123)
+
     gpt_model = model_provider()
     device = torch.device("cuda")
     gpt_model.to(device)
