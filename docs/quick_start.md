@@ -13,9 +13,13 @@ pip install megatron_core
 
 ### Writing Your First Training Loop
 The following steps will walk you through how you can create a sample GPT model split across tensors (Tensor model parallel ) on 2 GPUS, and run a forward pass through it using a MockGPT dataset helper class that we created in Megatron core. 
+
 <br>
+
 **NOTE: All of the folowing steps needs to be put into a script and then run as explained in the last step** 
+
 <br>
+
 **STEP 1 - Initialize Distributed Training and Model parallel setup**
 The following utility when called initalizes your distributed setup. 
 
