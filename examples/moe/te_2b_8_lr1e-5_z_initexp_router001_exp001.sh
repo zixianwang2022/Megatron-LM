@@ -1,6 +1,9 @@
 #!/bin/bash
 
-#SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_lr1e-5_z_initexp_router001_exp001 --array=1-30%1
+##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_lr1e-5_z_initexp_router001_exp001 --array=1-30%1
+
+#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:te_2b_8_lr1e-5_z_initexp_router001_exp001
+
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
 export OUTPUT=/home/yihuih/llmservice/moe
@@ -104,13 +107,13 @@ run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
 # 
-srun --jobid=469860 -N1 --tasks-per-node=8 --gpus-per-node=8 -l \
-     --container-image /home/yihuih/llmservice/images/24.01.sqsh \
-     --container-mounts "/lustre:/lustre/,/home:/home" \
-     bash -c "${run_cmd}"
-
-# srun -l \
+# srun --jobid=469860 -N1 --tasks-per-node=8 --gpus-per-node=8 -l \
 #      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
 #      --container-mounts "/lustre:/lustre/,/home:/home" \
-#      --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+#      bash -c "${run_cmd}"
+
+srun -l \
+     --container-image /home/yihuih/llmservice/images/24.01.sqsh \
+     --container-mounts "/lustre:/lustre/,/home:/home" \
+     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
 set +x

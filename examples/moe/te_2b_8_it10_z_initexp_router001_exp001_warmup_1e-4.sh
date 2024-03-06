@@ -1,8 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it10_aux_initexp --array=1-30%1
+##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it10_z_initexp_router001_exp001_warmup_1e-4 --array=1-30%1
 
-#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:te_2b_8_it10_aux_initexp
+#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:te_2b_8_it10_z_initexp_router001_exp001_warmup_1e-4
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -15,12 +15,12 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="te_2b_8_it10_aux_initexp"
+NAME="te_2b_8_it10_z_initexp_router001_exp001_warmup_1e-4"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x2b_TP8_init001"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x2b_TP8_router001_exp001"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
@@ -39,7 +39,7 @@ mkdir -p ${LOG_DIR}
 TENSORBOARD_DIR="${OUTPUT}/${NAME}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_CACHE="${OUTPUT}/data_cache5"
+DATA_CACHE="${OUTPUT}/data_cache3"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
@@ -50,7 +50,7 @@ options=" \
     --use-mcore-models \
     --use-distributed-optimizer \
     --num-experts 8 \
-    --moe-aux-loss-coeff 1e-2 \
+    --moe-z-loss-coeff 1e-3 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
@@ -74,8 +74,8 @@ options=" \
     --global-batch-size 512 \
     --train-samples 26855468 \
     --lr-decay-samples 25512695 \
-    --lr-warmup-samples 0 \
-    --lr 2e-4 \
+    --lr-warmup-samples 25512 \
+    --lr 1e-4 \
     --min-lr 1e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
@@ -107,7 +107,7 @@ run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
 # 
-# srun --jobid=457632 -N1 --tasks-per-node=8 --gpus-per-node=8 -l \
+# srun --jobid=469860 -N1 --tasks-per-node=8 --gpus-per-node=8 -l \
 #      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
 #      --container-mounts "/lustre:/lustre/,/home:/home" \
 #      bash -c "${run_cmd}"

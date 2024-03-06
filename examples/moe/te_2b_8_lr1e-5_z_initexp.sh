@@ -103,14 +103,14 @@ options=" \
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
-# 
-# srun --jobid=473718 -N1 --gpus-per-node=8 --tasks-per-node=8 -l \
-#      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
-#      --container-mounts "/lustre:/lustre/,/home:/home" \
-#      bash -c "${run_cmd}"
-
-srun -l \
+#  --gpus-per-node=8
+srun --jobid=375031 -N1 --tasks-per-node=8 -l \
      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
-     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+     bash -c "${run_cmd}"
+
+# srun -l \
+#      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
+#      --container-mounts "/lustre:/lustre/,/home:/home" \
+#      --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
 set +x

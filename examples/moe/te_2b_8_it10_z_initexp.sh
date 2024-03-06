@@ -39,7 +39,7 @@ mkdir -p ${LOG_DIR}
 TENSORBOARD_DIR="${OUTPUT}/${NAME}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_CACHE="${OUTPUT}/data_cache"
+DATA_CACHE="${OUTPUT}/data_cache1"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
