@@ -5,8 +5,8 @@ unset NCCL_DEBUG
 
 ######## Task (e.g., db, index, query). ########
 
-RETRO_TASKS="db-build"
-# RETRO_TASKS="index-train"
+# RETRO_TASKS="db-build"
+RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
 # RETRO_TASKS="query-neighbors"
 
