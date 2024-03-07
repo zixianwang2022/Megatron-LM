@@ -16,7 +16,10 @@ from tqdm import tqdm
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import faiss
 from megatron.core.models.retro.data.index.index import Index
-from megatron.core.models.retro.data.index.utils import get_training_data_merged_path, num_samples_to_block_ranges
+from megatron.core.models.retro.data.index.utils import (
+    get_training_data_merged_path,
+    num_samples_to_block_ranges,
+)
 from megatron.core.models.retro.data.utils import GPTToTextDataset
 
 

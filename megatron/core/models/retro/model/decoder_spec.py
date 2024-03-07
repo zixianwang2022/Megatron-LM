@@ -32,7 +32,9 @@ from megatron.core.transformer.transformer_block import (
 )
 
 
-def get_retro_decoder_layer_te_spec(encoder_block_spec: typing.Union[ModuleSpec, TransformerBlockSubmodules, None] = None) -> ModuleSpec:
+def get_retro_decoder_layer_te_spec(
+    encoder_block_spec: typing.Union[ModuleSpec, TransformerBlockSubmodules, None] = None
+) -> ModuleSpec:
     """Retro decoder TE spec (uses Transformer Engine components).
 
     A Retro decoder layer uses custom attention and bias-dropout-add operators
@@ -61,7 +63,9 @@ def get_retro_decoder_layer_te_spec(encoder_block_spec: typing.Union[ModuleSpec,
     return spec
 
 
-def get_retro_decoder_layer_local_spec(encoder_block_spec: typing.Optional[ModuleSpec] = None) -> ModuleSpec:
+def get_retro_decoder_layer_local_spec(
+    encoder_block_spec: typing.Optional[ModuleSpec] = None,
+) -> ModuleSpec:
     """Retro decoder local spec (uses Megatron-Core components).
 
     A Retro decoder layer uses custom attention and bias-dropout-add operators

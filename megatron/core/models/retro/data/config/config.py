@@ -130,7 +130,7 @@ class RetroPreprocessingConfig(TransformerConfig):
 
     # GPT.
     retro_gpt_seed: int = 1234
-    retro_gpt_data_path: list = None # basic list here, for parsing purposes
+    retro_gpt_data_path: list = None  # basic list here, for parsing purposes
     retro_gpt_data_cache_path: str = None
     retro_gpt_split: str = '969,30,1'
     retro_gpt_train_samples: int = None

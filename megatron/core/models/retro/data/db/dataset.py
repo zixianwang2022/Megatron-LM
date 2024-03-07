@@ -23,7 +23,14 @@ class DBDataset(torch.utils.data.Dataset):
         [dataset_idx, doc_id, start_idx, end_idx, bert_length])
     '''
 
-    def __init__(self, db_path: str, indexed_datasets: typing.List[MMapIndexedDataset], chunks: np.ndarray, chunk_length: int, eod_token_id: int):
+    def __init__(
+        self,
+        db_path: str,
+        indexed_datasets: typing.List[MMapIndexedDataset],
+        chunks: np.ndarray,
+        chunk_length: int,
+        eod_token_id: int,
+    ):
 
         assert chunks.shape[1] == 5, (
             "expected 5 columns (dataset_idx, "

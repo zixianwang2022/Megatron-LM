@@ -19,7 +19,12 @@ from typing import Tuple
 from megatron.core.models.retro.data.config import Embedder, RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import faiss, h5py
 from megatron.core.models.retro.data.index.utils import get_added_code_paths, get_added_codes_dir
-from megatron.core.models.retro.data.utils import get_blocks_by_rank, print_rank_0, retro_makedir, GPTToTextDataset
+from megatron.core.models.retro.data.utils import (
+    get_blocks_by_rank,
+    print_rank_0,
+    retro_makedir,
+    GPTToTextDataset,
+)
 
 from .faiss_base import FaissBaseIndex
 
@@ -32,7 +37,9 @@ class FaissParallelAddIndex(FaissBaseIndex):
     embarassingly parallel operation.
     '''
 
-    def encode_block(self, index: faiss.Index, embedder: Embedder, text_dataset: GPTToTextDataset, block: dict) -> Tuple[np.ndarray, np.ndarray]:
+    def encode_block(
+        self, index: faiss.Index, embedder: Embedder, text_dataset: GPTToTextDataset, block: dict
+    ) -> Tuple[np.ndarray, np.ndarray]:
         '''Encode sub-dataset block, to be later added to index.
 
         Encode the data subset, generally in blocks of 1M vectors each. For

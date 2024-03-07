@@ -183,7 +183,7 @@ def train_index(config: RetroPreprocessingConfig) -> None:
 ##################################################
 
 
-def get_text_dataset_for_adding(config: RetroPreprocessingConfig) ->GPTToTextDataset:
+def get_text_dataset_for_adding(config: RetroPreprocessingConfig) -> GPTToTextDataset:
     '''Convert GPT token chunk dataset to a text dataset for passing to the
     embedder.'''
     gpt_dataset = get_merged_train_dataset(

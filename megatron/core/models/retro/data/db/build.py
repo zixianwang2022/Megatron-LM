@@ -342,7 +342,9 @@ def build_individual_dbs(
         build_individual_db(config, ds_idx, len(indexed_dataset_infos), ds_info)
 
 
-def update_chunk_counts(config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict]) -> None:
+def update_chunk_counts(
+    config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict]
+) -> None:
     '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
 
     if torch.distributed.get_rank() != 0:

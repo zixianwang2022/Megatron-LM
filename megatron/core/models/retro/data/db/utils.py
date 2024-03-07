@@ -150,7 +150,11 @@ def get_merged_db_path_map(project_dir: str) -> dict:
 
 
 def get_merged_dataset(
-    project_dir: str, chunk_length: int, eod_token_id: int, db_type: str, indexed_dataset_infos: Optional[List[dict]]=None
+    project_dir: str,
+    chunk_length: int,
+    eod_token_id: int,
+    db_type: str,
+    indexed_dataset_infos: Optional[List[dict]] = None,
 ) -> DBDataset:
     '''Get merged dataset.'''
 
@@ -175,21 +179,36 @@ def get_merged_dataset(
     return dataset
 
 
-def get_merged_sampled_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
+def get_merged_sampled_dataset(
+    project_dir: str,
+    chunk_length: int,
+    eod_token_id: int,
+    indexed_dataset_infos: Optional[List[dict]] = None,
+) -> DBDataset:
     '''Get sampled dataset (for training the vector index).'''
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "sampled", indexed_dataset_infos
     )
 
 
-def get_merged_train_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
+def get_merged_train_dataset(
+    project_dir: str,
+    chunk_length: int,
+    eod_token_id: int,
+    indexed_dataset_infos: Optional[List[dict]] = None,
+) -> DBDataset:
     '''Get training dataset (for adding to the vector index).'''
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "train", indexed_dataset_infos
     )
 
 
-def get_merged_valid_dataset(project_dir: str, chunk_length: int, eod_token_id: int, indexed_dataset_infos: Optional[List[dict]]=None) -> DBDataset:
+def get_merged_valid_dataset(
+    project_dir: str,
+    chunk_length: int,
+    eod_token_id: int,
+    indexed_dataset_infos: Optional[List[dict]] = None,
+) -> DBDataset:
     '''Get validation dataset (for testing the vector index).'''
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "valid", indexed_dataset_infos

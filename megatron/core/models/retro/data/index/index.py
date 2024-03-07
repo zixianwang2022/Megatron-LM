@@ -74,7 +74,9 @@ class Index(abc.ABC):
     def add(self, *args: List[Any]) -> str:
         '''Add vectors to index.'''
 
-    def embed_text_dataset_block(self, embedder: Embedder, text_dataset: GPTToTextDataset, _range: Tuple) -> np.ndarray:
+    def embed_text_dataset_block(
+        self, embedder: Embedder, text_dataset: GPTToTextDataset, _range: Tuple
+    ) -> np.ndarray:
         '''Embed a range of a text dataset.'''
         sub_dataset = torch.utils.data.Subset(text_dataset, range(*_range))
         return embedder.embed_text_dataset(sub_dataset)

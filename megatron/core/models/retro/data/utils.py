@@ -13,7 +13,10 @@ from typing import Any, Callable, List, Optional
 
 from megatron.core import parallel_state
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
-from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
+from megatron.core.models.retro.data.query.multi_split_gpt_dataset import (
+    MultiSplitGPTDataset,
+    MultiSplitGPTDatasetConfig,
+)
 
 from .external_libs import h5py
 
@@ -110,11 +113,10 @@ def get_blocks(
 
     # Delete corrupt files.
     if torch.distributed.get_rank() == 0:
-        existing_block_paths = [block["path"]
-                                for block in all_blocks
-                                if os.path.exists(block["path"])]
-        for index, path in enumerate(
-                tqdm(existing_block_paths, "validating block.")):
+        existing_block_paths = [
+            block["path"] for block in all_blocks if os.path.exists(block["path"])
+        ]
+        for index, path in enumerate(tqdm(existing_block_paths, "validating block.")):
 
             assert path in all_block_path_set, "unexpected filename, '%s'." % path
 
@@ -224,7 +226,7 @@ class BlockPathMap:
     '''
 
     @classmethod
-    def from_dir(cls, dir: str, block_size: int, ext: str="hdf5") -> Any:
+    def from_dir(cls, dir: str, block_size: int, ext: str = "hdf5") -> Any:
         '''Get list of block files, and create map.'''
         assert os.path.isdir(dir), f"directory not found, '{dir}'."
         return cls(sorted(glob.glob(dir + f"/*.{ext}")), block_size)

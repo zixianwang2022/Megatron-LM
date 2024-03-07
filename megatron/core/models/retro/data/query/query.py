@@ -38,10 +38,7 @@ from megatron.core.models.retro.data.utils import (
 from .gpt_chunk_dataset import build_gpt_chunk_datasets_from_gpt_datasets
 
 
-def get_index(
-    config: RetroPreprocessingConfig,
-    ondisk: bool=False,
-) -> faiss.Index:
+def get_index(config: RetroPreprocessingConfig, ondisk: bool = False,) -> faiss.Index:
     '''Read index from disk.'''
 
     # Load index.
@@ -61,9 +58,7 @@ def get_index(
 
 
 def embed_block(
-    config: RetroPreprocessingConfig,
-    gpt_dataset: GPTChunkDataset,
-    block: dict,
+    config: RetroPreprocessingConfig, gpt_dataset: GPTChunkDataset, block: dict,
 ) -> np.ndarray:
     '''Embed block of chunks.'''
     text_block_dataset = torch.utils.data.Subset(
@@ -80,7 +75,7 @@ def query_embeddings(
     chunk_id_range: range,
     sample_map: dict,
     n_chunks_per_sample: int,
-    verbose: bool=True,
+    verbose: bool = True,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     '''Query neighbors of a block of embeddings.
 

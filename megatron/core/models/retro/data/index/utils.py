@@ -24,7 +24,9 @@ def get_index_dir(config: RetroPreprocessingConfig) -> str:
     return index_dir_path
 
 
-def num_samples_to_block_ranges(config: RetroPreprocessingConfig, num_samples: int) -> List[Tuple[int, int]]:
+def num_samples_to_block_ranges(
+    config: RetroPreprocessingConfig, num_samples: int
+) -> List[Tuple[int, int]]:
     '''Split a range (length num_samples) into sequence of block ranges
     of size block_size.'''
     block_size = config.retro_block_size
