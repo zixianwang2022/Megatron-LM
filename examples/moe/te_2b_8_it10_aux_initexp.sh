@@ -1,8 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it10_aux_initexp --array=1-30%1
-
-#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:te_2b_8_it10_aux_initexp
+#SBATCH -p batch_block1,batch_block3,batch_block4 --nodes=8 -A llmservice_nlp_fm -t 4:00:00 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it10_aux_initexp --array=1-30%1
+# -p batch_singlenode,interactive,adlr_services,batch_block1,batch_block3,batch_block4 --nodes=1
+##SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:te_2b_8_it10_aux_initexp
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 

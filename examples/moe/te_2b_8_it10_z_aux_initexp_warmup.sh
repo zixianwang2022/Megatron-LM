@@ -1,6 +1,9 @@
 #!/bin/bash
 
-#SBATCH -p batch_block1,batch_block3,batch_block4 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_lr1e-5_z_aux_initexp --array=1-30%1
+#SBATCH -p batch_block1,batch_block3,batch_block4 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it10_z_aux_initexp_warmup --array=1-30%1
+
+##SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:te_2b_8_it10_z_aux_initexp_warmup
+
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
 export OUTPUT=/home/yihuih/llmservice/moe
@@ -12,7 +15,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="te_2b_8_lr1e-5_z_aux_initexp"
+NAME="te_2b_8_it10_z_aux_initexp_warmup"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
@@ -36,7 +39,7 @@ mkdir -p ${LOG_DIR}
 TENSORBOARD_DIR="${OUTPUT}/${NAME}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_CACHE="${OUTPUT}/data_cache"
+DATA_CACHE="${OUTPUT}/data_cache4"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
@@ -72,8 +75,9 @@ options=" \
     --global-batch-size 512 \
     --train-samples 26855468 \
     --lr-decay-samples 25512695 \
-    --lr-warmup-samples 0 \
-    --lr 1e-5 \
+    --lr-warmup-samples 25512 \
+    --lr-warmup-init 1e-5 \
+    --lr 2e-4 \
     --min-lr 1e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
@@ -104,8 +108,8 @@ options=" \
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
-#  --gpus-per-node=8
-# srun --jobid=375031 -N1 --tasks-per-node=8 -l \
+# 
+# srun --jobid=457632 -N1 --tasks-per-node=8 --gpus-per-node=8 -l \
 #      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
 #      --container-mounts "/lustre:/lustre/,/home:/home" \
 #      bash -c "${run_cmd}"
