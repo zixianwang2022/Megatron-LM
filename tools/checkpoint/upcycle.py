@@ -61,7 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--num_experts', type=int, required=True)
     parser.add_argument('--transformer_impl', type=str, default='local')
-    parser.add_argument('--router_std', type=float, default=0.002)
+    parser.add_argument('--router_std', type=float, default=0)
     parser.add_argument('--expert_std', type=float, default=0)
     args = parser.parse_args()
 
@@ -108,7 +108,8 @@ if __name__ == '__main__':
                 router = routers[layer_num]
 
                 # low init value helps upcycling
-                torch.nn.init.normal_(router.weight, mean=0.0, std=args.router_std)
+                if args.router_std > 0:
+                    torch.nn.init.normal_(router.weight, mean=0.0, std=args.router_std)
                 
                 new_key = 'decoder.layers.'+m.group(1)+'.mlp.router.weight'
                 router_weight = router.weight.to(v)
