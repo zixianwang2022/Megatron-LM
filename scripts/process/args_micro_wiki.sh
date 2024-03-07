@@ -16,14 +16,16 @@ RETRO_TASK_VALIDATE=""
 
 ######## Megatron, Retro dirs. ########
 
-ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee"
+# ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee" # ... oci
+ROOT_DIR="/lustre/fsw/adlr_nlp_llmnext/lmcafee" # ... eos
 
 # >>>
-# REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
+REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
 # RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/micro-wiki-core"
+RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/micro-wiki-dev"
 # +++
-REPO_DIR="${ROOT_DIR}/retro/megatrons/bert-embed-mcore"
-RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/micro-wiki-core-bert-embed-core"
+# REPO_DIR="${ROOT_DIR}/retro/megatrons/bert-embed-mcore"
+# RETRO_PROJECT_DIR="${ROOT_DIR}/retro/projects/micro-wiki-core-bert-embed-core"
 # <<<
 
 # <<<
@@ -49,9 +51,13 @@ RETRO_INDEX_ADD_LOAD_FRACTION=1.0 # INDEX_ADD
 RETRO_GPT_SEED=1234
 RETRO_GPT_SPLIT="98,2,0"
 # RETRO_GPT_DATA_PATH=${DATA_BLEND}
+# RETRO_GPT_DATA_PATH=" \
+#   0.5 micro-wiki-0/micro-wiki-sentencepiece_text_document \
+#   0.5 micro-wiki-1/micro-wiki-sentencepiece_text_document \
+# "
 RETRO_GPT_DATA_PATH=" \
-  0.5 micro-wiki-0/micro-wiki-sentencepiece_text_document \
-  0.5 micro-wiki-1/micro-wiki-sentencepiece_text_document \
+  0.5 micro-wiki-0/micro-wiki-14061-bpe_text_document \
+  0.5 micro-wiki-1/micro-wiki-14061-bpe_text_document \
 "
 # RETRO_GPT_DATA_IMPL=mmap
 RETRO_GPT_DATALOADER_TYPE=cyclic # single
@@ -79,9 +85,8 @@ RETRO_QUERY_NUM_NEIGHBORS_QUERY=200 RETRO_QUERY_NUM_NEIGHBORS_SAVE=20
 # --retro-gpt-vocab-file ${ROOT_DIR}/retro/misc/vocab/gpt2-vocab.json \
 # --retro-gpt-merge-file ${ROOT_DIR}/retro/misc/vocab/gpt2-merges.txt \
 # --retro-bert-vocab-file ${ROOT_DIR}/retro/misc/vocab/bert-large-uncased-vocab.txt \
-# --retro-gpt-tokenizer-type GPT2BPETokenizer \
-# --retro-gpt-vocab-file tokenizer/gpt2-vocab.json \
-# --retro-gpt-merge-file tokenizer/gpt2-merges.txt \
+# --retro-gpt-tokenizer-type GPTSentencePieceTokenizer \
+# --retro-gpt-tokenizer-model tokenizer/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
 ARGS=" \
     --distributed-timeout-minutes 600 \
     --tensor-model-parallel-size 1 \
@@ -125,8 +130,9 @@ ARGS=" \
     --retro-bert-tokenizer-type BertWordPieceLowerCase \
     \
     --retro-gpt-seed ${RETRO_GPT_SEED} \
-    --retro-gpt-tokenizer-type GPTSentencePieceTokenizer \
-    --retro-gpt-tokenizer-model tokenizer/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
+    --retro-gpt-tokenizer-type GPT2BPETokenizer \
+    --retro-gpt-vocab-file tokenizer/gpt2-vocab.json \
+    --retro-gpt-merge-file tokenizer/gpt2-merges.txt \
     --retro-gpt-seq-length ${RETRO_GPT_SEQ_LENGTH} \
     --retro-gpt-chunk-length ${RETRO_GPT_CHUNK_LENGTH} \
     --retro-gpt-global-batch-size ${RETRO_GPT_GLOBAL_BATCH_SIZE} \

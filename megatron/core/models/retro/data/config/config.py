@@ -70,9 +70,9 @@ class RetroPreprocessingConfig(TransformerConfig):
         retro_gpt_seq_length (int): GPT sequence length.
         retro_gpt_global_batch_size (int): GPT global batch size.
         retro_gpt_chunk_length (int): GPT chunk length.
-        retro_bert_vocab_file (str): Bert vocab file.
         retro_bert_tokenizer_type (str): Bert tokenizer type (for when using
             '--bert-embedder-type megatron').
+        retro_bert_vocab_file (str): Bert vocab file.
         retro_bert_batch_size (int): Micro-batch size for processing Bert
             embeddings.
         retro_bert_max_chunk_length (int): Maximum sequence length for Bert

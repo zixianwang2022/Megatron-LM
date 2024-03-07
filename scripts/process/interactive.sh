@@ -18,6 +18,7 @@ NPROCS=1 # 8
 # tools/retro/main.py
 # megatron/core/models/retro/data/preprocess.py ${ARGS} \
 # export PYTHONPATH=${REPO_DIR}:/home/lmcafee/src && \
+NODE_RANK=0 # ... eos
 CMD="\
     cd ${REPO_DIR} && \
     export PYTHONPATH=${REPO_DIR}:${PYTHONPATH} && \
