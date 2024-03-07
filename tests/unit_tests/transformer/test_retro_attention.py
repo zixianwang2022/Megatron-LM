@@ -3,12 +3,12 @@
 import torch
 import types
 
-from megatron.core.models.retro import RetroConfig, get_retro_decoder_block_spec
-from megatron.core.models.retro.decoder_attention import (
+from megatron.core.models.retro.model import RetroConfig, get_retro_decoder_block_spec
+from megatron.core.models.retro.model.decoder_attention import (
     RetroDecoderCrossAttention,
     RetroDecoderBiasDropoutAdd,
 )
-from megatron.core.models.retro.encoder_attention import (
+from megatron.core.models.retro.model.encoder_attention import (
     RetroEncoderCrossAttention,
     RetroEncoderBiasDropoutAdd,
     RetroEncoderLayerNorm,

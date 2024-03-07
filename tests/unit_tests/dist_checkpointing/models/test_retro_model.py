@@ -7,9 +7,8 @@ import torch
 
 from megatron.core.dist_checkpointing import save, load, load_plain_tensors
 from megatron.core import parallel_state as ps
-from megatron.core.models.retro import get_retro_decoder_block_spec, RetroModel
+from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
 from megatron.core.transformer.transformer_config import TransformerConfig
-from megatron.core.models.retro.config import RetroConfig
 from tests.unit_tests.dist_checkpointing import TempNamedDir
 from tests.unit_tests.test_utilities import Utils
 from megatron.core.tensor_parallel.random import model_parallel_cuda_manual_seed
@@ -27,10 +26,9 @@ def initialize_retro_model(seed, decoder_spec_fn, spec_type, num_layers=9, **con
         ffn_hidden_size=64,
         use_cpu_initialization=True,
         retro_num_neighbors=2,
-        retro_preprocess=types.SimpleNamespace(
-            retro_gpt_chunk_length=4,
-            retro_gpt_retrieved_length=8,
-        )
+        retro_chunk_length=4,
+        retro_retrieved_length=8,
+        retro_split_preprocessing="98,2,0",
     )
     default_config_kwargs.update(**config_kwargs)
     retro_config = RetroConfig(**default_config_kwargs)

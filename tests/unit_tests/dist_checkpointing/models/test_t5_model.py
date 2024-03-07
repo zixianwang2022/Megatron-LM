@@ -12,9 +12,9 @@ from megatron.core.models.T5.t5_spec import \
     decoder_model_with_transformer_engine_default_spec as t5_decoder_te_spec, \
     encoder_model_with_local_spec as t5_encoder_local_spec, \
     decoder_model_with_local_spec as t5_decoder_local_spec
-from megatron.core.models.retro.decoder_spec import \
+from megatron.core.models.retro.model.decoder_spec import \
     get_retro_decoder_layer_te_spec, get_retro_decoder_layer_local_spec
-from megatron.core.models.retro.encoder_spec import \
+from megatron.core.models.retro.model.encoder_spec import \
     get_retro_encoder_layer_te_spec, get_retro_encoder_layer_local_spec
 from megatron.core.transformer.transformer_block import \
     TransformerBlockSubmodules
