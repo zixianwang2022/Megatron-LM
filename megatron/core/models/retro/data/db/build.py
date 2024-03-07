@@ -12,13 +12,14 @@ Building a chunk database consists of.
 '''
 
 import glob
-import numpy as np
 import os
-import torch
 import types
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from tqdm import tqdm
 from typing import List, Tuple
+
+import numpy as np
+import torch
+from tqdm import tqdm
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig

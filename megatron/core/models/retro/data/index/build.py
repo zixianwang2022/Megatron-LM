@@ -8,9 +8,10 @@ Constructing an index generally happens in two phases:
   - index.add(): Add vectors to an index, to be available for retrieval.
 '''
 
-import numpy as np
 import os
 import shutil
+
+import numpy as np
 import torch
 from tqdm import tqdm
 

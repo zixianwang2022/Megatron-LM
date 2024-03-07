@@ -12,10 +12,11 @@ Both the GPT sample data and the neighbor IDs are returned within a sample from
 this dataset.
 '''
 
-import numpy as np
 import os
-import torch
 from typing import Any, Dict, Optional, Tuple, Union
+
+import numpy as np
+import torch
 
 from megatron.core.models.retro.data.db.dataset import DBDataset
 from megatron.core.models.retro.data.db.utils import get_merged_train_dataset as get_db_dataset

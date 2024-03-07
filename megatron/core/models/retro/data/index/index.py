@@ -14,9 +14,10 @@ pattern:
 
 import abc
 import os
+from typing import Any, List, Tuple
+
 import numpy as np
 import torch
-from typing import Any, List, Tuple
 
 from megatron.core.models.retro.data.config import Embedder, RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import faiss

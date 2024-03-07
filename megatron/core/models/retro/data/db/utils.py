@@ -4,9 +4,10 @@
 
 import glob
 import json
-import numpy as np
 import os
 from typing import List, Optional
+
+import numpy as np
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig

@@ -3,13 +3,14 @@
 '''Utilities for Retro preprocessing.'''
 
 import glob
-import numpy as np
 import os
-import torch
 from collections import defaultdict
-from tqdm import tqdm
 from types import SimpleNamespace
 from typing import Any, Callable, List, Optional
+
+import numpy as np
+import torch
+from tqdm import tqdm
 
 from megatron.core import parallel_state
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig

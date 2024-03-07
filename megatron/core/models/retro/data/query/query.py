@@ -10,12 +10,13 @@ Querying involves:
       during pretraining.
 '''
 
-import numpy as np
 import os
-import psutil
 import time
-import torch
 import typing
+
+import numpy as np
+import psutil
+import torch
 from tqdm import tqdm
 
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig

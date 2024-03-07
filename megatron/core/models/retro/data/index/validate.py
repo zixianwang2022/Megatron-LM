@@ -14,9 +14,10 @@ separately. The following high-level checks are supported:
       `--no-retro-index-delete-added-codes` must be used.)
 '''
 
+import typing
+
 import numpy as np
 import torch
-import typing
 from torch.utils.data import Subset
 
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig

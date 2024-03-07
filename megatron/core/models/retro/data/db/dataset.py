@@ -6,10 +6,11 @@ This dataset is used for both training a vector index, and adding vectors to a
 trained index.
 '''
 
+import typing
+
 import numpy as np
 import torch
 from tqdm import tqdm
-import typing
 
 from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
 
