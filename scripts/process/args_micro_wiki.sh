@@ -6,9 +6,9 @@ unset NCCL_DEBUG
 ######## Task (e.g., db, index, query). ########
 
 # RETRO_TASKS="db-build"
-RETRO_TASKS="index-train"
+# RETRO_TASKS="index-train"
 # RETRO_TASKS="index-add"
-# RETRO_TASKS="query-neighbors"
+RETRO_TASKS="query-neighbors"
 
 RETRO_TASK_VALIDATE=""
 # RETRO_TASK_VALIDATE=1
@@ -16,8 +16,8 @@ RETRO_TASK_VALIDATE=""
 
 ######## Megatron, Retro dirs. ########
 
-# ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee" # ... oci
-ROOT_DIR="/lustre/fsw/adlr_nlp_llmnext/lmcafee" # ... eos
+ROOT_DIR="/lustre/fsw/portfolios/adlr/users/lmcafee" # ... oci
+# ROOT_DIR="/lustre/fsw/adlr_nlp_llmnext/lmcafee" # ... eos
 
 # >>>
 REPO_DIR="${ROOT_DIR}/retro/megatrons/retro-mcore-data"
