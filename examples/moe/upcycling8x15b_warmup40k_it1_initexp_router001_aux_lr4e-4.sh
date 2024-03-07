@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch,hp -A coreai_dlalgo_llm -t 4:00:00 --nodes=32 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b_warmup40k_it1_initexp_router001_aux_lr4e-4 --array=1-10%1
+#SBATCH -p batch,hp -A llmservice_nlp_fm -t 4:00:00 --nodes=32 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:upcycling8x15b_warmup40k_it1_initexp_router001_aux_lr4e-4 --array=1-10%1
 
 # adlr_services: QoS=5_nodes_max
 # ,interactive,batch_singlenode

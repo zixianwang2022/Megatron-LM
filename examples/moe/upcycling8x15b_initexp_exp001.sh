@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch,backfill,hp -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:upcycling8x15b_initexp_exp001 --array=1-10%1
+#SBATCH -p batch,backfill,hp -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:upcycling8x15b_initexp_exp001 --array=1-10%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 

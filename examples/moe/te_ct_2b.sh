@@ -77,7 +77,7 @@ options=" \
     --eval-iters 32 \
     --eval-interval 500 \
     --tokenizer-type GPTSentencePieceTokenizer \
-    --tokenizer-model /home/yihuih/llmservice/data/nemotron_2_256k.model \
+    --tokenizer-model /home/yihuih/llmservice/data/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_BLEND} \
     --data-cache-path ${DATA_CACHE} \
     --save-interval 20000 \

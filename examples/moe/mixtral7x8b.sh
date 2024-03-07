@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -p batch
-#SBATCH -A coreai_dlalgo_llm
+#SBATCH -A llmservice_nlp_fm
 #SBATCH -J coreai_dlalgo_llm-FW:mixtral_test
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=8
