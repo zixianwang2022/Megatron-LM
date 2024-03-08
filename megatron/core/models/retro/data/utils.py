@@ -19,12 +19,7 @@ from megatron.core.models.retro.data.query.multi_split_gpt_dataset import (
     MultiSplitGPTDatasetConfig,
 )
 
-try:
-    from .external_libs import h5py
-except Exception:
-    # Since this file is commonly imported when launching, we allow bypassing
-    # the imports.
-    pass
+from .external_libs import h5py
 
 
 def print_rank_0(message: str) -> None:
