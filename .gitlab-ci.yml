@@ -1,4 +1,4 @@
-image: gitlab-master.nvidia.com:5005/adlr/megatron-lm/pytorch-all-tests:23.04-v1
+image: gitlab-master.nvidia.com:5005/adlr/megatron-lm/pytorch-all-tests:23.04-v2
 
 stages:
   - test
