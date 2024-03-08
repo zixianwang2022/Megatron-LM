@@ -149,6 +149,7 @@ def load_distributed_checkpoint(checkpoint_path, gpt_model):
 **STEP 6 - Main Function**
 The following is the main function that needs to go into your script. 
 ```
+from pathlib import Path
 from torch.optim import Adam
 from megatron.core.pipeline_parallel.schedules import get_forward_backward_func
 from megatron.core.tensor_parallel.random import model_parallel_cuda_manual_seed
@@ -203,6 +204,7 @@ import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from functools import partial
+from pathlib import Path
 
 from megatron.core import parallel_state
 from megatron.core import dist_checkpointing
@@ -327,10 +329,12 @@ if __name__ == "__main__":
         print(f'Losses reduced :  {losses_reduced}')
 
     # Saving the model
-    save_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path='/workspace/ckpt')
+    ckpt_path = os.getcwd() + '/ckpt'
+    Path(ckpt_path).mkdir(exist_ok=True)
+    save_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path=ckpt_path)
 
     # Loading the model
-    gpt_model = load_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path='/workspace/ckpt')
+    gpt_model = load_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path=ckpt_path)
     gpt_model.to(device)
     print('Successfully loaded the model')   
 ```
