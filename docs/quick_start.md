@@ -140,6 +140,7 @@ def load_distributed_checkpoint(checkpoint_path, gpt_model):
     return gpt_model
 ```
 <br>
+
 **STEP 6 - Main Function**
 The following is the main function that needs to go into your script. 
 ```
@@ -189,7 +190,7 @@ if __name__ == "__main__":
 ```
 <br>
 
-**STEP 5 - Running the example**
+**STEP 7 - Running the full example**
 Given below is all the above steps together. Paste this into a run_simple_mcore_train_loop.py. Call the script inside your docker container as shown below. 
 ```
 import os
