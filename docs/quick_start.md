@@ -124,7 +124,23 @@ def forward_step_func(data_iterator, model):
 ```
 <br>
 
-**STEP 5 - Main Function**
+**STEP 5 - Load and Save Distributed Checkpoint**
+Megatron core uses distributed checkpoint for loading and saving model. This gives you the flexiblity to convert model from one model parallel setting to another when you load a model (i.e A model trained with Tensor Parallel Size 2, can now be loaded as Tensor Model Parallel Sie 4 etc.)
+```
+from megatron.core import dist_checkpointing
+
+def save_distributed_checkpoint(checkpoint_path, gpt_model):
+    sharded_state_dict = gpt_model.sharded_state_dict(prefix='')
+    dist_checkpointing.save(sharded_state_dict=sharded_state_dict, checkpoint_dir=checkpoint_path)
+
+def load_distributed_checkpoint(checkpoint_path, gpt_model):
+    sharded_state_dict=gpt_model.sharded_state_dict(prefix='')
+    checkpoint = dist_checkpointing.load(sharded_state_dict=sharded_state_dict, checkpoint_dir=checkpoint_path)
+    gpt_model.load_state_dict(checkpoint)
+    return gpt_model
+```
+<br>
+**STEP 6 - Main Function**
 The following is the main function that needs to go into your script. 
 ```
 from torch.optim import Adam
@@ -164,11 +180,12 @@ if __name__ == "__main__":
         print(f'Losses reduced :  {losses_reduced}')
 
     # Saving the model
-    state_dict = {}
-    state_dict['model'] = gpt_model.state_dict_for_save_checkpoint()
-    state_dict['optimizer'] = optim.state_dict()
-    torch.save(state_dict, 'mcore.model')
+    save_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path='/workspace/ckpt')
 
+    # Loading the model
+    gpt_model = load_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path='/workspace/ckpt')
+    gpt_model.to(device)
+    print('Successfully loaded the model')  
 ```
 <br>
 
@@ -293,10 +310,12 @@ if __name__ == "__main__":
         print(f'Losses reduced :  {losses_reduced}')
 
     # Saving the model
-    state_dict = {}
-    state_dict['model'] = gpt_model.state_dict_for_save_checkpoint()
-    state_dict['optimizer'] = optim.state_dict()
-    torch.save(state_dict, 'mcore.model')
+    save_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path='/workspace/ckpt')
+
+    # Loading the model
+    gpt_model = load_distributed_checkpoint(gpt_model=gpt_model, checkpoint_path='/workspace/ckpt')
+    gpt_model.to(device)
+    print('Successfully loaded the model')   
 ```
 
 <br> 
