@@ -41,20 +41,10 @@ def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatase
     return config.retro_gpt_chunk_datasets.train["dataset"].sample_dataset.config
 
 
-def get_config_path(project_dir: str) -> str:
-    '''Config copy stored within retro project dir.'''
-    return os.path.join(project_dir, "config.json")
-
-
 def get_num_chunks_per_sample(sample_length: int, chunk_length: int) -> int:
     '''Compute seq_length // chunk_length.'''
     assert sample_length % chunk_length == 0
     return sample_length // chunk_length
-
-
-def get_gpt_data_dir(project_dir: str) -> str:
-    '''Get project-relative directory of GPT bin/idx datasets.'''
-    return os.path.join(project_dir, "data")
 
 
 class GPTToTextDataset(torch.utils.data.Dataset):

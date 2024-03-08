@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+from megatron.core.datasets.indexed_dataset import IndexedDataset
 
 
 class DBDataset(torch.utils.data.Dataset):
@@ -27,7 +27,7 @@ class DBDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         db_path: str,
-        indexed_datasets: typing.List[MMapIndexedDataset],
+        indexed_datasets: typing.List[IndexedDataset],
         chunks: np.ndarray,
         chunk_length: int,
         eod_token_id: int,

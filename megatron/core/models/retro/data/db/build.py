@@ -21,7 +21,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+from megatron.core.datasets.indexed_dataset import IndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
@@ -49,7 +49,7 @@ def build_partial_db(
     config: types.SimpleNamespace,
     dataset_idx: int,
     n_datasets: int,
-    indexed_dataset: MMapIndexedDataset,
+    indexed_dataset: IndexedDataset,
     block_id: int,
     n_blocks: int,
     block: dict,
@@ -147,7 +147,7 @@ def build_block_db(
     config: RetroPreprocessingConfig,
     dataset_idx: int,
     n_datasets: int,
-    indexed_dataset: MMapIndexedDataset,
+    indexed_dataset: IndexedDataset,
     n_procs: int,
     executor: ProcessPoolExecutor,
     n_missing_blocks: int,

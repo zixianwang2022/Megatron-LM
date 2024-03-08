@@ -31,10 +31,10 @@ from megatron.core.models.retro.data.query.multi_split_gpt_dataset import (
 )
 from megatron.core.models.retro.data.query.query import query_neighbors
 from megatron.core.models.retro.data.query.utils import get_query_dir
-from megatron.core.models.retro.data.utils import (
+from megatron.core.models.retro.data.utils import retro_makedir
+from megatron.core.models.retro.utils import (
     get_config_path,
     get_gpt_data_dir,
-    retro_makedir,
 )
 from megatron.tokenizer.tokenizer import (
     _BertWordPieceTokenizer,

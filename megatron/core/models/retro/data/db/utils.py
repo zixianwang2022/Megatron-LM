@@ -9,10 +9,10 @@ from typing import List, Optional
 
 import numpy as np
 
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+from megatron.core.datasets.indexed_dataset import IndexedDataset
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
-from megatron.core.models.retro.data.utils import get_gpt_data_dir
+from megatron.core.models.retro.utils import get_gpt_data_dir
 
 from .dataset import DBDataset
 
@@ -74,7 +74,7 @@ def load_indexed_datasets(project_dir: str, indexed_dataset_infos: List[dict]) -
     '''Loaded indexed datasets into memory-mapped datasets.'''
     data_dir = get_gpt_data_dir(project_dir)
     for info in indexed_dataset_infos:
-        info["dataset"] = MMapIndexedDataset(os.path.join(data_dir, info["prefix"]))
+        info["dataset"] = IndexedDataset(os.path.join(data_dir, info["prefix"]), mmap=True)
 
 
 def get_indexed_dataset_infos(project_dir: str) -> List[dict]:
