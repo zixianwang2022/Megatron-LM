@@ -12,3 +12,11 @@ RUN pip install --no-cache-dir \
     "black==19.10b0" \
     "isort" \
     "click==8.0.2"
+
+# Retro setup.
+RUN apt update
+RUN pip install h5py
+RUN pip install transformers
+RUN pip install einops
+RUN wget https://github.com/kyamagu/faiss-wheels/releases/download/v1.7.3/faiss_gpu-1.7.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+RUN python -m pip install ./faiss_gpu-1.7.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl

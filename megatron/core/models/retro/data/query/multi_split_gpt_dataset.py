@@ -14,7 +14,7 @@ from megatron.core.datasets.blended_megatron_dataset_config import (
     parse_and_normalize_split,
 )
 from megatron.core.datasets.gpt_dataset import GPTDataset, GPTDatasetConfig
-from megatron.core.datasets.indexed_dataset import MMapIndexedDataset
+from megatron.core.datasets.indexed_dataset import IndexedDataset
 from megatron.core.datasets.utils import Split, log_single_rank
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class MultiSplitGPTDataset(GPTDataset):
     """Retro's customized GPT dataset.
 
     Args:
-        indexed_dataset (MMapIndexedDataset): The MMapIndexedDataset around which to build the
+        indexed_dataset (IndexedDataset): The IndexedDataset around which to build the
         MegatronDataset
 
         dataset_path (str): The real path on disk to the dataset, for bookkeeping
@@ -74,7 +74,7 @@ class MultiSplitGPTDataset(GPTDataset):
 
     def __init__(
         self,
-        indexed_dataset: MMapIndexedDataset,
+        indexed_dataset: IndexedDataset,
         dataset_path: str,
         indexed_indices: numpy.ndarray,
         num_samples: int,
