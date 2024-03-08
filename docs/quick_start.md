@@ -3,11 +3,13 @@ The following guide will show you how to quickly get started with Megatron Core.
 
 *NOTE: The following has been testing for megatron core version 0.5 and pytorch version 24.02
 
-### Preparing Your Environment 
+### Environment Setup
 ```
 docker run --ipc=host --shm-size=512m --gpus all -it nvcr.io/nvidia/pytorch:24.02-py3
 
 pip install megatron_core
+pip install tensorstore==0.1.45
+pip install zarr
 ```
 <br>
 
@@ -126,6 +128,9 @@ def forward_step_func(data_iterator, model):
 
 **STEP 5 - Load and Save Distributed Checkpoint**
 Megatron core uses distributed checkpoint for loading and saving model. This gives you the flexiblity to convert model from one model parallel setting to another when you load a model (i.e A model trained with Tensor Parallel Size 2, can now be loaded as Tensor Model Parallel Sie 4 etc.)
+
+*NOTE: Make sure you have zarr and tensorstore pip package installed as shown in the environment setup*
+
 ```
 from megatron.core import dist_checkpointing
 
@@ -200,6 +205,7 @@ from torch.utils.data import DataLoader
 from functools import partial
 
 from megatron.core import parallel_state
+from megatron.core import dist_checkpointing
 from megatron.core.pipeline_parallel.schedules import get_forward_backward_func
 from megatron.core.tensor_parallel.random import model_parallel_cuda_manual_seed
 from megatron.core.transformer.transformer_config import TransformerConfig
@@ -277,6 +283,16 @@ def forward_step_func(data_iterator, model):
                           labels=labels)
 
     return output_tensor, partial(loss_func, loss_mask)
+
+def save_distributed_checkpoint(checkpoint_path, gpt_model):
+    sharded_state_dict = gpt_model.sharded_state_dict(prefix='')
+    dist_checkpointing.save(sharded_state_dict=sharded_state_dict, checkpoint_dir=checkpoint_path)
+
+def load_distributed_checkpoint(checkpoint_path, gpt_model):
+    sharded_state_dict=gpt_model.sharded_state_dict(prefix='')
+    checkpoint = dist_checkpointing.load(sharded_state_dict=sharded_state_dict, checkpoint_dir=checkpoint_path)
+    gpt_model.load_state_dict(checkpoint)
+    return gpt_model
 
 if __name__ == "__main__":
     initialize_distributed(tensor_model_parallel_size=2, pipeline_model_parallel_size=1)
