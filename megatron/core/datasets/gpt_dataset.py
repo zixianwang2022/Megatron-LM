@@ -319,7 +319,10 @@ class GPTDataset(MegatronDataset):
         )
 
         if not cache_hit and (
-            not torch.distributed.is_initialized() or torch.distributed.get_rank()            log_single_rank(
+            not torch.distributed.is_initialized() or torch.distributed.get_rank()
+        ):
+
+            log_single_rank(
                 logger,
                 logging.INFO,
                 f"Build and save the {type(self).__name__} {self.index_split.name} indices",
