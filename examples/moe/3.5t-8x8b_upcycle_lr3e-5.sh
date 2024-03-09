@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-8x8b_upcycle_lr3e-5 --array=1-30%1
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=1 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-8x8b_upcycle_lr3e-5 --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-8x8b_upcycle_lr3e-5 --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -19,7 +19,7 @@ NAME="3.5t-8x8b_upcycle_lr3e-5"
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x8b-multi-3.5t-tp4-pp4-router001-te-gg"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x8b-multi-3.5t-tp4-pp4-te-gg"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
