@@ -31,15 +31,15 @@ def get_TP_PP(partitions):
     for partition in partitions:
         m = re.match('.*\/mp_rank_(\d\d)$', partition)
         if m:
-           TP_ranks.add(int(m.group(1)))
-           PP_ranks.add(0)
-           continue
+            TP_ranks.add(int(m.group(1)))
+            PP_ranks.add(0)
+            continue
             
         m = re.match('.*\/mp_rank_(\d\d)_(\d\d\d)$', partition)
         if m:
-           TP_ranks.add(int(m.group(1)))
-           PP_ranks.add(int(m.group(2)))
-           continue
+            TP_ranks.add(int(m.group(1)))
+            PP_ranks.add(int(m.group(2)))
+            continue
 
     # A bunch checks to make sure partitions number like we expect
     assert(len(TP_ranks)*len(PP_ranks) == len(partitions))
@@ -132,7 +132,7 @@ if __name__ == '__main__':
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1' 
-                    new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).view(v.shape[0])))
+                    new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(v.shape[1], -1).contiguous()))
                 old_keys.append(k)
                 continue
             
@@ -155,7 +155,7 @@ if __name__ == '__main__':
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight2' 
-                    new_key_values.append((new_key, v.detach().clone().repeat(1, args.num_experts).t()))
+                    new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(-1, v.shape[0]).contiguous()))
                 old_keys.append(k)
                 continue
         
