@@ -1,7 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b --array=1-30%1
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:te_2b --array=1-10%1
+##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_z_aux --array=1-30%1
+
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:te_2b_8_z_aux  --array=1-10%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -14,7 +15,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="te_2b"
+NAME="te_2b_8_z_aux"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
@@ -26,7 +27,7 @@ mkdir -p ${LOG_DIR}
 TENSORBOARD_DIR="${OUTPUT}/${NAME}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_CACHE="${OUTPUT}/data_cache"
+DATA_CACHE="${OUTPUT}/data_cache3"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
@@ -35,8 +36,11 @@ mkdir -p ${DATA_CACHE}
 options=" \
     --transformer-impl transformer_engine \
     --use-mcore-models \
-    --moe-grouped-gemm \
     --use-distributed-optimizer \
+    --moe-grouped-gemm \
+    --num-experts 8 \
+    --moe-z-loss-coeff 1e-3 \
+    --moe-aux-loss-coeff 1e-2 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
@@ -48,7 +52,7 @@ options=" \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
-    --tensor-model-parallel-size 1 \
+    --tensor-model-parallel-size 8 \
     --pipeline-model-parallel-size 1 \
     --sequence-parallel \
     --num-layers 24 \
@@ -56,7 +60,7 @@ options=" \
     --num-attention-heads 16 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 2 \
+    --micro-batch-size 4 \
     --global-batch-size 512 \
     --train-samples 268554688 \
     --lr-decay-samples 255126953 \
@@ -92,10 +96,14 @@ options=" \
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
+# 
+# srun --jobid=469860 -N1 --tasks-per-node=8 --gpus-per-node=8 -l \
+#      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
+#      --container-mounts "/lustre:/lustre/,/home:/home" \
+#      bash -c "${run_cmd}"
 
-# --jobid=451511 -N1 --gpus-per-node=8
 srun -l \
      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
-      bash -c "${run_cmd}"
+     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
 set +x
