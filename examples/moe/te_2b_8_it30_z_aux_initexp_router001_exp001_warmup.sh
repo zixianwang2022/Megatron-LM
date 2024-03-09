@@ -1,8 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it10_z_initexp_router001_exp001_warmup_1e-4 --array=1-30%1
+##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it30_z_aux_initexp_router001_exp001_warmup --array=1-30%1
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:te_2b_8_it10_z_initexp_router001_exp001_warmup_1e-4 --array=1-20%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:te_2b_8_it30_z_aux_initexp_router001_exp001_warmup
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -15,7 +15,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="te_2b_8_it10_z_initexp_router001_exp001_warmup_1e-4"
+NAME="te_2b_8_it30_z_aux_initexp_router001_exp001_warmup"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
@@ -51,6 +51,7 @@ options=" \
     --use-distributed-optimizer \
     --num-experts 8 \
     --moe-z-loss-coeff 1e-3 \
+    --moe-aux-loss-coeff 1e-2 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
@@ -72,10 +73,10 @@ options=" \
     --max-position-embeddings 4096 \
     --micro-batch-size 4 \
     --global-batch-size 512 \
-    --train-samples 26855468 \
-    --lr-decay-samples 25512695 \
+    --train-samples 80566404 \
+    --lr-decay-samples 76538085 \
     --lr-warmup-samples 25512 \
-    --lr 1e-4 \
+    --lr 2e-4 \
     --min-lr 1e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
