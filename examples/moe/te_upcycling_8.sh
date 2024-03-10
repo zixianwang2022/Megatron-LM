@@ -82,7 +82,7 @@ options=" \
     --tokenizer-model /home/yihuih/llmservice/data/nemotron_2_256k.model \
     --data-path ${DATA_BLEND} \
     --data-cache-path ${DATA_CACHE} \
-    --save-interval 20000 \
+    --save-interval 500000 \
     --save ${OUTPUT}/${NAME} \
     --load ${CHECKPOINT_DIR} \
     --split 99,1,0 \

@@ -1,8 +1,7 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1,batch_block3,batch_block4 -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_lr1e-5_z_aux_initexp --array=1-30%1
-
-#SBATCH -p batch,hp -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:te_2b_8_lr1e-5_z_aux_initexp --array=1-10%1
+##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-8x8b_upcycle_highlr --array=1-30%1
+#SBATCH -p batch -A coreai_dlalgo_llm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=coreai_dlalgo_llm-yh:3.5t-8x8b_upcycle_highlr_warmup12k --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -15,12 +14,12 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="te_2b_8_lr1e-5_z_aux_initexp"
+NAME="3.5t-8x8b_upcycle_highlr_warmup12k"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x2b_TP8_init001"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x8b-multi-3.5t-tp4-pp4-te-gg"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
@@ -39,49 +38,51 @@ mkdir -p ${LOG_DIR}
 TENSORBOARD_DIR="${OUTPUT}/${NAME}/tensorboard"
 mkdir -p ${TENSORBOARD_DIR}
 
-DATA_CACHE="${OUTPUT}/data_cache"
+DATA_CACHE="${OUTPUT}/data_cache-3.5t"
 mkdir -p ${DATA_CACHE}
 
 # Get the data blend
-. /home/yihuih/llmservice/data/1.1t.sh
+. /home/yihuih/llmservice/data/nvllm-3.5t-eng-v0.2-mul-a1.3-code-a1.3-wdata-nojsp-blend-v0.701515.sh
 
 options=" \
+    --global-batch-size 1024 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
-    --use-distributed-optimizer \
+    --moe-grouped-gemm \
     --num-experts 8 \
-    --moe-aux-loss-coeff 1e-2 \
     --moe-z-loss-coeff 1e-3 \
-    --use-flash-attn \
+    --moe-aux-loss-coeff 1e-2 \
+    --use-distributed-optimizer \
     --apply-layernorm-1p \
+    --use-flash-attn \
     --untie-embeddings-and-output-weights \
     --disable-bias-linear \
     --no-position-embedding \
     --use-rotary-position-embeddings \
     --rotary-percent 0.5 \
-    --swiglu \
+    --squared-relu \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
-    --tensor-model-parallel-size 8 \
-    --pipeline-model-parallel-size 1 \
+    --tensor-model-parallel-size 4 \
+    --pipeline-model-parallel-size 4 \
     --sequence-parallel \
-    --num-layers 24 \
-    --hidden-size 2048 \
-    --num-attention-heads 16 \
+    --num-layers 32 \
+    --hidden-size 4096 \
+    --num-attention-heads 32 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 4 \
-    --global-batch-size 512 \
-    --train-samples 26855468 \
-    --lr-decay-samples 25512695 \
-    --lr-warmup-samples 0 \
-    --lr 1e-5 \
-    --min-lr 1e-5 \
+    --micro-batch-size 1 \
+    --train-samples 85449218 \
+    --lr-decay-samples 81176757 \
+    --lr-warmup-samples 12756 \
+    --lr-warmup-init 3e-5 \
+    --lr 3.0e-4 \
+    --min-lr 3.0e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
     --eval-iters 32 \
-    --eval-interval 500 \
+    --eval-interval 1000 \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model /home/yihuih/llmservice/data/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_BLEND} \
@@ -94,7 +95,7 @@ options=" \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
-    --init-method-std 0.014 \
+    --init-method-std 0.010 \
     --log-params-norm \
     --log-num-zeros-in-grad \
     --log-throughput \
@@ -107,14 +108,12 @@ options=" \
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
-#  --gpus-per-node=8
-# srun --jobid=375031 -N1 --tasks-per-node=8 -l \
-#      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
-#      --container-mounts "/lustre:/lustre/,/home:/home" \
-#      bash -c "${run_cmd}"
 
+# --jobid=451511 -N1 --gpus-per-node=8
 srun -l \
      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
-     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+      bash -c "${run_cmd}"
+
 set +x
+
