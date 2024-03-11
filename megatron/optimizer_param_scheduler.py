@@ -13,7 +13,8 @@ class OptimizerParamScheduler(object):
                  lr_warmup_steps, lr_decay_steps, lr_decay_style,
                  start_wd, end_wd, wd_incr_steps, wd_incr_style,
                  use_checkpoint_opt_param_scheduler=True,
-                 override_opt_param_scheduler=False):
+                 override_opt_param_scheduler=False,
+                 reset_lr_state=False):
 
         # Class values.
         self.optimizer = optimizer
@@ -30,6 +31,8 @@ class OptimizerParamScheduler(object):
         self.lr_decay_steps = lr_decay_steps
         assert self.lr_decay_steps > 0
         assert self.lr_warmup_steps < self.lr_decay_steps
+
+        self.reset_lr_state = reset_lr_state
 
         self.lr_decay_style = lr_decay_style
 
@@ -209,6 +212,12 @@ class OptimizerParamScheduler(object):
             num_steps = sd['num_iters']
         else:
             num_steps = sd['num_steps']
+
+        if self.reset_lr_state:
+            num_steps = 0
+
+        print_rank_0('≈ {} within the lr decay trajectory'.format(num_steps))
+
         self.step(increment=num_steps)
 
 
