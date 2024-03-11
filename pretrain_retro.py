@@ -99,14 +99,6 @@ def get_batch(data_iterator):
     labels = tokens_[:, 1:].contiguous()
     tokens = tokens_[:, :-1].contiguous()
 
-    # >>>
-    # if args.retro_add_retriever:
-    #     # note: [bs * l * k, r]
-    #     # note: 2x == neighbor, continuation
-    #     neighbor_tokens = data_b['neighbor_tokens'] \
-    #         .view(-1, config.retro_retrieved_length).long()
-    # <<<
-
     # Get the masks and postition ids.
     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
         tokens,
@@ -116,31 +108,21 @@ def get_batch(data_iterator):
         args.eod_mask_loss)
 
     if args.retro_add_retriever:
-        # >>>
         # note: [bs * l * k, r]
         # note: 2x == neighbor, continuation
         neighbor_tokens = data_b['neighbor_tokens'] \
             .view(-1, config.retro_retrieved_length).long()
-        # <<<
         _, _, neighbor_position_ids = get_ltor_masks_and_position_ids(
             neighbor_tokens,
             tokenizer.eod,
             args.reset_position_ids,
             args.reset_attention_mask,
             args.eod_mask_loss)
-        # >>>
-        # neighbor_attention_mask = None
         neighbor_attention_mask = torch.full(
-            # size=(1, 1, neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
             size=(neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
             fill_value=True,
             dtype=torch.bool,
             device=neighbor_tokens.device)
-        # <<<
-        # >>>
-        # from lutil import pax
-        # pax("tokens, attention_mask, neighbor_tokens, neighbor_attention_mask")
-        # <<<
         return tokens, labels, loss_mask, attention_mask, position_ids, \
                neighbor_tokens, neighbor_attention_mask, neighbor_position_ids
 
@@ -159,10 +141,6 @@ def forward_step(data_iterator, model):
         tokens, labels, loss_mask, attention_mask, position_ids, \
             neighbor_tokens, neighbor_attention_mask, neighbor_position_ids = \
                 get_batch(data_iterator)
-        # >>>
-        # from lutil import pax
-        # pax("neighbor_tokens, neighbor_attention_mask, neighbor_position_ids")
-        # <<<
     else:
         tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
             data_iterator)

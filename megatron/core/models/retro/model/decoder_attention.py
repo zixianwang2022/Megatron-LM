@@ -90,10 +90,6 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         inference_params: InferenceParams = None,
         # rotary_pos_emb: Tensor = None, # ... unsupported for retro.
     ) -> dict:
-        # >>>
-        # from lutil import pax
-        # pax("self, attention_mask")
-        # <<<
         """Cross attention for Retro decoder.
 
         Notation:
@@ -155,40 +151,15 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
                 .reshape(self.retro_chunk_length, bs * l, d)
                 .contiguous()
             )
-            # >>>
-            # chunked_output_mask = torch.full(
-            #     size=(1, 1, chunked_output.shape[-1], chunked_output.shape[-1]),
-            #     # size=(chunked_output.shape[-1], chunked_output.shape[-1]),
-            #     fill_value=True,
-            #     dtype=torch.bool,
-            #     device=chunked_output.device)
-            # <<<
-
-            # >>>
-            # from lutil import pax
-            # pax("chunked_output, chunked_output_mask")
-            # <<<
 
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
-            # >>>
-            # try:
             key_value_states = self.encoder(
                 hidden_states=key_value_states,
-                # >>>
                 attention_mask=attention_mask,
-                # attention_mask=None,
-                # <<<
                 context=chunked_output,
-                # >>>
                 context_mask=None,
-                # context_mask=chunked_output_mask,
-                # <<<
                 inference_params=inference_params,
             )  # [ r, k*bs*l, d ]
-            # except Exception as e:
-            #     from lutil import pax
-            #     pax("attention_mask, e")
-            # <<<
             key_value_states = key_value_states.reshape(
                 self.retro_retrieved_length * self.retro_num_neighbors, bs * l, d
             )  # [ r*k, bs*l, d ]
@@ -211,43 +182,18 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         padded_chunked_output = padded_chunked_output.reshape(
             self.retro_chunk_length, bs * l, d
         ).contiguous()
-        # >>>
         padded_chunked_output_mask = torch.full(
-            # size=(1, 1, padded_chunked_output.shape[-1], padded_chunked_output.shape[-1]),
-            # size=(padded_chunked_output.shape[-1], padded_chunked_output.shape[-1]),
-            # size=(padded_chunked_output.shape[-1], 1, 1, padded_chunked_output.shape[-1]),
-            # size=(padded_chunked_output.shape[0], 1, 1, padded_chunked_output.shape[2]),
             size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
             fill_value=True,
             dtype=torch.bool,
             device=padded_chunked_output.device)
-        # <<<
-
-        # >>>
-        # from lutil import pax
-        # pax("padded_chunked_output, padded_chunked_output_mask")
-        # <<<
 
         # Attend to encoded neighbors.
-        # >>>
-        # attention_output, attention_bias = self.attn(
-        #     padded_chunked_output, None, key_value_states=key_value_states,
-        # )
-        # +++
         attention_output, attention_bias = self.attn(
             hidden_states=padded_chunked_output,
-            # >>>
-            # attention_mask=None,
             attention_mask=padded_chunked_output_mask,
-            # <<<
             key_value_states=key_value_states,
         )
-        # <<<
-
-        # >>>
-        # from lutil import pax
-        # pax("padded_chunked_output_mask, padded_chunked_output, attention_output")
-        # <<<
 
         # Return dimensions for bias-dropout step.
         return {
