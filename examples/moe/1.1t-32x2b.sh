@@ -1,8 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:te_2b_8_it30_z_initexp_router001_exp001_warmup --array=1-30%1
+##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:1.1t-32x2b --array=1-30%1
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=64 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:te_2b_8_it30_z_initexp_router001_exp001_warmup --array=1-10%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:1.1t-32x2b  --array=1-10%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -15,24 +15,12 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="te_2b_8_it30_z_initexp_router001_exp001_warmup"
+NAME="1.1t-32x2b"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x2b_TP8_router001_exp001"
-
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
-RESET_STATE=""
-if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
-    CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
-    RESET_STATE="--reset-dataloader-state \
-    --override-opt_param-scheduler \
-    --reset-lr-state \
-    --no-load-rng \
-    --no-load-optim
-"
-fi
 
 LOG_DIR="${OUTPUT}/${NAME}/logs"
 mkdir -p ${LOG_DIR}
@@ -49,8 +37,10 @@ options=" \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --use-distributed-optimizer \
-    --num-experts 8 \
+    --moe-grouped-gemm \
+    --num-experts 32 \
     --moe-z-loss-coeff 1e-3 \
+    --moe-aux-loss-coeff 1e-2 \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
@@ -71,16 +61,16 @@ options=" \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
     --micro-batch-size 4 \
-    --global-batch-size 512 \
-    --train-samples 80566404 \
-    --lr-decay-samples 76538085 \
-    --lr-warmup-samples 25512 \
+    --global-batch-size 128 \
+    --train-samples 268554688 \
+    --lr-decay-samples 255126953 \
+    --lr-warmup-samples 122071 \
     --lr 2e-4 \
     --min-lr 1e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
     --eval-iters 32 \
-    --eval-interval 500 \
+    --eval-interval 1000 \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model /home/yihuih/llmservice/data/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_BLEND} \
@@ -100,7 +90,7 @@ options=" \
     --bf16 \
     --tensorboard-dir ${TENSORBOARD_DIR} \
     --wandb-project upcycling \
-    --wandb-exp-name $NAME $RESET_STATE
+    --wandb-exp-name $NAME
 "
 
 run_cmd="
@@ -115,5 +105,5 @@ cd $DIR && python -u pretrain_gpt.py ${options}"
 srun -l \
      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
-     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+     bash -c "${run_cmd}"
 set +x

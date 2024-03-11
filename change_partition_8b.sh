@@ -22,7 +22,7 @@ MODEL_DIR="/lustre/share/llmservice_nlp_fm/adlr-nlp-sharing/nvllm-3.5t/checkpoin
 
 # Output model
 TARGET_TP=4
-TARGET_PP=4
+TARGET_PP=8
 SAVE_DIR="${RESULTS_DIR}/te-gpt3-8b-multi-3.5t-tp${TARGET_TP}-pp${TARGET_PP}"
 
 # Set the container
