@@ -172,7 +172,7 @@ class GPTDataset(MegatronDataset):
         Returns:
             MMapIndexedDataset: The underlying MMapIndexedDataset
         """
-        return MMapIndexedDataset(dataset_path, False)
+        return MMapIndexedDataset(dataset_path, False, mmap=config.mmap_bin_files)
 
     def __len__(self) -> int:
         """Abstract method implementation
@@ -318,9 +318,6 @@ class GPTDataset(MegatronDataset):
             )
         )
 
-        num_tokens_per_epoch = self._get_num_tokens_per_epoch()
-        num_epochs = self._get_num_epochs(num_tokens_per_epoch)
-
         if not cache_hit and torch.distributed.get_rank() == 0:
             log_single_rank(
                 logger,
@@ -329,6 +326,8 @@ class GPTDataset(MegatronDataset):
             )
 
             sequence_length = self.config.sequence_length
+            num_tokens_per_epoch = self._get_num_tokens_per_epoch()
+            num_epochs = self._get_num_epochs(num_tokens_per_epoch)
 
             if num_epochs == 1:
                 separate_final_epoch = False
@@ -473,7 +472,6 @@ class GPTDataset(MegatronDataset):
         log_single_rank(
             logger, logging.INFO, f"> total number of samples: {sample_index.shape[0] - 1}"
         )
-        log_single_rank(logger, logging.INFO, f"> total number of epochs: {num_epochs}")
 
         return document_index, sample_index, shuffle_index
 
