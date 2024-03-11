@@ -15,7 +15,8 @@ class OptimizerParamScheduler(object):
                  use_checkpoint_opt_param_scheduler=True,
                  override_opt_param_scheduler=False,
                  wsd_decay_steps=None,
-                 lr_wsd_decay_style=None):
+                 lr_wsd_decay_style=None,
+                 reset_lr_state=False):
 
         # Class values.
         self.optimizer = optimizer
@@ -34,6 +35,8 @@ class OptimizerParamScheduler(object):
         self.lr_wsd_decay_style = lr_wsd_decay_style
         assert self.lr_decay_steps > 0
         assert self.lr_warmup_steps < self.lr_decay_steps
+
+        self.reset_lr_state = reset_lr_state
 
         self.lr_decay_style = lr_decay_style
         if self.lr_decay_style == "WSD":
@@ -231,6 +234,12 @@ class OptimizerParamScheduler(object):
             num_steps = sd['num_iters']
         else:
             num_steps = sd['num_steps']
+
+        if self.reset_lr_state:
+            num_steps = 0
+
+        print_rank_0('≈ {} within the lr decay trajectory'.format(num_steps))
+
         self.step(increment=num_steps)
 
 
