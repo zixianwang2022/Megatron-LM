@@ -70,6 +70,13 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
         chunked_outputs = hidden_states.reshape(
             self.retro_retrieved_length, -1, self.retro_num_neighbors, d
         )
+        # >>>
+        chunked_output_mask = torch.full(
+            size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
+            fill_value=True,
+            dtype=torch.bool,
+            device=chunked_outputs.device)
+        # <<<
 
         # Per-chunk attention.
         attention_output_tuples = []
@@ -82,19 +89,19 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
             # - attention_bias:   [ d ]
             chunked_output = chunked_outputs[:, :, k].contiguous()
             # >>>
-            chunked_output_mask = torch.full(
-                # size=(1, 1, chunked_output.shape[-1], chunked_output.shape[-1]),
-                # size=(chunked_output.shape[-1], chunked_output.shape[-1]),
-                # size=(chunked_output.shape[-1], 1, 1, chunked_output.shape[-1]),
-                # size=(chunked_output.shape[0], 1, 1, chunked_output.shape[2]),
-                size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
-                fill_value=True,
-                dtype=torch.bool,
-                device=chunked_output.device)
+            # chunked_output_mask = torch.full(
+            #     # size=(1, 1, chunked_output.shape[-1], chunked_output.shape[-1]),
+            #     # size=(chunked_output.shape[-1], chunked_output.shape[-1]),
+            #     # size=(chunked_output.shape[-1], 1, 1, chunked_output.shape[-1]),
+            #     # size=(chunked_output.shape[0], 1, 1, chunked_output.shape[2]),
+            #     size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
+            #     fill_value=True,
+            #     dtype=torch.bool,
+            #     device=chunked_output.device)
             # <<<
             # >>>
-            from lutil import pax
-            pax("chunked_outputs, chunked_output, chunked_output_mask")
+            # from lutil import pax
+            # pax("chunked_outputs, chunked_output, chunked_output_mask")
             # <<<
             attention_output, attention_bias = self.attn(
                 hidden_states=chunked_output,  # Q (neighbor embedding)
