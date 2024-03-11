@@ -74,7 +74,8 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
             size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
             fill_value=True,
             dtype=torch.bool,
-            device=chunked_outputs.device)
+            device=chunked_outputs.device,
+        )
 
         # Per-chunk attention.
         attention_output_tuples = []

@@ -186,7 +186,8 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
             size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
             fill_value=True,
             dtype=torch.bool,
-            device=padded_chunked_output.device)
+            device=padded_chunked_output.device,
+        )
 
         # Attend to encoded neighbors.
         attention_output, attention_bias = self.attn(
