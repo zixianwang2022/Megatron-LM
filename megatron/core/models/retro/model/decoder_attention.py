@@ -152,30 +152,26 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
                 .contiguous()
             )
             # >>>
+            chunked_output_mask = None
+            # +++
             chunked_output_mask = torch.full(
+                # >>>
                 # size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
                 # size=(key_value_states.shape[1], key_value_states.shape[2], key_value_states.shape[0], chunked_output.shape[0]),
                 # size=(chunked_output.shape[1], chunked_output.shape[2], chunked_output.shape[0], key_value_states.shape[0]),
                 # size=(1, 1, chunked_output.shape[0], key_value_states.shape[0]),
                 # size=(1, 1, key_value_states.shape[0], chunked_output.shape[0]),
                 # size=(1, 1, key_value_states.shape[1], chunked_output.shape[0]),
-                size=(1, 1, 64, 64),
+                size=(1, 1, chunked_output.shape[0], chunked_output.shape[0]),
+                # size=(1, 1, 64, 64),
+                # <<<
                 fill_value=True,
                 dtype=torch.bool,
                 device=chunked_output.device,
             )
             # <<<
 
-            # >>>
-            # from lutil import pax
-            # pax("key_value_states, attention_mask, chunked_output, chunked_output_mask")
-            # <<<
-
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
-            # >>>
-            # from lutil import pax
-            # pax("key_value_states, attention_mask")
-            # <<<
             key_value_states = self.encoder(
                 hidden_states=key_value_states,
                 attention_mask=attention_mask,

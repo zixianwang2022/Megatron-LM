@@ -90,18 +90,11 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
             # - attention_output: [ r, bs*l, d ]
             # - attention_bias:   [ d ]
             chunked_output = chunked_outputs[:, :, k].contiguous()
-            # >>>
-            try:
-                attention_output, attention_bias = self.attn(
-                    hidden_states=chunked_output,  # Q (neighbor embedding)
-                    attention_mask=chunked_output_mask,
-                    key_value_states=key_value_states,  # K, V (hidden act)
-                )
-            except Exception as e:
-                # raise e
-                from lutil import pax
-                pax("e, chunked_output, chunked_output_mask, key_value_states")
-            # <<<
+            attention_output, attention_bias = self.attn(
+                hidden_states=chunked_output,  # Q (neighbor embedding)
+                attention_mask=chunked_output_mask,
+                key_value_states=key_value_states,  # K, V (hidden act)
+            )
 
             # Residual connection. [ r, bs*l, d ]
             residual = chunked_output
