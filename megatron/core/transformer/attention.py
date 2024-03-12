@@ -302,26 +302,14 @@ class Attention(MegatronModule, ABC):
                 packed_seq_params=packed_seq_params,
             )
         else:
-            # >>>
-            if 0:
-                from lutil import pax
-                pax("query, key, value, attention_mask, packed_seq_params")
-            # <<<
-            # >>>
-            try:
-                core_attn_out = self.core_attention(
-                    query,
-                    key,
-                    value,
-                    attention_mask,
-                    attn_mask_type=attn_mask_type,
-                    packed_seq_params=packed_seq_params,
-                )
-            except Exception as e:
-                raise e
-                from lutil import pax
-                pax("e, query, key, value, attention_mask, packed_seq_params")
-            # <<<
+            core_attn_out = self.core_attention(
+                query,
+                key,
+                value,
+                attention_mask,
+                attn_mask_type=attn_mask_type,
+                packed_seq_params=packed_seq_params,
+            )
 
         if packed_seq_params is not None:
             # reshape to same output shape as unpacked case

@@ -71,23 +71,9 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
         chunked_outputs = hidden_states.reshape(
             self.retro_retrieved_length, -1, self.retro_num_neighbors, d
         )
-        # >>>
-        # chunked_output_mask = None
-        # +++
-        # chunked_output_mask = torch.full(
-        #     # >>>
-        #     # size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
-        #     size=(1, 1, chunked_outputs.shape[0], key_value_states.shape[0]),
-        #     # <<<
-        #     fill_value=True,
-        #     dtype=torch.bool,
-        #     device=chunked_outputs.device,
-        # )
         chunked_output_mask = get_dummy_mask(
             size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
-            # size=(1, 1, chunked_outputs.shape[0], key_value_states.shape[0]),
             device=chunked_outputs.device)
-        # <<<
 
         # Per-chunk attention.
         attention_output_tuples = []

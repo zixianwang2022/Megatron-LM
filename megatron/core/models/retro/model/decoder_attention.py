@@ -152,44 +152,16 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
                 .reshape(self.retro_chunk_length, bs * l, d)
                 .contiguous()
             )
-            # >>>
-            # chunked_output_mask = None
-            # +++
-            # chunked_output_mask = torch.full(
-            #     # >>>
-            #     # size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
-            #     # size=(key_value_states.shape[1], key_value_states.shape[2], key_value_states.shape[0], chunked_output.shape[0]),
-            #     # size=(chunked_output.shape[1], chunked_output.shape[2], chunked_output.shape[0], key_value_states.shape[0]),
-            #     # size=(1, 1, chunked_output.shape[0], key_value_states.shape[0]),
-            #     # size=(1, 1, key_value_states.shape[0], chunked_output.shape[0]),
-            #     # size=(1, 1, key_value_states.shape[1], chunked_output.shape[0]),
-
-            #     size=(1, 1, chunked_output.shape[0], chunked_output.shape[0]),
-            #     # size=(chunked_output.shape[0], 1, 1, chunked_output.shape[0]),
-            #     # size=(1, 1, 64, 64),
-            #     # <<<
-            #     fill_value=True,
-            #     dtype=torch.bool,
-            #     device=chunked_output.device,
-            # )
             chunked_output_mask = get_dummy_mask(
                 size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
                 device=chunked_output.device)
-            # <<<
 
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
-            # >>>
-            # from lutil import pax
-            # pax("key_value_states, chunked_output, attention_mask")
-            # <<<
             key_value_states = self.encoder(
                 hidden_states=key_value_states,
                 attention_mask=attention_mask,
                 context=chunked_output,
-                # >>>
-                # context_mask=None,
                 context_mask=chunked_output_mask,
-                # <<<
                 inference_params=inference_params,
             )  # [ r, k*bs*l, d ]
             key_value_states = key_value_states.reshape(
@@ -214,23 +186,9 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         padded_chunked_output = padded_chunked_output.reshape(
             self.retro_chunk_length, bs * l, d
         ).contiguous()
-        # >>>
-        # padded_chunked_output_mask = None
-        # +++
-        # padded_chunked_output_mask = torch.full(
-        #     # >>>
-        #     # size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
-        #     size=(1, 1, padded_chunked_output.shape[0], key_value_states.shape[0]),
-        #     # <<<
-        #     fill_value=True,
-        #     dtype=torch.bool,
-        #     device=padded_chunked_output.device,
-        # )
         padded_chunked_output_mask = get_dummy_mask(
             size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
-            # size=(1, 1, padded_chunked_output.shape[0], key_value_states.shape[0]),
             device=padded_chunked_output.device)
-        # <<<
 
         # Attend to encoded neighbors.
         attention_output, attention_bias = self.attn(

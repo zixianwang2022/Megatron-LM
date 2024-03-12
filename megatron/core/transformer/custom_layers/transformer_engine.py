@@ -345,12 +345,7 @@ class TERowParallelLinear(TELinear):
         )
 
 
-# >>>
 class TEDotProductAttention(te.pytorch.DotProductAttention):
-# +++
-# from scripts.train.lawrence_te_attention import LawrenceTEAttention
-# class TEDotProductAttention(LawrenceTEAttention):
-# <<<
     """
     Wrapper for the Transformer-Engine's `DotProductAttention` layer that also
     has "flash attention" enabled.
@@ -448,10 +443,6 @@ class TEDotProductAttention(te.pytorch.DotProductAttention):
         attn_mask_type: AttnMaskType,
         packed_seq_params: PackedSeqParams = None,
     ):
-        # >>>
-        # from lutil import pax
-        # pax("query, key, value, attention_mask")
-        # <<<
         packed_seq_kwargs = (
             dataclasses.asdict(packed_seq_params) if packed_seq_params is not None else {}
         )

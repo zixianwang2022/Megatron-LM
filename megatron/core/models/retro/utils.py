@@ -19,16 +19,10 @@ def get_gpt_data_dir(project_dir: str) -> str:
 def get_dummy_mask(size, device):
     te_version = packaging.version.Version(version("transformer-engine"))
     if te_version >= packaging.version.Version("1.3"):
-        # >>>
-        # raise Exception("hi.")
-        # <<<
         return torch.full(
             size=size,
             fill_value=True,
             dtype=torch.bool,
             device=device)
     else:
-        # >>>
-        # raise Exception("hi.")
-        # <<<
         return None
