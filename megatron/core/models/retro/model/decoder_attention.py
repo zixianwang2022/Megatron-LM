@@ -13,6 +13,7 @@ from megatron.core import InferenceParams
 from megatron.core.fusions.fused_bias_dropout import get_bias_dropout_add
 from megatron.core.models.retro.model.base_attention import BaseRetroCrossAttention
 from megatron.core.models.retro.model.config import RetroConfig
+from megatron.core.models.retro.utils import get_dummy_mask
 from megatron.core.transformer import ModuleSpec
 from megatron.core.transformer.attention import CrossAttentionSubmodules
 from megatron.core.transformer.enums import AttnMaskType
@@ -154,23 +155,26 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
             # >>>
             # chunked_output_mask = None
             # +++
-            chunked_output_mask = torch.full(
-                # >>>
-                # size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
-                # size=(key_value_states.shape[1], key_value_states.shape[2], key_value_states.shape[0], chunked_output.shape[0]),
-                # size=(chunked_output.shape[1], chunked_output.shape[2], chunked_output.shape[0], key_value_states.shape[0]),
-                # size=(1, 1, chunked_output.shape[0], key_value_states.shape[0]),
-                # size=(1, 1, key_value_states.shape[0], chunked_output.shape[0]),
-                # size=(1, 1, key_value_states.shape[1], chunked_output.shape[0]),
+            # chunked_output_mask = torch.full(
+            #     # >>>
+            #     # size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
+            #     # size=(key_value_states.shape[1], key_value_states.shape[2], key_value_states.shape[0], chunked_output.shape[0]),
+            #     # size=(chunked_output.shape[1], chunked_output.shape[2], chunked_output.shape[0], key_value_states.shape[0]),
+            #     # size=(1, 1, chunked_output.shape[0], key_value_states.shape[0]),
+            #     # size=(1, 1, key_value_states.shape[0], chunked_output.shape[0]),
+            #     # size=(1, 1, key_value_states.shape[1], chunked_output.shape[0]),
 
-                size=(1, 1, chunked_output.shape[0], chunked_output.shape[0]),
-                # size=(chunked_output.shape[0], 1, 1, chunked_output.shape[0]),
-                # size=(1, 1, 64, 64),
-                # <<<
-                fill_value=True,
-                dtype=torch.bool,
-                device=chunked_output.device,
-            )
+            #     size=(1, 1, chunked_output.shape[0], chunked_output.shape[0]),
+            #     # size=(chunked_output.shape[0], 1, 1, chunked_output.shape[0]),
+            #     # size=(1, 1, 64, 64),
+            #     # <<<
+            #     fill_value=True,
+            #     dtype=torch.bool,
+            #     device=chunked_output.device,
+            # )
+            chunked_output_mask = get_dummy_mask(
+                size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
+                device=chunked_output.device)
             # <<<
 
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
@@ -213,15 +217,19 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         # >>>
         # padded_chunked_output_mask = None
         # +++
-        padded_chunked_output_mask = torch.full(
-            # >>>
-            # size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
-            size=(1, 1, padded_chunked_output.shape[0], key_value_states.shape[0]),
-            # <<<
-            fill_value=True,
-            dtype=torch.bool,
-            device=padded_chunked_output.device,
-        )
+        # padded_chunked_output_mask = torch.full(
+        #     # >>>
+        #     # size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
+        #     size=(1, 1, padded_chunked_output.shape[0], key_value_states.shape[0]),
+        #     # <<<
+        #     fill_value=True,
+        #     dtype=torch.bool,
+        #     device=padded_chunked_output.device,
+        # )
+        padded_chunked_output_mask = get_dummy_mask(
+            size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
+            # size=(1, 1, padded_chunked_output.shape[0], key_value_states.shape[0]),
+            device=padded_chunked_output.device)
         # <<<
 
         # Attend to encoded neighbors.

@@ -12,6 +12,7 @@ from megatron.core import InferenceParams
 from megatron.core.fusions.fused_bias_dropout import get_bias_dropout_add
 from megatron.core.models.retro.model.base_attention import BaseRetroCrossAttention
 from megatron.core.models.retro.model.config import RetroConfig
+from megatron.core.models.retro.utils import get_dummy_mask
 from megatron.core.transformer.module import MegatronModule
 
 
@@ -73,15 +74,19 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
         # >>>
         # chunked_output_mask = None
         # +++
-        chunked_output_mask = torch.full(
-            # >>>
-            # size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
-            size=(1, 1, chunked_outputs.shape[0], key_value_states.shape[0]),
-            # <<<
-            fill_value=True,
-            dtype=torch.bool,
-            device=chunked_outputs.device,
-        )
+        # chunked_output_mask = torch.full(
+        #     # >>>
+        #     # size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
+        #     size=(1, 1, chunked_outputs.shape[0], key_value_states.shape[0]),
+        #     # <<<
+        #     fill_value=True,
+        #     dtype=torch.bool,
+        #     device=chunked_outputs.device,
+        # )
+        chunked_output_mask = get_dummy_mask(
+            size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
+            # size=(1, 1, chunked_outputs.shape[0], key_value_states.shape[0]),
+            device=chunked_outputs.device)
         # <<<
 
         # Per-chunk attention.
