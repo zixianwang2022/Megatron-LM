@@ -16,6 +16,7 @@ from megatron.core.enums import ModelType
 from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets
 from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
+from megatron.core.models.retro.utils import get_dummy_mask
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from pretrain_gpt import (
@@ -121,16 +122,19 @@ def get_batch(data_iterator):
         # >>>
         # neighbor_attention_mask = None
         # +++
-        neighbor_attention_mask = torch.full(
-            # >>>
-            # size=(neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
-            # +++
-            size=(1, 1, config.retro_retrieved_length, config.retro_retrieved_length),
-            # size=(config.retro_retrieved_length, 1, 1, config.retro_retrieved_length),
-            # <<<
-            fill_value=True,
-            dtype=torch.bool,
-            device=neighbor_tokens.device)
+        # neighbor_attention_mask = torch.full(
+        #     # >>>
+        #     # size=(neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
+        #     # +++
+        #     # size=(1, 1, config.retro_retrieved_length, config.retro_retrieved_length),
+        #     size=(config.retro_retrieved_length, 1, 1, config.retro_retrieved_length),
+        #     # <<<
+        #     fill_value=True,
+        #     dtype=torch.bool,
+        #     device=neighbor_tokens.device)
+        neighbor_attention_mask = get_dummy_mask(
+            (config.retro_retrieved_length, 1, 1, config.retro_retrieved_length),
+            neighbor_tokens.device)
         # <<<
         # >>>
         # from lutil import pax

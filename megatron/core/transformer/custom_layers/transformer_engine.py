@@ -346,10 +346,10 @@ class TERowParallelLinear(TELinear):
 
 
 # >>>
-# class TEDotProductAttention(te.pytorch.DotProductAttention):
+class TEDotProductAttention(te.pytorch.DotProductAttention):
 # +++
-from scripts.train.lawrence_te_attention import LawrenceTEAttention
-class TEDotProductAttention(LawrenceTEAttention):
+# from scripts.train.lawrence_te_attention import LawrenceTEAttention
+# class TEDotProductAttention(LawrenceTEAttention):
 # <<<
     """
     Wrapper for the Transformer-Engine's `DotProductAttention` layer that also
