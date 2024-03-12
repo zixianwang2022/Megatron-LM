@@ -73,7 +73,8 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
         )
         chunked_output_mask = get_dummy_mask(
             size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
-            device=chunked_outputs.device)
+            device=chunked_outputs.device,
+        )
 
         # Per-chunk attention.
         attention_output_tuples = []

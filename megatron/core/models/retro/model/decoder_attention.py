@@ -154,7 +154,8 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
             )
             chunked_output_mask = get_dummy_mask(
                 size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
-                device=chunked_output.device)
+                device=chunked_output.device,
+            )
 
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
             key_value_states = self.encoder(
@@ -188,7 +189,8 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         ).contiguous()
         padded_chunked_output_mask = get_dummy_mask(
             size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
-            device=padded_chunked_output.device)
+            device=padded_chunked_output.device,
+        )
 
         # Attend to encoded neighbors.
         attention_output, attention_bias = self.attn(

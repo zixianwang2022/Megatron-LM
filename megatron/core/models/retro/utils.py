@@ -1,8 +1,9 @@
 # Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
 
 import os
-import torch
 from importlib.metadata import version
+
+import torch
 from pkg_resources import packaging
 
 
@@ -19,10 +20,6 @@ def get_gpt_data_dir(project_dir: str) -> str:
 def get_dummy_mask(size, device):
     te_version = packaging.version.Version(version("transformer-engine"))
     if te_version >= packaging.version.Version("1.3"):
-        return torch.full(
-            size=size,
-            fill_value=True,
-            dtype=torch.bool,
-            device=device)
+        return torch.full(size=size, fill_value=True, dtype=torch.bool, device=device)
     else:
         return None
