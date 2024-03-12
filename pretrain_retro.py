@@ -122,7 +122,8 @@ def get_batch(data_iterator):
             # >>>
             # size=(neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
             # +++
-            size=(1, 1, config.retro_retrieved_length, config.retro_retrieved_length),
+            # size=(1, 1, config.retro_retrieved_length, config.retro_retrieved_length),
+            size=(config.retro_retrieved_length, 1, 1, config.retro_retrieved_length),
             # <<<
             fill_value=True,
             dtype=torch.bool,

@@ -162,7 +162,9 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
                 # size=(1, 1, chunked_output.shape[0], key_value_states.shape[0]),
                 # size=(1, 1, key_value_states.shape[0], chunked_output.shape[0]),
                 # size=(1, 1, key_value_states.shape[1], chunked_output.shape[0]),
+
                 size=(1, 1, chunked_output.shape[0], chunked_output.shape[0]),
+                # size=(chunked_output.shape[0], 1, 1, chunked_output.shape[0]),
                 # size=(1, 1, 64, 64),
                 # <<<
                 fill_value=True,
