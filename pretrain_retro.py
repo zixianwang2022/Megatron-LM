@@ -119,10 +119,24 @@ def get_batch(data_iterator):
             args.reset_attention_mask,
             args.eod_mask_loss)
         neighbor_attention_mask = torch.full(
-            size=(neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
+            # >>>
+            # size=(neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
+            # size=(1, 1, neighbor_tokens.shape[-1], neighbor_tokens.shape[-1]),
+            # size=(neighbor_tokens.shape[-1], 1, 1, neighbor_tokens.shape[-1]),
+            # size=(neighbor_tokens.shape[0], 1, 1, neighbor_tokens.shape[1]),
+            # size=(1, 1, tokens.shape[1], neighbor_tokens.shape[1]),
+            size=(1, 1, config.retro_retrieved_length, config.retro_retrieved_length),
+            # size=(1, 1, config.retro_chunk_length, config.retro_retrieved_length),
+            # size=(1, 1, config.retro_retrieved_length, config.retro_chunk_length),
+            # size=(1, 1, config.retro_chunk_length, config.retro_chunk_length),
+            # <<<
             fill_value=True,
             dtype=torch.bool,
             device=neighbor_tokens.device)
+        # >>>
+        # from lutil import pax
+        # pax("config, tokens, neighbor_tokens, attention_mask, neighbor_attention_mask")
+        # <<<
         return tokens, labels, loss_mask, attention_mask, position_ids, \
                neighbor_tokens, neighbor_attention_mask, neighbor_position_ids
 

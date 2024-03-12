@@ -71,7 +71,10 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
             self.retro_retrieved_length, -1, self.retro_num_neighbors, d
         )
         chunked_output_mask = torch.full(
-            size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
+            # >>>
+            # size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
+            size=(1, 1, chunked_outputs.shape[0], key_value_states.shape[0]),
+            # <<<
             fill_value=True,
             dtype=torch.bool,
             device=chunked_outputs.device,
@@ -87,11 +90,18 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
             # - attention_output: [ r, bs*l, d ]
             # - attention_bias:   [ d ]
             chunked_output = chunked_outputs[:, :, k].contiguous()
-            attention_output, attention_bias = self.attn(
-                hidden_states=chunked_output,  # Q (neighbor embedding)
-                attention_mask=chunked_output_mask,
-                key_value_states=key_value_states,  # K, V (hidden act)
-            )
+            # >>>
+            try:
+                attention_output, attention_bias = self.attn(
+                    hidden_states=chunked_output,  # Q (neighbor embedding)
+                    attention_mask=chunked_output_mask,
+                    key_value_states=key_value_states,  # K, V (hidden act)
+                )
+            except Exception as e:
+                # raise e
+                from lutil import pax
+                pax("e, chunked_output, chunked_output_mask, key_value_states")
+            # <<<
 
             # Residual connection. [ r, bs*l, d ]
             residual = chunked_output
