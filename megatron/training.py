@@ -1304,7 +1304,6 @@ def build_train_valid_test_data_loaders(
         args.consumed_valid_samples = 0
 
     print_rank_0('dataloader starts at iteration: {}, with {} and {} seen train and valid samples respectively'.format(args.iteration,args.consumed_train_samples,args.consumed_valid_samples))
-    
     # Backward compatibility, assume fixed batch size.
     if args.iteration > 0 and args.consumed_train_samples == 0:
         assert args.train_samples is None, \
