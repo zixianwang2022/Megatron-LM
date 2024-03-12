@@ -152,7 +152,7 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
                 .contiguous()
             )
             # >>>
-            chunked_output_mask = None
+            # chunked_output_mask = None
             # +++
             chunked_output_mask = torch.full(
                 # >>>
@@ -174,6 +174,10 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
             # <<<
 
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
+            # >>>
+            # from lutil import pax
+            # pax("key_value_states, chunked_output, attention_mask")
+            # <<<
             key_value_states = self.encoder(
                 hidden_states=key_value_states,
                 attention_mask=attention_mask,
@@ -206,6 +210,9 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         padded_chunked_output = padded_chunked_output.reshape(
             self.retro_chunk_length, bs * l, d
         ).contiguous()
+        # >>>
+        # padded_chunked_output_mask = None
+        # +++
         padded_chunked_output_mask = torch.full(
             # >>>
             # size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
@@ -215,6 +222,7 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
             dtype=torch.bool,
             device=padded_chunked_output.device,
         )
+        # <<<
 
         # Attend to encoded neighbors.
         attention_output, attention_bias = self.attn(

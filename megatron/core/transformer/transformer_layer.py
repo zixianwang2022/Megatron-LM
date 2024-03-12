@@ -173,13 +173,34 @@ class TransformerLayer(MegatronModule, BaseTransformerLayer):
         input_layernorm_output = self.input_layernorm(hidden_states)
 
         # Self attention.
-        attention_output_with_bias = self.self_attention(
-            input_layernorm_output,
-            attention_mask=attention_mask,
-            inference_params=inference_params,
-            rotary_pos_emb=rotary_pos_emb,
-            packed_seq_params=packed_seq_params,
-        )
+        # >>>
+        self_attention_info = {
+            "attention_type"                     : self.self_attention.attention_type, # 'self'.
+            "layer_number"                       : self.self_attention.layer_number, # 1.
+            "query_projection_size"              : self.self_attention.query_projection_size, # 768.
+            "kv_projection_size"                 : self.self_attention.kv_projection_size, # 768.
+            "hidden_size_per_attention_head"     : self.self_attention.hidden_size_per_attention_head, # 64.
+            "num_attention_heads_per_partition"  : self.self_attention.num_attention_heads_per_partition, # 12.
+            "num_query_groups_per_partition"     : self.self_attention.num_query_groups_per_partition, # 12.
+        }
+        if 0:
+            from lutil import pax
+            pax("self_attention_info, input_layernorm_output, attention_mask")
+        # <<<
+        # >>>
+        try:
+            attention_output_with_bias = self.self_attention(
+                input_layernorm_output,
+                attention_mask=attention_mask,
+                inference_params=inference_params,
+                rotary_pos_emb=rotary_pos_emb,
+                packed_seq_params=packed_seq_params,
+            )
+        except Exception as e:
+            raise e
+            from lutil import pax
+            pax("self_attention_info, e, input_layernorm_output, attention_mask")
+        # <<<
 
         # TODO: could we move `bias_dropout_add_exec_handler` itself
         # inside the module provided in the `bias_dropout_add_spec` module?
