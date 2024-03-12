@@ -35,8 +35,7 @@ def initialize_distributed(tensor_model_parallel_size = 1, pipeline_model_parall
     rank = int(os.environ['LOCAL_RANK'])
     world_size = torch.cuda.device_count()
     torch.cuda.set_device(rank % torch.cuda.device_count())
-    init_method = 'tcp://' + os.getenv('MASTER_ADDR', 'localhost') + ':' + os.getenv('MASTER_PORT', '6000')
-    torch.distributed.init_process_group(backend='nccl', world_size=world_size, rank=rank, init_method=init_method)
+    torch.distributed.init_process_group(world_size=world_size, rank=rank)
 
     # Megatron core distributed training initialization
     parallel_state.initialize_model_parallel(tensor_model_parallel_size, pipeline_model_parallel_size)
