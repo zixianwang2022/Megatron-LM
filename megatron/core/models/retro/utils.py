@@ -28,5 +28,7 @@ def get_dummy_mask(size, device):
             dtype=torch.bool,
             device=device)
     else:
-        raise Exception("hi.")
+        # >>>
+        # raise Exception("hi.")
+        # <<<
         return None
