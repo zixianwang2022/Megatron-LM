@@ -53,8 +53,8 @@ class RetroPreprocessingConfig(TransformerConfig):
         retro_index_add_load_fraction (float): Fraction of database chunks to use for adding to the index. Useful when our total index size would use too much memory; lowering the load fraction is less costly than re-designing our token datasets.
         retro_index_delete_training_embeddings (bool): Delete training embeddings for the search index. Useful for debugging.
         retro_index_delete_added_codes (bool): Delete added codes for the search index. Useful for debugging.
-        retro_query_ef_search (int): Index ef-search parameter for HNSW during querying.
-        retro_query_nprobe (int): Index nprobe parameter for IVF during querying.
+        retro_query_ef_search (int): Index ef-search parameter for Hierarchical Navigable Small Worlds (HNSW) during querying.
+        retro_query_nprobe (int): Index nprobe parameter for Inverted File (IVF) during querying.
         retro_query_num_neighbors_query (int): Number of neighbors to retrieve when calling index.search().
         retro_query_num_neighbors_save (int): Number of neighbors to save to disk after the index's returned neighbors. If longer than target value, neighbors truncated; and if shorter than target value, neighbors are padded with -1's.
         retro_bert_embedders (RetroBertEmbedders): Set of Bert embedders used for embedding chunks. Contains entries: 1) 'mem' for an in-memory embedder, and 2) 'disk' for an embedder that saves results in blocks to disk.
