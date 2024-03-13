@@ -92,7 +92,9 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_bert_max_chunk_length: int = 256
 
     # Index.
-    retro_index_nfeats: int = 1024
+    # >>>
+    # retro_index_nfeats: int = 1024
+    # <<<
     retro_index_type: str = 'faiss-par-add'
     retro_index_str: str = None
     retro_index_ntrain: int = None
@@ -113,6 +115,26 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_tokenizers: RetroTokenizers = None
 
     def __post_init__(self) -> None:
+
+        # Validate required attributes.
+        assert self.retro_project_dir is not None
+        assert self.retro_tasks is not None
+        assert self.retro_gpt_data_path is not None
+        assert self.retro_gpt_data_cache_path is not None
+        assert self.retro_gpt_train_samples is not None
+        assert self.retro_gpt_eval_interval is not None
+        assert self.retro_gpt_eval_iters is not None
+        assert self.retro_gpt_tokenizer_type is not None
+        assert self.retro_gpt_tokenizer_model is not None
+        assert self.retro_gpt_vocab_file is not None
+        assert self.retro_gpt_merge_file is not None
+        assert self.retro_gpt_seq_length is not None
+        assert self.retro_gpt_global_batch_size is not None
+        assert self.retro_bert_tokenizer_type is not None
+        assert self.retro_bert_vocab_file is not None
+        assert self.retro_index_nfeats is not None
+        assert self.retro_index_str is not None
+        assert self.retro_index_ntrain is not None
 
         # Split retro tasks.
         self.retro_tasks = self.retro_tasks.split(",")
