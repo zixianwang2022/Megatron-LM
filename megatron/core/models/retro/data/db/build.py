@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''Build a chunk database from a list of indexed datasets.
+"""Build a chunk database from a list of indexed datasets.
 
 Building a chunk database consists of.
 
@@ -9,7 +9,7 @@ Building a chunk database consists of.
   - Re-tokenize each chunk into Bert, and discard any chunks with empty Bert
       tokens.
   - Save chunk offsets to disk for each indexed dataset.
-'''
+"""
 
 import glob
 import os
@@ -56,13 +56,13 @@ def build_partial_db(
     proc_id: int,
     n_procs: int,
 ) -> Tuple[int, list, list, dict]:
-    '''Process a document index range of the indexed dataset.
+    """Process a document index range of the indexed dataset.
 
     The chunk database is built in parallel blocks, since de-tokenizing &
     re-tokenizing for Bert-length computation is expensive. This method
     iterates each document and extracts sequential 'chunk-length' sequences
     from each document.
-    '''
+    """
 
     # Document start/end indexes.
     doc_range = block["range"]
@@ -154,14 +154,14 @@ def build_block_db(
     block_idx: int,
     block: dict,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    '''Split each document within block into consecutive retro_gpt_chunk_length
+    """Split each document within block into consecutive retro_gpt_chunk_length
     size chunks.
 
     This function returns:
       - Valid chunk offsets: chunks that convert to a non-empty Bert chunks.
       - Invalid chunk offsets: chunks that convert to empty Bert chunks.
       - Document offsets: document offsets of valid chunks.
-    '''
+    """
 
     # Build partial dbs.
     print_rank_0(' > build partial dbs.')
@@ -221,8 +221,8 @@ def build_block_db(
 def save_block_db(
     block: dict, chunk_db_valid: np.ndarray, chunk_db_invalid: np.ndarray, doc_offsets: np.ndarray,
 ) -> None:
-    '''Save block of chunked tokens to disk. These blocks are later used for
-    training and adding to the vector index.'''
+    """Save block of chunked tokens to disk. These blocks are later used for
+    training and adding to the vector index."""
     print_rank_0(" > saving individual db.")
     with h5py.File(block["path"], "w") as f:
         dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
@@ -233,7 +233,7 @@ def save_block_db(
 def build_individual_db(
     config: RetroPreprocessingConfig, dataset_idx: int, n_datasets: int, dataset_info: dict,
 ) -> None:
-    '''Process a single indexed dataset & extract chunks.'''
+    """Process a single indexed dataset & extract chunks."""
 
     # Make directory.
     db_dir = get_individual_db_dir(config.retro_project_dir, dataset_info["prefix"])
@@ -327,7 +327,7 @@ def build_individual_db(
 def build_individual_dbs(
     config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict],
 ) -> None:
-    '''Iterate each indexed dataset & process its chunks.'''
+    """Iterate each indexed dataset & process its chunks."""
 
     # Build individual DBs.
     print_rank_0(" > build individual chunk dbs.")
@@ -346,7 +346,7 @@ def build_individual_dbs(
 def update_chunk_counts(
     config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict]
 ) -> None:
-    '''Set n_chunks_train & n_chunks sampled for each individual DB.'''
+    """Set n_chunks_train & n_chunks sampled for each individual DB."""
 
     if torch.distributed.get_rank() != 0:
         return
@@ -396,7 +396,7 @@ def update_chunk_counts(
 
 
 def merge_dbs(project_dir: str, indexed_dataset_infos: List[dict], db_type: str) -> None:
-    '''Merge individual DBs into single DB.'''
+    """Merge individual DBs into single DB."""
 
     if torch.distributed.get_rank() != 0:
         return
@@ -517,23 +517,23 @@ def merge_dbs(project_dir: str, indexed_dataset_infos: List[dict], db_type: str)
 
 
 def build_merged_dbs(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
-    '''
+    """
     Merge individual dataset chunks for:
       - Sampled: used for training the vector index.
       - Train: used for adding to the trained vector index.
       - Valid: can be used for validating/testing the vector index.
-    '''
+    """
     merge_dbs(project_dir, indexed_dataset_infos, "sampled")
     merge_dbs(project_dir, indexed_dataset_infos, "train")
     merge_dbs(project_dir, indexed_dataset_infos, "valid")
 
 
 def build_db(config: RetroPreprocessingConfig) -> None:
-    '''Extract token chunks from each indexed dataset.
+    """Extract token chunks from each indexed dataset.
 
     Iterate each document of each indexed dataset, extract that document's
     chunks, and save to a 'DB' (hdf5 file).
-    '''
+    """
 
     project_dir = config.retro_project_dir
 

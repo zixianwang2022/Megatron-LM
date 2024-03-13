@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''Entry point for querying an index using a GPTChunkDataset.
+"""Entry point for querying an index using a GPTChunkDataset.
 
 Querying involves:
 
@@ -8,7 +8,7 @@ Querying involves:
   - Query index for neighbor chunk IDs (i.e., chunks from the chunk database).
   - Save neighbor chunk IDs to disk, for use in building a RetroDataset sample
       during pretraining.
-'''
+"""
 
 import os
 import time
@@ -40,7 +40,7 @@ from .gpt_chunk_dataset import build_gpt_chunk_datasets_from_gpt_datasets
 
 
 def get_index(config: RetroPreprocessingConfig, ondisk: bool = False,) -> faiss.Index:
-    '''Read index from disk.'''
+    """Read index from disk."""
 
     # Load index.
     index_wrapper = IndexFactory.get_index(config.retro_index_type)
@@ -61,7 +61,7 @@ def get_index(config: RetroPreprocessingConfig, ondisk: bool = False,) -> faiss.
 def embed_block(
     config: RetroPreprocessingConfig, gpt_dataset: GPTChunkDataset, block: dict,
 ) -> np.ndarray:
-    '''Embed block of chunks.'''
+    """Embed block of chunks."""
     text_block_dataset = torch.utils.data.Subset(
         GPTToTextDataset(gpt_dataset, config.retro_tokenizers.gpt), range(*block["range"]),
     )
@@ -78,12 +78,12 @@ def query_embeddings(
     n_chunks_per_sample: int,
     verbose: bool = True,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
-    '''Query neighbors of a block of embeddings.
+    """Query neighbors of a block of embeddings.
 
     Querying includes:
       - Query index for neighbor chunk IDs.
       - Filter chunk IDs that have the same document ID as the queried embedding.
-    '''
+    """
 
     # Query neighbor ids.
     if verbose:
@@ -136,12 +136,12 @@ def query_embedding_block(
     sample_map: dict,
     n_chunks_per_sample: int,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
-    '''Query a block of embeddings.
+    """Query a block of embeddings.
 
     The block is broken into smaller sub-blocks, for easier tracking of progress.
     Both the raw neighbor IDs and the filtered neighbor IDs (i.e., chunks with the
     same document ID are removed) are collected.
-    '''
+    """
 
     query_neighbor_ids = []
     filtered_neighbor_ids = []
@@ -187,7 +187,7 @@ def query_block_neighbors(
     index: Index,
     block: dict,
 ) -> None:
-    '''Query neighbors of a dataset block (i.e., range).'''
+    """Query neighbors of a dataset block (i.e., range)."""
 
     n_chunks_per_sample = query_dataset.n_chunks_per_sample
 
@@ -235,7 +235,7 @@ def query_dataset_neighbors(
     neighbor_dir: str,
     index: Index,
 ) -> None:
-    '''Query neighbors of each chunk within a dataset.'''
+    """Query neighbors of each chunk within a dataset."""
 
     def validate(f: h5py.File) -> None:
         assert f["neighbors"].shape[1] == config.retro_query_num_neighbors_save, (
@@ -288,7 +288,7 @@ def query_dataset_neighbors(
 
 
 def query_neighbors(config: RetroPreprocessingConfig) -> None:
-    '''Query pretraining datasets (train & valid).'''
+    """Query pretraining datasets (train & valid)."""
 
     # Num threads.
     faiss.omp_set_num_threads(64)

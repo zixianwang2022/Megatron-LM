@@ -24,16 +24,16 @@ from megatron.core.models.retro.data.utils import GPTToTextDataset
 
 
 class FaissBaseIndex(Index):
-    '''Base class for Faiss-base indexes.
+    """Base class for Faiss-base indexes.
 
     This class wraps a Faiss index, and adds additional functionality for training
     and adding codes. This base class performs a naive sequential code adding,
     while the optimized FaissParallelAddIndex class performs a parallel
     index.add().
-    '''
+    """
 
     def _train(self, config: RetroPreprocessingConfig) -> None:
-        '''Train index (rank 0's method).'''
+        """Train index (rank 0's method)."""
 
         assert torch.distributed.get_rank() == 0
 
@@ -71,7 +71,7 @@ class FaissBaseIndex(Index):
         faiss.write_index(index, empty_index_path)
 
     def train(self, config: RetroPreprocessingConfig) -> None:
-        '''Train index.'''
+        """Train index."""
 
         # Single process only.
         if torch.distributed.get_rank() == 0:
@@ -80,7 +80,7 @@ class FaissBaseIndex(Index):
         torch.distributed.barrier()
 
     def _add(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> None:
-        '''Add to index (rank 0's method).'''
+        """Add to index (rank 0's method)."""
 
         assert torch.distributed.get_rank() == 0
 
@@ -116,7 +116,7 @@ class FaissBaseIndex(Index):
         faiss.write_index(index, added_index_path)
 
     def add(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> str:
-        '''Add to index.'''
+        """Add to index."""
 
         # Single process only.
         if torch.distributed.get_rank() == 0:

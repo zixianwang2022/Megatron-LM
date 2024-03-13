@@ -31,22 +31,22 @@ from .faiss_base import FaissBaseIndex
 
 
 class FaissParallelAddIndex(FaissBaseIndex):
-    '''
+    """
     This class parallelizes both 1) encoding vectors, and 2) adding codes to the
     index. This class is more performant than naive use of Faiss, because most
     of the computational work is in encoding the vectors, which is an
     embarassingly parallel operation.
-    '''
+    """
 
     def encode_block(
         self, index: faiss.Index, embedder: Embedder, text_dataset: GPTToTextDataset, block: dict
     ) -> Tuple[np.ndarray, np.ndarray]:
-        '''Encode sub-dataset block, to be later added to index.
+        """Encode sub-dataset block, to be later added to index.
 
         Encode the data subset, generally in blocks of 1M vectors each. For
         each block, the empty/trained index is loaded, codes are computed
         via index.sa_encode(), and the resulting codes are saved to disk.
-        '''
+        """
 
         # Embed block.
         embeddings = self.embed_text_dataset_block(embedder, text_dataset, block["range"],)
@@ -59,7 +59,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         return embeddings, codes
 
     def save_block(self, config: RetroPreprocessingConfig, block: dict, codes: np.ndarray) -> None:
-        '''Save block of codes to disk.'''
+        """Save block of codes to disk."""
         # Save neighbors.
         print_rank_0("save codes.")
         retro_makedir(config, os.path.dirname(block["path"]))
@@ -67,7 +67,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             f.create_dataset("data", data=codes)
 
     def encode(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> None:
-        '''Encode text dataset, to be later added to index.'''
+        """Encode text dataset, to be later added to index."""
 
         codes_dir = get_added_codes_dir(config)
         retro_makedir(config, codes_dir)
@@ -106,7 +106,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             torch.distributed.barrier()
 
     def add_codes(self, config: RetroPreprocessingConfig) -> None:
-        '''Read codes from disk, and add them to the index.'''
+        """Read codes from disk, and add them to the index."""
 
         if torch.distributed.get_rank() != 0:
             return
@@ -145,7 +145,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         faiss.write_index(index, added_index_path)
 
     def remove_codes(self, config: RetroPreprocessingConfig) -> None:
-        '''Remove added codes after adding to index.'''
+        """Remove added codes after adding to index."""
         if torch.distributed.get_rank() != 0:
             return
         assert os.path.isfile(self.get_added_index_path(config))

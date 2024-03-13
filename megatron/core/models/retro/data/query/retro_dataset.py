@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''
+"""
 A RetroDataset wraps both:
 
   - A GPTDataset (which is nested as GPTChunkDataset -> MultiSplitGPTDataset ->
@@ -10,7 +10,7 @@ A RetroDataset wraps both:
 
 Both the GPT sample data and the neighbor IDs are returned within a sample from
 this dataset.
-'''
+"""
 
 import os
 from typing import Any, Dict, Optional, Tuple, Union
@@ -29,12 +29,12 @@ from .utils import get_query_dir
 
 
 class RetroDataset(torch.utils.data.Dataset):
-    '''Dataset of retro samples.
+    """Dataset of retro samples.
 
     Each sample contains the original GPT sample, along with the token IDs
     of each neighbor of each chunk within the sequence. Neighbor array has
     shape (num_chunks_per_sample, num_neighbors, num_retrieved_tokens).
-    '''
+    """
 
     def __init__(
         self,
@@ -46,8 +46,8 @@ class RetroDataset(torch.utils.data.Dataset):
         chunk_dataset: GPTChunkDataset,
         neighbor_path_map: BlockPathMap,
     ):
-        '''Note: chunk dataset wraps original GPT dataset (see
-        chunk_dataset.py).'''
+        """Note: chunk dataset wraps original GPT dataset (see
+        chunk_dataset.py)."""
 
         super().__init__()
 
@@ -126,7 +126,7 @@ class RetroDataset(torch.utils.data.Dataset):
 def get_retro_datasets(
     config: RetroConfig, gpt_datasets: dict, sample_length: int, eod_token_id: int,
 ) -> Tuple[Optional[RetroDataset], Optional[RetroDataset], Optional[RetroDataset]]:
-    '''Get train, valid, test retro datasets.'''
+    """Get train, valid, test retro datasets."""
 
     # DB dataset.
     db_dataset = get_db_dataset(

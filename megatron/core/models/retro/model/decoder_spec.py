@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
-'''Specs for Retro decoder.'''
+"""Specs for Retro decoder."""
 
 import typing
 

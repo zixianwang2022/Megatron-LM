@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''Utilities for building a chunk database.'''
+"""Utilities for building a chunk database."""
 
 import glob
 import json
@@ -18,16 +18,16 @@ from .dataset import DBDataset
 
 
 def get_db_dir(project_dir: str) -> str:
-    '''Sub-directory for DB data.'''
+    """Sub-directory for DB data."""
     return os.path.join(project_dir, "db")
 
 
 def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
-    '''Gather meta-info about each indexed dataset.
+    """Gather meta-info about each indexed dataset.
 
     The returned info array allows for easy access to the configuration, and
     helps remove ambiguity.
-    '''
+    """
 
     data_dir = get_gpt_data_dir(config.retro_project_dir)
     data_blend: List[str] = config.retro_gpt_data_path
@@ -51,12 +51,12 @@ def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
 
 
 def get_indexed_dataset_infos_path(project_dir: str) -> str:
-    '''Path to indexed dataset meta-infos.'''
+    """Path to indexed dataset meta-infos."""
     return os.path.join(get_db_dir(project_dir), "indexed_dataset_infos.json")
 
 
 def save_indexed_dataset_infos(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
-    '''Save dataset order & meta-info.'''
+    """Save dataset order & meta-info."""
 
     # Remove 'dataset' field.
     clean_infos = []
@@ -71,14 +71,14 @@ def save_indexed_dataset_infos(project_dir: str, indexed_dataset_infos: List[dic
 
 
 def load_indexed_datasets(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
-    '''Loaded indexed datasets into memory-mapped datasets.'''
+    """Loaded indexed datasets into memory-mapped datasets."""
     data_dir = get_gpt_data_dir(project_dir)
     for info in indexed_dataset_infos:
         info["dataset"] = IndexedDataset(os.path.join(data_dir, info["prefix"]), mmap=True)
 
 
 def get_indexed_dataset_infos(project_dir: str) -> List[dict]:
-    '''Load indexed dataset meta-infos.'''
+    """Load indexed dataset meta-infos."""
 
     # Load json.
     path = get_indexed_dataset_infos_path(project_dir)
@@ -92,17 +92,17 @@ def get_indexed_dataset_infos(project_dir: str) -> List[dict]:
 
 
 def get_individual_db_dir(project_dir: str, prefix: str) -> str:
-    '''Individual DB's directory.'''
+    """Individual DB's directory."""
     return os.path.join(get_db_dir(project_dir), "individual", prefix)
 
 
 def get_individual_db_paths(project_dir: str, prefix: str) -> List[str]:
-    '''Get paths of all database blocks of an individual dataset.'''
+    """Get paths of all database blocks of an individual dataset."""
     return sorted(glob.glob(get_individual_db_dir(project_dir, prefix) + "/*hdf5"))
 
 
 def get_individual_chunk_db(project_dir: str, ds_id: int, ds_info: dict) -> np.ndarray:
-    '''Load individual dataset's chunk DB.'''
+    """Load individual dataset's chunk DB."""
     paths = get_individual_db_paths(project_dir, ds_info["prefix"])
     # *Note*: convert to dataset, rather than copying to memory.
     db = np.zeros((ds_info["n_chunks"], 5), dtype="uint32")
@@ -121,7 +121,7 @@ def get_individual_chunk_db(project_dir: str, ds_id: int, ds_info: dict) -> np.n
 
 
 def get_individual_doc_offsets(project_dir: str, ds_id: int, ds_info: dict) -> np.ndarray:
-    '''Load individual dataset's chunk DB.'''
+    """Load individual dataset's chunk DB."""
     paths = get_individual_db_paths(project_dir, ds_info["prefix"])
     # *Note*: convert to dataset, rather than copying to memory.
     doc_offsets = np.zeros((ds_info["n_docs"], 3), dtype="uint64")
@@ -141,7 +141,7 @@ def get_individual_doc_offsets(project_dir: str, ds_id: int, ds_info: dict) -> n
 
 
 def get_merged_db_path_map(project_dir: str) -> dict:
-    '''Paths to merged datasets.'''
+    """Paths to merged datasets."""
     base_dir = get_db_dir(project_dir)
     return {
         "sampled": os.path.join(base_dir, "merged", "sampled.hdf5"),
@@ -157,7 +157,7 @@ def get_merged_dataset(
     db_type: str,
     indexed_dataset_infos: Optional[List[dict]] = None,
 ) -> DBDataset:
-    '''Get merged dataset.'''
+    """Get merged dataset."""
 
     if not indexed_dataset_infos:
         indexed_dataset_infos = get_indexed_dataset_infos(project_dir)
@@ -186,7 +186,7 @@ def get_merged_sampled_dataset(
     eod_token_id: int,
     indexed_dataset_infos: Optional[List[dict]] = None,
 ) -> DBDataset:
-    '''Get sampled dataset (for training the vector index).'''
+    """Get sampled dataset (for training the vector index)."""
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "sampled", indexed_dataset_infos
     )
@@ -198,7 +198,7 @@ def get_merged_train_dataset(
     eod_token_id: int,
     indexed_dataset_infos: Optional[List[dict]] = None,
 ) -> DBDataset:
-    '''Get training dataset (for adding to the vector index).'''
+    """Get training dataset (for adding to the vector index)."""
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "train", indexed_dataset_infos
     )
@@ -210,14 +210,14 @@ def get_merged_valid_dataset(
     eod_token_id: int,
     indexed_dataset_infos: Optional[List[dict]] = None,
 ) -> DBDataset:
-    '''Get validation dataset (for testing the vector index).'''
+    """Get validation dataset (for testing the vector index)."""
     return get_merged_dataset(
         project_dir, chunk_length, eod_token_id, "valid", indexed_dataset_infos
     )
 
 
 def get_merged_datasets(project_dir: str, chunk_length: int, eod_token_id: int) -> dict:
-    '''Get all merged datasets.'''
+    """Get all merged datasets."""
     fns = {
         "sampled": get_merged_sampled_dataset,
         "train": get_merged_train_dataset,

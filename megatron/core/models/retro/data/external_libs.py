@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''Required external libraries for Retro preprocessing.'''
+"""Required external libraries for Retro preprocessing."""
 
 import importlib
 

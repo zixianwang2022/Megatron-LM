@@ -1,10 +1,10 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''A DBDataset is for iterating the chunks of the chunk database.
+"""A DBDataset is for iterating the chunks of the chunk database.
 
 This dataset is used for both training a vector index, and adding vectors to a
 trained index.
-'''
+"""
 
 import typing
 
@@ -16,13 +16,13 @@ from megatron.core.datasets.indexed_dataset import IndexedDataset
 
 
 class DBDataset(torch.utils.data.Dataset):
-    '''Dataset for iterating chunks.
+    """Dataset for iterating chunks.
 
     Requires:
     - List of indexed datasets
     - Chunk index array, with format:
         [dataset_idx, doc_id, start_idx, end_idx, bert_length])
-    '''
+    """
 
     def __init__(
         self,
@@ -74,11 +74,11 @@ class DBDataset(torch.utils.data.Dataset):
         }
 
     def load_doc_tuples(self) -> None:
-        '''Load the dataset & document ids.
+        """Load the dataset & document ids.
 
         Load the dataset id & document id of each chunk in the database, to
         be used for causality filtering during querying.
-        '''
+        """
         self.doc_tuples = np.zeros(shape=(len(self), 2), dtype="uint32")
         block_size = int(1e6)
         for start_idx in tqdm(

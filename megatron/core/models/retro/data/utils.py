@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''Utilities for Retro preprocessing.'''
+"""Utilities for Retro preprocessing."""
 
 import glob
 import os
@@ -23,7 +23,7 @@ from .external_libs import h5py
 
 
 def print_rank_0(message: str) -> None:
-    '''If distributed is initialized, print only on rank 0.'''
+    """If distributed is initialized, print only on rank 0."""
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
             print(message, flush=True)
@@ -32,7 +32,7 @@ def print_rank_0(message: str) -> None:
 
 
 def retro_makedir(config: RetroPreprocessingConfig, path: str) -> None:
-    '''Make a directory, conditional on not being in validation mode.'''
+    """Make a directory, conditional on not being in validation mode."""
     if config.retro_task_validate is None:
         os.makedirs(path, exist_ok=True)
 
@@ -42,13 +42,13 @@ def extract_data_config(config: RetroPreprocessingConfig) -> MultiSplitGPTDatase
 
 
 def get_num_chunks_per_sample(sample_length: int, chunk_length: int) -> int:
-    '''Compute seq_length // chunk_length.'''
+    """Compute seq_length // chunk_length."""
     assert sample_length % chunk_length == 0
     return sample_length // chunk_length
 
 
 class GPTToTextDataset(torch.utils.data.Dataset):
-    '''Dataset to convert GPT tokens to text.'''
+    """Dataset to convert GPT tokens to text."""
 
     def __init__(self, gpt_dataset: MultiSplitGPTDataset, gpt_tokenizer: Any):
 
@@ -69,7 +69,7 @@ class GPTToTextDataset(torch.utils.data.Dataset):
 def get_blocks(
     dirname: str, n_samples: int, block_size: int, validate: Callable = None,
 ) -> SimpleNamespace:
-    '''Divide range [0, num_samples) to sequence of block ranges.
+    """Divide range [0, num_samples) to sequence of block ranges.
 
     This is a core method within the concept of block processing. The idea
     is to divide a range (size n_samples) into a sequence of blocks. Each
@@ -77,7 +77,7 @@ def get_blocks(
     '{start_idx}-{end_idx}.hdf5'. This method checks for the existence of
     these files, and returns two lists, one for existing blocks and one for
     missing blocks.
-    '''
+    """
 
     assert os.path.isdir(dirname), "missing directory '%s.'" % dirname
 
@@ -139,13 +139,13 @@ def get_blocks(
 def get_blocks_by_rank(
     dirname: str, n_samples: int, block_size: int, validate: Callable = None, sample: float = None,
 ) -> SimpleNamespace:
-    '''Divide existing and missing blocks evenly across all ranks.
+    """Divide existing and missing blocks evenly across all ranks.
 
     See 'get_blocks()' above for description. The returned lists of existing and
     missing blocks are split evenly across ranks via interleaving. This way,
     each rank has a roughly equal number of blocks to process for a
     downstream operation.
-    '''
+    """
 
     # Get world blocks.
     blocks = get_blocks(dirname, n_samples, block_size, validate)
@@ -206,7 +206,7 @@ def get_blocks_by_rank(
 
 
 class BlockPathMap:
-    '''Map an index to its containing block path.
+    """Map an index to its containing block path.
 
     The common use for this class is to have a directory of files containing
     blocks of processed data, of uniform block size (e.g., 100k samples per
@@ -214,11 +214,11 @@ class BlockPathMap:
     where 'endIdx' minus 'startIdx' must equal the block size, with the possible
     exception of the final block. Given an input index, this class maps the
     index to the containing block file.
-    '''
+    """
 
     @classmethod
     def from_dir(cls, dir: str, block_size: int, ext: str = "hdf5") -> Any:
-        '''Get list of block files, and create map.'''
+        """Get list of block files, and create map."""
         assert os.path.isdir(dir), f"directory not found, '{dir}'."
         return cls(sorted(glob.glob(dir + f"/*.{ext}")), block_size)
 
@@ -236,7 +236,7 @@ class BlockPathMap:
         return "%d paths" % len(self.block_path_map)
 
     def __getitem__(self, idx: int) -> str:
-        '''Get block path from index.'''
+        """Get block path from index."""
         block_start_idx = self.block_size * (idx // self.block_size)
         block_path = self.block_path_map[block_start_idx]
         return block_path

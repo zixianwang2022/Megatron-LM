@@ -1,6 +1,6 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''Validate an index's data.
+"""Validate an index's data.
 
 This module contains functionality for checking for bitwise equality across code
 changes. The training and adding steps of index construction can be validated
@@ -12,7 +12,7 @@ separately. The following high-level checks are supported:
   - Adding: Validate that the saved encodings are bitwise equal with a sample of
       sample set of freshly computed encodings. (*Note*:
       `--no-retro-index-delete-added-codes` must be used.)
-'''
+"""
 
 import typing
 
@@ -34,13 +34,13 @@ from .utils import get_added_codes_dir, get_training_data_block_dir
 
 
 def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
-    '''Validate training embeddings.
+    """Validate training embeddings.
 
     Steps:
     - Randomly sample subset of text dataset blocks.
     - Embed each block.
     - Compare against saved embeddings.
-    '''
+    """
 
     # Training text dataset.
     text_dataset = get_text_dataset_for_training(config)
@@ -95,13 +95,13 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
 
 
 def validate_added_encodings(config: RetroPreprocessingConfig) -> None:
-    '''Validate added encodings.
+    """Validate added encodings.
 
     Steps:
     - Randomly sample subset of text dataset blocks.
     - Encode each block.
     - Compare against saved encodings.
-    '''
+    """
 
     # Index.
     index = IndexFactory.get_index(config.retro_index_type)
@@ -159,12 +159,12 @@ def validate_added_encodings(config: RetroPreprocessingConfig) -> None:
 
 
 def validate_index(config: RetroPreprocessingConfig) -> None:
-    '''Validate index.
+    """Validate index.
 
     Validating index involves sequentially running stages above:
     - Validate trained index.
     - Validate filled index.
-    '''
+    """
 
     # Validate training embeddings.
     validate_training_embeddings(config)

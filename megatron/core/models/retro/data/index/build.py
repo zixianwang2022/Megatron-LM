@@ -1,12 +1,12 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
-'''Construct an index.
+"""Construct an index.
 
 Constructing an index generally happens in two phases:
 
   - index.train(): Train an index on a representative set of vectors.
   - index.add(): Add vectors to an index, to be available for retrieval.
-'''
+"""
 
 import os
 import shutil
@@ -37,26 +37,26 @@ from .utils import (
 
 
 def get_empty_index_path(config: RetroPreprocessingConfig) -> str:
-    '''Path of empty index.'''
+    """Path of empty index."""
     index = IndexFactory.get_index(config.retro_index_type)
     empty_index_path = index.get_empty_index_path(config)
     return empty_index_path
 
 
 def get_block_nload(block_path: str, load_fraction: float) -> int:
-    '''Compute number of blocks to load, by multiplying the total number of
-    available blocks with the fraction of blocks to load.'''
+    """Compute number of blocks to load, by multiplying the total number of
+    available blocks with the fraction of blocks to load."""
     with h5py.File(block_path) as fi:
         return int(load_fraction * fi["data"].shape[0])
 
 
 def merge_embedding_blocks(config: RetroPreprocessingConfig) -> None:
-    '''Merge individual embedding blocks into a single binary mmap file.
+    """Merge individual embedding blocks into a single binary mmap file.
 
     The embeddings are initially stored in block-sized (e.g., ~100k embeddings per
     block) HDF5 files. These individual block files must be merged into a single
     file before training, to be based as a numpy mmap array to the index.
-    '''
+    """
 
     if torch.distributed.get_rank() != 0:
         return
@@ -93,8 +93,8 @@ def merge_embedding_blocks(config: RetroPreprocessingConfig) -> None:
 
 
 def get_text_dataset_for_training(config: RetroPreprocessingConfig) -> GPTToTextDataset:
-    '''Convert GPT token chunk dataset to a text dataset for passing to the
-    embedder.'''
+    """Convert GPT token chunk dataset to a text dataset for passing to the
+    embedder."""
     gpt_dataset = get_merged_sampled_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_gpt_chunk_length,
@@ -105,11 +105,11 @@ def get_text_dataset_for_training(config: RetroPreprocessingConfig) -> GPTToText
 
 
 def embed_training_chunks(config: RetroPreprocessingConfig) -> None:
-    '''Embed DB chunks.
+    """Embed DB chunks.
 
     Store chunks in blocks on disk. These blocks will later be merged into
     a single dataset for training the index.
-    '''
+    """
 
     merged_train_data_path = get_training_data_merged_path(config)
     if os.path.exists(merged_train_data_path):
@@ -127,13 +127,13 @@ def embed_training_chunks(config: RetroPreprocessingConfig) -> None:
 
 
 def train_on_embeddings(config: RetroPreprocessingConfig) -> None:
-    '''Train index on embedded DB chunks.'''
+    """Train index on embedded DB chunks."""
     index = IndexFactory.get_index(config.retro_index_type)
     index.train(config)
 
 
 def remove_embeddings(config: RetroPreprocessingConfig) -> None:
-    '''Remove embeddings after training.'''
+    """Remove embeddings after training."""
     torch.distributed.barrier()
     if torch.distributed.get_rank() != 0:
         return
@@ -143,7 +143,7 @@ def remove_embeddings(config: RetroPreprocessingConfig) -> None:
 
 
 def _train_index(config: RetroPreprocessingConfig) -> None:
-    '''Train index on DB chunks.'''
+    """Train index on DB chunks."""
 
     # Check if trained index already exists.
     if not os.path.isfile(get_empty_index_path(config)):
@@ -163,10 +163,10 @@ def _train_index(config: RetroPreprocessingConfig) -> None:
 
 
 def train_index(config: RetroPreprocessingConfig) -> None:
-    '''Entry point for training the index.
+    """Entry point for training the index.
 
     We select whether to train a new index, or validate an existing index.
-    '''
+    """
 
     # Train new index.
     if config.retro_task_validate is None:
@@ -185,8 +185,8 @@ def train_index(config: RetroPreprocessingConfig) -> None:
 
 
 def get_text_dataset_for_adding(config: RetroPreprocessingConfig) -> GPTToTextDataset:
-    '''Convert GPT token chunk dataset to a text dataset for passing to the
-    embedder.'''
+    """Convert GPT token chunk dataset to a text dataset for passing to the
+    embedder."""
     gpt_dataset = get_merged_train_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_gpt_chunk_length,
@@ -197,7 +197,7 @@ def get_text_dataset_for_adding(config: RetroPreprocessingConfig) -> GPTToTextDa
 
 
 def _add_to_index(config: RetroPreprocessingConfig) -> str:
-    '''Add DB chunks to index.'''
+    """Add DB chunks to index."""
 
     # Get index.
     index = IndexFactory.get_index(config.retro_index_type)
@@ -212,10 +212,10 @@ def _add_to_index(config: RetroPreprocessingConfig) -> str:
 
 
 def add_to_index(config: RetroPreprocessingConfig) -> None:
-    '''Entry point for adding to the index.
+    """Entry point for adding to the index.
 
     We select whether to add to a new index, or validate an existing index.
-    '''
+    """
 
     # Add to new index.
     if config.retro_task_validate is None:
@@ -234,12 +234,12 @@ def add_to_index(config: RetroPreprocessingConfig) -> None:
 
 
 def build_index(config: RetroPreprocessingConfig) -> None:
-    '''Build index.
+    """Build index.
 
     Building index involves sequentially running stages above:
     - Train index (on sampled training chunks).
     - Add to index (on all training chunks).
-    '''
+    """
 
     # Train index.
     train_index(config)

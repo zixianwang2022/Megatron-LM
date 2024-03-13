@@ -13,7 +13,6 @@ from .tokenizers import RetroTokenizers
 
 @dataclass
 class RetroPreprocessingConfig(TransformerConfig):
-
     """Configuration object for Retro preprocessing.
 
     *Note* : Arguments prefixed with '--retro-gpt-*' or '--retro-bert-*' are
