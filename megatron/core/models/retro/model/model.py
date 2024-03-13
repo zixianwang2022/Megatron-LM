@@ -1,7 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 
 """Retro Model."""
-from typing import Optional
+from typing import Dict, Optional
 
 from torch import Tensor
 
@@ -91,7 +91,7 @@ class RetroModel(GPTModel):
         )
 
     def sharded_state_dict(
-        self, prefix: str = '', sharded_offsets: tuple = (), metadata: Optional[dict] = None
+        self, prefix: str = '', sharded_offsets: tuple = (), metadata: Optional[Dict] = None
     ) -> ShardedStateDict:
         metadata = metadata or {}
         metadata['non_homogeneous_layers'] = True

@@ -5,7 +5,7 @@
 import glob
 import json
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -22,7 +22,7 @@ def get_db_dir(project_dir: str) -> str:
     return os.path.join(project_dir, "db")
 
 
-def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[dict]:
+def init_indexed_dataset_infos(config: RetroPreprocessingConfig) -> List[Dict]:
     """Gather meta-info about each indexed dataset.
 
     The returned info array allows for easy access to the configuration, and
@@ -55,7 +55,7 @@ def get_indexed_dataset_infos_path(project_dir: str) -> str:
     return os.path.join(get_db_dir(project_dir), "indexed_dataset_infos.json")
 
 
-def save_indexed_dataset_infos(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
+def save_indexed_dataset_infos(project_dir: str, indexed_dataset_infos: List[Dict]) -> None:
     """Save dataset order & meta-info."""
 
     # Remove 'dataset' field.
@@ -70,14 +70,14 @@ def save_indexed_dataset_infos(project_dir: str, indexed_dataset_infos: List[dic
         json.dump(clean_infos, f, indent=4)
 
 
-def load_indexed_datasets(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
+def load_indexed_datasets(project_dir: str, indexed_dataset_infos: List[Dict]) -> None:
     """Loaded indexed datasets into memory-mapped datasets."""
     data_dir = get_gpt_data_dir(project_dir)
     for info in indexed_dataset_infos:
         info["dataset"] = IndexedDataset(os.path.join(data_dir, info["prefix"]), mmap=True)
 
 
-def get_indexed_dataset_infos(project_dir: str) -> List[dict]:
+def get_indexed_dataset_infos(project_dir: str) -> List[Dict]:
     """Load indexed dataset meta-infos."""
 
     # Load json.
@@ -155,7 +155,7 @@ def get_merged_dataset(
     chunk_length: int,
     eod_token_id: int,
     db_type: str,
-    indexed_dataset_infos: Optional[List[dict]] = None,
+    indexed_dataset_infos: Optional[List[Dict]] = None,
 ) -> DBDataset:
     """Get merged dataset."""
 
@@ -184,7 +184,7 @@ def get_merged_sampled_dataset(
     project_dir: str,
     chunk_length: int,
     eod_token_id: int,
-    indexed_dataset_infos: Optional[List[dict]] = None,
+    indexed_dataset_infos: Optional[List[Dict]] = None,
 ) -> DBDataset:
     """Get sampled dataset (for training the vector index)."""
     return get_merged_dataset(
@@ -196,7 +196,7 @@ def get_merged_train_dataset(
     project_dir: str,
     chunk_length: int,
     eod_token_id: int,
-    indexed_dataset_infos: Optional[List[dict]] = None,
+    indexed_dataset_infos: Optional[List[Dict]] = None,
 ) -> DBDataset:
     """Get training dataset (for adding to the vector index)."""
     return get_merged_dataset(
@@ -208,7 +208,7 @@ def get_merged_valid_dataset(
     project_dir: str,
     chunk_length: int,
     eod_token_id: int,
-    indexed_dataset_infos: Optional[List[dict]] = None,
+    indexed_dataset_infos: Optional[List[Dict]] = None,
 ) -> DBDataset:
     """Get validation dataset (for testing the vector index)."""
     return get_merged_dataset(

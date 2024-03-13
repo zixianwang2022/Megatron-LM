@@ -15,7 +15,7 @@ import glob
 import os
 import types
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -88,8 +88,8 @@ def build_partial_db(
     )
 
     # Iterate documents & parse chunks.
-    chunk_db_valid: List[tuple] = []
-    chunk_db_invalid: List[tuple] = []
+    chunk_db_valid: List[Tuple] = []
+    chunk_db_invalid: List[Tuple] = []
     doc_size_map = {}
     for doc_id in pbar:
 
@@ -325,7 +325,7 @@ def build_individual_db(
 
 
 def build_individual_dbs(
-    config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict],
+    config: RetroPreprocessingConfig, indexed_dataset_infos: List[Dict],
 ) -> None:
     """Iterate each indexed dataset & process its chunks."""
 
@@ -344,7 +344,7 @@ def build_individual_dbs(
 
 
 def update_chunk_counts(
-    config: RetroPreprocessingConfig, indexed_dataset_infos: List[dict]
+    config: RetroPreprocessingConfig, indexed_dataset_infos: List[Dict]
 ) -> None:
     """Set n_chunks_train & n_chunks sampled for each individual DB."""
 
@@ -395,7 +395,7 @@ def update_chunk_counts(
         )
 
 
-def merge_dbs(project_dir: str, indexed_dataset_infos: List[dict], db_type: str) -> None:
+def merge_dbs(project_dir: str, indexed_dataset_infos: List[Dict], db_type: str) -> None:
     """Merge individual DBs into single DB."""
 
     if torch.distributed.get_rank() != 0:
@@ -516,7 +516,7 @@ def merge_dbs(project_dir: str, indexed_dataset_infos: List[dict], db_type: str)
         f.close()
 
 
-def build_merged_dbs(project_dir: str, indexed_dataset_infos: List[dict]) -> None:
+def build_merged_dbs(project_dir: str, indexed_dataset_infos: List[Dict]) -> None:
     """
     Merge individual dataset chunks for:
       - Sampled: used for training the vector index.

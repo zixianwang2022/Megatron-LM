@@ -6,7 +6,7 @@ import glob
 import os
 from collections import defaultdict
 from types import SimpleNamespace
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
@@ -187,9 +187,9 @@ def get_blocks_by_rank(
         # to yield `sample * len(blocks)` number of blocks.
 
         # Randomly sample blocks.
-        def sample_blocks(_blocks: List[Optional[dict]]) -> List[Optional[dict]]:
+        def sample_blocks(_blocks: List[Optional[Dict]]) -> List[Optional[Dict]]:
             n_blocks_sample = int(np.ceil(sample * len(_blocks)))
-            sampled_blocks: List[Optional[dict]] = [b for b in _blocks if b is not None]
+            sampled_blocks: List[Optional[Dict]] = [b for b in _blocks if b is not None]
 
             np.random.seed(None)
             np.random.shuffle(sampled_blocks)
