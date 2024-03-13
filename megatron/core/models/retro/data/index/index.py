@@ -14,7 +14,7 @@ pattern:
 
 import abc
 import os
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -68,11 +68,11 @@ class Index(abc.ABC):
         return faiss.read_index(self.get_added_index_path(config))
 
     @abc.abstractmethod
-    def train(self, *args: List[Any]) -> None:
+    def train(self, config: RetroPreprocessingConfig) -> None:
         """Train index on a representative set of vectors."""
 
     @abc.abstractmethod
-    def add(self, *args: List[Any]) -> str:
+    def add(self, config: RetroPreprocessingConfig, text_dataset: GPTToTextDataset) -> str:
         """Add vectors to index."""
 
     def embed_text_dataset_block(
