@@ -27,7 +27,7 @@ from megatron.core.models.retro.data.external_libs import h5py
 from megatron.core.models.retro.data.utils import (
     extract_data_config,
     get_blocks_by_rank,
-    print_rank_0,
+    log_retro_rank_0,
     retro_makedir,
 )
 
@@ -164,7 +164,7 @@ def build_block_db(
     """
 
     # Build partial dbs.
-    print_rank_0(' > build partial dbs.')
+    log_retro_rank_0(' > build partial dbs.')
     futures = []
     for proc_id in range(n_procs):  # not true process id
         futures.append(
@@ -201,7 +201,7 @@ def build_block_db(
     ]
 
     # Convert to numpy.
-    print_rank_0(' > converting chunk db to numpy.')
+    log_retro_rank_0(' > converting chunk db to numpy.')
     chunk_db_valid = np.array(chunk_db_valid, dtype="uint32")
     chunk_db_invalid = np.array(chunk_db_invalid, dtype="uint32")
 
@@ -223,7 +223,7 @@ def save_block_db(
 ) -> None:
     """Save block of chunked tokens to disk. These blocks are later used for
     training and adding to the vector index."""
-    print_rank_0(" > saving individual db.")
+    log_retro_rank_0(" > saving individual db.")
     with h5py.File(block["path"], "w") as f:
         dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
         dset = f.create_dataset("chunks_invalid", data=chunk_db_invalid)
@@ -312,16 +312,16 @@ def build_individual_db(
                         existing_doc_offsets = np.copy(f["doc_offsets"])
 
                     # Check equality.
-                    print_rank_0(" > validate.")
+                    log_retro_rank_0(" > validate.")
                     assert np.array_equal(existing_chunks_valid, chunk_db_valid)
                     assert np.array_equal(existing_chunks_invalid, chunk_db_invalid)
                     assert np.array_equal(existing_doc_offsets, doc_offsets)
 
             # Wait for all ranks to finish block.
-            print_rank_0(" > waiting for all ranks to finish block.")
+            log_retro_rank_0(" > waiting for all ranks to finish block.")
             torch.distributed.barrier()
 
-    print_rank_0(" > finished saving individual db.")
+    log_retro_rank_0(" > finished saving individual db.")
 
 
 def build_individual_dbs(
@@ -330,11 +330,11 @@ def build_individual_dbs(
     """Iterate each indexed dataset & process its chunks."""
 
     # Build individual DBs.
-    print_rank_0(" > build individual chunk dbs.")
+    log_retro_rank_0(" > build individual chunk dbs.")
     for ds_idx, ds_info in enumerate(indexed_dataset_infos):
 
         # Progress.
-        print_rank_0(
+        log_retro_rank_0(
             " > building individual db, dataset %d / %d ... '%s'."
             % (ds_idx, len(indexed_dataset_infos), ds_info["prefix"],)
         )
@@ -359,7 +359,7 @@ def update_chunk_counts(
     assert train_fraction > 0 and train_fraction <= 1
 
     # Set n_chunks (including n_chunks_sampled for unambiguity).
-    print_rank_0(" > compute n_chunks.")
+    log_retro_rank_0(" > compute n_chunks.")
     for ds_index, ds_info in enumerate(indexed_dataset_infos):
 
         db_paths = get_individual_db_paths(config.retro_project_dir, ds_info["prefix"])

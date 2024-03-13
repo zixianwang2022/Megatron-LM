@@ -32,7 +32,7 @@ from megatron.core.models.retro.data.query.gpt_chunk_dataset import GPTChunkData
 from megatron.core.models.retro.data.utils import (
     GPTToTextDataset,
     get_blocks_by_rank,
-    print_rank_0,
+    log_retro_rank_0,
     retro_makedir,
 )
 
@@ -87,16 +87,16 @@ def query_embeddings(
 
     # Query neighbor ids.
     if verbose:
-        print_rank_0("search.")
+        log_retro_rank_0("search.")
     t = time.time()
     assert index.ntotal > 0, "check we don't accidentally have an empty index."
     _, query_neighbor_ids = index.search(embeddings, config.retro_query_num_neighbors_query)
     if verbose:
-        print_rank_0("  time : %.3f sec." % (time.time() - t))
+        log_retro_rank_0("  time : %.3f sec." % (time.time() - t))
 
     # Filter banned neighbor ids.
     if verbose:
-        print_rank_0("filter banned neighbor ids.")
+        log_retro_rank_0("filter banned neighbor ids.")
     filtered_neighbor_ids = np.full(
         shape=(len(query_neighbor_ids), config.retro_query_num_neighbors_save),
         fill_value=-1,
@@ -213,7 +213,7 @@ def query_block_neighbors(
 
     if config.retro_task_validate is None:
         # Save neighbors.
-        print_rank_0("save neighbors.")
+        log_retro_rank_0("save neighbors.")
         retro_makedir(config, os.path.dirname(block["path"]))
         f = h5py.File(block["path"], "w")
         f.create_dataset("neighbors", data=filtered_neighbor_ids)
@@ -266,7 +266,7 @@ def query_dataset_neighbors(
         if block is not None:
 
             # Progress.
-            print_rank_0(
+            log_retro_rank_0(
                 "%squery '%s' block %d / %d ... %s ... mem %.3f gb, %.1f%%."
                 % (
                     "" if config.retro_task_validate is None else "[validate] ",
@@ -283,7 +283,7 @@ def query_dataset_neighbors(
             query_block_neighbors(config, db_dataset, query_dataset, index, block)
 
         # Synchronize progress across all ranks. (for easier observation)
-        print_rank_0(" > waiting for other ranks to finish block.")
+        log_retro_rank_0(" > waiting for other ranks to finish block.")
         torch.distributed.barrier()
 
 
@@ -294,7 +294,7 @@ def query_neighbors(config: RetroPreprocessingConfig) -> None:
     faiss.omp_set_num_threads(64)
 
     # Load chunk db dataset.
-    print_rank_0("load chunk db dataset.")
+    log_retro_rank_0("load chunk db dataset.")
     db_dataset = get_db_merged_train_dataset(
         project_dir=config.retro_project_dir,
         chunk_length=config.retro_gpt_chunk_length,
@@ -303,15 +303,15 @@ def query_neighbors(config: RetroPreprocessingConfig) -> None:
     db_dataset.load_doc_tuples()
 
     # Load index.
-    print_rank_0(" > get index.")
+    log_retro_rank_0(" > get index.")
     index = get_index(config)
 
     # Query each (i.e., train, valid, test) dataset.
-    print_rank_0(" > query.")
+    log_retro_rank_0(" > query.")
     for prefix, info in vars(config.retro_gpt_chunk_datasets).items():
         if info is None:
             continue
-        print_rank_0(" > query '%s' dataset ... %d samples." % (prefix, info["num_active_chunks"]))
+        log_retro_rank_0(" > query '%s' dataset ... %d samples." % (prefix, info["num_active_chunks"]))
         query_dataset_neighbors(
             config,
             db_dataset,

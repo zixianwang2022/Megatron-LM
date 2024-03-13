@@ -23,7 +23,7 @@ from megatron.core.models.retro.data.index.utils import get_added_code_paths, ge
 from megatron.core.models.retro.data.utils import (
     GPTToTextDataset,
     get_blocks_by_rank,
-    print_rank_0,
+    log_retro_rank_0,
     retro_makedir,
 )
 
@@ -52,7 +52,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         embeddings = self.embed_text_dataset_block(embedder, text_dataset, block["range"],)
 
         # Encode block.
-        print_rank_0("encode.")
+        log_retro_rank_0("encode.")
         codes = index.sa_encode(embeddings)
 
         # Return embeddings for validation purposes.
@@ -61,7 +61,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
     def save_block(self, config: RetroPreprocessingConfig, block: dict, codes: np.ndarray) -> None:
         """Save block of codes to disk."""
         # Save neighbors.
-        print_rank_0("save codes.")
+        log_retro_rank_0("save codes.")
         retro_makedir(config, os.path.dirname(block["path"]))
         with h5py.File(block["path"], "w") as f:
             f.create_dataset("data", data=codes)
@@ -92,7 +92,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
             if block is not None:
 
                 # Progress.
-                print_rank_0(
+                log_retro_rank_0(
                     "encode block %d / %d ... %s."
                     % (block_index, len(blocks.missing), block["path"],)
                 )
@@ -102,7 +102,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
                 self.save_block(config, block, codes)
 
             # Synchronize progress across all ranks. (for easier observation)
-            print_rank_0(" > waiting for other ranks to finish block.")
+            log_retro_rank_0(" > waiting for other ranks to finish block.")
             torch.distributed.barrier()
 
     def add_codes(self, config: RetroPreprocessingConfig) -> None:
@@ -116,12 +116,12 @@ class FaissParallelAddIndex(FaissBaseIndex):
             return
 
         # Index.
-        print_rank_0("read empty index.")
+        log_retro_rank_0("read empty index.")
         index = self.get_empty_index(config)
         index_ivf = faiss.extract_index_ivf(index)
 
         # Add codes.
-        print_rank_0("add codes.")
+        log_retro_rank_0("add codes.")
         code_paths = get_added_code_paths(config)
         pbar = tqdm(code_paths)
         for code_path in pbar:
@@ -141,7 +141,7 @@ class FaissParallelAddIndex(FaissBaseIndex):
         index.ntotal = index_ivf.ntotal
 
         # Write index.
-        print_rank_0("write added index.")
+        log_retro_rank_0("write added index.")
         faiss.write_index(index, added_index_path)
 
     def remove_codes(self, config: RetroPreprocessingConfig) -> None:

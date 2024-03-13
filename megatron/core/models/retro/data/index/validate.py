@@ -22,7 +22,7 @@ from torch.utils.data import Subset
 
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
-from megatron.core.models.retro.data.utils import GPTToTextDataset, get_blocks_by_rank, print_rank_0
+from megatron.core.models.retro.data.utils import GPTToTextDataset, get_blocks_by_rank, log_retro_rank_0
 
 from .build import get_text_dataset_for_adding, get_text_dataset_for_training
 from .factory import IndexFactory
@@ -65,7 +65,7 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
         if block is not None:
 
             # Progress. (*note*: move world progress to here.)
-            print_rank_0(
+            log_retro_rank_0(
                 "embed training block %d / %d ... %s."
                 % (block_idx, len(blocks.existing), block["path"],)
             )
@@ -79,14 +79,14 @@ def validate_training_embeddings(config: RetroPreprocessingConfig) -> None:
             embeddings = embedder.embed_text_dataset(sub_dataset, "train")
 
             # Check equality.
-            print_rank_0(" > validate.")
+            log_retro_rank_0(" > validate.")
             assert np.array_equal(existing_embeddings, embeddings)
 
         # Synchronize progress across all ranks. (for easier observation)
-        print_rank_0(" > waiting for other ranks to finish block.")
+        log_retro_rank_0(" > waiting for other ranks to finish block.")
         torch.distributed.barrier()
 
-    print_rank_0(" > finished validating training embeddings.")
+    log_retro_rank_0(" > finished validating training embeddings.")
 
 
 ##################################################
@@ -131,7 +131,7 @@ def validate_added_encodings(config: RetroPreprocessingConfig) -> None:
         if block is not None:
 
             # Progress.
-            print_rank_0(
+            log_retro_rank_0(
                 "encode block %d / %d ... %s." % (block_idx, len(blocks.existing), block["path"],)
             )
 
@@ -143,14 +143,14 @@ def validate_added_encodings(config: RetroPreprocessingConfig) -> None:
             embeddings, codes = index.encode_block(inner_index, embedder, text_dataset, block)
 
             # Check equality.
-            print_rank_0(" > validate.")
+            log_retro_rank_0(" > validate.")
             assert np.array_equal(existing_codes, codes)
 
         # Synchronize progress across all ranks. (for easier observation)
-        print_rank_0(" > waiting for other ranks to finish block.")
+        log_retro_rank_0(" > waiting for other ranks to finish block.")
         torch.distributed.barrier()
 
-    print_rank_0(" > finished validating added encodings.")
+    log_retro_rank_0(" > finished validating added encodings.")
 
 
 ##################################################
