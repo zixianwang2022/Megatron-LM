@@ -13,7 +13,7 @@ this dataset.
 """
 
 import os
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -114,7 +114,7 @@ class RetroDataset(torch.utils.data.Dataset):
         )
 
         # Sample.
-        sample: Dict[str, Any] = {
+        sample: Dict[str, np.ndarray] = {
             **sample,
             "neighbor_chunks": all_retrieved_chunk_ids,
             "neighbor_tokens": all_retrieved_token_ids,
@@ -144,7 +144,7 @@ def get_retro_datasets(
     )
 
     # Retro datasets.
-    retro_dataset_map: Dict[str, Union[RetroDataset, None]] = {}
+    retro_dataset_map: Dict[str, Optional[RetroDataset]] = {}
     query_dir = get_query_dir(config.retro_project_dir)
     for data_key, chunk_ds_info in chunk_ds_info_map.items():
 
