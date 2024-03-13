@@ -6,7 +6,7 @@ This dataset is used for both training a vector index, and adding vectors to a
 trained index.
 """
 
-import typing
+from typing import List
 
 import numpy as np
 import torch
@@ -27,7 +27,7 @@ class DBDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         db_path: str,
-        indexed_datasets: typing.List[IndexedDataset],
+        indexed_datasets: List[IndexedDataset],
         chunks: np.ndarray,
         chunk_length: int,
         eod_token_id: int,
