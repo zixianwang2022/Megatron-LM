@@ -3,12 +3,13 @@
 """Container class for GPT and Bert tokenizers."""
 
 from dataclasses import dataclass
-from typing import Any
+
+from megatron.core.datasets.megatron_tokenizer import MegatronTokenizer
 
 
 @dataclass
 class RetroTokenizers:
     """Container class for GPT and Bert tokenizers."""
 
-    gpt: Any = None
-    bert: Any = None
+    gpt: MegatronTokenizer = None
+    bert: MegatronTokenizer = None
