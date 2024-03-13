@@ -3,6 +3,7 @@
 """Utilities for Retro preprocessing."""
 
 import glob
+import logging
 import os
 from collections import defaultdict
 from types import SimpleNamespace
@@ -13,6 +14,7 @@ import torch
 from tqdm import tqdm
 
 from megatron.core import parallel_state
+from megatron.core.datasets.utils import log_single_rank
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.query.multi_split_gpt_dataset import (
     MultiSplitGPTDataset,
@@ -21,28 +23,11 @@ from megatron.core.models.retro.data.query.multi_split_gpt_dataset import (
 
 from .external_libs import h5py
 
-
-# >>>
-# def print_rank_0(message: str) -> None:
-#     """If distributed is initialized, print only on rank 0."""
-#     if torch.distributed.is_initialized():
-#         if torch.distributed.get_rank() == 0:
-#             print(message, flush=True)
-#     else:
-#         print(message, flush=True)
-# +++
-import logging
 logger = logging.getLogger(__name__)
 
-from megatron.core.datasets.utils import log_single_rank
 
-# def print_rank_0(message: str) -> None:
 def log_retro_rank_0(message: str) -> None:
-    # log_single_rank(logger, message)
     log_single_rank(logger, logging.INFO, "[RETRO] " + message)
-    # print("-----------------------------")
-    # raise Exception("MESSAGE: " + message)
-# <<<
 
 
 def retro_makedir(config: RetroPreprocessingConfig, path: str) -> None:
