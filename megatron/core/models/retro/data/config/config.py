@@ -45,7 +45,6 @@ class RetroPreprocessingConfig(TransformerConfig):
         retro_bert_vocab_file (str): Bert vocab file.
         retro_bert_batch_size (int): Micro-batch size for processing Bert embeddings.
         retro_bert_max_chunk_length (int): Maximum sequence length for Bert embeddings. (Named 'chunk' here in reference to these Bert sequences being converted from GPT chunks.)
-        retro_index_nfeats (int): Dimension of Bert embeddings. Bert-large is commonly used, so this value defaults to 1024.
         retro_index_type (str): A 'faiss-base' index is a simple, un-optimized wrapper around a Faiss index. A 'faiss-par-add' index optimizes the 'add()' method by making it multi-node and multi-process, but with bit-wise equivalent results.
         retro_index_str (str): Index string used for calling faiss.index_factory(). For example, 'IVF262144_HNSW32,Flat' or 'OPQ32_256,IVF4194304_HNSW32,PQ32'.
         retro_index_ntrain (int): Number of database chunks to use for training the index. This value must be less or equal to the total number of chunks in the database.
@@ -92,9 +91,6 @@ class RetroPreprocessingConfig(TransformerConfig):
     retro_bert_max_chunk_length: int = 256
 
     # Index.
-    # >>>
-    # retro_index_nfeats: int = 1024
-    # <<<
     retro_index_type: str = 'faiss-par-add'
     retro_index_str: str = None
     retro_index_ntrain: int = None
@@ -119,20 +115,19 @@ class RetroPreprocessingConfig(TransformerConfig):
         # Validate required attributes.
         assert self.retro_project_dir is not None
         assert self.retro_tasks is not None
-        assert self.retro_gpt_data_path is not None
-        assert self.retro_gpt_data_cache_path is not None
+        assert self.retro_gpt_data_path is not None \
+            or self.retro_gpt_data_cache_path is not None
         assert self.retro_gpt_train_samples is not None
         assert self.retro_gpt_eval_interval is not None
         assert self.retro_gpt_eval_iters is not None
         assert self.retro_gpt_tokenizer_type is not None
-        assert self.retro_gpt_tokenizer_model is not None
-        assert self.retro_gpt_vocab_file is not None
-        assert self.retro_gpt_merge_file is not None
+        assert self.retro_gpt_tokenizer_model is not None \
+            or (self.retro_gpt_vocab_file is not None \
+                and self.retro_gpt_merge_file is not None)
         assert self.retro_gpt_seq_length is not None
         assert self.retro_gpt_global_batch_size is not None
         assert self.retro_bert_tokenizer_type is not None
         assert self.retro_bert_vocab_file is not None
-        assert self.retro_index_nfeats is not None
         assert self.retro_index_str is not None
         assert self.retro_index_ntrain is not None
 

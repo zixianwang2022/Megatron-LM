@@ -51,7 +51,7 @@ class FaissBaseIndex(Index):
         inp = np.memmap(merged_path, dtype="f4", mode="r",).reshape((-1, config.hidden_size))
 
         # Init index.
-        index = faiss.index_factory(config.retro_index_nfeats, config.retro_index_str)
+        index = faiss.index_factory(config.hidden_size, config.retro_index_str)
 
         # Move to GPU.
         print("> move faiss index to gpu.")
