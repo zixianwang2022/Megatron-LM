@@ -22,7 +22,11 @@ from torch.utils.data import Subset
 
 from megatron.core.models.retro.data.config import RetroPreprocessingConfig
 from megatron.core.models.retro.data.external_libs import h5py
-from megatron.core.models.retro.data.utils import GPTToTextDataset, get_blocks_by_rank, log_retro_rank_0
+from megatron.core.models.retro.data.utils import (
+    GPTToTextDataset,
+    get_blocks_by_rank,
+    log_retro_rank_0,
+)
 
 from .build import get_text_dataset_for_adding, get_text_dataset_for_training
 from .factory import IndexFactory

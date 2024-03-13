@@ -115,15 +115,14 @@ class RetroPreprocessingConfig(TransformerConfig):
         # Validate required attributes.
         assert self.retro_project_dir is not None
         assert self.retro_tasks is not None
-        assert self.retro_gpt_data_path is not None \
-            or self.retro_gpt_data_cache_path is not None
+        assert self.retro_gpt_data_path is not None or self.retro_gpt_data_cache_path is not None
         assert self.retro_gpt_train_samples is not None
         assert self.retro_gpt_eval_interval is not None
         assert self.retro_gpt_eval_iters is not None
         assert self.retro_gpt_tokenizer_type is not None
-        assert self.retro_gpt_tokenizer_model is not None \
-            or (self.retro_gpt_vocab_file is not None \
-                and self.retro_gpt_merge_file is not None)
+        assert self.retro_gpt_tokenizer_model is not None or (
+            self.retro_gpt_vocab_file is not None and self.retro_gpt_merge_file is not None
+        )
         assert self.retro_gpt_seq_length is not None
         assert self.retro_gpt_global_batch_size is not None
         assert self.retro_bert_tokenizer_type is not None

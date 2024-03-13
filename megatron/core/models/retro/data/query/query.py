@@ -311,7 +311,9 @@ def query_neighbors(config: RetroPreprocessingConfig) -> None:
     for prefix, info in vars(config.retro_gpt_chunk_datasets).items():
         if info is None:
             continue
-        log_retro_rank_0(" > query '%s' dataset ... %d samples." % (prefix, info["num_active_chunks"]))
+        log_retro_rank_0(
+            " > query '%s' dataset ... %d samples." % (prefix, info["num_active_chunks"])
+        )
         query_dataset_neighbors(
             config,
             db_dataset,
