@@ -40,10 +40,10 @@ class Index(abc.ABC):
     """
 
     @classmethod
-    def c_verbose(cls, index: faiss.Index, v: bool) -> None:
+    def make_object_verbose(cls, index: faiss.Index, verbose: bool) -> None:
         """Make index object verbose."""
-        assert isinstance(v, bool)
-        faiss.ParameterSpace().set_index_parameter(index, "verbose", v)
+        assert isinstance(verbose, bool)
+        faiss.ParameterSpace().set_index_parameter(index, "verbose", verbose)
 
     def get_empty_index_path(self, config: RetroPreprocessingConfig) -> str:
         """Get file path to empty index (i.e., trained, but unpopulated)."""

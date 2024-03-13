@@ -38,7 +38,7 @@ class FaissBaseIndex(Index):
         assert torch.distributed.get_rank() == 0
 
         # Set num threads (torch.distributed reset it to 1).
-        faiss.omp_set_num_threads(64)  # 32, *64, 128
+        faiss.omp_set_num_threads(64)
 
         empty_index_path = self.get_empty_index_path(config)
 
@@ -59,10 +59,10 @@ class FaissBaseIndex(Index):
         clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
         index_ivf.clustering_index = clustering_index
         print("> finished moving to gpu.")
-        self.c_verbose(index, True)
-        self.c_verbose(index_ivf, True)
-        self.c_verbose(index_ivf.quantizer, True)
-        self.c_verbose(index_ivf.clustering_index, True)
+        self.make_object_verbose(index, True)
+        self.make_object_verbose(index_ivf, True)
+        self.make_object_verbose(index_ivf.quantizer, True)
+        self.make_object_verbose(index_ivf.clustering_index, True)
 
         # Train index.
         index.train(inp)
