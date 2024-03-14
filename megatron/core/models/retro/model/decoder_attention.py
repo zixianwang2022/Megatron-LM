@@ -13,7 +13,7 @@ from megatron.core import InferenceParams
 from megatron.core.fusions.fused_bias_dropout import get_bias_dropout_add
 from megatron.core.models.retro.model.base_attention import BaseRetroCrossAttention
 from megatron.core.models.retro.model.config import RetroConfig
-from megatron.core.models.retro.utils import get_dummy_mask
+from megatron.core.models.retro.utils import get_all_true_mask
 from megatron.core.transformer import ModuleSpec
 from megatron.core.transformer.attention import CrossAttentionSubmodules
 from megatron.core.transformer.enums import AttnMaskType
@@ -152,10 +152,21 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
                 .reshape(self.retro_chunk_length, bs * l, d)
                 .contiguous()
             )
-            chunked_output_mask = get_dummy_mask(
-                size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
+
+            # flash attn: [ b, h, sq, sk ]
+            # fused attn: [ b, 1, 1, sq ]
+            chunked_output_mask = get_all_true_mask(
+                # >>>
+                # size=(chunked_output.shape[1], 1, 1, chunked_output.shape[0]),
+                size=(1, 1, chunked_output.shape[0], key_value_states.shape[0]),
+                # <<<
                 device=chunked_output.device,
             )
+
+            # >>>
+            # from lutil import pax
+            # pax("chunked_output, chunked_output_mask")
+            # <<<
 
             # Encode neighbors. (Note: 'key_value_states' re-assigned here.)
             key_value_states = self.encoder(
@@ -187,10 +198,21 @@ class RetroDecoderCrossAttention(BaseRetroCrossAttention):
         padded_chunked_output = padded_chunked_output.reshape(
             self.retro_chunk_length, bs * l, d
         ).contiguous()
-        padded_chunked_output_mask = get_dummy_mask(
+
+        # flash attn: [ b, h, sq, sk ]
+        # fused attn: [ b, 1, 1, sq ]
+        padded_chunked_output_mask = get_all_true_mask(
+            # >>>
             size=(padded_chunked_output.shape[1], 1, 1, padded_chunked_output.shape[0]),
+            # size=(1, 1, padded_chunked_output.shape[0], key_value_states.shape[0]),
+            # <<<
             device=padded_chunked_output.device,
         )
+
+        # >>>
+        # from lutil import pax
+        # pax("padded_chunked_output, key_value_states, padded_chunked_output_mask")
+        # <<<
 
         # Attend to encoded neighbors.
         attention_output, attention_bias = self.attn(

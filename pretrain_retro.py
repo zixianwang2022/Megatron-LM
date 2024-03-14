@@ -16,7 +16,7 @@ from megatron.core.enums import ModelType
 from megatron.core.models.retro.data.query.retro_dataset import get_retro_datasets
 from megatron.core.models.retro.data.query.multi_split_gpt_dataset import MultiSplitGPTDataset, MultiSplitGPTDatasetConfig
 from megatron.core.models.retro.model import get_retro_decoder_block_spec, RetroConfig, RetroModel
-from megatron.core.models.retro.utils import get_dummy_mask
+from megatron.core.models.retro.utils import get_all_true_mask
 from megatron.training import pretrain
 from megatron.utils import get_ltor_masks_and_position_ids
 from pretrain_gpt import (
@@ -119,8 +119,11 @@ def get_batch(data_iterator):
             args.reset_position_ids,
             args.reset_attention_mask,
             args.eod_mask_loss)
-        neighbor_attention_mask = get_dummy_mask(
-            (config.retro_retrieved_length, 1, 1, config.retro_retrieved_length),
+        neighbor_attention_mask = get_all_true_mask(
+            # >>>
+            # (config.retro_retrieved_length, 1, 1, config.retro_retrieved_length),
+            (1, 1, config.retro_retrieved_length, config.retro_retrieved_length),
+            # <<<
             neighbor_tokens.device)
         return tokens, labels, loss_mask, attention_mask, position_ids, \
                neighbor_tokens, neighbor_attention_mask, neighbor_position_ids
@@ -227,6 +230,16 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
 
 
 if __name__ == "__main__":
+
+    # >>>
+    import os
+    if os.getenv("SLURM_PROCID") == "0":
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        [ print("%s : %s" % (k, v))
+          for k, v in os.environ.items()
+          if k.startswith("NVTE_F") ]
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    # <<<
 
     # Temporary for transition to core datasets.
     train_valid_test_datasets_provider.is_distributed = True

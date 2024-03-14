@@ -911,6 +911,15 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     config.finalize_model_grads_func = finalize_model_grads
 
     timers('interval-time', log_level=0).start(barrier=True)
+    # >>>
+    import os
+    if torch.distributed.get_rank() == 0:
+        print("~~~~~~~~~~~~~~~~~~~ [ nvte ] ~~~~~~~~~~~~~~~~~~~")
+        [ print("%s : %s" % (k, v))
+          for k, v in os.environ.items()
+          if k.startswith("NVTE_F") ]
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    # <<<
     print_datetime('before the start of training step')
     report_memory_flag = True
     exit = False
