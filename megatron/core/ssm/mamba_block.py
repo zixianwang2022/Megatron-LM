@@ -2,6 +2,7 @@ import math
 import torch
 from functools import partial
 from torch import nn, Tensor
+from megatron import print_rank_0
 from megatron.core.transformer.module import MegatronModule
 from mamba_ssm import Mamba
 from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
@@ -12,7 +13,7 @@ from megatron.core.transformer.custom_layers.transformer_engine import TENorm
 from megatron.core.ssm.mamba_layer import MambaLayer
 
 
-def create_block(
+def create_mamba_block(
     config,
     mamba_layer_spec,
     ssm_cfg=None,
@@ -25,7 +26,7 @@ def create_block(
         ssm_cfg = {}
     factory_kwargs = {"device": device, "dtype": dtype}
     block = build_module(
-        mamba_layer_spec,    
+        mamba_layer_spec,
         config,
         residual_in_fp32=residual_in_fp32,
         layer_idx=layer_idx,
@@ -67,15 +68,48 @@ def _init_weights(
                 with torch.no_grad():
                     p /= math.sqrt(n_residuals_per_layer * n_layer)
 
+def allocate_attention(total_layers_count: int, attention_ratio: float):
+    assert total_layers_count > 0
+    assert attention_ratio >= 0.0 and attention_ratio <= 1.0
+
+    attention_layers_count: int = round(total_layers_count * attention_ratio)
+    mamba_layers_count: int = total_layers_count - attention_layers_count
+    mamba_sections_count: int = attention_layers_count + 1
+    mamba_section_length: float = mamba_layers_count / mamba_sections_count
+
+    layer_is_attention = [False] * total_layers_count
+    i: int = mamba_section_length
+    for l in range(total_layers_count):
+        if i < 0.5:
+            layer_is_attention[l] = True
+            i += mamba_section_length
+        else:
+            i -= 1
+
+    if attention_ratio > 0.0:
+        actual_attention_layers_count = sum(layer_is_attention)
+        actual_attention_ratio = (actual_attention_layers_count /
+                                  total_layers_count)
+        allocation = ''.join(['*' if a else 'M' for a in layer_is_attention])
+        print_rank_0("Hybrid allocation (* represents an attention layer):")
+        print_rank_0(allocation)
+        print_rank_0(f"{actual_attention_layers_count} attention layers in "
+                     f"{total_layers_count} total layers. Actual attention "
+                     f"ratio: {actual_attention_ratio:.2f}")
+
+    return layer_is_attention
+
 
 class MambaStack(MegatronModule):
     def __init__(
         self,
         config: TransformerConfig,
         mamba_layer_spec: ModuleSpec,
+        attention_layer_spec: ModuleSpec,
         rms_norm: bool = False,
         initializer_cfg=None,
         residual_in_fp32=False,
+        hybrid_attention_ratio: float = 0.0,
         device=None,
         dtype=None,
     ) -> None:
@@ -83,20 +117,27 @@ class MambaStack(MegatronModule):
         super().__init__(config)
         self.config = config
         self.residual_in_fp32 = residual_in_fp32
-        self.config = config
+        # TODO (duncan): potentially move percent_attention into config
+        self.hybrid_attention_ratio = hybrid_attention_ratio
 
-        self.layers = nn.ModuleList(
-            [
-                create_block(
+        layer_is_attention = allocate_attention(
+            self.config.num_layers, self.hybrid_attention_ratio)
+
+        self.layers = nn.ModuleList()
+        for i in range(self.config.num_layers):
+            if layer_is_attention[i]:
+                # Wondering if layer_number should be i+1. See TransformerBlock
+                block = build_module(attention_layer_spec, config=self.config,
+                                     layer_number=i)
+            else:
+                block = create_mamba_block(
                     self.config,
                     mamba_layer_spec,
                     residual_in_fp32=residual_in_fp32,
                     layer_idx=i,
                     **factory_kwargs,
                 )
-                for i in range(self.config.num_layers)
-            ]
-        )
+            self.layers.append(block)
 
         self.final_norm = TENorm(
                 config=self.config,
@@ -128,7 +169,13 @@ class MambaStack(MegatronModule):
         forward_step_func"""
         self.input_tensor = input_tensor
 
-    def forward(self, hidden_states, inference_params=None, **kwargs):
+    def forward(
+        self,
+        hidden_states: Tensor,
+        attention_mask: Tensor,
+        inference_params=None,
+        **kwargs
+    ):
         if hidden_states == None:
             hidden_states = self.input_tensor
 
@@ -140,7 +187,7 @@ class MambaStack(MegatronModule):
 
         for layer in self.layers:
             hidden_states = layer(
-                hidden_states, inference_params=inference_params
+                hidden_states, attention_mask, inference_params=inference_params
             )
 
         hidden_states = self.final_norm(hidden_states)

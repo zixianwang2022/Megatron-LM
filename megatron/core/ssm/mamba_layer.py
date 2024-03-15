@@ -48,8 +48,17 @@ class MambaLayer(MegatronModule):
         )
 
     def forward(
-        self, hidden_states: Tensor, inference_params=None, **kwargs
+        self,
+        hidden_states: Tensor,
+        attention_mask: Tensor, # Not used in MambaLayer
+        inference_params=None,
+        **kwargs
     ):
+
+        # The transformer layers pass a tuple containing a context, which is
+        # not needed.
+        if isinstance(hidden_states, tuple):
+            hidden_states = hidden_states[0]
 
         residual = hidden_states
         hidden_states = self.norm(residual.to(dtype=self.norm.weight.dtype))

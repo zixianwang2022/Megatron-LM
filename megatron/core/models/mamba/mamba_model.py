@@ -23,10 +23,12 @@ class MambaModel(LanguageModule):
 
     Args:
         config (TransformerConfig): Transformer config
-        transformer_layer_spec (ModuleSpec): Specifies module to use for transformer layers
+        mamba_layer_spec (ModuleSpec): Specifies module to use for mamba layers
+        attention_layer_spec (ModuleSpec): Specifies module to use for attention layers
         vocab_size (int): Vocabulary size
         max_sequence_length (int): maximum size of sequence. This is used for positional embedding
         pre_process (bool, optional): Include embedding layer (used with pipeline parallelism). Defaults to True.
+        hybrid_attention_ratio (float, optional): Specifies the ratio of attention layers to total layers.
         post_process (bool, optional): Include an output layer (used with pipeline parallelism). Defaults to True.
         fp16_lm_cross_entropy (bool, optional): Defaults to False.
         parallel_output (bool, optional): Do not gather the outputs, keep them split across tensor parallel ranks. Defaults to True.
@@ -41,9 +43,11 @@ class MambaModel(LanguageModule):
         self,
         config: TransformerConfig,
         mamba_layer_spec: ModuleSpec,
+        attention_layer_spec: ModuleSpec,
         vocab_size: int,
         max_sequence_length: int,
         pre_process: bool = True,
+        hybrid_attention_ratio: float = 0.0,
         post_process: bool = True,
         fp16_lm_cross_entropy: bool = False,
         parallel_output: bool = True,
@@ -53,9 +57,11 @@ class MambaModel(LanguageModule):
         super().__init__(config=config)
 
         self.mamba_layer_spec: ModuleSpec = mamba_layer_spec
+        self.attention_layer_spec: ModuleSpec = attention_layer_spec
         self.vocab_size = vocab_size
         self.max_sequence_length = max_sequence_length
         self.pre_process = pre_process
+        self.hybrid_attention_ratio = hybrid_attention_ratio
         self.post_process = post_process
         self.fp16_lm_cross_entropy = fp16_lm_cross_entropy
         self.parallel_output = parallel_output
@@ -73,10 +79,18 @@ class MambaModel(LanguageModule):
                 position_embedding_type=position_embedding_type
             )
 
+        # Placeholder for Wonmin:
+        # Before building MambaStack, override self.config settings here to make
+        # attention layer parameters equal to Mamba layer parameters, for
+        # any setting of hidden_size and num_attention_heads. Possibly use
+        # config.kv_channels
+
         self.decoder = MambaStack(
             self.config,
             self.mamba_layer_spec,
-            self.vocab_size,
+            self.attention_layer_spec,
+            hybrid_attention_ratio=self.hybrid_attention_ratio,
+            # self.vocab_size,
             # device="cuda",
             dtype=config.params_dtype,
         )

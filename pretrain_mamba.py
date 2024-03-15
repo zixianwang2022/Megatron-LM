@@ -51,14 +51,27 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
         if args.spec is not None:
             mamba_layer_spec = import_module(args.spec)
         else:
-            raise("Provide a valid Mamba Layer Spec!")
+            raise("You must provide a valid Mamba layer spec!")
+
+        hybrid_attention_ratio: float = args.hybrid_attention_ratio
+
+        if hybrid_attention_ratio > 0.0:
+            if args.spec_b is not None:
+                # TODO (duncan): can we have a single hybrid spec?
+                attention_layer_spec = import_module(args.spec_b)
+            else:
+                raise("You must provide a valid attention layer spec!")
+        else:
+            attention_layer_spec = None
 
         model = MambaModel(
             config=config,
             mamba_layer_spec=mamba_layer_spec,
+            attention_layer_spec=attention_layer_spec,
             vocab_size=args.padded_vocab_size,
             max_sequence_length=args.max_position_embeddings,
             pre_process=pre_process,
+            hybrid_attention_ratio=hybrid_attention_ratio,
             post_process=post_process,
             fp16_lm_cross_entropy=args.fp16_lm_cross_entropy,
             parallel_output=True,

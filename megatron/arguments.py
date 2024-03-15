@@ -1416,5 +1416,14 @@ def _add_experimental_args(parser):
                        'block, or transformer layer, depending on the use case. '
                        'For more details, see the model class, '
                        '`transformer_block.py`, or `transformer_layer.py`')
+    group.add_argument('--spec-b', type=str, default=None, nargs=2,
+                       help='Specify the <module_location function_name> pair '
+                       'that returns a spec to customize a model, transformer '
+                       'block, or transformer layer, depending on the use case. '
+                       'For more details, see the model class, '
+                       '`transformer_block.py`, or `transformer_layer.py`')
+    group.add_argument('--hybrid-attention-ratio', type=float, default=0.0,
+                       help='Ratio of attention layers to total layers, in the '
+                       'range [0.0, 1.0].')
 
     return parser
