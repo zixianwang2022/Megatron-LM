@@ -228,16 +228,6 @@ def train_valid_test_datasets_provider(train_valid_test_num_samples):
 
 if __name__ == "__main__":
 
-    # >>>
-    import os
-    if os.getenv("SLURM_PROCID") == "0":
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        [ print("%s : %s" % (k, v))
-          for k, v in os.environ.items()
-          if k.startswith("NVTE_F") ]
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    # <<<
-
     # Temporary for transition to core datasets.
     train_valid_test_datasets_provider.is_distributed = True
 
