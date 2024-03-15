@@ -61,20 +61,24 @@ def print_datetime(string):
 
 
 def num_floating_point_operations(args, batch_size):
+    # Group Query Attention.
     if not args.group_query_attention:
         args.num_query_groups = args.num_attention_heads
+    # MoE.
+    num_experts_routed_to = 1 if args.num_experts is None else args.moe_router_topk
     return (
-        60
+        12
         * batch_size
         * args.seq_length
         * args.num_layers
         * args.hidden_size
         * args.hidden_size
         * (
-            ((1 + (args.ffn_hidden_size / args.hidden_size)) / 5.0)
-            + (args.num_query_groups / (5 * args.num_attention_heads))
-            + (args.seq_length / (5 * args.hidden_size))
-            + (args.padded_vocab_size / (10 * args.num_layers * args.hidden_size))
+            1
+            + ((args.ffn_hidden_size / args.hidden_size) * num_experts_routed_to)
+            + (args.num_query_groups / args.num_attention_heads)
+            + (args.seq_length / args.hidden_size)
+            + (args.padded_vocab_size / (2 * args.num_layers * args.hidden_size))
         )
     )
 
@@ -264,7 +268,7 @@ def pretrain(train_valid_test_dataset_provider,
 
         print_datetime('after training is done')
 
-        if args.save and iteration != 0:
+        if args.save and iteration != 0 and iteration % args.save_interval != 0:
             save_checkpoint(iteration, model, optimizer, opt_param_scheduler,
                             num_floating_point_operations_so_far)
     else:
