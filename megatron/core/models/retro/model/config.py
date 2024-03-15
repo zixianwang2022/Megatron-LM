@@ -6,6 +6,7 @@ import os
 import types
 from dataclasses import dataclass
 from importlib.metadata import version
+
 from pkg_resources import packaging
 
 from megatron.core.transformer import TransformerConfig
@@ -57,7 +58,13 @@ class RetroConfig(TransformerConfig):
                 assert os.getenv("NVTE_FLASH_ATTN") == "0"
                 assert os.getenv("NVTE_FUSED_ATTN") == "0"
             except Exception as e:
-                raise Exception("When using Transformer Engine >= 1.3, environment vars NVTE_FLASH_ATTN and NVTE_FUSED_ATTN most both be defined and set to '0'. Currently, NVTE_FLASH_ATTN == %s, NVTE_FUSED_ATTN == %s." % (os.getenv("NVTE_FLASH_ATTN", "[unset]"), os.getenv("NVTE_FUSED_ATTN", "[unset]")))
+                raise Exception(
+                    "When using Transformer Engine >= 1.3, environment vars NVTE_FLASH_ATTN and NVTE_FUSED_ATTN most both be defined and set to '0'. Currently, NVTE_FLASH_ATTN == %s, NVTE_FUSED_ATTN == %s."
+                    % (
+                        os.getenv("NVTE_FLASH_ATTN", "[unset]"),
+                        os.getenv("NVTE_FUSED_ATTN", "[unset]"),
+                    )
+                )
 
         # Preprocessing split should be defined.
         assert self.retro_split_preprocessing is not None
