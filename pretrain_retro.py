@@ -120,10 +120,7 @@ def get_batch(data_iterator):
             args.reset_attention_mask,
             args.eod_mask_loss)
         neighbor_attention_mask = get_all_true_mask(
-            # >>>
-            # (config.retro_retrieved_length, 1, 1, config.retro_retrieved_length),
             (1, 1, config.retro_retrieved_length, config.retro_retrieved_length),
-            # <<<
             neighbor_tokens.device)
         return tokens, labels, loss_mask, attention_mask, position_ids, \
                neighbor_tokens, neighbor_attention_mask, neighbor_position_ids

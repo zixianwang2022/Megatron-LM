@@ -75,17 +75,9 @@ class RetroEncoderCrossAttention(BaseRetroCrossAttention):
         # flash attn: [ b, h, sq, sk ]
         # fused attn: [ b, 1, 1, sq ]
         chunked_output_mask = get_all_true_mask(
-            # >>>
-            # size=(chunked_outputs.shape[1], 1, 1, chunked_outputs.shape[0]),
             size=(1, 1, chunked_outputs.shape[0], key_value_states.shape[0]),
-            # <<<
             device=chunked_outputs.device,
         )
-
-        # >>>
-        # from lutil import pax
-        # pax("chunked_outputs, key_value_states, chunked_output_mask")
-        # <<<
 
         # Per-chunk attention.
         attention_output_tuples = []

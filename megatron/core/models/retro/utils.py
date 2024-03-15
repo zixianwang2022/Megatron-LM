@@ -1,10 +1,8 @@
 # Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
 
 import os
-from importlib.metadata import version
 
 import torch
-from pkg_resources import packaging
 
 
 def get_config_path(project_dir: str) -> str:
@@ -18,12 +16,4 @@ def get_gpt_data_dir(project_dir: str) -> str:
 
 
 def get_all_true_mask(size, device):
-    # >>>
-    # return None
     return torch.full(size=size, fill_value=True, dtype=torch.bool, device=device)
-    # <<<
-    te_version = packaging.version.Version(version("transformer-engine"))
-    if te_version >= packaging.version.Version("1.3"):
-        return torch.full(size=size, fill_value=True, dtype=torch.bool, device=device)
-    else:
-        return None
