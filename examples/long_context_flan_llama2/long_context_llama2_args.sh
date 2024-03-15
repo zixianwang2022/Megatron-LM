@@ -76,6 +76,12 @@ elif [[ ${model_card} == *itp-32k*  ]]; then
     if [[  ${blend_name} == multiturn_qa_blend* ]]; then
 	 seq_len=4096
     fi
+    if [[  ${blend_name} == 8k* ]]; then
+         seq_len=16384
+    fi
+    if [[  ${blend_name} == dynamic_8k* ]]; then
+         seq_len=16384
+    fi
     GPT_ARGS="$GPT_ARGS \
     --seq-length ${seq_len} \
     --max-position-embeddings 32768 \

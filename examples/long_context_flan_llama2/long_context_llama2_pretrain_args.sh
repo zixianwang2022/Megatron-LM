@@ -107,5 +107,5 @@ if [[ ${model_card} == *text*7b*itp-*  ]]; then
 fi
 
 # DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.04-py3-eval"
-# DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
-DOCKER="/lustre/fsw/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.12-py3-eval.sqsh"
+DOCKER="gitlab-master.nvidia.com/adlr/megatron-lm/pytorch:22.12-py3-eval"
+# DOCKER="/lustre/fsw/portfolios/adlr/users/pengx/adlr+megatron-lm+pytorch+22.12-py3-eval.sqsh"
