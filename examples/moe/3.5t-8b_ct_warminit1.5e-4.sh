@@ -1,7 +1,7 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-8x8b_upcycle_lr3e-5 --array=1-30%1
-#SBATCH -p batch,backfill,hp -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-8x8b_upcycle_lr3e-5 --array=1-30%1
+##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-8b_ct_warminit1.5e-4 --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-8b_ct_warminit1.5e-4
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -14,20 +14,19 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="3.5t-8x8b_upcycle_lr3e-5"
+NAME="3.5t-8b_ct_warminit1.5e-4"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x8b-multi-3.5t-tp4-pp4-te-gg"
-
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/te-gpt3-8b-multi-3.5t-tp4-pp4"
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
 if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
     CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
     RESET_STATE="--reset-dataloader-state \
-    --override-opt_param-scheduler \
     --reset-lr-state \
+    --override-opt_param-scheduler \
     --no-load-rng \
     --no-load-optim
 "
@@ -49,9 +48,6 @@ options=" \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --moe-grouped-gemm \
-    --num-experts 8 \
-    --moe-z-loss-coeff 1e-3 \
-    --moe-aux-loss-coeff 1e-2 \
     --use-distributed-optimizer \
     --apply-layernorm-1p \
     --use-flash-attn \
@@ -64,7 +60,6 @@ options=" \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
-    --exit-signal-handler \
     --tensor-model-parallel-size 4 \
     --pipeline-model-parallel-size 4 \
     --sequence-parallel \
@@ -73,11 +68,12 @@ options=" \
     --num-attention-heads 32 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 1 \
-    --train-samples 85449218 \
-    --lr-decay-samples 81176757 \
-    --lr-warmup-samples 0 \
-    --lr 3.0e-5 \
+    --micro-batch-size 4 \
+    --train-samples 854492188 \
+    --lr-decay-samples 811767576 \
+    --lr-warmup-samples 122071 \
+    --lr-warmup-init 1.5e-4 \
+    --lr 3.0e-4 \
     --min-lr 3.0e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \

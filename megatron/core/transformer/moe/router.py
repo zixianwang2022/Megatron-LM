@@ -152,6 +152,36 @@ class TopKRouter(Router):
         probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
         scores = self.apply_aux_loss(self.moe_aux_loss_func, probs, indices, activation=scores)
         return scores, indices
+    
+    def btx_aux_loss_load_balancing(self, logits: torch.Tensor):
+        """Apply loss-based load balancing to the logits tensor.
+        Calculate the auxiliary loss for better load balacing. 
+        Please refer to the BTX paper (https://arxiv.org/abs/2403.07816) for details.
+
+        Args:
+            logits (torch.Tensor): The logits tensor.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: The scores and the indices tensor after applying load balancing.
+        """
+        top_logits, indices = torch.topk(logits, k=self.topk, dim=1)
+        scores32 = torch.softmax(top_logits, dim=-1, dtype=torch.float32)
+        # Apply load balancing loss
+        probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
+        
+        if self.config.moe_aux_loss_type == 'btx_nograd':
+            with torch.no_grad():
+                top_logits_scattered = torch.zeros_like(probs)
+                top_logits_scattered.scatter_(-1, indices, scores32)
+        else:
+            top_logits_scattered = torch.zeros_like(probs)
+            top_logits_scattered.scatter_(-1, indices, scores32)
+        aux_loss = self.config.moe_aux_loss_coeff * self.config.num_moe_experts * top_logits_scattered.mean(0) @ probs.mean(0)
+        
+        scores = scores32.type_as(logits)
+        scores = MoEAuxLossAutoScaler.apply(scores, aux_loss)
+
+        return scores, indices
 
     def apply_aux_loss(
         self,
@@ -231,7 +261,12 @@ class TopKRouter(Router):
         if self.routing_type == "sinkhorn":
             scores, indices = self.sinkhorn_load_balancing(logits)
         elif self.routing_type == "aux_loss":
-            scores, indices = self.aux_loss_load_balancing(logits)
+            if self.config.moe_aux_loss_type == 'switch':
+                scores, indices = self.aux_loss_load_balancing(logits)
+            elif 'btx' in self.config.moe_aux_loss_type:
+                scores, indices = self.btx_aux_loss_load_balancing(logits)
+            else:
+                raise ValueError(f"Unsupported aux loss type: { self.config.moe_aux_loss_type}")
         elif self.routing_type == "none":
             # A naive top-k routing without load balancing
             top_logits, indices = torch.topk(logits, k=self.topk, dim=1)

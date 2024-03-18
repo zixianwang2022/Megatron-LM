@@ -134,6 +134,7 @@ class TransformerConfig(ModelParallelConfig):
     moe_router_topk: int = 2
     moe_grouped_gemm: bool = False
     moe_aux_loss_coeff: float = 0  # 1e-2 would be a good start value for load balance loss.
+    moe_aux_loss_type: str = 'switch'  # 1e-2 would be a good start value for load balance loss.
     moe_z_loss_coeff: float = None  # 1e-3 would be a good start value for z-loss
     moe_input_jitter_eps: float = None
     moe_token_dropping: bool = False  # TODO: Support token dropping.

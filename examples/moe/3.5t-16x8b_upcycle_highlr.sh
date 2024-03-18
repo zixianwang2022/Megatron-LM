@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-16x8b_upcycle_highlr --array=1-30%1
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-16x8b_upcycle_highlr --array=1-30%1
+#SBATCH -p batch,backfill,hp -A llmservice_nlp_fm -t 4:00:00 --nodes=32 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-16x8b_upcycle_highlr --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -64,6 +64,7 @@ options=" \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
+    --exit-signal-handler \
     --tensor-model-parallel-size 4 \
     --pipeline-model-parallel-size 8 \
     --sequence-parallel \

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
+from megatron import get_args, get_wandb_writer
 from megatron.core import parallel_state
 from megatron.core.transformer.mlp import MLPSubmodules
 from megatron.core.transformer.module import MegatronModule
@@ -66,6 +67,14 @@ class MoELayer(BaseMoELayer):
     def forward(self, hidden_states: torch.Tensor):
         # process MoE
         scores, indices = self.router(hidden_states)
+        
+        args = get_args()
+        if args.moe_log_load_balancing:
+            wandb_writer = get_wandb_writer()
+            if wandb_writer:
+                idxs, counts = torch.unique(indices, sorted=True, return_counts=True)
+                wandb_writer.log({f'moe/{self.layer_number}.{i.item()}': c for i, c in zip(idxs, counts)}, args.curr_iteration)
+
         (
             dispatched_input,
             tokens_per_expert,
