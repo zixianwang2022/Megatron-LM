@@ -320,7 +320,7 @@ class GPTDataset(MegatronDataset):
         )
 
         if not cache_hit and (
-            not torch.distributed.is_initialized() or torch.distributed.get_rank()
+            not torch.distributed.is_initialized() or torch.distributed.get_rank() == 0
         ):
 
             log_single_rank(
@@ -449,6 +449,11 @@ class GPTDataset(MegatronDataset):
             f"\tLoad the document index from {os.path.basename(path_to_document_index)}",
         )
         t_beg = time.time()
+        # >>>
+        # print("*** '%s'." % path_to_document_index)
+        # from lutil import pax
+        # pax("path_to_document_index")
+        # <<<
         document_index = numpy.load(path_to_document_index, allow_pickle=True, mmap_mode='r')
         t_end = time.time()
         log_single_rank(logger, logging.DEBUG, f"\t> time elapsed: {t_end - t_beg:4f} seconds")
