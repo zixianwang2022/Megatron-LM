@@ -37,13 +37,13 @@ class MambaLayer(MegatronModule):
         self.config = config
         self.residual_in_fp32 = residual_in_fp32
         self.mixer = build_module(
-            submodules.mixer, 
-            self.config.hidden_size, 
-            layer_idx=layer_idx, 
+            submodules.mixer,
+            self.config.hidden_size,
+            layer_idx=layer_idx,
             **kwargs
         )
-        self.norm = build_module(submodules.norm, 
-                                 self.config, 
+        self.norm = build_module(submodules.norm,
+                                 self.config,
                                  self.config.hidden_size
         )
 
@@ -52,6 +52,7 @@ class MambaLayer(MegatronModule):
         hidden_states: Tensor,
         attention_mask: Tensor, # Not used in MambaLayer
         inference_params=None,
+        rotary_pos_emb: Tensor=None, # Not used in MambaLayer
         **kwargs
     ):
 
