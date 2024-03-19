@@ -71,6 +71,9 @@ LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
 # be more than one iteration, and the gradient will be accumulated over
 # iterations before being applied.
 
+# For pure attention, use:
+# --spec-b megatron.core.models.mamba.mamba_layer_specs attention_layer_spec
+
 OPTIONS=" \
 --num-layers 24 \
 --hidden-size 768 \
@@ -110,7 +113,7 @@ OPTIONS=" \
 --bf16 \
 --use-mcore-models \
 --spec megatron.core.models.mamba.mamba_layer_specs mamba_layer_spec \
---spec-b megatron.core.models.mamba.mamba_layer_specs attention_layer_spec \
+--spec-b megatron.core.models.mamba.mamba_layer_specs transformer_layer_spec \
 --tensorboard-dir ${TENSORBOARD_DIR}"
 
 echo -e "\n"
