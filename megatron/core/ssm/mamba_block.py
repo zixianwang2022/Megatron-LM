@@ -188,7 +188,8 @@ class MambaStack(MegatronModule):
 
         for layer in self.layers:
             hidden_states = layer(
-                hidden_states, attention_mask, inference_params=inference_params, rotary_pos_emb=rotary_pos_emb,
+                hidden_states, attention_mask, inference_params=inference_params,
+                rotary_pos_emb=rotary_pos_emb,
             )
             # The attention layer (currently a simplified transformer layer)
             # outputs a tuple of (hidden_states, context). Context is intended

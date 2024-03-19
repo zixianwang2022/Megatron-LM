@@ -33,7 +33,7 @@ class MambaModel(LanguageModule):
         fp16_lm_cross_entropy (bool, optional): Defaults to False.
         parallel_output (bool, optional): Do not gather the outputs, keep them split across tensor parallel ranks. Defaults to True.
         share_embeddings_and_output_weights (bool, optional): When True, input embeddings and output logit weights are shared. Defaults to False.
-        position_embedding_type (Literal[learned_absolute,rope], optional):  Position embedding type.. Defaults to 'learned_absolute'.
+        position_embedding_type (Literal[learned_absolute,rope,none], optional):  Position embedding type. Defaults to 'none'.
         rotary_percent (float, optional): Percent of rotary dimension to use for rotary position embeddings. Ignored unless position_embedding_type is 'rope'. Defaults to 1.0.
         rotary_base (int, optional): Base period for rotary position embeddings. Ignored unless position_embedding_type is 'rope'. Defaults to 10000.
         seq_len_interpolation_factor (Optional[float], optional): scale of linearly interpolating RoPE for longer sequences. The value must be a float larger than 1.0. Defaults to None.
@@ -52,11 +52,11 @@ class MambaModel(LanguageModule):
         fp16_lm_cross_entropy: bool = False,
         parallel_output: bool = True,
         share_embeddings_and_output_weights: bool = False,
-        position_embedding_type: Literal['learned_absolute', 'rope', 'none'] = 'learned_absolute',
+        # Mamba with no attention has no need for position embeddings, so none is default
+        position_embedding_type: Literal['learned_absolute', 'rope', 'none'] = 'none',
         rotary_percent: float = 1.0,
         rotary_base: int = 10000,
         seq_len_interpolation_factor: Optional[float] = None,
-
     ) -> None:
         super().__init__(config=config)
 
@@ -70,6 +70,7 @@ class MambaModel(LanguageModule):
         self.fp16_lm_cross_entropy = fp16_lm_cross_entropy
         self.parallel_output = parallel_output
         self.share_embeddings_and_output_weights = share_embeddings_and_output_weights
+        self.position_embedding_type=position_embedding_type
 
         # megatron core pipelining currently depends on model type
         # TODO: remove this dependency ?
@@ -83,20 +84,20 @@ class MambaModel(LanguageModule):
                 position_embedding_type=position_embedding_type
             )
 
+        # TODO(Duncan): automatically override/set config.kv_channels
+        # Before building initializing the rotary embeddings and creating
+        # MambaStack, override self.config settings here to automatically make
+        # attention layer parameters equal to Mamba layer parameters, given
+        # any setting of hidden_size and num_attention_heads.
+        # For now, we're manually setting --kv-channels
+
         if self.position_embedding_type == 'rope':
             self.rotary_pos_emb = RotaryEmbedding(
                 kv_channels=self.config.kv_channels,
                 rotary_percent=rotary_percent,
-                rotary_interleaved=self.config.rotary_interleaved,
                 seq_len_interpolation_factor=seq_len_interpolation_factor,
                 rotary_base=rotary_base,
             )
-
-        # Placeholder for Wonmin:
-        # Before building MambaStack, override self.config settings here to make
-        # attention layer parameters equal to Mamba layer parameters, for
-        # any setting of hidden_size and num_attention_heads. Possibly use
-        # config.kv_channels
 
         self.decoder = MambaStack(
             self.config,

@@ -74,14 +74,24 @@ LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
 # For pure attention, use:
 # --spec-b megatron.core.models.mamba.mamba_layer_specs attention_layer_spec
 
+# To make attention parameter count match mamba parameter count
+# --kv-channels 1152 = 768 * 6/4
+
+# Options for hybrid (tracking here):
+# --hybrid-attention-ratio > 0.0
+# --position-embedding-type rope
+# --kv-channels hidden-size * 6/4
+# --spec-b attention/transformer layer spec
+
 OPTIONS=" \
 --num-layers 24 \
 --hidden-size 768 \
 --num-attention-heads 12 \
+--kv-channels 1152 \
 --hybrid-attention-ratio 0.1 \
 --seq-length ${SEQ_LEN} \
 --max-position-embeddings ${SEQ_LEN} \
---position-embedding-type none \
+--position-embedding-type rope \
 --train-samples ${TRAIN_SAMPLES} \
 --lr-warmup-samples ${LR_WARMUP_SAMPLES} \
 --lr-decay-samples ${LR_DECAY_SAMPLES} \
