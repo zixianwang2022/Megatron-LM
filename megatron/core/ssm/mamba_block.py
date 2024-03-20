@@ -188,7 +188,8 @@ class MambaStack(MegatronModule):
             inference_params.seqlen_offset = inference_params.sequence_len_offset
 
         for layer in self.layers:
-            # Option 2 to change the hidden states tensor format
+            # Option 2 to change the hidden states tensor format (and only
+            # option if using non-TE attention)
             # `TransformerLayer` expects the inputs in [s, b, d] format
             # if isinstance(layer, TransformerLayer):
             #     hidden_states = hidden_states.transpose(0,1).contiguous()
@@ -204,7 +205,8 @@ class MambaStack(MegatronModule):
             if isinstance(hidden_states, tuple):
                 hidden_states = hidden_states[0]
 
-            # Option 2 to change the hidden states tensor format
+            # Option 2 to change the hidden states tensor format(and only
+            # option if using non-TE attention)
             # `TransformerLayer` outputs in [s, b, d] format. Convert back to
             # `[b, s, d]` format
             # if isinstance(layer, TransformerLayer):
