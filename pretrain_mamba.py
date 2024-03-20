@@ -28,6 +28,14 @@ from megatron.utils import (
 from megatron.arguments import core_transformer_config_from_args
 from megatron.core.models.gpt.gpt_layer_specs import get_gpt_layer_with_transformer_engine_spec
 
+def count_parameters_in_layer(model, layer_name):
+    num_params = 0
+    for name, param in model.named_parameters():
+        if layer_name in name:
+            num_params += param.numel()
+            print_rank_0(f" - {name}: {param.numel()}")
+    return num_params
+
 
 def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megatron.model.GPTModel]:
     """Builds the model.
@@ -80,6 +88,10 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
         )
     else:
         raise("Mamba only supported in Mcore!")
+    
+    for l in range(config.num_layers):
+        layer_params = count_parameters_in_layer(model, f'decoder.layers.{l}.')
+        print_rank_0(f" == params layer {l}: {layer_params}")
 
     return model
 
