@@ -504,9 +504,11 @@ def _add_transformer_engine_args(parser):
     group.add_argument('--transformer-impl', default='local',
                        choices=['local', 'transformer_engine'],
                        help='Which Transformer implementation to use.')
-    group.add_argument('--attn-input-format', default='sbhd',
-                       choices=['sbhd', 'bshd'],
-                       help='sequence-first or batch-first tensor format.')
+    # TODO(duncan+sudhakar+wonmin): decide if, and how, to use this
+    #   functionality
+    # group.add_argument('--attn-input-format', default='sbhd',
+    #                    choices=['sbhd', 'bshd'],
+    #                    help='sequence-first or batch-first tensor format.')
 
     return parser
 

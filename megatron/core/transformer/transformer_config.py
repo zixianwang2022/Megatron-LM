@@ -110,7 +110,9 @@ class TransformerConfig(ModelParallelConfig):
 
     # miscellaneous
     clone_scatter_output_in_embedding: bool = True
-    attn_input_format: str = "sbhd"
+    # TODO(duncan+sudhakar+wonmin): decide if, and how, to use this
+    #   functionality
+    # attn_input_format: str = "sbhd"
 
     # experimental section (TODO: move to apt. section above once stable)
     normalization: bool = "LayerNorm"  # alt value supported by TE: "RMSNorm"

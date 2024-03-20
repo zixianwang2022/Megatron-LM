@@ -152,11 +152,11 @@ class MambaModel(LanguageModule):
         inference_params: InferenceParams = None,
         extra_block_kwargs: dict = None,
     ) -> Tensor:
-        """Forward function of the GPT Model This function passes the input tensors
-        through the embedding layer, and then the decoeder and finally into the post
+        """Forward function of the Mamba model. This function passes the input tensors
+        through the embedding layer, and then the decoder and finally into the post
         processing layer (optional).
 
-        It either returns the Loss values if labels are given  or the final hidden units
+        It either returns the Loss values if labels are given or the final hidden units
         """
         # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
         # Otherwise, apply embedding layer on input_ids and position_ids to get decoder_input.

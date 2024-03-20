@@ -118,7 +118,7 @@ class MambaStack(MegatronModule):
         super().__init__(config)
         self.config = config
         self.residual_in_fp32 = residual_in_fp32
-        # TODO (duncan): potentially move percent_attention into config
+        # TODO (duncan): potentially move hybrid_attention_ratio into config
         self.hybrid_attention_ratio = hybrid_attention_ratio
 
         layer_is_attention = allocate_attention(
@@ -188,11 +188,21 @@ class MambaStack(MegatronModule):
             inference_params.seqlen_offset = inference_params.sequence_len_offset
 
         for layer in self.layers:
-            # Option 2 to change the hidden states tensor format (and only
-            # option if using non-TE attention)
-            # `TransformerLayer` expects the inputs in [s, b, d] format
-            # if isinstance(layer, TransformerLayer):
-            #     hidden_states = hidden_states.transpose(0,1).contiguous()
+            # MambaLayer outputs [b, s, d] format.
+            # TransformerLayer expects the inputs to be [s, b, d] format.
+            # This solution is robust and will work with pipeline parallelism,
+            # but may introduce redundant double-transposes.
+            # TODO(duncan): to reduce the potential number of transposes,
+            #   pass the format information between layers. Approaches:
+            #   1. Infer format from shape: works with PP, not robust.
+            #   2. Carry format as a variable: does not work with PP, robust.
+            #   3. Pass format through layers: works with PP, robust,
+            #      requires changes to, or replacement of, transformer layers.
+            #   Note also that there is a solution if only using TE attention:
+            #   that can be configured to handle [b, s, d] format directly.
+            is_transformer_layer = isinstance(layer, TransformerLayer)
+            if is_transformer_layer:
+                hidden_states = hidden_states.transpose(0,1).contiguous()
 
             hidden_states = layer(
                 hidden_states, attention_mask, inference_params=inference_params,
@@ -205,12 +215,11 @@ class MambaStack(MegatronModule):
             if isinstance(hidden_states, tuple):
                 hidden_states = hidden_states[0]
 
-            # Option 2 to change the hidden states tensor format(and only
-            # option if using non-TE attention)
-            # `TransformerLayer` outputs in [s, b, d] format. Convert back to
-            # `[b, s, d]` format
-            # if isinstance(layer, TransformerLayer):
-            #     hidden_states = hidden_states.transpose(0,1).contiguous()
+            # TransformerLayer outputs in [s, b, d] format.
+            # MambaLayer expects [b, s, d] format.
+            # See notes above, associated wit the pre-layer transpose
+            if is_transformer_layer:
+                hidden_states = hidden_states.transpose(0,1).contiguous()
 
         hidden_states = self.final_norm(hidden_states)
 
