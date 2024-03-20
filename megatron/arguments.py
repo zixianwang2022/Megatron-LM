@@ -504,6 +504,9 @@ def _add_transformer_engine_args(parser):
     group.add_argument('--transformer-impl', default='local',
                        choices=['local', 'transformer_engine'],
                        help='Which Transformer implementation to use.')
+    group.add_argument('--attn-input-format', default='sbhd',
+                       choices=['sbhd', 'bshd'],
+                       help='sequence-first or batch-first tensor format.')
 
     return parser
 
@@ -849,18 +852,18 @@ def _add_training_args(parser):
                        help='Global ranks to profile.')
     group.add_argument('--tp-comm-overlap', action='store_true', help = 'Enables the '
                        ' overlap of Tensor parallel communication and GEMM kernels.')
-    group.add_argument('--tp-comm-overlap-cfg', type=str, default=None, 
+    group.add_argument('--tp-comm-overlap-cfg', type=str, default=None,
                        help = 'Config file when tp_comm_overlap is enabled.')
-    group.add_argument('--disable-tp-comm-split-ag', action='store_false', 
+    group.add_argument('--disable-tp-comm-split-ag', action='store_false',
                        help = 'Disables the All-Gather overlap with fprop GEMM.',
                        dest='tp_comm_split_ag')
-    group.add_argument('--disable-tp-comm-split-rs', action='store_false', 
+    group.add_argument('--disable-tp-comm-split-rs', action='store_false',
                        help = 'Disables the Reduce-Scatter overlap with fprop GEMM.',
                        dest='tp_comm_split_rs')
-    group.add_argument('--disable-tp-comm-bulk-dgrad', action='store_false', 
+    group.add_argument('--disable-tp-comm-bulk-dgrad', action='store_false',
                        help = 'Disables the All-Gather overlap with bprop activation gradient GEMM.',
                        dest='tp_comm_bulk_dgrad')
-    group.add_argument('--disable-tp-comm-bulk-wgrad', action='store_false', 
+    group.add_argument('--disable-tp-comm-bulk-wgrad', action='store_false',
                        help = 'Disables the Reduce-Scatter overlap with bprop weight gradient GEMM.',
                        dest='tp_comm_bulk_wgrad')
 

@@ -400,6 +400,9 @@ class TEDotProductAttention(te.pytorch.DotProductAttention):
                 self.config.context_parallel_size == 1
             ), "Only Transformer-Engine version >= 1.0.0 supports context parallelism!"
 
+        if te_version >= packaging.version.Version("1.3.0"):
+            extra_kwargs["qkv_format"] = config.attn_input_format
+
         super().__init__(
             num_attention_heads=self.config.num_attention_heads,
             kv_channels=self.config.kv_channels,

@@ -8,6 +8,7 @@ from mamba_ssm import Mamba
 from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
 
 from megatron.core.transformer.spec_utils import ModuleSpec, build_module
+from megatron.core.transformer.transformer_layer import TransformerLayer
 from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.transformer.custom_layers.transformer_engine import TENorm
 from megatron.core.ssm.mamba_layer import MambaLayer
@@ -187,15 +188,27 @@ class MambaStack(MegatronModule):
             inference_params.seqlen_offset = inference_params.sequence_len_offset
 
         for layer in self.layers:
+            # Option 2 to change the hidden states tensor format
+            # `TransformerLayer` expects the inputs in [s, b, d] format
+            # if isinstance(layer, TransformerLayer):
+            #     hidden_states = hidden_states.transpose(0,1).contiguous()
+
             hidden_states = layer(
                 hidden_states, attention_mask, inference_params=inference_params,
                 rotary_pos_emb=rotary_pos_emb,
             )
+
             # The attention layer (currently a simplified transformer layer)
             # outputs a tuple of (hidden_states, context). Context is intended
-            # for cross-attention, and is not needed in out model.
+            # for cross-attention, and is not needed in our model.
             if isinstance(hidden_states, tuple):
                 hidden_states = hidden_states[0]
+
+            # Option 2 to change the hidden states tensor format
+            # `TransformerLayer` outputs in [s, b, d] format. Convert back to
+            # `[b, s, d]` format
+            # if isinstance(layer, TransformerLayer):
+            #     hidden_states = hidden_states.transpose(0,1).contiguous()
 
         hidden_states = self.final_norm(hidden_states)
 
