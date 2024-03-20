@@ -106,9 +106,8 @@ class LanguageModelEmbedding(MegatronModule):
 
         if tokentype_ids is not None:
             assert self.tokentype_embeddings is not None
-            # TODO(duncan): add selection of this format change, so that it
-            #   can be compatible with the existing non-Mamba models.
-            # [b s h] -> [s b h] (So that it can be added with embeddings)
+            # [b s h] -> [s b h] (So that it can be added with embeddings) for
+            # Mamba. This change needs to be made optional.
             tokentype_embedding = self.tokentype_embeddings(tokentype_ids).permute(1, 0, 2)
             embeddings = embeddings + tokentype_embedding
         else:
