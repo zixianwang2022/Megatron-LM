@@ -1,8 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-8x8b_upcycle_btx --array=1-30%1
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-8x8b_upcycle_btx 
-# --array=1-30%1
+##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-8x8b_upcycle_highlr_aux1e-4_z0 --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-8x8b_upcycle_highlr_aux1e-4_z0 
+#--array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -15,12 +15,12 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="3.5t-8x8b_upcycle_btx"
+NAME="3.5t-8x8b_upcycle_highlr_aux1e-4_z0"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x8b-multi-3.5t-tp4-pp4-router001-te-gg"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x8b-multi-3.5t-tp4-pp4-te-gg"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
@@ -51,8 +51,8 @@ options=" \
     --use-mcore-models \
     --moe-grouped-gemm \
     --num-experts 8 \
-    --moe-aux-loss-coeff 0.01 \
-    --moe-aux-loss-type btx \
+    --moe-aux-loss-coeff 1e-4 \
+    --moe-aux-loss-type btx_nograd \
     --moe_log_load_balancing \
     --use-distributed-optimizer \
     --apply-layernorm-1p \
@@ -77,10 +77,10 @@ options=" \
     --micro-batch-size 1 \
     --train-samples 85449218 \
     --lr-decay-samples 81176757 \
-    --lr-warmup-samples 102400 \
-    --lr-warmup-init 0 \
-    --lr 1e-4 \
-    --min-lr 1e-5 \
+    --lr-warmup-samples 122071 \
+    --lr-warmup-init 3e-5 \
+    --lr 3.0e-4 \
+    --min-lr 3.0e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
     --eval-iters 32 \
