@@ -55,31 +55,35 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
     print_rank_0('building Mamba model ...')
     config = core_transformer_config_from_args(get_args())
 
+    if config.hybrid_force_iso_parameters:
+        # Cannot use print_rank_0 from TransformerConfig.__post_init__
+        print_rank_0("Warning: forcing hybrid layers to have the same "
+                    "number of parameters: --kv-channels and "
+                    "--ffn_hidden_size will be ignored; "
+                    "--num-attention-heads will be modified.")
+        print_rank_0("Forced kv_channels        : "
+                    f"{config.kv_channels}")
+        print_rank_0("Forced num_attention_heads: "
+                    f"{config.num_attention_heads}")
+        print_rank_0("Forced ffn_hidden_size    : "
+                    f"{config.ffn_hidden_size}")
+
     if args.use_mcore_models:
         if args.spec is not None:
-            mamba_layer_spec = import_module(args.spec)
+            mamba_stack_spec = import_module(args.spec)
         else:
             raise("You must provide a valid Mamba layer spec!")
 
-        hybrid_attention_ratio: float = args.hybrid_attention_ratio
-
-        if hybrid_attention_ratio > 0.0:
-            if args.spec_b is not None:
-                # TODO (duncan): can we have a single hybrid spec?
-                attention_layer_spec = import_module(args.spec_b)
-            else:
-                raise("You must provide a valid attention layer spec!")
-        else:
-            attention_layer_spec = None
-
         model = MambaModel(
             config=config,
-            mamba_layer_spec=mamba_layer_spec,
-            attention_layer_spec=attention_layer_spec,
+            mamba_stack_spec=mamba_stack_spec,
             vocab_size=args.padded_vocab_size,
             max_sequence_length=args.max_position_embeddings,
             pre_process=pre_process,
-            hybrid_attention_ratio=hybrid_attention_ratio,
+            hybrid_attention_ratio=args.hybrid_attention_ratio,
+            hybrid_mlp_ratio=args.hybrid_mlp_ratio,
+            hybrid_override_pattern=args.hybrid_override_pattern,
+            hybrid_force_iso_parameters=args.hybrid_force_iso_parameters,
             post_process=post_process,
             fp16_lm_cross_entropy=args.fp16_lm_cross_entropy,
             parallel_output=True,

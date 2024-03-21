@@ -1,17 +1,23 @@
 import math
 import torch
+
+from dataclasses import dataclass
 from functools import partial
 from torch import nn, Tensor
-from megatron import print_rank_0
-from megatron.core.transformer.module import MegatronModule
+from typing import Union
+
 from mamba_ssm import Mamba
 from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
 
+from megatron.core.transformer.identity_op import IdentityOp
+from megatron.core.transformer.module import MegatronModule
 from megatron.core.transformer.spec_utils import ModuleSpec, build_module
 from megatron.core.transformer.transformer_layer import TransformerLayer
 from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.transformer.custom_layers.transformer_engine import TENorm
-from megatron.core.ssm.mamba_layer import MambaLayer
+from megatron.core.ssm.mamba_hybrid_layer_allocation import (
+    allocate_layers, Symbols as LayerSymbols
+)
 
 
 def create_mamba_block(
@@ -69,48 +75,25 @@ def _init_weights(
                 with torch.no_grad():
                     p /= math.sqrt(n_residuals_per_layer * n_layer)
 
-def allocate_attention(total_layers_count: int, attention_ratio: float):
-    assert total_layers_count > 0
-    assert attention_ratio >= 0.0 and attention_ratio <= 1.0
 
-    attention_layers_count: int = round(total_layers_count * attention_ratio)
-    mamba_layers_count: int = total_layers_count - attention_layers_count
-    mamba_sections_count: int = attention_layers_count + 1
-    mamba_section_length: float = mamba_layers_count / mamba_sections_count
-
-    layer_is_attention = [False] * total_layers_count
-    i: int = mamba_section_length
-    for l in range(total_layers_count):
-        if i < 0.5:
-            layer_is_attention[l] = True
-            i += mamba_section_length
-        else:
-            i -= 1
-
-    if attention_ratio > 0.0:
-        actual_attention_layers_count = sum(layer_is_attention)
-        actual_attention_ratio = (actual_attention_layers_count /
-                                  total_layers_count)
-        allocation = ''.join(['*' if a else 'M' for a in layer_is_attention])
-        print_rank_0("Hybrid allocation (* represents an attention layer):")
-        print_rank_0(allocation)
-        print_rank_0(f"{actual_attention_layers_count} attention layers in "
-                     f"{total_layers_count} total layers. Actual attention "
-                     f"ratio: {actual_attention_ratio:.2f}")
-
-    return layer_is_attention
+@dataclass
+class MambaStackSubmodules:
+    mamba_layer: Union[ModuleSpec, type] = IdentityOp
+    attention_layer: Union[ModuleSpec, type] = IdentityOp
+    mlp_layer: Union[ModuleSpec, type] = IdentityOp
 
 
 class MambaStack(MegatronModule):
     def __init__(
         self,
         config: TransformerConfig,
-        mamba_layer_spec: ModuleSpec,
-        attention_layer_spec: ModuleSpec,
+        submodules: MambaStackSubmodules,
         rms_norm: bool = False,
         initializer_cfg=None,
         residual_in_fp32=False,
         hybrid_attention_ratio: float = 0.0,
+        hybrid_mlp_ratio: float = 0.0,
+        hybrid_override_pattern: str = None,
         device=None,
         dtype=None,
     ) -> None:
@@ -118,26 +101,37 @@ class MambaStack(MegatronModule):
         super().__init__(config)
         self.config = config
         self.residual_in_fp32 = residual_in_fp32
-        # TODO (duncan): potentially move hybrid_attention_ratio into config
+        # TODO (duncan): potentially move hybrid_attention_ratio,
+        #   hybrid_mlp_ratio, and hybrid_override_pattern into config
         self.hybrid_attention_ratio = hybrid_attention_ratio
+        self.hybrid_mlp_ratio = hybrid_mlp_ratio
+        self.hybrid_override_pattern = hybrid_override_pattern
 
-        layer_is_attention = allocate_attention(
-            self.config.num_layers, self.hybrid_attention_ratio)
+        layer_type_list = allocate_layers(
+            self.config.num_layers, self.hybrid_attention_ratio,
+            self.hybrid_mlp_ratio, self.hybrid_override_pattern)
 
         self.layers = nn.ModuleList()
         for i in range(self.config.num_layers):
-            if layer_is_attention[i]:
-                # Wondering if layer_number should be i+1. See TransformerBlock
-                block = build_module(attention_layer_spec, config=self.config,
-                                     layer_number=i)
-            else:
+            layer_type = layer_type_list[i]
+            if layer_type == LayerSymbols.MAMBA:
                 block = create_mamba_block(
                     self.config,
-                    mamba_layer_spec,
+                    submodules.mamba_layer,
                     residual_in_fp32=residual_in_fp32,
                     layer_idx=i,
                     **factory_kwargs,
                 )
+            elif layer_type == LayerSymbols.ATTENTION:
+                # Wondering if layer_number should be i+1. See TransformerBlock
+                block = build_module(submodules.attention_layer,
+                                     config=self.config, layer_number=i)
+            elif layer_type == LayerSymbols.MLP:
+                # Wondering if layer_number should be i+1. See TransformerBlock
+                block = build_module(submodules.mlp_layer, config=self.config,
+                                     layer_number=i)
+            else:
+                assert True, "unexpected layer_type"
             self.layers.append(block)
 
         self.final_norm = TENorm(

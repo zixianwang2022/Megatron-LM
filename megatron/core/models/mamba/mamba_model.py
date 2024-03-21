@@ -11,7 +11,7 @@ from megatron.core.models.common.embeddings.language_model_embedding import Lang
 from megatron.core.models.common.embeddings.rotary_pos_embedding import RotaryEmbedding
 from megatron.core.models.common.language_module.language_module import LanguageModule
 from megatron.core.transformer.enums import AttnMaskType, ModelType
-from megatron.core.transformer.spec_utils import ModuleSpec
+from megatron.core.transformer.spec_utils import ModuleSpec, build_module
 from megatron.core.transformer.transformer_block import TransformerBlock
 from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.utils import make_tp_sharded_tensor_for_checkpoint
@@ -42,12 +42,14 @@ class MambaModel(LanguageModule):
     def __init__(
         self,
         config: TransformerConfig,
-        mamba_layer_spec: ModuleSpec,
-        attention_layer_spec: ModuleSpec,
+        mamba_stack_spec: ModuleSpec,
         vocab_size: int,
         max_sequence_length: int,
         pre_process: bool = True,
         hybrid_attention_ratio: float = 0.0,
+        hybrid_mlp_ratio: float = 0.0,
+        hybrid_override_pattern: str = None,
+        hybrid_force_iso_parameters: bool = False,
         post_process: bool = True,
         fp16_lm_cross_entropy: bool = False,
         parallel_output: bool = True,
@@ -60,12 +62,13 @@ class MambaModel(LanguageModule):
     ) -> None:
         super().__init__(config=config)
 
-        self.mamba_layer_spec: ModuleSpec = mamba_layer_spec
-        self.attention_layer_spec: ModuleSpec = attention_layer_spec
+        self.mamba_stack_spec: ModuleSpec = mamba_stack_spec
         self.vocab_size = vocab_size
         self.max_sequence_length = max_sequence_length
         self.pre_process = pre_process
         self.hybrid_attention_ratio = hybrid_attention_ratio
+        self.hybrid_mlp_ratio = hybrid_mlp_ratio
+        self.hybrid_override_pattern = hybrid_override_pattern
         self.post_process = post_process
         self.fp16_lm_cross_entropy = fp16_lm_cross_entropy
         self.parallel_output = parallel_output
@@ -84,13 +87,6 @@ class MambaModel(LanguageModule):
                 position_embedding_type=position_embedding_type
             )
 
-        # TODO(Duncan): automatically override/set config.kv_channels
-        # Before building initializing the rotary embeddings and creating
-        # MambaStack, override self.config settings here to automatically make
-        # attention layer parameters equal to Mamba layer parameters, given
-        # any setting of hidden_size and num_attention_heads.
-        # For now, we're manually setting --kv-channels
-
         if self.position_embedding_type == 'rope':
             self.rotary_pos_emb = RotaryEmbedding(
                 kv_channels=self.config.kv_channels,
@@ -99,11 +95,12 @@ class MambaModel(LanguageModule):
                 rotary_base=rotary_base,
             )
 
-        self.decoder = MambaStack(
+        self.decoder = build_module(
+            mamba_stack_spec,
             self.config,
-            self.mamba_layer_spec,
-            self.attention_layer_spec,
             hybrid_attention_ratio=self.hybrid_attention_ratio,
+            hybrid_mlp_ratio=self.hybrid_mlp_ratio,
+            hybrid_override_pattern=self.hybrid_override_pattern,
             # self.vocab_size,
             # device="cuda",
             dtype=config.params_dtype,

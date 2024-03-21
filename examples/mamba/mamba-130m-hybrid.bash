@@ -71,25 +71,24 @@ LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
 # be more than one iteration, and the gradient will be accumulated over
 # iterations before being applied.
 
-# For pure attention, use:
-# --spec-b megatron.core.models.mamba.mamba_layer_specs attention_layer_spec
-
-# To make attention parameter count match mamba parameter count
-# use --num-attention-heads and --kv-channels
-
-# Options for hybrid (tracking here):
-# --hybrid-attention-ratio > 0.0
+# Options relevant for hybrid (tracking here):
+# --hybrid-attention-ratio
+# --hybrid-mlp-ratio
+# --hybrid-override-pattern
+# --hybrid-force-iso-parameters
+# --position-embedding-type rope
 # --num-attention-heads
 # --kv-channels
-# --position-embedding-type rope
-# --spec-b attention/transformer layer spec
+# --ffn-hidden-size
 
 OPTIONS=" \
 --num-layers 24 \
 --hidden-size 768 \
---num-attention-heads 19 \
---kv-channels 64 \
+--num-attention-heads 12 \
+--hybrid-force-iso-parameters \
 --hybrid-attention-ratio 0.1 \
+--hybrid-mlp-ratio 0.2 \
+--hybrid-override-pattern "M*-M*-M*-M*-M*-M*-M*-M*-" \
 --seq-length ${SEQ_LEN} \
 --max-position-embeddings ${SEQ_LEN} \
 --position-embedding-type rope \
@@ -123,8 +122,7 @@ OPTIONS=" \
 --eval-iters 32 \
 --bf16 \
 --use-mcore-models \
---spec megatron.core.models.mamba.mamba_layer_specs mamba_layer_spec \
---spec-b megatron.core.models.mamba.mamba_layer_specs transformer_layer_spec \
+--spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
 --tensorboard-dir ${TENSORBOARD_DIR}"
 
 echo -e "\n"

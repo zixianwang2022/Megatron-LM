@@ -108,6 +108,9 @@ class TransformerConfig(ModelParallelConfig):
     fp8_amax_compute_algo: str = "most_recent"
     fp8_wgrad: bool = True
 
+    # hybrid-related
+    hybrid_force_iso_parameters: bool = False
+
     # miscellaneous
     clone_scatter_output_in_embedding: bool = True
     # TODO(duncan+sudhakar+wonmin): decide if, and how, to use this
@@ -128,6 +131,24 @@ class TransformerConfig(ModelParallelConfig):
             raise ValueError(
                 f'Only one of self.fp16: {self.fp16} and self.bf16 {self.bf16} should be True.'
             )
+
+        # TODO(duncan): Consider removing this and instead add ability to
+        #   require number of parameters per layer type from the command line.
+        if self.hybrid_force_iso_parameters:
+            # Note: it might not be practical to do this programatically for
+            #   all model configs (e.g. hidden_size, GQA, SwiGLU, d_state, etc).
+            #   It might be better to optionally error-check that all the
+            #   layers have similar parameter counts.
+            # Make the number of parameters in the other layers match the
+            # number in the Mamba layers. Mamba params =~ 6 * hidden_size^2
+            # For MHA attention: 4 * hidden_size^2 -> 6 * hidden_size^2
+            # (scaling factor of roughly 6/4 = 1.5)
+            self.kv_channels = (
+                self.hidden_size // self.num_attention_heads)
+            self.num_attention_heads = round(self.num_attention_heads * 1.6)
+            # For GeLU MLP: 8 * hidden_size^2 (approx) -> 6 * hidden_size^2
+            # (approx) (scaling factor of roughly 3 instead of 4)
+            self.ffn_hidden_size = round(3.2 * self.hidden_size)
 
         if self.num_attention_heads % self.tensor_model_parallel_size != 0:
             raise ValueError(

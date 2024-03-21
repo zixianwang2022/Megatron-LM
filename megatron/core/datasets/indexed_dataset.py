@@ -355,7 +355,7 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
         """Initialize the dataset
 
         This method is called by MMapIndexedDataset.__init__ during object creation and by
-        MMapIndexedDataset.__setstate__ during un-puckling
+        MMapIndexedDataset.__setstate__ during un-pickling
 
         Args:
             path_prefix (str): The index (.idx) and data (.bin) prefix
