@@ -2,7 +2,7 @@
 
 #SBATCH --ntasks-per-node=8
 #SBATCH --nodes=4
-#SBATCH --partition=polar,grizzly
+#SBATCH --partition=polar
 #SBATCH --account=adlr_nlp_llmnext
 #SBATCH --time=4:00:00
 #SBATCH --exclusive
@@ -34,8 +34,7 @@ IMAGE="/lustre/fsw/portfolios/adlr/users/rwaleffe/images/mamba-ssm.sqsh"
 # We're currently mapped to root inside the containers we're using, so ${USER}
 # does not work to find paths based on our real user names. Change the username
 # below to your own.
-# ROOT_DIR="/lustre/fsw/portfolios/adlr/users/duncan"
-ROOT_DIR="/lustre/fsw/portfolios/nvr/users/wbyeon/dev/megatron-lm-mamba_hybrid"
+ROOT_DIR="/lustre/fsw/portfolios/adlr/users/duncan"
 
 # if [ -n "${SLURM_JOB_ID:-}" ] ; then
 #   SCRIPT_DIR=$(dirname $(scontrol show job "$SLURM_JOB_ID" | awk -F= '/Command=/{print $2}'))
@@ -44,7 +43,7 @@ ROOT_DIR="/lustre/fsw/portfolios/nvr/users/wbyeon/dev/megatron-lm-mamba_hybrid"
 # fi
 # EXAMPLES_DIR=$(dirname "${SCRIPT_DIR}")
 # MEGATRON_LM_DIR=$(dirname "${EXAMPLES_DIR}")
-MEGATRON_LM_DIR="${ROOT_DIR}"
+MEGATRON_LM_DIR="${ROOT_DIR}/repos/megatron-lm"
 
 RUN_DIR="${ROOT_DIR}/runs/${NAME}"
 LOGS_DIR="${RUN_DIR}/logs"
@@ -72,15 +71,28 @@ LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
 # be more than one iteration, and the gradient will be accumulated over
 # iterations before being applied.
 
+# For pure attention, use:
+# --spec-b megatron.core.models.mamba.mamba_layer_specs attention_layer_spec
+
+# To make attention parameter count match mamba parameter count
+# use --num-attention-heads and --kv-channels
+
+# Options for hybrid (tracking here):
+# --hybrid-attention-ratio > 0.0
+# --num-attention-heads
+# --kv-channels
+# --position-embedding-type rope
+# --spec-b attention/transformer layer spec
+
 OPTIONS=" \
 --num-layers 24 \
 --hidden-size 768 \
 --num-attention-heads 19 \
 --kv-channels 64 \
---hybrid-attention-ratio 0. \
+--hybrid-attention-ratio 0.1 \
 --seq-length ${SEQ_LEN} \
 --max-position-embeddings ${SEQ_LEN} \
---position-embedding-type none \
+--position-embedding-type rope \
 --train-samples ${TRAIN_SAMPLES} \
 --lr-warmup-samples ${LR_WARMUP_SAMPLES} \
 --lr-decay-samples ${LR_DECAY_SAMPLES} \
@@ -112,7 +124,7 @@ OPTIONS=" \
 --bf16 \
 --use-mcore-models \
 --spec megatron.core.models.mamba.mamba_layer_specs mamba_layer_spec \
---spec-b megatron.core.models.mamba.mamba_layer_specs attention_layer_spec \
+--spec-b megatron.core.models.mamba.mamba_layer_specs transformer_layer_spec \
 --tensorboard-dir ${TENSORBOARD_DIR}"
 
 echo -e "\n"
