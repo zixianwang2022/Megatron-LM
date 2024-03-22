@@ -190,6 +190,11 @@ def generate_tokens_probs_and_return_on_first_stage(
             # logits will be meanigful only in the last pipeline stage.
             logits = forward_step(tokens2use, positions2use, attention_mask2use)
 
+            # NOTE(rwaleffe): logits coming from mamba model have the wrong shape, this hack supports eval
+            # This is unneeded once we move to the TP implementation
+            if model.module.__class__.__name__ == 'MambaModel':
+                logits = torch.transpose(logits, 0, 1)
+
             if mpu.is_pipeline_last_stage():
                 if prevent_newline_after_colon:
                     logits[tokens2use[:, -1] == tokenizer.tokenize(':')[0], -1, tokenizer.tokenize('\n')[0]] = -1e10 # disable "\n" after ":"
