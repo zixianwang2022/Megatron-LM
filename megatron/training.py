@@ -52,6 +52,11 @@ from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.model.vision.knn_monitor import compute_feature_bank
 
+def set_iteration(args, iteration):
+	"be careful what you are doing when you call this fuction"
+	args.consumed_train_samples = iteration * args.global_batch_size
+	args.consumed_valid_samples = (iteration // args.eval_interval) * \
+		args.eval_iters * args.global_batch_size
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -495,16 +500,30 @@ def setup_model_and_optimizer(model_provider_func,
                                        scale_lr_cond, lr_mult)
     opt_param_scheduler = get_optimizer_param_scheduler(optimizer)
 
+#    if args.load is not None:
+#        timers = get_timers()
+#        timers('load-checkpoint', log_level=0).start(barrier=True)
+#        args.iteration, args.num_floating_point_operations_so_far = load_checkpoint(
+#            model, optimizer, opt_param_scheduler)
+#        timers('load-checkpoint').stop(barrier=True)
+#        timers.log(['load-checkpoint'])
+#    else:
+#        args.iteration = 0
+#        args.num_floating_point_operations_so_far = 0
+
     if args.load is not None:
         timers = get_timers()
         timers('load-checkpoint', log_level=0).start(barrier=True)
         args.iteration, args.num_floating_point_operations_so_far = load_checkpoint(
             model, optimizer, opt_param_scheduler)
+        print_rank_0("WARNING: I am overriding iteration to 60000")
+        set_iteration(args, 600000)
         timers('load-checkpoint').stop(barrier=True)
         timers.log(['load-checkpoint'])
     else:
         args.iteration = 0
         args.num_floating_point_operations_so_far = 0
+
 
     # get model without FP16 and/or DDP wrappers
     if args.iteration == 0 and len(unwrapped_model) == 1 \
