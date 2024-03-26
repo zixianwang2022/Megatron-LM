@@ -1460,7 +1460,7 @@ def _add_moe_args(parser):
     group.add_argument('--num-experts', type=int, default=None,
                        help='Number of Experts in MoE (None means no MoE)')
     group.add_argument('--moe-router-load-balancing-type', type=str,
-                       choices=['aux_loss', 'sinkhorn', "none"],
+                       choices=['aux_loss', 'sinkhorn', "none", "sigmoid"],
                        default='aux_loss',
                        help='Determines the load balancing strategy for the router. "aux_loss" corresponds to the load balancing loss used in GShard and SwitchTransformer, "sinkhorn" corresponds to the balancing algorithm used in S-BASE, and "none" implies no load balancing. The default is "aux_loss".')
     group.add_argument('--moe-router-topk', type=int, default=2,
@@ -1479,6 +1479,8 @@ def _add_moe_args(parser):
                        help='Add noise to the input tensor by applying jitter with a specified epsilon value.')
     group.add_argument('--moe-token-dropping', action='store_true',
                        help='This feature involves selectively dropping and padding tokens for each expert to achieve a specified capacity, similar to GShard, Switch-Transformer, and DeepSpeed-MoE. Note: Currently unsupported.')
+    group.add_argument('--moe-dropout', type=float, default=None,
+                       help='')
     group.add_argument('--moe_log_load_balancing', action='store_true',
                        help='log number of tokens routed to experts')
     return parser

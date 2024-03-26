@@ -138,6 +138,7 @@ class TransformerConfig(ModelParallelConfig):
     moe_z_loss_coeff: float = None  # 1e-3 would be a good start value for z-loss
     moe_input_jitter_eps: float = None
     moe_token_dropping: bool = False  # TODO: Support token dropping.
+    moe_dropout: float = None
 
     def __post_init__(self):
         """ Python dataclass method that is used to modify attributes after initialization.

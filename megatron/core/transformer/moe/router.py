@@ -21,6 +21,7 @@ from megatron.core.transformer.moe.moe_utils import (
     z_loss_func,
 )
 from megatron.core.transformer.transformer_config import TransformerConfig
+from megatron.core.transformer.utils import attention_mask_func
 
 
 class Router(ABC, MegatronModule):
@@ -135,6 +136,28 @@ class TopKRouter(Router):
         else:
             logits = _sinkhorn_activation(logits)
             scores, indices = torch.topk(logits, k=self.topk, dim=1)
+        return scores, indices
+    
+    def sigmoid_load_balancing(self, logits: torch.Tensor):
+        """Apply loss-based load balancing to the logits tensor.
+
+        Args:
+            logits (torch.Tensor): The logits tensor.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: The scores and the indices tensor after applying load balancing.
+        """
+        if self.config.moe_dropout and self.training:
+            mask = torch.empty_like(logits).bernoulli_(self.config.moe_dropout).bool()
+            logits = attention_mask_func(logits, mask)
+
+        probs = torch.sigmoid(logits)
+        scores, indices = torch.topk(probs, k=self.topk, dim=1)
+
+        p = torch.softmax(logits, dim=-1, dtype=torch.float32).mean(0)
+        aux_loss = self.config.moe_aux_loss_coeff * p @ torch.log(p)
+        scores = MoEAuxLossAutoScaler.apply(scores, aux_loss)
+
         return scores, indices
 
     def aux_loss_load_balancing(self, logits: torch.Tensor):
@@ -271,6 +294,8 @@ class TopKRouter(Router):
             # A naive top-k routing without load balancing
             top_logits, indices = torch.topk(logits, k=self.topk, dim=1)
             scores = torch.softmax(top_logits, dim=-1, dtype=torch.float32).type_as(logits)
+        elif self.routing_type == "sigmoid":
+            scores, indices = self.sigmoid_load_balancing(logits)
         else:
             raise ValueError(f"Unsupported MoE routing type: {self.routing_type}")
 
