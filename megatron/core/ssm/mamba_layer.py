@@ -38,6 +38,7 @@ class MambaLayer(MegatronModule):
         self.residual_in_fp32 = residual_in_fp32
         self.mixer = build_module(
             submodules.mixer,
+            self.config,
             self.config.hidden_size,
             layer_idx=layer_idx,
             **kwargs

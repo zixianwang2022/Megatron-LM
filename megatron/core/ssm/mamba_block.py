@@ -58,6 +58,10 @@ def _init_weights(
     elif isinstance(module, nn.Embedding):
         nn.init.normal_(module.weight, std=initializer_range)
 
+    for name, p in module.named_parameters():
+        if name in ["dt_proj.weight", "x_proj.weight", "dt_proj.weight", "out_proj.weight"]:
+            nn.init.kaiming_uniform(p, a=math.sqrt(5))
+         
     if rescale_prenorm_residual:
         # Reinitialize selected weights subject to the OpenAI GPT-2 Paper Scheme:
         #   > A modified initialization which accounts for the accumulation on the residual path with model depth. Scale

@@ -1,6 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
-from mamba_ssm import Mamba
+# from mamba_ssm import Mamba
+from megatron.core.ssm.mamba_mixer import Mamba
 
 from megatron.core.fusions.fused_bias_dropout import get_bias_dropout_add
 from megatron.core.ssm.mamba_block import MambaStack, MambaStackSubmodules
