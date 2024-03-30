@@ -9,11 +9,13 @@ from megatron.core.transformer.module import MegatronModule
 from einops import rearrange, repeat
 from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.tensor_parallel import (
+    get_cuda_rng_tracker,
     ColumnParallelLinear,
     RowParallelLinear,
     copy_to_tensor_model_parallel_region,
     reduce_from_tensor_model_parallel_region,
     reduce_scatter_to_sequence_parallel_region,
+    gather_from_sequence_parallel_region,
 )
 
 from megatron.core.parallel_state import (
@@ -74,16 +76,17 @@ class Mamba(MegatronModule):
             bias=bias,
         )
 
-        self.conv1d = nn.Conv1d(
-            in_channels=self.d_inner_local,
-            out_channels=self.d_inner_local,
-            bias=conv_bias,
-            kernel_size=d_conv,
-            groups=self.d_inner_local,
-            padding=d_conv - 1,
-            device=torch.cuda.current_device(),
-            dtype=config.params_dtype
-        )
+        with get_cuda_rng_tracker().fork():
+            self.conv1d = nn.Conv1d(
+                in_channels=self.d_inner_local,
+                out_channels=self.d_inner_local,
+                bias=conv_bias,
+                kernel_size=d_conv,
+                groups=self.d_inner_local,
+                padding=d_conv - 1,
+                device=torch.cuda.current_device(),
+                dtype=config.params_dtype
+            )
 
         self.activation = "silu"
         self.act = nn.SiLU()
@@ -116,26 +119,27 @@ class Mamba(MegatronModule):
             bias=True,
         )
 
-        # Initialize special dt projection to preserve variance at initialization
-        dt_init_std = self.dt_rank**-0.5 * dt_scale
-        if dt_init == "constant":
-            nn.init.constant_(self.dt_proj.weight, dt_init_std)
-        elif dt_init == "random":
-            nn.init.uniform_(self.dt_proj.weight, -dt_init_std, dt_init_std)
-        else:
-            raise NotImplementedError
+        with get_cuda_rng_tracker().fork():
+            # Initialize special dt projection to preserve variance at initialization
+            dt_init_std = self.dt_rank**-0.5 * dt_scale
+            if dt_init == "constant":
+                nn.init.constant_(self.dt_proj.weight, dt_init_std)
+            elif dt_init == "random":
+                nn.init.uniform_(self.dt_proj.weight, -dt_init_std, dt_init_std)
+            else:
+                raise NotImplementedError
 
-        # Initialize dt bias so that F.softplus(dt_bias) is between dt_min and dt_max
-        dt = torch.exp(
-            torch.rand(self.d_inner_local, **factory_kwargs) * (math.log(dt_max) - math.log(dt_min))
-            + math.log(dt_min)
-        ).clamp(min=dt_init_floor)
-        # Inverse of softplus: https://github.com/pytorch/pytorch/issues/72759
-        inv_dt = dt + torch.log(-torch.expm1(-dt))
-        with torch.no_grad():
-            self.dt_proj.bias.copy_(inv_dt)
-        # Our initialization would set all Linear.bias to zero, need to mark this one as _no_reinit
-        self.dt_proj.bias._no_reinit = True
+            # Initialize dt bias so that F.softplus(dt_bias) is between dt_min and dt_max
+            dt = torch.exp(
+                torch.rand(self.d_inner_local, **factory_kwargs) * (math.log(dt_max) - math.log(dt_min))
+                + math.log(dt_min)
+            ).clamp(min=dt_init_floor)
+            # Inverse of softplus: https://github.com/pytorch/pytorch/issues/72759
+            inv_dt = dt + torch.log(-torch.expm1(-dt))
+            with torch.no_grad():
+                self.dt_proj.bias.copy_(inv_dt)
+            # Our initialization would set all Linear.bias to zero, need to mark this one as _no_reinit
+            self.dt_proj.bias._no_reinit = True
 
         # S4D real initialization
         A = repeat(
@@ -163,19 +167,6 @@ class Mamba(MegatronModule):
             skip_bias_add=False,
         )
 
-    def gather_along_sequence_dimension(self, input):
-        world_size = get_tensor_model_parallel_world_size()
-        if world_size == 1:
-            return input
-        dim_size = list(input.size())
-        dim_size[0] = dim_size[0] * world_size
-
-        all_gather_buffer = get_global_memory_buffer().get_tensor(dim_size, input.dtype, "mpu")
-        torch.distributed._all_gather_base(
-            all_gather_buffer, input, group=get_tensor_model_parallel_group()
-        )
-        return all_gather_buffer
-
     def forward(self, hidden_states, inference_params=None):
         """
         hidden_states: (nL, B, D)
@@ -187,9 +178,7 @@ class Mamba(MegatronModule):
         # pl b d ->  l b p(2d)
         # TODO move transpose to GEMM
         # gather data along sequenece dimension
-        #print("hidde state size", hidden_states.size())
-        hidden_states = self.gather_along_sequence_dimension(hidden_states)
-
+        hidden_states = gather_from_sequence_parallel_region(hidden_states)
         xz = hidden_states @ self.in_proj.weight.t()
         #print("xz shape", xz.size())
 
@@ -197,7 +186,6 @@ class Mamba(MegatronModule):
 
         # l b p(2d) --> l b pd  ; l b pd
         x, z = xz.chunk(2, dim=-1)
-        #print("z initial shape", x.size(), self.in_proj.weight.size(), hidden_states.size())
 
         # transpose: l b pd --> b pd l
         x = rearrange(x, "l b d -> b d l")

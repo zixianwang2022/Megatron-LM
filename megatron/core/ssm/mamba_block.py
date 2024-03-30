@@ -19,6 +19,9 @@ from megatron.core.ssm.mamba_hybrid_layer_allocation import (
     allocate_layers, Symbols as LayerSymbols
 )
 
+from megatron.core.ssm.mamba_layer import MambaLayer
+from megatron.core.tensor_parallel import get_cuda_rng_tracker
+
 
 def create_mamba_block(
     config,
@@ -51,33 +54,34 @@ def _init_weights(
     rescale_prenorm_residual=True,
     n_residuals_per_layer=1,  # Change to 2 if we have MLP
 ):
-    if isinstance(module, nn.Linear):
-        if module.bias is not None:
-            if not getattr(module.bias, "_no_reinit", False):
-                nn.init.zeros_(module.bias)
-    elif isinstance(module, nn.Embedding):
-        nn.init.normal_(module.weight, std=initializer_range)
+    with get_cuda_rng_tracker().fork():
+        if isinstance(module, nn.Linear):
+            if module.bias is not None:
+                if not getattr(module.bias, "_no_reinit", False):
+                    nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, std=initializer_range)
 
-    for name, p in module.named_parameters():
-        if name in ["dt_proj.weight", "x_proj.weight", "dt_proj.weight", "out_proj.weight"]:
-            nn.init.kaiming_uniform(p, a=math.sqrt(5))
-         
-    if rescale_prenorm_residual:
-        # Reinitialize selected weights subject to the OpenAI GPT-2 Paper Scheme:
-        #   > A modified initialization which accounts for the accumulation on the residual path with model depth. Scale
-        #   > the weights of residual layers at initialization by a factor of 1/√N where N is the # of residual layers.
-        #   >   -- GPT-2 :: https://openai.com/blog/better-language-models/
-        #
-        # Reference (Megatron-LM): https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/model/gpt_model.py
         for name, p in module.named_parameters():
-            if name in ["out_proj.weight", "fc2.weight"]:
-                # Special Scaled Initialization --> There are 2 Layer Norms per Transformer Block
-                # Following Pytorch init, except scale by 1/sqrt(2 * n_layer)
-                # We need to reinit p since this code could be called multiple times
-                # Having just p *= scale would repeatedly scale it down
-                nn.init.kaiming_uniform_(p, a=math.sqrt(5))
-                with torch.no_grad():
-                    p /= math.sqrt(n_residuals_per_layer * n_layer)
+            if name in ["in_proj.weight", "x_proj.weight", "conv1d.weight", "out_proj.weight"]:
+                nn.init.kaiming_uniform(p, a=math.sqrt(5))
+         
+        if rescale_prenorm_residual:
+            # Reinitialize selected weights subject to the OpenAI GPT-2 Paper Scheme:
+            #   > A modified initialization which accounts for the accumulation on the residual path with model depth. Scale
+            #   > the weights of residual layers at initialization by a factor of 1/√N where N is the # of residual layers.
+            #   >   -- GPT-2 :: https://openai.com/blog/better-language-models/
+            #
+            # Reference (Megatron-LM): https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/model/gpt_model.py
+            for name, p in module.named_parameters():
+                if name in ["out_proj.weight", "fc2.weight"]:
+                    # Special Scaled Initialization --> There are 2 Layer Norms per Transformer Block
+                    # Following Pytorch init, except scale by 1/sqrt(2 * n_layer)
+                    # We need to reinit p since this code could be called multiple times
+                    # Having just p *= scale would repeatedly scale it down
+                    nn.init.kaiming_uniform_(p, a=math.sqrt(5))
+                    with torch.no_grad():
+                        p /= math.sqrt(n_residuals_per_layer * n_layer)
 
 
 @dataclass
@@ -186,22 +190,6 @@ class MambaStack(MegatronModule):
             inference_params.seqlen_offset = inference_params.sequence_len_offset
 
         for layer in self.layers:
-            # MambaLayer outputs [b, s, d] format.
-            # TransformerLayer expects the inputs to be [s, b, d] format.
-            # This solution is robust and will work with pipeline parallelism,
-            # but may introduce redundant double-transposes.
-            # TODO(duncan): to reduce the potential number of transposes,
-            #   pass the format information between layers. Approaches:
-            #   1. Infer format from shape: works with PP, not robust.
-            #   2. Carry format as a variable: does not work with PP, robust.
-            #   3. Pass format through layers: works with PP, robust,
-            #      requires changes to, or replacement of, transformer layers.
-            #   Note also that there is a solution if only using TE attention:
-            #   that can be configured to handle [b, s, d] format directly.
-            is_transformer_layer = isinstance(layer, TransformerLayer)
-            if is_transformer_layer:
-                hidden_states = hidden_states.transpose(0,1).contiguous()
-
             hidden_states = layer(
                 hidden_states, attention_mask, inference_params=inference_params,
                 rotary_pos_emb=rotary_pos_emb,
@@ -212,12 +200,6 @@ class MambaStack(MegatronModule):
             # for cross-attention, and is not needed in our model.
             if isinstance(hidden_states, tuple):
                 hidden_states = hidden_states[0]
-
-            # TransformerLayer outputs in [s, b, d] format.
-            # MambaLayer expects [b, s, d] format.
-            # See notes above, associated wit the pre-layer transpose
-            if is_transformer_layer:
-                hidden_states = hidden_states.transpose(0,1).contiguous()
 
         hidden_states = self.final_norm(hidden_states)
 
