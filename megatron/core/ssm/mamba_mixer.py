@@ -5,17 +5,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
+from megatron.core.transformer.module import MegatronModule
 from einops import rearrange, repeat
-
-from .mappings import (
+from megatron.core.transformer.transformer_config import TransformerConfig
+from megatron.core.tensor_parallel import (
+    ColumnParallelLinear,
+    RowParallelLinear,
     copy_to_tensor_model_parallel_region,
-    gather_from_sequence_parallel_region,
-    gather_from_tensor_model_parallel_region,
     reduce_from_tensor_model_parallel_region,
     reduce_scatter_to_sequence_parallel_region,
-    scatter_to_tensor_model_parallel_region,
 )
+
+from megatron.core.parallel_state import (
+      get_global_memory_buffer,
+      get_tensor_model_parallel_group,
+      get_tensor_model_parallel_rank,
+      get_tensor_model_parallel_world_size,
+)
+from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 
 class Mamba(MegatronModule):
     def __init__(
@@ -38,7 +45,7 @@ class Mamba(MegatronModule):
         device=None,
         dtype=None,
     ):
-        factory_kwargs = {"device": device, "dtype": dtype}
+        factory_kwargs = {"device": torch.cuda.current_device(), "dtype": config.params_dtype}
         super().__init__(config)
         self.config = config
         self.d_model = d_model
@@ -52,7 +59,7 @@ class Mamba(MegatronModule):
         assert (self.d_inner % self.tensor_model_parallel_size == 0)
         assert (self.dt_rank % self.tensor_model_parallel_size == 0)
         assert (self.d_state % self.tensor_model_parallel_size == 0)
-        self.d_inner_local = self.d_inner // self.tensor_model_parallel_size)
+        self.d_inner_local = self.d_inner // self.tensor_model_parallel_size
         self.layer_idx = layer_idx
         assert (not bias)
 
@@ -88,11 +95,12 @@ class Mamba(MegatronModule):
         # no communication in the backward pass
         self.x_proj = RowParallelLinear( 
             self.d_inner,
-            self.dt_rank + self.d_dstate * 2,
+            self.dt_rank + self.d_state * 2,
             config=self.config,
             init_method=self.config.output_layer_init_method,
             bias=False,
             input_is_parallel=True,
+            skip_bias_add=False,
         )
 
         # assume
@@ -152,6 +160,7 @@ class Mamba(MegatronModule):
             init_method=self.config.output_layer_init_method,
             bias=bias,
             input_is_parallel=True,
+            skip_bias_add=False,
         )
 
     def gather_along_sequence_dimension(self, input):
@@ -167,27 +176,32 @@ class Mamba(MegatronModule):
         )
         return all_gather_buffer
 
-
     def forward(self, hidden_states, inference_params=None):
         """
         hidden_states: (nL, B, D)
         Returns: same shape as hidden_states
         """
-        seqlen, batch, dim = hidden_states.shape
+        #print("processing layer_idx", self.layer_idx)
+        _, batch, dim = hidden_states.shape
 
         # pl b d ->  l b p(2d)
         # TODO move transpose to GEMM
         # gather data along sequenece dimension
+        #print("hidde state size", hidden_states.size())
         hidden_states = self.gather_along_sequence_dimension(hidden_states)
+
         xz = hidden_states @ self.in_proj.weight.t()
+        #print("xz shape", xz.size())
 
         A = -torch.exp(self.A_log.float())  # (pd, d_state)
 
         # l b p(2d) --> l b pd  ; l b pd
         x, z = xz.chunk(2, dim=-1)
-        
+        #print("z initial shape", x.size(), self.in_proj.weight.size(), hidden_states.size())
+
         # transpose: l b pd --> b pd l
         x = rearrange(x, "l b d -> b d l")
+        x = x.contiguous()
 
         # Compute short convolution
         ''''
@@ -196,10 +210,12 @@ class Mamba(MegatronModule):
             # Instead F.pad will pad with zeros if seqlen < self.d_conv, and truncate otherwise.
             conv_state.copy_(F.pad(x, (self.d_conv - x.shape[-1], 0)))  # Update state (B D W)
         '''
+        seqlen = x.size(2)
         x = self.act(self.conv1d(x)[..., :seqlen])
 
         # transpose b pd l --> l b pd
-        x = rearrange(x, "b d l ->  l b d" )
+        x = rearrange(x, "b d l ->  l b d")
+        x = x.contiguous()
 
         # l b pd --> l b d
         x_dbl = x @ self.x_proj.weight.t()
@@ -212,7 +228,17 @@ class Mamba(MegatronModule):
         dt_dup = copy_to_tensor_model_parallel_region(dt)
         dt = dt_dup @ self.dt_proj.weight.t()
 
-        y = self.selective_scan_ref(
+        #print("u shape", x.size())
+        #print("a shape", A.size())
+
+        # TODO Vijay: fuse most of the transposes with the GEMMS
+        x = rearrange(x, "l b d -> b d l").contiguous()
+        dt = rearrange(dt, "l b d -> b d l").contiguous()
+        B = rearrange(B, "l b n -> b n l").contiguous()
+        C = rearrange(C, "l b n -> b n l").contiguous()
+        z = rearrange(z, "l b d -> b d l").contiguous()
+        #print("z shape and x shape", z.size(), x.size())
+        y = selective_scan_fn(
             x,
             dt,
             A,
@@ -224,13 +250,14 @@ class Mamba(MegatronModule):
             delta_softplus=True,
             return_last_state=False,
         )
+        y = rearrange(y, "b d l -> l b d").contiguous()
 
         #  l b pd --> pl b d
         out_full = y @ self.out_proj.weight.t()
         out = reduce_scatter_to_sequence_parallel_region(out_full)
         return out
 
-    def selective_scan_ref(u, delta, A, B, C, D=None, z=None, delta_bias=None, delta_softplus=False,
+    def selective_scan_ref(self, u, delta, A, B, C, D=None, z=None, delta_bias=None, delta_softplus=False,
                       return_last_state=False):
         """
         u: r(B D L)
@@ -259,8 +286,11 @@ class Mamba(MegatronModule):
         dtype_in = u.dtype
         u = u.float()
         delta = delta.float()
+        #print("delta_shape", delta.size())
+        #print("delta_bias_shape", delta_bias.size())
         if delta_bias is not None:
-            delta = delta + delta_bias[..., None].float()
+            #delta = delta + delta_bias[..., None].float()
+            delta = delta + delta_bias.float()
         if delta_softplus:
             delta = F.softplus(delta)
         batch, dim, dstate = u.shape[1], A.shape[0], A.shape[1]
@@ -269,11 +299,22 @@ class Mamba(MegatronModule):
 
         x = A.new_zeros((batch, dim, dstate))
         ys = []
-        deltaA = torch.exp(torch.einsum('lbd,dn->lbdn', delta, A))
-        deltaB_u = torch.einsum('lbd,lbn,lbd->lbdn', delta, B, u)
+        #deltaA = torch.exp(torch.einsum('lbd,dn->lbdn', delta, A))
+        #deltaB_u = torch.einsum('lbd,lbn,lbd->lbdn', delta, B, u)
         last_state = None
+        #print("batch, dim, dstate", batch, dim, dstate)
+        #temp1 = x.new_empty((batch, dim, dstate))
+        #temp2 = x.new_empty((batch, dim, dstate))
+
         for i in range(u.shape[0]):
-            x = deltaA[i] * x + deltaB_u[i]
+            #x = deltaA[i] * x + deltaB_u[i]
+
+            #x = delta[i].unsqueeze(dim=-1) * (A.unsqueeze(dim=0) * x + B[i].unsqueeze(dim=1) * u[i].unsqueeze(dim=-1))
+            #temp1 = A.unsqueeze(dim=0) * x
+            #temp2 = B[i].unsqueeze(dim=1) * u[i].unsqueeze(dim=-1)
+            #temp1 = temp1 + temp2
+            #x = delta[i].unsqueeze(dim=-1) * temp1
+
             y = torch.einsum('bdn,bn->bd', x, C[i])
             if i == u.shape[0] - 1:
                 last_state = x

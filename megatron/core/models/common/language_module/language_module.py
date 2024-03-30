@@ -28,12 +28,12 @@ class LanguageModule(MegatronModule):
         Returns:
             Tensor: Loss tensor of dimensions [batch size, sequence_length]
         """
-        # [b s] => [s b] for Mamba. This change needs to be made optional.
-        labels = labels.contiguous() # changed from labels.transpose(0, 1).contiguous()
+        # [b s] => [s b]
+        labels = labels.transpose(0,1).contiguous()
         loss = tensor_parallel.vocab_parallel_cross_entropy(logits.float(), labels)
 
-        # [s b] => [b, s] for Mamba. This change needs to be made optional.
-        loss = loss.contiguous() # changed from loss.transpose(0, 1).contiguous()
+        # [s b] => [b, s]
+        loss = loss.transpose(0,1).contiguous()
         return loss
 
     def initialize_last_stage_with_word_embeddings(self) -> None:
