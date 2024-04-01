@@ -1429,8 +1429,5 @@ def _add_experimental_args(parser):
                        'range [0.0, 1.0].')
     group.add_argument('--hybrid-override-pattern', type=str, default=None,
                        help='Force a specific hybrid layer pattern')
-    group.add_argument('--hybrid-force-iso-parameters', action='store_true',
-                       help='Force the hybrid layers to each have roughly the '
-                       'same number of parameters.')
 
     return parser
