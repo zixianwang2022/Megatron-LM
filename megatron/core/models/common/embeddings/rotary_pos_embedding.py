@@ -115,15 +115,9 @@ class RotaryEmbedding(nn.Module):
             rotary_seq_len = inference_params.max_sequence_length
         else:
             if transformer.input_tensor is not None:
-                # Input to Transformer model is [s b d].
-                # Input to Mamba model is [b s d].
-                # This change needs to be made optional.
-                rotary_seq_len = transformer.input_tensor.size(1)
+                rotary_seq_len = transformer.input_tensor.size(0)
             else:
-                # Input to Transformer model is [s b d].
-                # Input to Mamba model is [b s d].
-                # This change needs to be made optional.
-                rotary_seq_len = transformer_input.size(1)
+                rotary_seq_len = transformer_input.size(0)
 
             if transformer_config.sequence_parallel:
                 rotary_seq_len *= transformer_config.tensor_model_parallel_size
