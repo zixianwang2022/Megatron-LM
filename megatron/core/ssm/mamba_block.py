@@ -56,6 +56,8 @@ def _init_weights(
 ):
     with get_cuda_rng_tracker().fork():
         if isinstance(module, nn.Linear):
+            if not getattr(module.weight, "_no_reinit", False):
+                nn.init.normal_(module.weight, std=initializer_range)
             if module.bias is not None:
                 if not getattr(module.bias, "_no_reinit", False):
                     nn.init.zeros_(module.bias)
@@ -75,13 +77,10 @@ def _init_weights(
             # Reference (Megatron-LM): https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/model/gpt_model.py
             for name, p in module.named_parameters():
                 if name in ["out_proj.weight", "fc2.weight"]:
-                    # Special Scaled Initialization --> There are 2 Layer Norms per Transformer Block
-                    # Following Pytorch init, except scale by 1/sqrt(2 * n_layer)
-                    # We need to reinit p since this code could be called multiple times
-                    # Having just p *= scale would repeatedly scale it down
-                    nn.init.kaiming_uniform_(p, a=math.sqrt(5))
-                    with torch.no_grad():
-                        p /= math.sqrt(n_residuals_per_layer * n_layer)
+                    # Special Scaled Initialization
+                    nn.init.normal_(
+                        p, mean=0.0, std=initializer_range / math.sqrt(n_residuals_per_layer * n_layer)
+                    )
 
 
 @dataclass
