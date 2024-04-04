@@ -2,6 +2,7 @@ import torch
 import os
 import random
 import json
+import socket
 
 from time import sleep
 from pathlib import Path
@@ -24,7 +25,7 @@ class ParallelFileCacheManager(FileCacheManager):
         self.lock_path = None
         # create cache directory if it doesn't exist
         self.cache_dir = os.environ.get('TRITON_CACHE_DIR', default_cache_dir())
-        self.cache_dir = os.path.join(self.cache_dir, "rank_{}".format(get_rank()))
+        self.cache_dir = os.path.join(self.cache_dir, "rank_{}_{}".format(socket.gethostname(), os.getpid()))
         if self.cache_dir:
             self.cache_dir = os.path.join(self.cache_dir, self.key)
             self.lock_path = os.path.join(self.cache_dir, "lock")
