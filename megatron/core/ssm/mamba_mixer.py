@@ -163,6 +163,7 @@ class Mamba(MegatronModule):
         setattr(self.D, 'tensor_model_parallel', True)
 
         if self.rmsnorm:
+            # TODO (rwaleffe): norm should be tp independent with group_size = d_inner_local / ngroups_local
             assert RMSNormGated is not None
             self.norm = RMSNormGated(self.d_inner_local, eps=1e-5, norm_before_gate=False, **factory_kwargs)
 

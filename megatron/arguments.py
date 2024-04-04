@@ -983,14 +983,21 @@ def _add_learning_rate_args(parser):
                        'and initial warmup, the learing rate at each '
                        'iteration would be different.')
     group.add_argument('--lr-decay-style', type=str, default='linear',
-                       choices=['constant', 'linear', 'cosine', 'inverse-square-root'],
+                       choices=['constant', 'linear', 'cosine', 'inverse-square-root', 'WSD'],
                        help='Learning rate decay function.')
+    group.add_argument('--lr-wsd-decay-style', type=str, default='exponential',
+                       choices=['exponential', 'linear', 'cosine'],
+                       help='Decay style for the annealing phase of WSD'),
     group.add_argument('--lr-decay-iters', type=int, default=None,
                        help='number of iterations to decay learning rate over,'
                        ' If None defaults to `--train-iters`')
     group.add_argument('--lr-decay-samples', type=int, default=None,
                        help='number of samples to decay learning rate over,'
                        ' If None defaults to `--train-samples`')
+    group.add_argument('--lr-wsd-decay-samples', type=int, default=None,
+                       help='number of samples for the annealing phase in the wsd schedule')
+    group.add_argument('--lr-wsd-decay-iters', type=int, default=None,
+                       help='number of iterations for the annealing phase in the wsd schedule')
     group.add_argument('--lr-warmup-fraction', type=float, default=None,
                        help='fraction of lr-warmup-(iters/samples) to use '
                        'for warmup (as a float)')
