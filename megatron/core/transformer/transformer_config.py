@@ -130,6 +130,7 @@ class TransformerConfig(ModelParallelConfig):
     normalization: bool = "LayerNorm"  # alt value supported by TE: "RMSNorm"
 
     # MoE related
+    moe_router_type: str = "mixtral"
     moe_router_load_balancing_type: str = "aux_loss"
     moe_router_topk: int = 2
     moe_grouped_gemm: bool = False
@@ -139,6 +140,7 @@ class TransformerConfig(ModelParallelConfig):
     moe_input_jitter_eps: float = None
     moe_token_dropping: bool = False  # TODO: Support token dropping.
     moe_dropout: float = None
+    moe_group_size: int = 1
 
     def __post_init__(self):
         """ Python dataclass method that is used to modify attributes after initialization.

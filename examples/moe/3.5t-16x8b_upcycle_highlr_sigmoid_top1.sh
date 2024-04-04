@@ -1,7 +1,7 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-8x8b_upcycle_highlr_gbs16384 --array=1-30%1
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-8x8b_upcycle_highlr_gbs16384 --array=1-30%1
+##SBATCH -p batch_block1 -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:3.5t-16x8b_upcycle_highlr_sigmoid_top1 --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:3.5t-16x8b_upcycle_highlr_sigmoid_top1 --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -14,12 +14,12 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="3.5t-8x8b_upcycle_highlr_gbs16384"
+NAME="3.5t-16x8b_upcycle_highlr_sigmoid_top1"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-8x8b-multi-3.5t-tp4-pp4-te-gg"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/gpt3-16x8b-multi-3.5t-tp4-pp8-te-gg-st2xw2"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
@@ -45,13 +45,16 @@ mkdir -p ${DATA_CACHE}
 . /home/yihuih/llmservice/data/nvllm-3.5t-eng-v0.2-mul-a1.3-code-a1.3-wdata-nojsp-blend-v0.701515.sh
 
 options=" \
-    --global-batch-size 16384 \
+    --global-batch-size 2048 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --moe-grouped-gemm \
-    --num-experts 8 \
-    --moe-z-loss-coeff 1e-3 \
-    --moe-aux-loss-coeff 1e-2 \
+    --num-experts 16 \
+    --moe-router-topk 1 \
+    --moe-router-load-balancing-type sigmoid \
+    --moe-z-loss-coeff 0.001 \
+    --moe-aux-loss-coeff 0.01 \
+    --moe_log_load_balancing \
     --use-distributed-optimizer \
     --apply-layernorm-1p \
     --use-flash-attn \
@@ -65,7 +68,7 @@ options=" \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
     --tensor-model-parallel-size 4 \
-    --pipeline-model-parallel-size 4 \
+    --pipeline-model-parallel-size 8 \
     --sequence-parallel \
     --num-layers 32 \
     --hidden-size 4096 \
@@ -75,10 +78,10 @@ options=" \
     --micro-batch-size 1 \
     --train-samples 85449218 \
     --lr-decay-samples 81176757 \
-    --lr-warmup-samples 25512 \
-    --lr-warmup-init 6e-5 \
-    --lr 6e-4 \
-    --min-lr 6e-5 \
+    --lr-warmup-samples 122071 \
+    --lr-warmup-init 3e-5 \
+    --lr 3.0e-4 \
+    --min-lr 3.0e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
     --eval-iters 32 \

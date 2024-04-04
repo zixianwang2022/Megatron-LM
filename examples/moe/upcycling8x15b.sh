@@ -48,7 +48,9 @@ mkdir -p ${DATA_CACHE}
 options=" \
     --num-experts 8 \
     --moe-z-loss-coeff 1e-3 \
+    --moe-aux-loss-coeff 1e-2 \
     --moe-grouped-gemm \
+    --moe_log_load_balancing \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --use-flash-attn \
@@ -77,6 +79,8 @@ options=" \
     --global-batch-size 1152 \
     --train-samples 195312500 \
     --lr-decay-samples 194921874 \
+    --lr-warmup-samples 25512 \
+    --lr-warmup-init 4.5e-5 \
     --lr 4.5e-4 \
     --min-lr 4.5e-5 \
     --lr-decay-style cosine \
@@ -116,6 +120,6 @@ cd $DIR && python -u pretrain_gpt.py ${options}"
 srun -l \
      --container-image /lustre/fsw/coreai_dlalgo_llm/yihuih/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
-     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+     bash -c "${run_cmd}"
 
 set +x

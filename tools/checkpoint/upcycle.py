@@ -64,6 +64,9 @@ if __name__ == '__main__':
     parser.add_argument('--router_std', type=float, default=0)
     parser.add_argument('--expert_std', type=float, default=0)
     parser.add_argument('--expert_uniform', type=float, default=0)
+    parser.add_argument('--scale_st', type=float, default=1.)
+    parser.add_argument('--num_groups', type=int, default=1)
+
     args = parser.parse_args()
 
     partitions = [name for name in glob.glob(args.input_dir+'/mp_rank_*')]
@@ -131,8 +134,14 @@ if __name__ == '__main__':
                         else:
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
-                    new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1' 
-                    new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(v.shape[1], -1).contiguous()))
+                    new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1'
+                    if args.num_groups == 1:
+                        new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(v.shape[1], -1).contiguous()))
+                    else:
+                        w1 = v.detach().clone().t().repeat(args.num_experts // args.num_groups, 1, 1)
+                        _, hidden_size, ffn_size = w1.shape
+                        w1 = w1.reshape(args.num_experts, hidden_size, ffn_size // args.num_groups).contiguous()
+                        new_key_values.append((new_key, w1.reshape(v.shape[1], -1).contiguous()))
                 old_keys.append(k)
                 continue
             
@@ -155,7 +164,14 @@ if __name__ == '__main__':
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight2' 
-                    new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(-1, v.shape[0]).contiguous()))
+                    if args.num_groups == 1:
+                        new_key_values.append((new_key, args.scale_st * v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(-1, v.shape[0]).contiguous()))
+                    else:
+                        w2 =  args.scale_st * v.detach().clone().t().repeat(args.num_experts // args.num_groups, 1, 1)
+                        _, ffn_size, hidden_size = w2.shape
+                        w2 = w2.reshape(args.num_experts, ffn_size // args.num_groups, hidden_size).contiguous()
+                        new_key_values.append((new_key, w2.reshape(-1, v.shape[0]).contiguous()))
+
                 old_keys.append(k)
                 continue
         

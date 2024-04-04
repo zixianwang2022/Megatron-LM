@@ -154,9 +154,12 @@ class TopKRouter(Router):
         probs = torch.sigmoid(logits)
         scores, indices = torch.topk(probs, k=self.topk, dim=1)
 
-        p = torch.softmax(logits, dim=-1, dtype=torch.float32).mean(0)
-        aux_loss = self.config.moe_aux_loss_coeff * p @ torch.log(p)
-        scores = MoEAuxLossAutoScaler.apply(scores, aux_loss)
+        # p = torch.softmax(logits, dim=-1, dtype=torch.float32).mean(0)
+        # aux_loss = self.config.moe_aux_loss_coeff * p @ torch.log(p)
+        # scores = MoEAuxLossAutoScaler.apply(scores, aux_loss)
+
+        
+        scores = self.apply_aux_loss(self.moe_aux_loss_func, torch.softmax(logits, dim=-1, dtype=torch.float32), indices, activation=scores)
 
         return scores, indices
 
@@ -169,10 +172,19 @@ class TopKRouter(Router):
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: The scores and the indices tensor after applying load balancing.
         """
-        top_logits, indices = torch.topk(logits, k=self.topk, dim=1)
-        scores = torch.softmax(top_logits, dim=-1, dtype=torch.float32).type_as(logits)
+        match self.config.moe_router_type:
+            case 'mixtral':
+                top_logits, indices = torch.topk(logits, k=self.topk, dim=1)
+                scores = torch.softmax(top_logits, dim=-1, dtype=torch.float32).type_as(logits)
+                probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
+            case 'st':
+                probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
+                scores, indices = torch.topk(probs, k=self.topk, dim=1)
+            case 'grouped':
+                probs, scores, indices = grouped_router(logits, num_moe_experts=self.config.num_moe_experts, topk=self.topk, moe_group_size=self.config.moe_group_size)
+            case _:
+                raise NotImplementedError
         # Apply load balancing loss
-        probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
         scores = self.apply_aux_loss(self.moe_aux_loss_func, probs, indices, activation=scores)
         return scores, indices
     
@@ -300,3 +312,61 @@ class TopKRouter(Router):
             raise ValueError(f"Unsupported MoE routing type: {self.routing_type}")
 
         return scores, indices
+
+def grouped_router(logits, num_moe_experts=64, topk=16, moe_group_size=8):
+    """put MoE in groups like tensor parallel. 
+    e.g. 8 experts, top4, 2 groups
+    compute top2 within every 4 experts group
+
+    The computational complexity of the follow two should be equivalent
+    - num_moe_experts=64, topk=16, moe_group_size=8, ffn_size = 128
+    - num_moe_experts=8, topk=2, moe_group_size=1, ffn_size = 1024
+
+    Args:
+        logits (Tensor): (#tokens, #experts)
+    
+    In [6]: logits = torch.randn(4, 8)
+
+    In [7]: num_moe_experts=8
+
+    In [8]: topk=4
+
+    In [9]: moe_group_size=2
+
+    In [10]: probs, scores, adjusted_indices = grouped_router(logits, num_moe_experts, topk, moe_group_size)
+
+    In [11]: logits
+    Out[11]:
+    tensor([[ 0.6605,  0.5067, -2.7087, -1.0703, -0.4339, -0.0618,  0.3023, -0.6805],
+            [ 0.2585,  1.1013,  1.2551,  0.0448,  0.8753, -0.0532,  1.7316,  1.0494],
+            [ 0.3005, -1.2615, -0.4880, -0.7913,  0.1651,  1.3444,  0.3161, -0.6222],
+            [-1.4876, -0.2928,  0.2573,  0.9561, -0.3219,  0.8441, -0.6582, -0.6504]])
+
+    In [12]: scores
+    Out[12]:
+    tensor([[0.2597, 0.2227, 0.1816, 0.1261],
+            [0.1694, 0.1452, 0.2728, 0.1379],
+            [0.1403, 0.0638, 0.3985, 0.1425],
+            [0.2904, 0.1444, 0.2597, 0.0809]])
+
+    In [13]: adjusted_indices
+    Out[13]:
+    tensor([[0, 1, 6, 5],
+            [2, 1, 6, 7],
+            [0, 2, 5, 6],
+            [3, 2, 5, 4]])
+    """
+    probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
+    
+    group_num_experts = num_moe_experts // moe_group_size
+    group_topk = topk // moe_group_size
+    # (#tokens, #groups, #experts)
+    scores, indices = torch.topk(probs.view(-1, moe_group_size, group_num_experts), k=group_topk, dim=-1)
+    # Reshape the scores back
+    scores = scores.view(-1, topk)
+
+    # Adjust the indices to correspond to the original tensor
+    adjusted_indices = indices + torch.arange(0, num_moe_experts, group_num_experts, device=indices.device).view(1, -1, 1)
+    adjusted_indices = adjusted_indices.view(-1, topk)
+    return probs, scores, adjusted_indices
+    

@@ -1459,6 +1459,11 @@ def _add_moe_args(parser):
                        help='Degree of expert model parallelism.')
     group.add_argument('--num-experts', type=int, default=None,
                        help='Number of Experts in MoE (None means no MoE)')
+    group.add_argument('--moe-router-type', type=str,
+                       choices=['mixtral', 'st', "sigmoid", "grouped"],
+                       default='mixtral',
+                       help='')
+    group.add_argument('--moe-group-size', type=int, default=1, help='')
     group.add_argument('--moe-router-load-balancing-type', type=str,
                        choices=['aux_loss', 'sinkhorn', "none", "sigmoid"],
                        default='aux_loss',
