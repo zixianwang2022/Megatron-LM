@@ -1,8 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-8x15b_E64G8T16 
-
-# --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-8x15b_upcycle_highlr_warmup4m --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -15,14 +13,24 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="8t-8x15b_E64G8T16"
+NAME="8t-8x15b_upcycle_highlr_warmup4m"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/15b/gpt3-15b-8t-tp4-pp4_router001-te-gg-st4xw2"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
+if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
+    CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
+    RESET_STATE="--reset-dataloader-state \
+    --override-opt_param-scheduler \
+    --reset-lr-state \
+    --no-load-rng \
+    --no-load-optim
+"
+fi
 
 LOG_DIR="${OUTPUT}/${NAME}/logs"
 mkdir -p ${LOG_DIR}
@@ -37,20 +45,16 @@ mkdir -p ${DATA_CACHE}
 
 . /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
 
-
 options=" \
     --global-batch-size 2304 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
-    --num-experts 64 \
-    --moe-router-topk 16 \
-    --moe-group-size 8 \
-    --ffn-hidden-size 3072 \
+    --moe-grouped-gemm \
+    --num-experts 8 \
     --moe-router-type st \
     --moe-z-loss-coeff 1e-3 \
     --moe-aux-loss-coeff 1e-2 \
     --moe_log_load_balancing \
-    --moe-grouped-gemm \
     --use-distributed-optimizer \
     --apply-layernorm-1p \
     --use-flash-attn \
@@ -76,7 +80,7 @@ options=" \
     --micro-batch-size 1 \
     --train-samples 585937500 \
     --lr-decay-samples 584765624 \
-    --lr-warmup-samples 391680 \
+    --lr-warmup-samples 3916800 \
     --lr-warmup-init 4.5e-5 \
     --lr 4.5e-4 \
     --min-lr 4.5e-5 \
