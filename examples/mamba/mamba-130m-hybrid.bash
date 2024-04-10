@@ -75,7 +75,6 @@ LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
 # --hybrid-attention-ratio
 # --hybrid-mlp-ratio
 # --hybrid-override-pattern
-# --hybrid-force-iso-parameters
 # --position-embedding-type rope
 # --num-attention-heads
 # --kv-channels
@@ -84,11 +83,10 @@ LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
 OPTIONS=" \
 --num-layers 24 \
 --hidden-size 768 \
---num-attention-heads 12 \
---hybrid-force-iso-parameters \
+--num-attention-heads 16 \
 --hybrid-attention-ratio 0.1 \
 --hybrid-mlp-ratio 0.2 \
---hybrid-override-pattern "M*-M*-M*-M*-M*-M*-M*-M*-" \
+--hybrid-override-pattern "MMM-MMM*M-MMM-MM*MM-MMM-" \
 --seq-length ${SEQ_LEN} \
 --max-position-embeddings ${SEQ_LEN} \
 --position-embedding-type rope \

@@ -1435,9 +1435,10 @@ def _add_experimental_args(parser):
                        help='Ratio of mlp layers to total layers, in the '
                        'range [0.0, 1.0].')
     group.add_argument('--hybrid-override-pattern', type=str, default=None,
-                       help='Force a specific hybrid layer pattern')
-    group.add_argument('--hybrid-force-iso-parameters', action='store_true',
-                       help='Force the hybrid layers to each have roughly the '
-                       'same number of parameters.')
+                       help='Force a specific hybrid layer pattern. If a value'
+                       'greater than 0.0 is supplied to any of the hybrid ratio'
+                       'arguments, then the number of each type of layer in the'
+                       'override pattern must match number in the overidden'
+                       'pattern')
 
     return parser
