@@ -16,8 +16,6 @@ from megatron.core.transformer.transformer_block import TransformerBlock
 from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.utils import make_tp_sharded_tensor_for_checkpoint
 
-from megatron.core.ssm.mamba_block import MambaStack
-
 class MambaModel(LanguageModule):
     """Mamba language model.
 
