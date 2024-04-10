@@ -193,8 +193,8 @@ def generate_tokens_probs_and_return_on_first_stage(
 
             # NOTE(rwaleffe): logits coming from mamba model have the wrong shape, this hack supports eval
             # This is unneeded once we move to the TP implementation
-            if model.module.__class__.__name__ == 'MambaModel':
-                logits = torch.transpose(logits, 0, 1)
+            # if model.module.__class__.__name__ == 'MambaModel':
+            #     logits = torch.transpose(logits, 0, 1)
 
             if mpu.is_pipeline_last_stage():
                 if prevent_newline_after_colon:

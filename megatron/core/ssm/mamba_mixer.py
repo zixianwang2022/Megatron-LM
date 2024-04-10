@@ -51,7 +51,7 @@ class Mamba(MegatronModule):
         conv_init=None,
         expand=2,
         headdim=64,
-        ngroups=1,
+        ngroups=8,
         A_init_range=(1, 16),
         D_has_hdim=False,
         rmsnorm=True,
@@ -99,6 +99,8 @@ class Mamba(MegatronModule):
         self.d_inner_local = self.d_inner // self.tensor_model_parallel_size
         self.ngroups_local = self.ngroups // self.tensor_model_parallel_size
         self.nheads_local = self.nheads // self.tensor_model_parallel_size
+
+        assert (self.d_inner_local % self.ngroups_local == 0)
 
         #self.in_proj = nn.Linear(self.d_model, self.d_inner * 2, bias=bias, **factory_kwargs)
         #assume sequence parallelism; input is already partitioned along sequence dimension
@@ -163,9 +165,9 @@ class Mamba(MegatronModule):
         setattr(self.D, 'tensor_model_parallel', True)
 
         if self.rmsnorm:
-            # TODO (rwaleffe): norm should be tp independent with group_size = d_inner_local / ngroups_local
             assert RMSNormGated is not None
-            self.norm = RMSNormGated(self.d_inner_local, eps=1e-5, norm_before_gate=False, **factory_kwargs)
+            self.norm = RMSNormGated(self.d_inner_local, eps=1e-5, group_size=self.d_inner_local//self.ngroups_local,
+                                     norm_before_gate=False, **factory_kwargs)
 
         #self.out_proj = nn.Linear(self.d_inner, self.d_model, bias=bias, **factory_kwargs)
         # assume sequence parallelism: input is partitioned along d_innear and output is partitioned along sequence dimension
@@ -186,7 +188,6 @@ class Mamba(MegatronModule):
         """
         _, batch, dim = hidden_states.shape
 
-        # TODO (rwaleffe): need to update inference throughout
         conv_state, ssm_state = None, None
         if inference_params is not None:
             assert not self.config.sequence_parallel
@@ -196,7 +197,7 @@ class Mamba(MegatronModule):
                 out, _, _ = self.step(hidden_states, conv_state, ssm_state)
                 return out
 
-        # (pd, d_state)
+        # (nheads_local)
         A = -torch.exp(self.A_log.float())
 
         # pl b d ->  l b p(2d)
@@ -220,7 +221,7 @@ class Mamba(MegatronModule):
         if conv_state is not None:
             # If we just take x[:, :, -self.d_conv :], it will error if seqlen < self.d_conv
             # Instead F.pad will pad with zeros if seqlen < self.d_conv, and truncate otherwise.
-            conv_state.copy_(F.pad(x, (self.d_conv - x.shape[-1], 0)))  # Update state (B D W)
+            conv_state.copy_(F.pad(xBC, (self.d_conv - xBC.shape[-1], 0)))  # Update state (B D W)
 
         seqlen = xBC.size(2)
         if causal_conv1d_fn is None:
@@ -281,76 +282,9 @@ class Mamba(MegatronModule):
             out = reduce_from_tensor_model_parallel_region(out_full)
         return out
 
-    def selective_scan_ref(self, u, delta, A, B, C, D=None, z=None, delta_bias=None, delta_softplus=False,
-                      return_last_state=False):
-        """
-        u: r(B D L)
-        delta: r(B D L)
-        A: c(D N) or r(D N)
-        B: c(D N) or r(B N L) or r(B N 2L) or r(B G N L) or (B G N L)
-        C: c(D N) or r(B N L) or r(B N 2L) or r(B G N L) or (B G N L)
-        D: r(D)
-        z: r(B D L)
-        delta_bias: r(D), fp32
-
-        out: r(B D L)
-        last_state (optional): r(B D dstate) or c(B D dstate)
-
-        u: r(L B D)
-        delta: r(L B D)
-        A: c(D N) or r(D N)
-        B: r(L B N)
-        C: r(L B N)
-        D: r(D)
-        z: r(L B D)
-        delta_bias: r(D), fp32
-
-        out: r(L B D)
-        """
-        dtype_in = u.dtype
-        u = u.float()
-        delta = delta.float()
-        #print("delta_shape", delta.size())
-        #print("delta_bias_shape", delta_bias.size())
-        if delta_bias is not None:
-            #delta = delta + delta_bias[..., None].float()
-            delta = delta + delta_bias.float()
-        if delta_softplus:
-            delta = F.softplus(delta)
-        batch, dim, dstate = u.shape[1], A.shape[0], A.shape[1]
-        B = B.float()
-        C = C.float()
-
-        x = A.new_zeros((batch, dim, dstate))
-        ys = []
-        #deltaA = torch.exp(torch.einsum('lbd,dn->lbdn', delta, A))
-        #deltaB_u = torch.einsum('lbd,lbn,lbd->lbdn', delta, B, u)
-        last_state = None
-        #print("batch, dim, dstate", batch, dim, dstate)
-        #temp1 = x.new_empty((batch, dim, dstate))
-        #temp2 = x.new_empty((batch, dim, dstate))
-
-        for i in range(u.shape[0]):
-            #x = deltaA[i] * x + deltaB_u[i]
-
-            #x = delta[i].unsqueeze(dim=-1) * (A.unsqueeze(dim=0) * x + B[i].unsqueeze(dim=1) * u[i].unsqueeze(dim=-1))
-            #temp1 = A.unsqueeze(dim=0) * x
-            #temp2 = B[i].unsqueeze(dim=1) * u[i].unsqueeze(dim=-1)
-            #temp1 = temp1 + temp2
-            #x = delta[i].unsqueeze(dim=-1) * temp1
-
-            y = torch.einsum('bdn,bn->bd', x, C[i])
-            if i == u.shape[0] - 1:
-                last_state = x
-            ys.append(y)
-        y = torch.stack(ys)  # (L batch dim)
-        out = y if D is None else y + u * D
-        if z is not None:
-            out = out * F.silu(z)
-        out = out.to(dtype=dtype_in)
-        return out if not return_last_state else (out, last_state)
 
     def step(self, hidden_states, conv_state, ssm_state):
+        assert self.ngroups_local == 1, "Only support ngroups=1 for inference for now"
         dtype = hidden_states.dtype
         assert hidden_states.shape[0] == 1, "Only support decoding with 1 token at a time for now"
 
@@ -360,52 +294,57 @@ class Mamba(MegatronModule):
         #  b d_model --> b p(2d)
         xz = hidden_states @ self.in_proj.weight.t()
 
-        # b p(2d) -->  b pd ; b pd
-        x, z = xz.chunk(2, dim=-1)
+        z, xBC, dt = torch.split(xz, [self.d_inner_local,
+                                      self.d_inner_local + 2 * self.ngroups_local * self.d_state,
+                                      self.nheads_local], dim=-1)
 
         # Conv step
         if causal_conv1d_update is None:
             conv_state.copy_(torch.roll(conv_state, shifts=-1, dims=-1))  # Update state (B D W)
-            conv_state[:, :, -1] = x
-            x = torch.sum(conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1)  # (B D)
+            conv_state[:, :, -1] = xBC
+            xBC = torch.sum(conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1)  # (B D)
             if self.conv1d.bias is not None:
-                x = x + self.conv1d.bias
-            x = self.act(x).to(dtype=dtype)
+                xBC = xBC + self.conv1d.bias
+            xBC = self.act(xBC).to(dtype=dtype)
         else:
-            x = causal_conv1d_update(
-                x,
+            xBC = causal_conv1d_update(
+                xBC,
                 conv_state,
                 rearrange(self.conv1d.weight, "d 1 w -> d w"),
                 self.conv1d.bias,
                 self.activation,
             )
 
-        # b pd ---> b d
-        x_db = x @ self.x_proj.weight.t()  # (B dt_rank+2*d_state)
-        x_db = reduce_from_tensor_model_parallel_region(x_db)
-
-        dt, B, C = torch.split(x_db, [self.dt_rank, self.d_state, self.d_state], dim=-1)
-        
-        # b dt_rank  --> b pd
-        dt = dt @ self.dt_proj.weight.t()
-        
-        # (pd, d_state)
+        x, B, C = torch.split(xBC, [self.d_inner_local,
+                                    self.ngroups_local * self.d_state, self.ngroups_local * self.d_state], dim=-1)
         A = -torch.exp(self.A_log.float())
 
         # SSM step
         if selective_state_update is None:
-            # Discretize A and B
-            dt = F.softplus(dt + self.dt_proj.bias.to(dtype=dt.dtype))
-            dA = torch.exp(torch.einsum("bd,dn->bdn", dt, A))
-            dB = torch.einsum("bd,bn->bdn", dt, B)
-            ssm_state.copy_(ssm_state * dA + rearrange(x, "b d -> b d 1") * dB)
-            y = torch.einsum("bdn,bn->bd", ssm_state.to(dtype), C)
-            y = y + self.D.to(dtype) * x
-            y = y * self.act(z)  # (B D)
+            # Discretize A and B (b (g n))
+            dt = F.softplus(dt + self.dt_bias.to(dtype=dt.dtype))  # (batch, nheads)
+            dA = torch.exp(dt * A)
+            x = rearrange(x, "b (h p) -> b h p", p=self.headdim)
+            dBx = torch.einsum("bh,bn,bhp->bhpn", dt, B, x)
+            ssm_state.copy_(ssm_state * rearrange(dA, "b h -> b h 1 1") + dBx)
+            y = torch.einsum("bhpn,bn->bhp", ssm_state.to(dtype), C)
+            y = y + rearrange(self.D.to(dtype), "h -> h 1") * x
+            y = rearrange(y, "b h p -> b (h p)")
+            if not self.rmsnorm:
+                y = y * self.act(z)  # (B D)
         else:
+            A = repeat(A, "h -> (h p) n", p=self.headdim, n=self.d_state).to(dtype=torch.float32)
+            dt = repeat(dt, "b h -> b (h p)", p=self.headdim)
+            dt_bias = repeat(self.dt_bias, "h -> (h p)", p=self.headdim)
+            D = repeat(self.D, "h -> (h p)", p=self.headdim)
+            ssm_state = rearrange(ssm_state, "b h p n -> b (h p) n")
             y = selective_state_update(
-                ssm_state, x, dt, A, B, C, self.D, z=z, dt_bias=self.dt_proj.bias, dt_softplus=True
+                ssm_state, x, dt, A, B, C, D, z=z if not self.rmsnorm else None,
+                dt_bias=dt_bias, dt_softplus=True
             )
+
+        if self.rmsnorm:
+            y = self.norm(y, z)
 
         # b pd --> b d
         out = y @ self.out_proj.weight.t()
@@ -416,12 +355,12 @@ class Mamba(MegatronModule):
         device = self.out_proj.weight.device
         conv_dtype = self.conv1d.weight.dtype if dtype is None else dtype
         conv_state = torch.zeros(
-            batch_size, self.d_inner_local, self.d_conv, device=device, dtype=conv_dtype
+            batch_size, self.conv1d.weight.shape[0], self.d_conv, device=device, dtype=conv_dtype
         )
-        ssm_dtype = self.dt_proj.weight.dtype if dtype is None else dtype
+        ssm_dtype = self.in_proj.weight.dtype if dtype is None else dtype
         # ssm_dtype = torch.float32
         ssm_state = torch.zeros(
-            batch_size, self.d_inner_local, self.d_state, device=device, dtype=ssm_dtype
+            batch_size, self.nheads_local, self.headdim, self.d_state, device=device, dtype=ssm_dtype
         )
         return conv_state, ssm_state
 
@@ -430,17 +369,18 @@ class Mamba(MegatronModule):
         if self.layer_idx not in inference_params.key_value_memory_dict:
             conv_state = torch.zeros(
                 batch_size,
-                self.d_inner_local,
+                self.conv1d.weight.shape[0],
                 self.d_conv,
                 device=self.conv1d.weight.device,
                 dtype=self.conv1d.weight.dtype,
             )
             ssm_state = torch.zeros(
                 batch_size,
-                self.d_inner_local,
+                self.nheads_local,
+                self.headdim,
                 self.d_state,
-                device=self.dt_proj.weight.device,
-                dtype=self.dt_proj.weight.dtype,
+                device=self.in_proj.weight.device,
+                dtype=self.in_proj.weight.dtype,
             )
             inference_params.key_value_memory_dict[self.layer_idx] = (conv_state, ssm_state)
         else:
