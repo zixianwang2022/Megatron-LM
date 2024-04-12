@@ -1,8 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:fixrouter_2b_8_it10_z_aux_initexp_router001_exp001_warmup --array=1-30%1
+##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:fixrouter_8x2b_scattermoe --array=1-30%1
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:fixrouter_2b_8_it10_z_aux_initexp_router001_exp001_warmup
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:fixrouter_8x2b_scattermoe
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -15,7 +15,7 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="fixrouter_2b_8_it10_z_aux_initexp_router001_exp001_warmup"
+NAME="fixrouter_8x2b_scattermoe"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
@@ -23,16 +23,6 @@ DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/gpt3-8x2b_TP8_init001"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
-RESET_STATE=""
-if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
-    CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
-    RESET_STATE="--reset-dataloader-state \
-    --override-opt_param-scheduler \
-    --reset-lr-state \
-    --no-load-rng \
-    --no-load-optim
-"
-fi
 
 LOG_DIR="${OUTPUT}/${NAME}/logs"
 mkdir -p ${LOG_DIR}
@@ -53,7 +43,7 @@ options=" \
     --moe-z-loss-coeff 1e-3 \
     --moe-aux-loss-coeff 1e-2 \
     --moe_log_load_balancing \
-    --moe-grouped-gemm \
+    --moe-scattermoe \
     --use-flash-attn \
     --apply-layernorm-1p \
     --untie-embeddings-and-output-weights \
@@ -103,7 +93,7 @@ options=" \
     --bf16 \
     --tensorboard-dir ${TENSORBOARD_DIR} \
     --wandb-project upcycling \
-    --wandb-exp-name $NAME $RESET_STATE
+    --wandb-exp-name $NAME
 "
 
 run_cmd="
