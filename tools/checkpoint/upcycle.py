@@ -120,17 +120,18 @@ if __name__ == '__main__':
                 layer_num = get_layer_num(int(m.group(1)), partition, PP)
                 if not (layer_num in routers):
                     print('creating new router', new_key, 'layer', layer_num)
-                    routers[layer_num] = torch.nn.Linear(v.size(1), args.num_experts)
+                    router = torch.nn.Linear(v.size(1), args.num_experts)
                     # low init value helps upcycling
                     if args.router_std > 0:
                         torch.nn.init.normal_(router.weight, mean=0.0, std=args.router_std)
                     # same router weights across virtual groups
                     if args.granularity > 1:
-                        routers[layer_num] = repeat(router.weight[:args.num_experts // args.granularity], 'e h -> (e g) h', g=args.granularity)
+                        router = repeat(router.weight[:args.num_experts // args.granularity], 'e h -> (e g) h', g=args.granularity)
+                    routers[layer_num] = router
                 else:
                     print('using existing router', layer_num)
-
-                router = routers[layer_num]
+                    router = routers[layer_num]
+                    
                 router_weight = router.weight.to(v)
 
                 

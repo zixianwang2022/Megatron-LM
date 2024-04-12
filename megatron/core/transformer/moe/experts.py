@@ -21,8 +21,8 @@ from megatron.core.transformer.moe import grouped_gemm_util as gg
 from megatron.core.transformer.transformer_config import TransformerConfig
 try:
     import scattermoe
-except Execption as e:
-    warnings.warn(e)
+except Exception as e:
+    warnings.warn('scattermoe not available')
 
 
 class GroupedMLP(MegatronModule):

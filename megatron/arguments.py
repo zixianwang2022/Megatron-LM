@@ -1464,6 +1464,7 @@ def _add_moe_args(parser):
                        default='mixtral',
                        help='')
     group.add_argument('--moe-group-size', type=int, default=1, help='')
+    group.add_argument('--moe-groupedmoe', action='store_true', help='use different router on different TP ranks')
     group.add_argument('--moe-router-load-balancing-type', type=str,
                        choices=['aux_loss', 'sinkhorn', "none", "sigmoid"],
                        default='aux_loss',

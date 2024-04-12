@@ -142,6 +142,7 @@ class TransformerConfig(ModelParallelConfig):
     moe_token_dropping: bool = False  # TODO: Support token dropping.
     moe_dropout: float = None
     moe_group_size: int = 1
+    moe_groupedmoe: bool = False
 
     def __post_init__(self):
         """ Python dataclass method that is used to modify attributes after initialization.
