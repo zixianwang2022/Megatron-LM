@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_dir', type=str, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--num_experts', type=int, required=True)
-    parser.add_argument('--transformer_impl', type=str, default='local')
+    parser.add_argument('--transformer_impl', type=str, default='local', choices=['local', 'grouped_gemm', 'scattermoe'])
     parser.add_argument('--router_std', type=float, default=0)
     parser.add_argument('--expert_std', type=float, default=0)
     parser.add_argument('--expert_uniform', type=float, default=0)
@@ -115,22 +115,25 @@ if __name__ == '__main__':
             # Turn linear_fc1.weight into local_experts.?.linear_fc1.weight
             m = re.match('^decoder\.layers\.(\d+)\.mlp\.linear_fc1.weight', k)
             if m:
+                new_key = 'decoder.layers.'+m.group(1)+'.mlp.router.weight'
                 # Create a router for each fc1
                 layer_num = get_layer_num(int(m.group(1)), partition, PP)
                 if not (layer_num in routers):
+                    print('creating new router', new_key, 'layer', layer_num)
                     routers[layer_num] = torch.nn.Linear(v.size(1), args.num_experts)
+                    # low init value helps upcycling
+                    if args.router_std > 0:
+                        torch.nn.init.normal_(router.weight, mean=0.0, std=args.router_std)
+                    # same router weights across virtual groups
+                    if args.granularity > 1:
+                        routers[layer_num] = repeat(router.weight[:args.num_experts // args.granularity], 'e h -> (e g) h', g=args.granularity)
+                else:
+                    print('using existing router', layer_num)
+
                 router = routers[layer_num]
+                router_weight = router.weight.to(v)
 
-                # low init value helps upcycling
-                if args.router_std > 0:
-                    torch.nn.init.normal_(router.weight, mean=0.0, std=args.router_std)
-                    router_weight = router.weight.to(v)
-
-                # same router weights across virtual groups
-                if args.granularity > 1:
-                    router_weight = repeat(router.weight[:args.num_experts // args.granularity], 'e h -> (e g) h', g=args.granularity)
                 
-                new_key = 'decoder.layers.'+m.group(1)+'.mlp.router.weight'
                 router_key_values.append((new_key, router_weight))
                 
                 if args.transformer_impl == 'local':
@@ -153,10 +156,13 @@ if __name__ == '__main__':
                         new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(v.shape[1], -1).contiguous()))
                     else:
                         w1 = v.detach().clone().t()
-                        print('w1 shape', w1.shape) #torch.Size([6144, 3072])
+                        # print('w1 shape', w1.shape) #torch.Size([6144, 3072])
                         w1 = repeat(w1, 'h f -> e h f', e=args.num_experts // args.granularity)
                         w1 = rearrange(w1, 'e h (f g) -> (e g) h f', g=args.granularity).contiguous()
-                        new_key_values.append((new_key, w1.reshape(v.shape[1], -1).contiguous()))
+                        if args.transformer_impl == 'scattermoe':
+                            new_key_values.append((new_key, w1))
+                        else:
+                            new_key_values.append((new_key, w1.reshape(v.shape[1], -1).contiguous()))
                 old_keys.append(k)
                 continue
             
@@ -183,7 +189,7 @@ if __name__ == '__main__':
                         new_key_values.append((new_key, args.scale_st * v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(-1, v.shape[0]).contiguous()))
                     else:
                         w2 =  args.scale_st * v.detach().clone().t()
-                        print('w2 shape', w2.shape) # torch.Size([3072, 6144])
+                        # print('w2 shape', w2.shape) # torch.Size([3072, 6144])
                         w2 = repeat(w2, 'f h -> e f h', e=args.num_experts // args.granularity)
                         w2 = rearrange(w2, 'e (f g) h -> (e g) f h', g=args.granularity).contiguous()
                         new_key_values.append((new_key, w2.reshape(-1, v.shape[0]).contiguous()))
@@ -197,13 +203,13 @@ if __name__ == '__main__':
                 old_keys.append(k)
                 continue
         for new_key, value in new_key_values:
-            print('adding '+new_key)
+            # print('adding '+new_key)
             state_dict['model'][new_key] = value
         for new_key, value in router_key_values:
-            print('adding '+new_key)
+            # print('adding '+new_key)
             state_dict['model'][new_key] = value
         for old_key in old_keys:
-            print('removing '+old_key)
+            # print('removing '+old_key)
             del state_dict['model'][old_key]
         
         m = re.match('.*\/(mp_rank_.*)$', partition)

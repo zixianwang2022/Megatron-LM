@@ -1,6 +1,7 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 from typing import Tuple
+import warnings
 
 import numpy as np
 import torch
@@ -18,7 +19,10 @@ from megatron.core.transformer.mlp import MLP, MLPSubmodules
 from megatron.core.transformer.module import MegatronModule
 from megatron.core.transformer.moe import grouped_gemm_util as gg
 from megatron.core.transformer.transformer_config import TransformerConfig
-import scattermoe
+try:
+    import scattermoe
+except Execption as e:
+    warnings.warn(e)
 
 
 class GroupedMLP(MegatronModule):
@@ -255,14 +259,14 @@ class ScatterMLP(GroupedMLP):
             padded_block_idxs, expert_offsets = scattermoe.kernels.ops.padded_block_indices(sorted_expert_idxs, self.num_local_experts)
 
         h = scattermoe.parallel_experts.ParallelLinear.apply(
-            x, w1, self.config.moe_router_topk,
+            x, w1.permute(0, 2, 1), self.config.moe_router_topk,
             sorted_expert_idxs, sorted_scattered_idxs,
             padded_block_idxs, expert_offsets,
             None, False, True,
         )
         h = self.activation_func(h)
         y = scattermoe.parallel_experts.ParallelLinear.apply(
-            h, w2, 1,
+            h, w2.permute(0, 2, 1), 1,
             sorted_expert_idxs, sorted_scattered_idxs,
             padded_block_idxs, expert_offsets,
             expert_p.to(dtype=x.dtype), True, False,
