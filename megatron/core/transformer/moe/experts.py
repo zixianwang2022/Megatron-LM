@@ -18,6 +18,7 @@ from megatron.core.transformer.mlp import MLP, MLPSubmodules
 from megatron.core.transformer.module import MegatronModule
 from megatron.core.transformer.moe import grouped_gemm_util as gg
 from megatron.core.transformer.transformer_config import TransformerConfig
+import scattermoe
 
 
 class GroupedMLP(MegatronModule):
@@ -233,3 +234,38 @@ class SequentialMLP(MegatronModule):
 
             sharded_state_dict.update(expert_state_dict)
         return sharded_state_dict
+
+class ScatterMLP(GroupedMLP):
+    """An efficient implementation of the Experts layer using CUTLASS GroupedGEMM.
+    
+    This class is designed to execute multiple experts in parallel, thereby maximizing computational efficiency.
+    """
+
+    def __init__(self, num_local_experts: int, config: TransformerConfig):
+        super().__init__(num_local_experts=num_local_experts, config=config)
+
+    def forward(self, x: torch.Tensor, expert_p: torch.Tensor, expert_idxs: torch.Tensor):
+        # Reshape the weights for the grouped GEMMs.
+        w1 = self.weight1.view(self.num_local_experts, self.config.hidden_size, -1)
+        w2 = self.weight2.view(self.num_local_experts, -1, self.config.hidden_size)
+        x_shape = x.size()
+        x = x.view(-1, x_shape[-1])
+        with torch.no_grad():
+            sorted_expert_idxs, sorted_scattered_idxs = scattermoe.kernels.ops.flatten_and_sort(expert_idxs)
+            padded_block_idxs, expert_offsets = scattermoe.kernels.ops.padded_block_indices(sorted_expert_idxs, self.num_local_experts)
+
+        h = scattermoe.parallel_experts.ParallelLinear.apply(
+            x, w1, self.config.moe_router_topk,
+            sorted_expert_idxs, sorted_scattered_idxs,
+            padded_block_idxs, expert_offsets,
+            None, False, True,
+        )
+        h = self.activation_func(h)
+        y = scattermoe.parallel_experts.ParallelLinear.apply(
+            h, w2, 1,
+            sorted_expert_idxs, sorted_scattered_idxs,
+            padded_block_idxs, expert_offsets,
+            expert_p.to(dtype=x.dtype), True, False,
+        )
+        y = y.view(*x_shape[:-1], y.size(-1))
+        return y, None

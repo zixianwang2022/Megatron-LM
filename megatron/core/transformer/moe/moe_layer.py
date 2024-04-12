@@ -8,7 +8,7 @@ from megatron import get_args, get_wandb_writer
 from megatron.core import parallel_state
 from megatron.core.transformer.mlp import MLPSubmodules
 from megatron.core.transformer.module import MegatronModule
-from megatron.core.transformer.moe.experts import GroupedMLP, SequentialMLP
+from megatron.core.transformer.moe.experts import GroupedMLP, SequentialMLP, ScatterMLP
 from megatron.core.transformer.moe.router import TopKRouter
 from megatron.core.transformer.moe.token_dispatcher import MoEDroplessTokenDispatcher
 from megatron.core.transformer.transformer_config import TransformerConfig
@@ -55,6 +55,11 @@ class MoELayer(BaseMoELayer):
         self.submodules = submodules
         super(MoELayer, self).__init__(config=config)
         self.router = TopKRouter(config=self.config)
+
+        if self.config.moe_scattermoe:
+            self.experts = ScatterMLP(self.num_local_experts, self.config)
+            return
+
         if self.config.moe_grouped_gemm:
             self.experts = GroupedMLP(self.num_local_experts, self.config)
         else:
@@ -72,9 +77,11 @@ class MoELayer(BaseMoELayer):
         if args.moe_log_load_balancing:
             wandb_writer = get_wandb_writer()
             if wandb_writer:
-                idxs, counts = torch.unique(indices, sorted=True, return_counts=True)
-                wandb_writer.log({f'moe/{self.layer_number}.{i.item()}': c for i, c in zip(idxs, counts)}, args.curr_iteration)
-
+                with torch.no_grad():
+                    idxs, counts = torch.unique(indices, sorted=True, return_counts=True)
+                    wandb_writer.log({f'moe/{self.layer_number}.{i.item()}': c for i, c in zip(idxs, counts)}, args.curr_iteration)
+        if self.config.moe_scattermoe:
+            return self.experts(hidden_states, scores, indices)
         (
             dispatched_input,
             tokens_per_expert,

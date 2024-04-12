@@ -1,6 +1,7 @@
 #!/bin/bash
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-8x15b_upcycle_highlr_E64G8T16 --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-8x15b_upcycle_highlr_seed42
+# --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -13,12 +14,12 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="8t-8x15b_upcycle_highlr_E64G8T16"
+NAME="8t-8x15b_upcycle_highlr"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/15b/gpt3-15b-8t-tp4-pp4_router001-te-gg-st4xw2-E64G8"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/15b/gpt3-15b-8t-tp4-pp4_router001-te-gg-st4xw2"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
@@ -46,15 +47,13 @@ mkdir -p ${DATA_CACHE}
 . /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
 
 options=" \
+    --seed 42 \
     --global-batch-size 2304 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --moe-grouped-gemm \
-    --num-experts 64 \
-    --moe-router-topk 8 \
-    --moe-group-size 8 \
-    --ffn-hidden-size 3072 \
-    --moe-router-type grouped \
+    --num-experts 8 \
+    --moe-router-type st \
     --moe-z-loss-coeff 1e-3 \
     --moe-aux-loss-coeff 1e-2 \
     --moe_log_load_balancing \
@@ -110,7 +109,7 @@ options=" \
     --bf16 \
     --tensorboard-dir ${TENSORBOARD_DIR} \
     --wandb-project upcycling \
-    --wandb-exp-name $NAME $RESET_STATE
+    --wandb-exp-name ${NAME}_seed42_norng $RESET_STATE
 "
 
 run_cmd="

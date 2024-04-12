@@ -4,6 +4,8 @@ import glob
 import os
 import re
 import megatron
+from einops import rearrange, reduce, repeat
+import shutil
 
 def get_layer_num(local_num, partition, PP):
     """
@@ -65,11 +67,19 @@ if __name__ == '__main__':
     parser.add_argument('--expert_std', type=float, default=0)
     parser.add_argument('--expert_uniform', type=float, default=0)
     parser.add_argument('--scale_st', type=float, default=1.)
-    parser.add_argument('--num_groups', type=int, default=1)
+    parser.add_argument('--granularity', type=int, default=1)
 
     args = parser.parse_args()
 
-    partitions = [name for name in glob.glob(args.input_dir+'/mp_rank_*')]
+    latest_checkpointed_iteration_file = os.path.join(args.input_dir, 'latest_checkpointed_iteration.txt')
+    assert os.path.exists(latest_checkpointed_iteration_file)
+    with open(latest_checkpointed_iteration_file) as f:
+        latest_checkpointed_iteration = f.read().strip()
+
+    os.makedirs(args.output_dir, exist_ok=True)
+    shutil.copy(latest_checkpointed_iteration_file, os.path.join(args.output_dir, 'latest_checkpointed_iteration.txt'))
+
+    partitions = [name for name in glob.glob(args.input_dir + f'/iter_{latest_checkpointed_iteration}/mp_rank_*')]
     print("Found "+str(len(partitions))+" partitions")
     TP, PP = get_TP_PP(partitions)
     print("Tensor Parallel= "+str(TP))
@@ -114,9 +124,13 @@ if __name__ == '__main__':
                 # low init value helps upcycling
                 if args.router_std > 0:
                     torch.nn.init.normal_(router.weight, mean=0.0, std=args.router_std)
+                    router_weight = router.weight.to(v)
+
+                # same router weights across virtual groups
+                if args.granularity > 1:
+                    router_weight = repeat(router.weight[:args.num_experts // args.granularity], 'e h -> (e g) h', g=args.granularity)
                 
                 new_key = 'decoder.layers.'+m.group(1)+'.mlp.router.weight'
-                router_weight = router.weight.to(v)
                 router_key_values.append((new_key, router_weight))
                 
                 if args.transformer_impl == 'local':
@@ -135,12 +149,13 @@ if __name__ == '__main__':
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1'
-                    if args.num_groups == 1:
+                    if args.granularity == 1:
                         new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(v.shape[1], -1).contiguous()))
                     else:
-                        w1 = v.detach().clone().t().repeat(args.num_experts // args.num_groups, 1, 1)
-                        _, hidden_size, ffn_size = w1.shape
-                        w1 = w1.reshape(args.num_experts, hidden_size, ffn_size // args.num_groups).contiguous()
+                        w1 = v.detach().clone().t()
+                        print('w1 shape', w1.shape) #torch.Size([6144, 3072])
+                        w1 = repeat(w1, 'h f -> e h f', e=args.num_experts // args.granularity)
+                        w1 = rearrange(w1, 'e h (f g) -> (e g) h f', g=args.granularity).contiguous()
                         new_key_values.append((new_key, w1.reshape(v.shape[1], -1).contiguous()))
                 old_keys.append(k)
                 continue
@@ -164,12 +179,13 @@ if __name__ == '__main__':
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight2' 
-                    if args.num_groups == 1:
+                    if args.granularity == 1:
                         new_key_values.append((new_key, args.scale_st * v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(-1, v.shape[0]).contiguous()))
                     else:
-                        w2 =  args.scale_st * v.detach().clone().t().repeat(args.num_experts // args.num_groups, 1, 1)
-                        _, ffn_size, hidden_size = w2.shape
-                        w2 = w2.reshape(args.num_experts, ffn_size // args.num_groups, hidden_size).contiguous()
+                        w2 =  args.scale_st * v.detach().clone().t()
+                        print('w2 shape', w2.shape) # torch.Size([3072, 6144])
+                        w2 = repeat(w2, 'f h -> e f h', e=args.num_experts // args.granularity)
+                        w2 = rearrange(w2, 'e (f g) h -> (e g) f h', g=args.granularity).contiguous()
                         new_key_values.append((new_key, w2.reshape(-1, v.shape[0]).contiguous()))
 
                 old_keys.append(k)
@@ -192,7 +208,7 @@ if __name__ == '__main__':
         
         m = re.match('.*\/(mp_rank_.*)$', partition)
         if m:
-            path = args.output_dir+'/'+m.group(1)
+            path = args.output_dir+f'/iter_{latest_checkpointed_iteration}/'+m.group(1)
             os.makedirs(path, exist_ok=True)
             torch.save(state_dict, path+'/model_optim_rng.pt')
         else:
