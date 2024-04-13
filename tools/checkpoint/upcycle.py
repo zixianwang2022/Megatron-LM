@@ -193,7 +193,10 @@ if __name__ == '__main__':
                         # print('w2 shape', w2.shape) # torch.Size([3072, 6144])
                         w2 = repeat(w2, 'f h -> e f h', e=args.num_experts // args.granularity)
                         w2 = rearrange(w2, 'e (f g) h -> (e g) f h', g=args.granularity).contiguous()
-                        new_key_values.append((new_key, w2.reshape(-1, v.shape[0]).contiguous()))
+                        if args.transformer_impl == 'scattermoe':
+                            new_key_values.append((new_key, w2))
+                        else:
+                            new_key_values.append((new_key, w2.reshape(-1, v.shape[0]).contiguous()))
 
                 old_keys.append(k)
                 continue
