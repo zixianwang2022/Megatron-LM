@@ -127,12 +127,14 @@ if __name__ == '__main__':
                     # same router weights across virtual groups
                     if args.granularity > 1:
                         router = repeat(router.weight[:args.num_experts // args.granularity], 'e h -> (e g) h', g=args.granularity)
+                    else:
+                        router = router.weight
                     routers[layer_num] = router
                 else:
                     print('using existing router', layer_num)
                     router = routers[layer_num]
                     
-                router_weight = router.weight.to(v)
+                router_weight = router.to(v)
 
                 
                 router_key_values.append((new_key, router_weight))
