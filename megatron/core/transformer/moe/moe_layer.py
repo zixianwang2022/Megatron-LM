@@ -74,6 +74,27 @@ class MoELayer(BaseMoELayer):
         )
 
     def forward(self, hidden_states: torch.Tensor):
+        if self.config.moe_groupedmoe:
+            assert self.config.sequence_parallel
+
+            x_shape = hidden_states.size()
+            hidden_states = hidden_states.view(-1, x_shape[-1])
+            global_hidden_states = tensor_parallel.gather_from_sequence_parallel_region_to_moe(
+                hidden_states
+            )
+            # process MoE
+            global_probs, global_indices = self.router(global_hidden_states)
+
+            expert_output, _ = self.experts(global_hidden_states, global_probs, global_indices)
+
+            output_total = tensor_parallel.reduce_scatter_to_sequence_parallel_region_from_moe(
+                expert_output
+            )
+            
+            output_total = output_total.view(*x_shape[:-1], output_total.size(-1))
+            return output_total, None
+
+
         # process MoE
         scores, indices = self.router(hidden_states)
         
