@@ -13,6 +13,7 @@ from megatron.core.transformer.moe.router import TopKRouter
 from megatron.core.transformer.moe.token_dispatcher import MoEDroplessTokenDispatcher, ScatterMoEDroplessTokenDispatcher
 from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core import parallel_state, tensor_parallel
+from megatron.core.transformer.custom_layers.transformer_engine import TENorm
 
 
 class BaseMoELayer(MegatronModule, ABC):
@@ -62,6 +63,11 @@ class MoELayer(BaseMoELayer):
             # self.token_dispatcher = ScatterMoEDroplessTokenDispatcher(
             #     config=self.config
             # )
+            self.post_experts_ln = TENorm(
+                config=self.config,
+                hidden_size=self.config.hidden_size,
+                eps=self.config.layernorm_epsilon,
+            )
             return 
 
         if self.config.moe_grouped_gemm:
@@ -90,7 +96,7 @@ class MoELayer(BaseMoELayer):
             output_total = tensor_parallel.reduce_scatter_to_sequence_parallel_region_from_moe(
                 expert_output
             )
-            
+
             output_total = output_total.view(*x_shape[:-1], output_total.size(-1))
             return output_total, None
 
@@ -145,6 +151,8 @@ class MoELayer(BaseMoELayer):
             #     expert_output
             # )
             output_total = output_total.view(*x_shape[:-1], output_total.size(-1))
+            output_total = self.post_experts_ln(output_total)
+            
             return output_total, None
         (
             dispatched_input,
