@@ -14,6 +14,7 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
+export WANDB_CONSOLE="redirect"
 
 NAME="fixrouter_8x2b_scattermoe"
 
@@ -55,7 +56,7 @@ options=" \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
-    --tensor-model-parallel-size 8 \
+    --tensor-model-parallel-size 2 \
     --pipeline-model-parallel-size 1 \
     --sequence-parallel \
     --num-layers 24 \
@@ -63,17 +64,17 @@ options=" \
     --num-attention-heads 16 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 4 \
+    --micro-batch-size 2 \
     --global-batch-size 512 \
-    --train-samples 26855468 \
-    --lr-decay-samples 25512695 \
-    --lr-warmup-samples 25512 \
+    --train-samples 268554688 \
+    --lr-decay-samples 255126953 \
+    --lr-warmup-samples 122071 \
     --lr 2e-4 \
     --min-lr 1e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
     --eval-iters 32 \
-    --eval-interval 500 \
+    --eval-interval 1000 \
     --tokenizer-type GPTSentencePieceTokenizer \
     --tokenizer-model /home/yihuih/llmservice/data/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model \
     --data-path ${DATA_BLEND} \
@@ -93,7 +94,7 @@ options=" \
     --bf16 \
     --tensorboard-dir ${TENSORBOARD_DIR} \
     --wandb-project upcycling \
-    --wandb-exp-name $NAME
+    --wandb-exp-name ${NAME}_dispatch
 "
 
 run_cmd="
@@ -105,10 +106,10 @@ cd $DIR && python -u pretrain_gpt.py ${options}"
 #      --container-mounts "/lustre:/lustre/,/home:/home" \
 #      bash -c "${run_cmd}"
 
-torchrun --nproc_per_node=8 pretrain_gpt.py ${options}
+# torchrun --nproc_per_node=8 pretrain_gpt.py ${options}
 
 srun -l \
      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
-     --output=${LOG_DIR}/%x_%j_$DATETIME.log bash -c "${run_cmd}"
+     bash -c "${run_cmd}"
 set +x

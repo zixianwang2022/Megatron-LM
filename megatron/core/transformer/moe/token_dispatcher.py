@@ -72,6 +72,8 @@ class MoEDroplessTokenDispatcher(MoETokenDispatcher):
         self.router_topk = config.moe_router_topk
         self.add_bias = config.add_bias_linear
 
+        assert not self.add_bias
+
     def token_permutation(
         self, hidden_states: torch.Tensor, max_prob: torch.Tensor, max_ind: torch.Tensor
     ):
@@ -111,31 +113,47 @@ class MoEDroplessTokenDispatcher(MoETokenDispatcher):
                 global_indices = tensor_parallel.gather_from_sequence_parallel_region_to_moe(
                     max_ind
                 )
-                # Create a mask of mapping between global and local tokens where each
-                # element is True if it's between the local_expert_indices
-                global_local_mask = (global_indices >= self.local_expert_indices[0]) & (
-                    global_indices <= self.local_expert_indices[-1]
-                )
-                local_indices = global_indices.masked_select(global_local_mask)
+                if self.config.expert_model_parallel_size > 1:
+                    # Create a mask of mapping between global and local tokens where each
+                    # element is True if it's between the local_expert_indices
+                    global_local_mask = (global_indices >= self.local_expert_indices[0]) & (
+                        global_indices <= self.local_expert_indices[-1]
+                    )
+                    local_indices = global_indices.masked_select(global_local_mask)
+                else:
+                    local_indices = global_indices.view(-1)
 
             if self.router_topk > 1:  # k > 1
                 global_probs = tensor_parallel.gather_from_sequence_parallel_region_to_moe(max_prob)
-                local_probs = global_probs.masked_select(global_local_mask)
+                if self.config.expert_model_parallel_size > 1:
+                    local_probs = global_probs.masked_select(global_local_mask)
+                else:
+                    local_probs = global_probs.view(-1)
+
             else:
                 local_probs = max_prob
 
-            # Reshape global_local_mask to be compatible with Tensor.gather
-            global_local_map = global_local_mask.nonzero()[:, 0]
-            global_local_map = global_local_map.view(-1, 1).expand(-1, hidden_states.shape[-1])
-            local_hidden_states = torch.gather(global_hidden_states, 0, global_local_map)
+            if self.config.expert_model_parallel_size > 1:
+                # Reshape global_local_mask to be compatible with Tensor.gather
+                global_local_map = global_local_mask.nonzero()[:, 0]
+                global_local_map = global_local_map.view(-1, 1).expand(-1, hidden_states.shape[-1])
+                local_hidden_states = torch.gather(global_hidden_states, 0, global_local_map)
+            else:
+                global_local_map = None
+                local_hidden_states = global_hidden_states
         else:
             if self.router_topk > 1:
-                global_local_map = torch.ones_like(max_ind).bool()
-                local_indices = max_ind.masked_select(global_local_map)
-                local_probs = max_prob.masked_select(global_local_map)
-                global_local_map = global_local_map.nonzero()[:, 0]
-                global_local_map = global_local_map.view(-1, 1).expand(-1, hidden_states.shape[-1])
-                local_hidden_states = torch.gather(hidden_states, 0, global_local_map)
+                # global_local_map = torch.ones_like(max_ind).bool()
+                # local_indices = max_ind.masked_select(global_local_map)
+                # local_probs = max_prob.masked_select(global_local_map)
+                # global_local_map = global_local_map.nonzero()[:, 0]
+                # global_local_map = global_local_map.view(-1, 1).expand(-1, hidden_states.shape[-1])
+                # local_hidden_states = torch.gather(hidden_states, 0, global_local_map)
+                # print(global_local_map, global_local_map.shape, local_hidden_states.shape)
+                local_indices = max_ind.view(-1)
+                local_probs = max_prob.view(-1)
+                local_hidden_states = hidden_states
+                global_local_map = None
             else:
                 local_indices = max_ind
                 local_probs = max_prob
@@ -144,7 +162,7 @@ class MoEDroplessTokenDispatcher(MoETokenDispatcher):
 
         with torch.no_grad():
             # The indices of local_indices that give its sorted order along dim 0.
-            indices = torch.argsort(local_indices, dim=0)
+            indices = torch.argsort(local_indices, dim=0) // self.router_topk
             tokens_per_expert = torch.histc(
                 local_indices,
                 bins=self.num_local_experts,
@@ -155,6 +173,7 @@ class MoEDroplessTokenDispatcher(MoETokenDispatcher):
 
         # Stage2: permute the tokens locally so that they are grouped by their expert assignment
         # Reshape indices to be compatible with Tensor.gather
+        # SB h <> SBk -> SBk h
         indices = indices.view(-1, 1).expand(-1, hidden_states.shape[-1])
         permuted_local_hidden_states = torch.gather(local_hidden_states, 0, indices)
         return (
@@ -217,28 +236,37 @@ class MoEDroplessTokenDispatcher(MoETokenDispatcher):
 
         # Unpermute the tokens across expert parallel devices.
         if self.config.sequence_parallel or (self.config.expert_model_parallel_size > 1):
-            assert global_local_map is not None, "global_local_map is necessary for `AllGather`."
-            ep_group_size = parallel_state.get_tensor_and_expert_parallel_world_size()
-            # hidden_shape: [SeqLen/TP, MBS, HiddenSize], glboal_num_tokens = SeqLen/TP*MBS*(TP*EP)
-            global_num_tokens = self.hidden_shape[0] * self.hidden_shape[1] * ep_group_size
-            global_hidden_shape = [global_num_tokens, hidden_states.shape[-1]]
-            unpermuted_global_hidden = torch.zeros(
-                global_hidden_shape, dtype=hidden_states.dtype, device=torch.cuda.current_device()
-            )
-            # Reshape global_local_map to be compatible with Tensor.scatter
-            assert global_local_map.shape == unpermuted_local_hidden.shape
-            unpermuted_global_hidden = unpermuted_global_hidden.scatter_add(
-                0, global_local_map, unpermuted_local_hidden
-            )
+            if self.config.expert_model_parallel_size > 1:
+                assert global_local_map is not None, "global_local_map is necessary for `AllGather`."
+                ep_group_size = parallel_state.get_tensor_and_expert_parallel_world_size()
+                # hidden_shape: [SeqLen/TP, MBS, HiddenSize], glboal_num_tokens = SeqLen/TP*MBS*(TP*EP)
+                global_num_tokens = self.hidden_shape[0] * self.hidden_shape[1] * ep_group_size
+                global_hidden_shape = [global_num_tokens, hidden_states.shape[-1]]
+                unpermuted_global_hidden = torch.zeros(
+                    global_hidden_shape, dtype=hidden_states.dtype, device=torch.cuda.current_device()
+                )
+                # Reshape global_local_map to be compatible with Tensor.scatter
+                assert global_local_map.shape == unpermuted_local_hidden.shape
+                unpermuted_global_hidden = unpermuted_global_hidden.scatter_add(
+                    0, global_local_map, unpermuted_local_hidden
+                )
+            else:
+                if self.router_topk > 1:
+                    unpermuted_global_hidden = unpermuted_local_hidden.view(-1, self.router_topk, self.hidden_shape[-1]).sum(1)
+                else:
+                    unpermuted_global_hidden = unpermuted_local_hidden
             output_total = tensor_parallel.reduce_scatter_to_sequence_parallel_region_from_moe(
                 unpermuted_global_hidden
             )
             if self.add_bias:
-                # Unpermute the bias across expert parallel devices.
-                unpermuted_global_bias = torch.zeros_like(unpermuted_global_hidden)
-                unpermuted_global_bias = unpermuted_global_bias.scatter_add(
-                    0, global_local_map, unpermuted_local_bias
-                )
+                if self.config.expert_model_parallel_size > 1:
+                    # Unpermute the bias across expert parallel devices.
+                    unpermuted_global_bias = torch.zeros_like(unpermuted_global_hidden)
+                    unpermuted_global_bias = unpermuted_global_bias.scatter_add(
+                        0, global_local_map, unpermuted_local_bias
+                    )
+                else:
+                    unpermuted_global_bias = unpermuted_local_bias
                 output_bias_total = tensor_parallel.reduce_scatter_to_sequence_parallel_region_from_moe(
                     unpermuted_global_bias
                 )
@@ -249,21 +277,7 @@ class MoEDroplessTokenDispatcher(MoETokenDispatcher):
                 )
         else:
             if self.router_topk > 1:
-                global_num_tokens = self.hidden_shape[0] * self.hidden_shape[1]
-                global_hidden_shape = [global_num_tokens, hidden_states.shape[-1]]
-                unpermuted_global_hidden = torch.zeros(
-                    global_hidden_shape,
-                    dtype=hidden_states.dtype,
-                    device=torch.cuda.current_device(),
-                )
-                output_total = unpermuted_global_hidden.scatter_add(
-                    0, global_local_map, unpermuted_local_hidden
-                )
-                if self.add_bias:
-                    unpermuted_global_bias = torch.zeros_like(unpermuted_global_hidden)
-                    output_bias_total = unpermuted_global_bias.scatter_add(
-                        0, global_local_map, unpermuted_local_bias
-                    )
+                output_total = unpermuted_local_hidden.view(-1, self.router_topk, self.hidden_shape[-1]).sum(1)
 
         if self.router_topk == 1:
             output_total = output_total * scores
@@ -277,3 +291,65 @@ class MoEDroplessTokenDispatcher(MoETokenDispatcher):
             output_bias_total = None
 
         return output_total, output_bias_total
+
+
+class ScatterMoEDroplessTokenDispatcher(MoETokenDispatcher):
+    """
+    Token dispatcher without token dropping.
+    """
+
+    def __init__(
+        self, config: TransformerConfig,
+    ) -> None:
+        """
+        Initialize the zero token dropping router.
+        """
+        super().__init__(config=config)
+
+    def token_permutation(
+        self, hidden_states: torch.Tensor, max_prob: torch.Tensor, max_ind: torch.Tensor
+    ):
+        hidden_shape = hidden_states.shape
+        # [S/TP, B, H] -> [S*B/TP, H]
+        hidden_states = hidden_states.view(-1, hidden_shape[-1])
+
+        # Permute the tokens across the expert parallel devices.
+        if self.config.sequence_parallel or (self.config.expert_model_parallel_size > 1):
+            # [S*B/TP, H] -> [S*B, H]
+            global_hidden_states = tensor_parallel.gather_from_sequence_parallel_region_to_moe(
+                hidden_states
+            )
+            with torch.no_grad():
+                global_indices = tensor_parallel.gather_from_sequence_parallel_region_to_moe(
+                    max_ind
+                )
+
+            global_probs = tensor_parallel.gather_from_sequence_parallel_region_to_moe(max_prob)
+        else:
+            global_hidden_states = hidden_states
+            global_probs = max_prob
+            global_indices = max_ind
+
+        return (
+            global_hidden_states,
+            None,
+            global_probs,
+            global_indices,
+            None,
+        )
+
+    def token_unpermutation(
+        self,
+        hidden_states: torch.Tensor,
+        *args,
+        **kwargs,
+    ):
+        # Unpermute the tokens across expert parallel devices.
+        if self.config.sequence_parallel or (self.config.expert_model_parallel_size > 1):
+            output_total = tensor_parallel.reduce_scatter_to_sequence_parallel_region_from_moe(
+                hidden_states
+            )
+        else:
+            output_total = hidden_states 
+
+        return output_total, None

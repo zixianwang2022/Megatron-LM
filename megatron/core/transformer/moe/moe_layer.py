@@ -10,8 +10,9 @@ from megatron.core.transformer.mlp import MLPSubmodules
 from megatron.core.transformer.module import MegatronModule
 from megatron.core.transformer.moe.experts import GroupedMLP, SequentialMLP, ScatterMLP
 from megatron.core.transformer.moe.router import TopKRouter
-from megatron.core.transformer.moe.token_dispatcher import MoEDroplessTokenDispatcher
+from megatron.core.transformer.moe.token_dispatcher import MoEDroplessTokenDispatcher, ScatterMoEDroplessTokenDispatcher
 from megatron.core.transformer.transformer_config import TransformerConfig
+from megatron.core import parallel_state, tensor_parallel
 
 
 class BaseMoELayer(MegatronModule, ABC):
@@ -58,7 +59,10 @@ class MoELayer(BaseMoELayer):
 
         if self.config.moe_scattermoe:
             self.experts = ScatterMLP(self.num_local_experts, self.config)
-            return
+            # self.token_dispatcher = ScatterMoEDroplessTokenDispatcher(
+            #     config=self.config
+            # )
+            return 
 
         if self.config.moe_grouped_gemm:
             self.experts = GroupedMLP(self.num_local_experts, self.config)
@@ -74,14 +78,53 @@ class MoELayer(BaseMoELayer):
         scores, indices = self.router(hidden_states)
         
         args = get_args()
-        if args.moe_log_load_balancing:
+        if self.training and args.moe_log_load_balancing:
             wandb_writer = get_wandb_writer()
             if wandb_writer:
                 with torch.no_grad():
                     idxs, counts = torch.unique(indices, sorted=True, return_counts=True)
                     wandb_writer.log({f'moe/{self.layer_number}.{i.item()}': c for i, c in zip(idxs, counts)}, args.curr_iteration)
         if self.config.moe_scattermoe:
-            return self.experts(hidden_states, scores, indices)
+            # (
+            #     hidden_states,
+            #     _,
+            #     scores,
+            #     indices,
+            #     _,
+            # ) = self.token_dispatcher.token_permutation(hidden_states, scores, indices)
+
+            x_shape = hidden_states.size()
+            hidden_states = hidden_states.view(-1, x_shape[-1])
+            # Permute the tokens across the expert parallel devices.
+            if self.config.sequence_parallel or (self.config.expert_model_parallel_size > 1):
+                # [S*B/TP, H] -> [S*B, H]
+                global_hidden_states = tensor_parallel.gather_from_sequence_parallel_region_to_moe(
+                    hidden_states
+                )
+                with torch.no_grad():
+                    global_indices = tensor_parallel.gather_from_sequence_parallel_region_to_moe(
+                        indices
+                    )
+
+                global_probs = tensor_parallel.gather_from_sequence_parallel_region_to_moe(scores)
+            else:
+                global_hidden_states = hidden_states
+                global_probs = scores
+                global_indices = indices
+
+            expert_output, _ = self.experts(global_hidden_states, global_probs, global_indices)
+
+            if self.config.sequence_parallel or (self.config.expert_model_parallel_size > 1):
+                output_total = tensor_parallel.reduce_scatter_to_sequence_parallel_region_from_moe(
+                    expert_output
+                )
+            else:
+                output_total = expert_output 
+            # output, mlp_bias = self.token_dispatcher.token_unpermutation(
+            #     expert_output
+            # )
+            output_total = output_total.view(*x_shape[:-1], output_total.size(-1))
+            return output_total, None
         (
             dispatched_input,
             tokens_per_expert,

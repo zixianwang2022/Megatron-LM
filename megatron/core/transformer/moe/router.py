@@ -46,6 +46,8 @@ class Router(ABC, MegatronModule):
         if config.moe_groupedmoe:
             # use different router on different TP ranks
             config.init_method(self.weight)
+            # FIXME expert parallel not considered
+            setattr(self.weight, 'allreduce', True)
         else:
             with get_cuda_rng_tracker().fork(get_data_parallel_rng_tracker_name()):
                 config.init_method(self.weight)
@@ -184,6 +186,7 @@ class TopKRouter(Router):
             case 'st':
                 probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
                 scores, indices = torch.topk(probs, k=self.topk, dim=1)
+                scores = scores.type_as(logits)
             case 'grouped':
                 probs, scores, indices = grouped_router(logits, num_moe_experts=self.config.num_moe_experts, topk=self.topk, moe_group_size=self.config.moe_group_size)
             case _:
