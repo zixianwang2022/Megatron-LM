@@ -101,17 +101,18 @@ if __name__ == '__main__':
                     if 'weight1' in k:
                         h, ef = v.shape
                         f = ef // args.num_experts
-                        state_dict[k] = rearrange(v.view(args.num_experts, h, f), 'e h f -> e f h').contiguous()
-                        print(k, h, ef, '->', state_dict[k].shape)
+                        state_dict['model'][k] = rearrange(v.view(args.num_experts, h, f), 'e h f -> e f h').contiguous()
+                        print(k, h, ef, '->', state_dict['model'][k].shape)
                         
                     else:
                         ef, h = v.shape
                         f = ef // args.num_experts
-                        state_dict[k] = rearrange(v.view(args.num_experts, f, h), 'e f h -> e h f').contiguous()
-                        print(k, ef, h, '->', state_dict[k].shape)
+                        state_dict['model'][k] = rearrange(v.view(args.num_experts, f, h), 'e f h -> e h f').contiguous()
+                        print(k, ef, h, '->', state_dict['model'][k].shape)
             path = partition_path.replace(args.input_dir, args.output_dir)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             torch.save(state_dict, path)
+        exit()
                     
 
     # Make routers to share weight values across partitions
