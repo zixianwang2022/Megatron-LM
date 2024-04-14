@@ -62,6 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_dir', type=str, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--num_experts', type=int, required=True)
+    parser.add_argument('--input_expert_format', type=str, default='none', choices=['none', 'local', 'grouped_gemm', 'scattermoe'])
     parser.add_argument('--transformer_impl', type=str, default='local', choices=['local', 'grouped_gemm', 'scattermoe'])
     parser.add_argument('--router_std', type=float, default=0)
     parser.add_argument('--expert_std', type=float, default=0)
@@ -84,6 +85,34 @@ if __name__ == '__main__':
     TP, PP = get_TP_PP(partitions)
     print("Tensor Parallel= "+str(TP))
     print("Pipeline Parallel= "+str(PP))
+
+    if args.input_expert_format != 'none':
+        assert args.input_expert_format == 'grouped_gemm'
+        assert args.transformer_impl == 'scattermoe'
+
+        print('converting', args.input_expert_format, '->', args.transformer_impl)
+
+        for partition in partitions:
+            print("Converting partition "+partition)
+            partition_path = partition+'/model_optim_rng.pt'
+            state_dict = torch.load(partition_path)
+            for k, v in state_dict['model'].items():
+                if 'experts' in k:
+                    if 'weight1' in k:
+                        h, ef = v.shape
+                        f = ef // args.num_experts
+                        state_dict[k] = rearrange(v.view(args.num_experts, h, f), 'e h f -> e f h').contiguous()
+                        print(k, h, ef, '->', state_dict[k].shape)
+                        
+                    else:
+                        ef, h = v.shape
+                        f = ef // args.num_experts
+                        state_dict[k] = rearrange(v.view(args.num_experts, f, h), 'e f h -> e h f').contiguous()
+                        print(k, ef, h, '->', state_dict[k].shape)
+            path = partition_path.replace(args.input_dir, args.output_dir)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            torch.save(state_dict, path)
+                    
 
     # Make routers to share weight values across partitions
     routers = {}
