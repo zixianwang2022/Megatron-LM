@@ -52,7 +52,7 @@ options=" \
     --use-distributed-optimizer \
     --num-experts 64 \
     --moe-router-topk 16 \
-    --ffn-hidden-size 1024 \
+    --ffn-hidden-size 680 \
     --moe-router-type st \
     --moe-z-loss-coeff 1e-3 \
     --moe-aux-loss-coeff 1e-2 \

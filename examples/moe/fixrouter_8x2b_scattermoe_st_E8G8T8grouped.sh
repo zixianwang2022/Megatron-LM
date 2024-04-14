@@ -68,7 +68,7 @@ options=" \
     --num-attention-heads 16 \
     --seq-length 4096 \
     --max-position-embeddings 4096 \
-    --micro-batch-size 4 \
+    --micro-batch-size 8 \
     --global-batch-size 512 \
     --train-samples 268554688 \
     --lr-decay-samples 255126953 \
@@ -110,7 +110,7 @@ cd $DIR && python -u pretrain_gpt.py ${options}"
 #      --container-mounts "/lustre:/lustre/,/home:/home" \
 #      bash -c "${run_cmd}"
 
-torchrun --nproc_per_node=8 pretrain_gpt.py ${options}
+#torchrun --nproc_per_node=8 pretrain_gpt.py ${options}
 
 srun -l \
      --container-image /home/yihuih/llmservice/images/24.01.sqsh \

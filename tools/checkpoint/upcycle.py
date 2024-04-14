@@ -155,17 +155,19 @@ if __name__ == '__main__':
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1'
-                    if args.granularity == 1:
-                        new_key_values.append((new_key, v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(v.shape[1], -1).contiguous()))
+                    if args.transformer_impl == 'scattermoe':
+                        w1 = v.detach().clone()
+                        print(w1.shape)
+                        w1 = repeat(w1, 'f h -> e f h', e=args.num_experts // args.granularity)
+                        w1 = rearrange(w1, 'e (f g) h -> (e g) f h', g=args.granularity).contiguous()
+                        print(w1.shape)
+                        new_key_values.append((new_key, w1))
                     else:
                         w1 = v.detach().clone().t()
                         # print('w1 shape', w1.shape) #torch.Size([6144, 3072])
                         w1 = repeat(w1, 'h f -> e h f', e=args.num_experts // args.granularity)
                         w1 = rearrange(w1, 'e h (f g) -> (e g) h f', g=args.granularity).contiguous()
-                        if args.transformer_impl == 'scattermoe':
-                            new_key_values.append((new_key, w1))
-                        else:
-                            new_key_values.append((new_key, w1.reshape(v.shape[1], -1).contiguous()))
+                        new_key_values.append((new_key, w1.reshape(v.shape[1], -1).contiguous()))
                 old_keys.append(k)
                 continue
             
@@ -188,17 +190,19 @@ if __name__ == '__main__':
                             new_key_values.append((new_key, v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight2' 
-                    if args.granularity == 1:
-                        new_key_values.append((new_key, args.scale_st * v.detach().clone().t().repeat(args.num_experts, 1, 1).reshape(-1, v.shape[0]).contiguous()))
+                    if args.transformer_impl == 'scattermoe':
+                        w2 =  args.scale_st * v.detach().clone()
+                        print(w2.shape)
+                        w2 = repeat(w2, 'h f -> e h f', e=args.num_experts // args.granularity)
+                        w2 = rearrange(w2, 'e h (f g) -> (e g) h f', g=args.granularity).contiguous()
+                        print(w2.shape)
+                        new_key_values.append((new_key, w2))
                     else:
                         w2 =  args.scale_st * v.detach().clone().t()
                         # print('w2 shape', w2.shape) # torch.Size([3072, 6144])
                         w2 = repeat(w2, 'f h -> e f h', e=args.num_experts // args.granularity)
                         w2 = rearrange(w2, 'e (f g) h -> (e g) f h', g=args.granularity).contiguous()
-                        if args.transformer_impl == 'scattermoe':
-                            new_key_values.append((new_key, w2))
-                        else:
-                            new_key_values.append((new_key, w2.reshape(-1, v.shape[0]).contiguous()))
+                        new_key_values.append((new_key, w2.reshape(-1, v.shape[0]).contiguous()))
 
                 old_keys.append(k)
                 continue
