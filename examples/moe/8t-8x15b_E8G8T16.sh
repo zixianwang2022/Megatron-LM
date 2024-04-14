@@ -39,12 +39,11 @@ mkdir -p ${DATA_CACHE}
 
 
 options=" \
-    --global-batch-size 2304 \
+    --global-batch-size 128 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --num-experts 64 \
     --moe-router-topk 16 \
-    --moe-group-size 8 \
     --ffn-hidden-size 3072 \
     --moe-router-type st \
     --moe-z-loss-coeff 1e-3 \
@@ -63,8 +62,8 @@ options=" \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
-    --tensor-model-parallel-size 4 \
-    --pipeline-model-parallel-size 4 \
+    --tensor-model-parallel-size 8 \
+    --pipeline-model-parallel-size 8 \
     --sequence-parallel \
     --num-layers 32 \
     --hidden-size 6144 \
@@ -108,7 +107,6 @@ options=" \
 
 
 run_cmd="
-([[ "\$SLURM_LOCALID" == "0" ]] && echo "installing" && pip install git+https://github.com/shawntan/scattermoe.git) ; ([[ "\$SLURM_LOCALID" != "0" ]] && echo "sleeping" && sleep 30) ;
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
 

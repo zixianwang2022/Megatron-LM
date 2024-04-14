@@ -1,6 +1,8 @@
 #!/bin/bash
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-8x15b_upcycle_highlr_E8G8T16 --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-24x15b_E24G12T24 
+
+# --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -13,24 +15,14 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="8t-8x15b_upcycle_highlr_E8G8T16"
+NAME="8t-24x15b_E24G12T24"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/15b/gpt3-15b-8t-tp8-pp8_router001-te-gg-st32xw2-E8G8"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
-if [[ ! -f "${CHECKPOINT_DIR}/latest_checkpointed_iteration.txt" ]]; then
-    CHECKPOINT_DIR=$INIT_CHECKPOINT_DIR
-    RESET_STATE="--reset-dataloader-state \
-    --override-opt_param-scheduler \
-    --reset-lr-state \
-    --no-load-rng \
-    --no-load-optim
-"
-fi
 
 LOG_DIR="${OUTPUT}/${NAME}/logs"
 mkdir -p ${LOG_DIR}
@@ -45,18 +37,20 @@ mkdir -p ${DATA_CACHE}
 
 . /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
 
+
 options=" \
-    --global-batch-size 2304 \
+    --no-create-attention-mask-in-dataloader \
+    --global-batch-size 128 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
-    --moe-scattermoe \
-    --num-experts 64 \
-    --moe-router-topk 16 \
-    --ffn-hidden-size 3072 \
+    --num-experts 288 \
+    --moe-router-topk 24 \
+    --ffn-hidden-size 2048 \
     --moe-router-type st \
     --moe-z-loss-coeff 1e-3 \
     --moe-aux-loss-coeff 1e-2 \
     --moe_log_load_balancing \
+    --moe-scattermoe \
     --use-distributed-optimizer \
     --apply-layernorm-1p \
     --use-flash-attn \
@@ -69,8 +63,8 @@ options=" \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
     --exit-duration-in-mins 230 \
-    --tensor-model-parallel-size 4 \
-    --pipeline-model-parallel-size 8 \
+    --tensor-model-parallel-size 8 \
+    --pipeline-model-parallel-size 16 \
     --sequence-parallel \
     --num-layers 32 \
     --hidden-size 6144 \
@@ -84,7 +78,7 @@ options=" \
     --lr-decay-samples 584765624 \
     --lr-warmup-samples 391680 \
     --lr-warmup-init 4.5e-5 \
-    --lr 3e-4 \
+    --lr 4.5e-4 \
     --min-lr 4.5e-5 \
     --lr-decay-style cosine \
     --log-interval 1 \
@@ -111,6 +105,7 @@ options=" \
     --wandb-project upcycling \
     --wandb-exp-name $NAME $RESET_STATE
 "
+
 
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"

@@ -184,9 +184,8 @@ class TopKRouter(Router):
                 scores = torch.softmax(top_logits, dim=-1, dtype=torch.float32).type_as(logits)
                 probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
             case 'st':
-                probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
+                probs = torch.softmax(logits, dim=-1, dtype=torch.float32).type_as(logits)
                 scores, indices = torch.topk(probs, k=self.topk, dim=1)
-                scores = scores.type_as(logits)
             case 'grouped':
                 probs, scores, indices = grouped_router(logits, num_moe_experts=self.config.num_moe_experts, topk=self.topk, moe_group_size=self.config.moe_group_size)
             case _:

@@ -306,7 +306,10 @@ class ScatterMLP(MegatronModule):
                 expert_parallel=self.expert_parallel,
             )
         setattr(self.weight1, 'allreduce', not self.expert_parallel)
-        setattr(self.weight2, 'allreduce', not self.expert_parallel)        
+        setattr(self.weight2, 'allreduce', not self.expert_parallel)
+
+        # import triton
+        # self.BLOCK_SIZE = max(scattermoe.kernels.ops.BLOCK_M, triton.next_power_of_2(self.num_local_experts))
 
     def forward(self, x: torch.Tensor, expert_p: torch.Tensor, expert_idxs: torch.Tensor):
         # Reshape the weights for the grouped GEMMs.
@@ -315,6 +318,9 @@ class ScatterMLP(MegatronModule):
         with torch.no_grad():
             sorted_expert_idxs, sorted_scattered_idxs = scattermoe.kernels.ops.flatten_and_sort(expert_idxs)
             padded_block_idxs, expert_offsets = scattermoe.kernels.ops.padded_block_indices(sorted_expert_idxs, self.num_local_experts)
+            # flattened_expert_idxs = expert_idxs.flatten()
+            # sorted_expert_idxs, sorted_scattered_idxs = torch.sort(flattened_expert_idxs)
+            # padded_block_idxs, expert_offsets = padded_block_indices(sorted_expert_idxs, self.num_local_experts)
 
         # TODO memory layout is different
         # .permute(0, 2, 1)
@@ -332,3 +338,24 @@ class ScatterMLP(MegatronModule):
             expert_p, True, False,
         )
         return y, None
+
+def padded_block_indices(sorted_experts_idxs: torch.Tensor, k: int, N_BLOCK_SIZE: int=128) :
+    expert_counts = sorted_experts_idxs.bincount(minlength=k)
+    padded_block_counts = ((expert_counts - 1) // N_BLOCK_SIZE) + 1
+    padded_expert_block_end = padded_block_counts.cumsum(-1)
+    expert_boundaries_end = expert_counts.cumsum(-1)
+    expert_boundaries_start = expert_boundaries_end - expert_counts
+    padded_expert_block_start = padded_expert_block_end - padded_block_counts
+    block_idxs = torch.arange(padded_expert_block_end[-1],
+                              dtype=sorted_experts_idxs.dtype,
+                              device=sorted_experts_idxs.device)
+    block_mask = (
+        (block_idxs[:, None] < padded_expert_block_start) |
+        (block_idxs[:, None] >= padded_expert_block_end)
+    )
+    expanded_block_idxs = (
+        N_BLOCK_SIZE * (block_idxs[:, None] - padded_expert_block_start) +
+        expert_boundaries_start
+    )
+    expanded_block_idxs = expanded_block_idxs.masked_fill(block_mask, 0).sum(-1)
+    return expanded_block_idxs, expert_boundaries_end
