@@ -18,7 +18,9 @@ NAME="8t-8x15b_upcycle_highlr_E8G8T16"
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/15b/gpt3-15b-8t-tp8-pp8_router001-te-gg-st32xw2-E8G8"
+# INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/15b/gpt3-15b-8t-tp8-pp8_router001-te-gg-st32xw2-E8G8"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/15b/gpt3-15b-8t-tp4-pp8_router001-te-scatter-st32xw2-E8G8"
+# INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/15b/gpt3-15b-8t-tp4-pp8_router001-te-scatter-st32xw2-E8G8"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
