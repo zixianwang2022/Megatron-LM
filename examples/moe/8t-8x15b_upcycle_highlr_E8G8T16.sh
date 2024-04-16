@@ -70,7 +70,7 @@ options=" \
     --squared-relu \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
-    --exit-duration-in-mins 230 \
+    --exit-duration-in-mins 220 \
     --tensor-model-parallel-size 4 \
     --pipeline-model-parallel-size 8 \
     --sequence-parallel \

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-8x15b_upcycle_highlr_E8G8T8 --array=1-30%1
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=16 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=8t-8x15b_upcycle_highlr_E8G8T16_4xw1_2xw2 --array=1-30%1
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -13,12 +13,15 @@ export NCCL_IB_SL=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 
-NAME="8t-8x15b_upcycle_highlr_E8G8T8"
+NAME="8t-8x15b_upcycle_highlr_E8G8T16_4xw1_2xw2"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/15b/gpt3-15b-8t-tp4-pp8_router001-te-scatter-st4xw1_4xw2-E8G8T8"
+# INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/moe-init/15b/gpt3-15b-8t-tp8-pp8_router001-te-gg-st32xw2-E8G8"
+# INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/15b/gpt3-15b-8t-tp4-pp8_router001-te-scatter-st32xw2-E8G8"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/15b/gpt3-15b-8t-tp4-pp8_router001-te-scatter-st4xw1_2xw2-E8G8"
+# INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/15b/gpt3-15b-8t-tp4-pp8_router001-te-scatter-st32xw2-E8G8"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
@@ -46,14 +49,12 @@ mkdir -p ${DATA_CACHE}
 . /lustre/fsw/coreai_dlalgo_llm/yihuih/nvllm-8t/8t.sh
 
 options=" \
-    --no-mmap-bin-files \
-    --no-create-attention-mask-in-dataloader \
     --global-batch-size 2304 \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --moe-scattermoe \
     --num-experts 64 \
-    --moe-router-topk 8 \
+    --moe-router-topk 16 \
     --ffn-hidden-size 3072 \
     --moe-router-type st \
     --moe-z-loss-coeff 1e-3 \
@@ -70,7 +71,7 @@ options=" \
     --squared-relu \
     --attention-dropout 0.0 \
     --hidden-dropout 0.0 \
-    --exit-duration-in-mins 230 \
+    --exit-duration-in-mins 220 \
     --exit-signal-handler \
     --tensor-model-parallel-size 4 \
     --pipeline-model-parallel-size 8 \
@@ -101,7 +102,7 @@ options=" \
     --save ${OUTPUT}/${NAME} \
     --load ${CHECKPOINT_DIR} \
     --split 99,1,0 \
-    --clip-grad 2.0 \
+    --clip-grad 1.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
@@ -115,8 +116,6 @@ options=" \
     --wandb-exp-name $NAME $RESET_STATE
 "
 
-
-
 run_cmd="
 cd $DIR && python -u pretrain_gpt.py ${options}"
 
@@ -125,7 +124,7 @@ cd $DIR && python -u pretrain_gpt.py ${options}"
 srun -l \
      --container-image /home/yihuih/llmservice/images/24.01.sqsh \
      --container-mounts "/lustre:/lustre/,/home:/home" \
-     --no-container-mount-home bash -c "${run_cmd}"
+      bash -c "${run_cmd}"
 
 set +x
 

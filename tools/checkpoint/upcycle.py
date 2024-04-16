@@ -67,6 +67,7 @@ if __name__ == '__main__':
     parser.add_argument('--router_std', type=float, default=0)
     parser.add_argument('--expert_std', type=float, default=0)
     parser.add_argument('--expert_uniform', type=float, default=0)
+    parser.add_argument('--scale_st_w1', type=float, default=1.)
     parser.add_argument('--scale_st', type=float, default=1.)
     parser.add_argument('--granularity', type=int, default=1)
 
@@ -176,13 +177,13 @@ if __name__ == '__main__':
                         if args.expert_uniform != 0:
                             t = v.detach().clone()
                             t += args.expert_uniform * (torch.rand(t) * 2 - 1)
-                            new_key_values.append((new_key, t))
+                            new_key_values.append((new_key, args.scale_st_w1 * t))
                         elif args.expert_std != 0:
                             t = v.detach().clone()
                             t += args.expert_std * torch.randn_like(t)
-                            new_key_values.append((new_key, t))
+                            new_key_values.append((new_key, args.scale_st_w1 * t))
                         else:
-                            new_key_values.append((new_key, v.detach().clone()))
+                            new_key_values.append((new_key, args.scale_st_w1 * v.detach().clone()))
                 else:
                     new_key = 'decoder.layers.'+m.group(1)+'.mlp.experts.weight1'
                     if args.transformer_impl == 'scattermoe':
@@ -191,13 +192,13 @@ if __name__ == '__main__':
                         w1 = repeat(w1, 'f h -> e f h', e=args.num_experts // args.granularity)
                         w1 = rearrange(w1, 'e (f g) h -> (e g) f h', g=args.granularity).contiguous()
                         print(w1.shape)
-                        new_key_values.append((new_key, w1))
+                        new_key_values.append((new_key, args.scale_st_w1 * w1))
                     else:
                         w1 = v.detach().clone().t()
                         # print('w1 shape', w1.shape) #torch.Size([6144, 3072])
                         w1 = repeat(w1, 'h f -> e h f', e=args.num_experts // args.granularity)
                         w1 = rearrange(w1, 'e h (f g) -> (e g) h f', g=args.granularity).contiguous()
-                        new_key_values.append((new_key, w1.reshape(v.shape[1], -1).contiguous()))
+                        new_key_values.append((new_key, args.scale_st_w1 * w1.reshape(v.shape[1], -1).contiguous()))
                 old_keys.append(k)
                 continue
             
