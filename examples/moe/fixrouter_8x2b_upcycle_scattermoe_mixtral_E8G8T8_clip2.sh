@@ -1,8 +1,8 @@
 #!/bin/bash
 
-##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:fixrouter_8x2b_upcycle_scattermoe_st_E8G1T2 --array=1-30%1
+##SBATCH -p batch_block1,batch_block3,batch_block4,adlr_services -A llmservice_nlp_fm -t 4:00:00 --nodes=2 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --gres=gpu:8 --dependency=singleton --job-name=llmservice_nlp_fm:fixrouter_8x2b_upcycle_scattermoe_mixtral_E8G8T8_clip2 --array=1-30%1
 
-#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:fixrouter_8x2b_upcycle_scattermoe_st_E8G1T2
+#SBATCH -p batch -A llmservice_nlp_fm -t 4:00:00 --nodes=8 --exclusive --mem=0 --overcommit --ntasks-per-node=8 --dependency=singleton --job-name=llmservice_nlp_fm-yh:fixrouter_8x2b_upcycle_scattermoe_mixtral_E8G8T8_clip2
 
 export ADLR_SHARING=/lustre/fsw/portfolios/adlr/projects/adlr_nlp_arch/adlr_nlp_sharing
 
@@ -16,12 +16,12 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_API_KEY=b1d8825af2c256485e86683005098aaea7a6157b
 export WANDB_CONSOLE="redirect"
 
-NAME="fixrouter_8x2b_upcycle_scattermoe_st_E8G1T2"
+NAME="fixrouter_8x2b_upcycle_scattermoe_mixtral_E8G8T8_clip2"
 
 DIR=/home/yihuih/llmservice/moe-mlm
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
 
-INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/2b_tp2_router001-te-scatter-st4xw2"
+INIT_CHECKPOINT_DIR="/home/yihuih/llmservice/fixrouter/2b_tp2_router001-te-scatter-8xw2-E8G8"
 
 CHECKPOINT_DIR="${OUTPUT}/${NAME}"
 RESET_STATE=""
@@ -50,10 +50,10 @@ options=" \
     --transformer-impl transformer_engine \
     --use-mcore-models \
     --use-distributed-optimizer \
-    --num-experts 8 \
-    --moe-router-topk 2 \
-    --ffn-hidden-size 5440 \
-    --moe-router-type st \
+    --num-experts 64 \
+    --moe-router-topk 8 \
+    --ffn-hidden-size 680 \
+    --moe-router-type mixtral \
     --moe-z-loss-coeff 1e-3 \
     --moe-aux-loss-coeff 1e-2 \
     --moe_log_load_balancing \
@@ -96,7 +96,7 @@ options=" \
     --save ${OUTPUT}/${NAME} \
     --load ${CHECKPOINT_DIR} \
     --split 99,1,0 \
-    --clip-grad 1.0 \
+    --clip-grad 2.0 \
     --weight-decay 0.1 \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
