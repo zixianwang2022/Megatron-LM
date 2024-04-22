@@ -152,6 +152,9 @@ def forward_step(data_iterator, model: GPTModel):
     output_tensor = model(tokens, position_ids, attention_mask,
                           labels=labels)
 
+    # attention_mask is ignored by the model.
+    attention_mask = None
+
     return output_tensor, partial(loss_func, loss_mask)
 
 

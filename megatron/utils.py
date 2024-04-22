@@ -316,7 +316,12 @@ def get_batch_on_this_tp_rank(data_iterator):
        tokens=torch.empty((args.micro_batch_size,args.seq_length), dtype = torch.int64 , device = torch.cuda.current_device())
        labels=torch.empty((args.micro_batch_size,args.seq_length), dtype = torch.int64 , device = torch.cuda.current_device())
        loss_mask=torch.empty((args.micro_batch_size,args.seq_length), dtype = torch.float32 , device = torch.cuda.current_device())
-       attention_mask=torch.empty((args.micro_batch_size,1,args.seq_length,args.seq_length), dtype = torch.bool , device = torch.cuda.current_device())
+       # The following line assumes the attention_mask shape and causes the
+       # non-zero ranks to hang if it does not match what was broadcast to them.
+       # A temporary solution to (unused) very large attention_masks (when
+       # seq_len is large) is to set the shape of the attention mask to (1,1,1).
+       # attention_mask=torch.empty((args.micro_batch_size,1,args.seq_length,args.seq_length), dtype = torch.bool , device = torch.cuda.current_device())
+       attention_mask=torch.empty((args.micro_batch_size,1,1,1), dtype = torch.bool , device = torch.cuda.current_device())
        position_ids=torch.empty((args.micro_batch_size,args.seq_length), dtype = torch.int64 , device = torch.cuda.current_device())
 
        if args.pipeline_model_parallel_size == 1:

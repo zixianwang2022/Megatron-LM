@@ -527,9 +527,19 @@ def _get_ltor_masks_and_position_ids(
     # Extract batch size and sequence length.
     seq_length = data.numel()
 
-    attention_mask = torch.tril(torch.ones((seq_length, seq_length), device=data.device)).unsqueeze(
-        0
-    )
+    # attention_mask is not used in GPT or Mamba hybrid. The attention mechanism
+    # generates its own causal mask, and ignores attention_mask. attention_mask
+    # can get very large when seq_length is long, causing CPU OOM. Note also
+    # that the PyTorch dataloader does not allow `None` as a dataset element, so
+    # instead we pass a one-element tensor of the same shape.
+    # The following is a temporary solution. We might want to disable dataset
+    # attention mask generation using a command-line argument.
+    # Also see megatron/utils.py which passes/splits attention_mask between
+    # ranks and makes assumptions about its shape that can lead to hangs.
+    # attention_mask = torch.tril(torch.ones((seq_length, seq_length), device=data.device)).unsqueeze(
+    #     0
+    # )
+    attention_mask = torch.ones((1, 1, 1), device=data.device)
 
     # Loss mask.
     loss_mask = torch.ones(seq_length, dtype=torch.float, device=data.device)

@@ -21,7 +21,7 @@ class MambaModel(LanguageModule):
 
     Args:
         config (TransformerConfig): Transformer config
-        mamba_layer_spec (ModuleSpec): Specifies module to use for mamba layers
+        mamba_stack_spec (ModuleSpec): Specifies the modules to use for the various layer types
         attention_layer_spec (ModuleSpec): Specifies module to use for attention layers
         vocab_size (int): Vocabulary size
         max_sequence_length (int): maximum size of sequence. This is used for positional embedding
@@ -171,6 +171,9 @@ class MambaModel(LanguageModule):
                 inference_params, self.decoder, decoder_input, self.config
             )
             rotary_pos_emb = self.rotary_pos_emb(rotary_seq_len)
+
+        assert(attention_mask is None,
+            "The attention mask is ignored and should be set to None")
 
         # Run decoder.
         hidden_states = self.decoder(
