@@ -143,6 +143,7 @@ class TransformerConfig(ModelParallelConfig):
     moe_dropout: float = None
     moe_group_size: int = 1
     moe_groupedmoe: bool = False
+    moe_scale_router: float = 1.0
 
     def __post_init__(self):
         """ Python dataclass method that is used to modify attributes after initialization.

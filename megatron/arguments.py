@@ -1494,6 +1494,8 @@ def _add_moe_args(parser):
                        help='')
     group.add_argument('--moe_log_load_balancing', action='store_true',
                        help='log number of tokens routed to experts')
+    group.add_argument('--moe-scale-router', type=float, default=0.0,
+                       help='')                    
     return parser
 
 def _add_experimental_args(parser):

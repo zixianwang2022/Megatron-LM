@@ -94,7 +94,7 @@ class Router(ABC, MegatronModule):
 
         scores, indices = self.routing(logits)
 
-        return scores, indices
+        return self.config.moe_scale_router * scores, indices
 
 
 class TopKRouter(Router):
