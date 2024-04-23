@@ -172,8 +172,7 @@ class MambaModel(LanguageModule):
             )
             rotary_pos_emb = self.rotary_pos_emb(rotary_seq_len)
 
-        assert(attention_mask is None,
-            "The attention mask is ignored and should be set to None")
+        assert attention_mask is None, "The attention mask is ignored and should be set to None"
 
         # Run decoder.
         hidden_states = self.decoder(

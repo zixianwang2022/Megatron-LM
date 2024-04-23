@@ -149,11 +149,11 @@ def forward_step(data_iterator, model: GPTModel):
         data_iterator)
     timers('batch-generator').stop()
 
-    output_tensor = model(tokens, position_ids, attention_mask,
-                          labels=labels)
-
     # attention_mask is ignored by the model.
     attention_mask = None
+
+    output_tensor = model(tokens, position_ids, attention_mask,
+                          labels=labels)
 
     return output_tensor, partial(loss_func, loss_mask)
 
