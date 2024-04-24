@@ -84,3 +84,18 @@ class TestTop2Router:
         out = self.sequential_mlp(hidden_states)[0]
         out.sum().mul_(0).backward()
         assert self.sequential_mlp.router.weight.grad.abs().sum() > 0
+
+def test_btx_aux_loss():
+    logits = torch.arange(8).reshape(2, 4)
+    topk = 2
+    top_logits, indices = torch.topk(logits, k=topk, dim=1)
+
+    scores32 = torch.softmax(top_logits, dim=-1, dtype=torch.float32)
+    # Apply load balancing loss
+    probs = torch.softmax(logits, dim=-1, dtype=torch.float32)
+    
+    top_logits_scattered = torch.zeros_like(probs)
+    top_logits_scattered.scatter_(-1, indices, scores32)
+    aux_loss = (top_logits_scattered.mean(0) * probs.mean(0)).mean()
+
+    assert torch.isclose(aux_loss, torch.tensor(0.1336), 1e-4)

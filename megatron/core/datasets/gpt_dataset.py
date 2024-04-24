@@ -39,6 +39,11 @@ class GPTDatasetConfig(BlendedMegatronDatasetConfig):
 
     eod_mask_loss: bool = None
 
+    create_attention_mask: bool = True
+    """Option to enable the attention masks generation. Can be disabled if attention kernel
+       generates masks by itself.
+    """
+
     vocab_size: int = sys.maxsize
 
     def __post_init__(self) -> None:
@@ -90,15 +95,25 @@ class MockGPTDataset(MockDataset):
             self.config.reset_position_ids,
             self.config.reset_attention_mask,
             self.config.eod_mask_loss,
+            self.config.create_attention_mask,
         )
 
-        return {
-            "tokens": tokens,
-            "labels": labels,
-            "attention_mask": attention_mask,
-            "loss_mask": loss_mask,
-            "position_ids": position_ids,
-        }
+        if self.config.create_attention_mask:
+            return {
+                "tokens": tokens,
+                "labels": labels,
+                "attention_mask": attention_mask,
+                "loss_mask": loss_mask,
+                "position_ids": position_ids,
+            }
+        else:
+            return {
+                "tokens": tokens,
+                "labels": labels,
+                "loss_mask": loss_mask,
+                "position_ids": position_ids,
+            }
+
 
 
 class GPTDataset(MegatronDataset):
@@ -207,15 +222,25 @@ class GPTDataset(MegatronDataset):
             self.config.reset_position_ids,
             self.config.reset_attention_mask,
             self.config.eod_mask_loss,
+            self.config.create_attention_mask,
         )
 
-        return {
-            "tokens": tokens,
-            "labels": labels,
-            "attention_mask": attention_mask,
-            "loss_mask": loss_mask,
-            "position_ids": position_ids,
-        }
+        if self.config.create_attention_mask:
+            return {
+                "tokens": tokens,
+                "labels": labels,
+                "attention_mask": attention_mask,
+                "loss_mask": loss_mask,
+                "position_ids": position_ids,
+            }
+        else:
+            return {
+                "tokens": tokens,
+                "labels": labels,
+                "loss_mask": loss_mask,
+                "position_ids": position_ids,
+            }
+
 
     def _query_document_sample_shuffle_indices(
         self, idx: int
@@ -577,6 +602,7 @@ def _get_ltor_masks_and_position_ids(
     reset_position_ids: bool,
     reset_attention_mask: bool,
     eod_mask_loss: bool,
+    create_attention_mask: bool,
 ):
     """Build masks and position id for left to right model.
 
@@ -600,9 +626,13 @@ def _get_ltor_masks_and_position_ids(
     """
     seq_length = data.numel()
 
-    attention_mask = torch.tril(torch.ones((seq_length, seq_length), device=data.device)).unsqueeze(
-        0
-    )
+    if create_attention_mask:
+        attention_mask = torch.tril(
+            torch.ones((seq_length, seq_length), device=data.device)
+        ).unsqueeze(0)
+    else:
+        attention_mask = None
+
 
     # Loss mask.
     loss_mask = torch.ones(seq_length, dtype=torch.float, device=data.device)
@@ -627,14 +657,16 @@ def _get_ltor_masks_and_position_ids(
         for j in range(eod_index.numel()):
             i = eod_index[j]
             # Mask attention loss.
-            if reset_attention_mask:
+            if reset_attention_mask and attention_mask is not None:
                 attention_mask[0, (i + 1) :, : (i + 1)] = 0
             # Reset positions.
             if reset_position_ids:
                 position_ids[(i + 1) :] -= i + 1 - prev_index
                 prev_index = i + 1
 
-    # Convert attention mask to binary:
-    attention_mask = attention_mask < 0.5
+    # # Convert attention mask to binary:
+    if attention_mask is not None:
+        # Convert attention mask to binary:
+        attention_mask = attention_mask < 0.5
 
     return attention_mask, loss_mask, position_ids

@@ -212,7 +212,6 @@ class OptimizerParamScheduler(object):
             num_steps = sd['num_iters']
         else:
             num_steps = sd['num_steps']
-
         if self.reset_lr_state:
             num_steps = 0
 

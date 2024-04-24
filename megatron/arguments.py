@@ -1313,6 +1313,9 @@ def _add_data_args(parser):
                        'end-of-document token.')
     group.add_argument('--eod-mask-loss', action='store_true',
                        help='Mask loss for the end of document tokens.')
+    group.add_argument('--no-create-attention-mask-in-dataloader', action='store_false',
+                       help='If set, do not create attention_masks in dataloader.',
+                       dest='create_attention_mask_in_dataloader')
 
     return parser
 
@@ -1459,23 +1462,40 @@ def _add_moe_args(parser):
                        help='Degree of expert model parallelism.')
     group.add_argument('--num-experts', type=int, default=None,
                        help='Number of Experts in MoE (None means no MoE)')
+    group.add_argument('--moe-router-type', type=str,
+                       choices=['mixtral', 'st', "sigmoid", "grouped"],
+                       default='mixtral',
+                       help='')
+    group.add_argument('--moe-group-size', type=int, default=1, help='')
+    group.add_argument('--moe-groupedmoe', action='store_true', help='use different router on different TP ranks')
     group.add_argument('--moe-router-load-balancing-type', type=str,
-                       choices=['aux_loss', 'sinkhorn', "none"],
+                       choices=['aux_loss', 'sinkhorn', "none", "sigmoid"],
                        default='aux_loss',
                        help='Determines the load balancing strategy for the router. "aux_loss" corresponds to the load balancing loss used in GShard and SwitchTransformer, "sinkhorn" corresponds to the balancing algorithm used in S-BASE, and "none" implies no load balancing. The default is "aux_loss".')
     group.add_argument('--moe-router-topk', type=int, default=2,
                        help='Number of experts to route to for each token. The default is 2.')
     group.add_argument('--moe-grouped-gemm', action='store_true',
                        help='When there are multiple experts per rank, compress multiple local (potentially small) gemms in a single kernel launch to improve the utilization and performance by leveraging the Grouped GEMM feature introduced since CUTLASS 2.8 (https://github.com/fanshiqing/grouped_gemm).')
+    group.add_argument('--moe-scattermoe', action='store_true',
+                       help='When there are multiple experts per rank, compress multiple local (potentially small) gemms in a single kernel launch to improve the utilization and performance by leveraging the Grouped GEMM feature introduced since CUTLASS 2.8 (https://github.com/fanshiqing/grouped_gemm).')
     group.add_argument('--moe-aux-loss-coeff', type=float, default=0.0,
                        help='Scaling coefficient for the aux loss: a starting value of 1e-2 is recommended.')
+    group.add_argument('--moe-aux-loss-type', type=str,
+                       choices=['switch', 'btx', 'btx_nograd'],
+                       default='switch',
+                       help='')
     group.add_argument('--moe-z-loss-coeff', type=float, default=None,
                        help='Scaling coefficient for the z-loss: a starting value of 1e-3 is recommended.')
     group.add_argument('--moe-input-jitter-eps', type=float, default=None,
                        help='Add noise to the input tensor by applying jitter with a specified epsilon value.')
     group.add_argument('--moe-token-dropping', action='store_true',
                        help='This feature involves selectively dropping and padding tokens for each expert to achieve a specified capacity, similar to GShard, Switch-Transformer, and DeepSpeed-MoE. Note: Currently unsupported.')
-
+    group.add_argument('--moe-dropout', type=float, default=None,
+                       help='')
+    group.add_argument('--moe_log_load_balancing', action='store_true',
+                       help='log number of tokens routed to experts')
+    group.add_argument('--moe-scale-router', type=float, default=1.0,
+                       help='')                    
     return parser
 
 def _add_experimental_args(parser):
