@@ -10,7 +10,7 @@ from megatron import get_args
 from megatron import print_rank_0
 from megatron import get_timers
 from megatron import get_tokenizer
-from megatron.core import mpu, tensor_parallel
+from megatron.core import mpu
 from megatron.core.enums import ModelType
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.datasets.gpt_dataset import GPTDatasetConfig
@@ -79,7 +79,7 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
     else:
         raise("Mamba only supported in Mcore!")
 
-    for l in range(config.num_layers):
+    for l in range(model.decoder.num_layers_per_pipeline_rank):
         layer_params = count_parameters_in_layer(model, f'decoder.layers.{l}.')
         print_rank_0(f" == params layer {l}: {layer_params}")
 

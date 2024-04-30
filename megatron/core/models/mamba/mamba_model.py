@@ -95,9 +95,11 @@ class MambaModel(LanguageModule):
         self.decoder = build_module(
             mamba_stack_spec,
             self.config,
+            pre_process=self.pre_process,
             hybrid_attention_ratio=self.hybrid_attention_ratio,
             hybrid_mlp_ratio=self.hybrid_mlp_ratio,
             hybrid_override_pattern=self.hybrid_override_pattern,
+            post_process=self.post_process,
             # self.vocab_size,
             # device="cuda",
             dtype=config.params_dtype,

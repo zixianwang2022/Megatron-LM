@@ -9,6 +9,7 @@ from typing import Union
 from mamba_ssm import Mamba
 from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
 
+from megatron.core import parallel_state
 from megatron.core.transformer.identity_op import IdentityOp
 from megatron.core.transformer.module import MegatronModule
 from megatron.core.transformer.spec_utils import ModuleSpec, build_module
@@ -18,9 +19,9 @@ from megatron.core.transformer.custom_layers.transformer_engine import TENorm
 from megatron.core.ssm.mamba_hybrid_layer_allocation import (
     allocate_layers, Symbols as LayerSymbols
 )
-
 from megatron.core.ssm.mamba_layer import MambaLayer
 from megatron.core.tensor_parallel import get_cuda_rng_tracker
+from megatron.core.utils import make_viewless_tensor
 
 
 def create_mamba_block(
@@ -98,16 +99,25 @@ class MambaStack(MegatronModule):
         rms_norm: bool = False,
         initializer_cfg=None,
         residual_in_fp32=False,
+        pre_process: bool = True,
         hybrid_attention_ratio: float = 0.0,
         hybrid_mlp_ratio: float = 0.0,
         hybrid_override_pattern: str = None,
+        post_layer_norm: bool = True,
+        post_process: bool = True,
         device=None,
         dtype=None,
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
-        super().__init__(config)
-        self.config = config
+        super().__init__(config=config)
         self.residual_in_fp32 = residual_in_fp32
+        self.pre_process = pre_process
+        self.post_layer_norm = post_layer_norm
+        self.post_process = post_process
+
+        # Required for pipeline parallel schedules
+        self.input_tensor = None
+
         # TODO (duncan): potentially move hybrid_attention_ratio,
         #   hybrid_mlp_ratio, and hybrid_override_pattern into config
         self.hybrid_attention_ratio = hybrid_attention_ratio
@@ -116,36 +126,52 @@ class MambaStack(MegatronModule):
 
         layer_type_list = allocate_layers(
             self.config.num_layers, self.hybrid_attention_ratio,
-            self.hybrid_mlp_ratio, self.hybrid_override_pattern)
+            self.hybrid_mlp_ratio, self.hybrid_override_pattern
+        )
+
+        pp_layer_offset = 0
+        if parallel_state.get_pipeline_model_parallel_world_size() > 1:
+            pp_layer_offset, layer_type_list = (
+                self._select_layers_for_pipeline_parallel(layer_type_list)
+            )
 
         self.layers = nn.ModuleList()
-        for i in range(self.config.num_layers):
-            layer_type = layer_type_list[i]
+        for i, layer_type in enumerate(layer_type_list):
             if layer_type == LayerSymbols.MAMBA:
+                layer_idx = i + pp_layer_offset
                 block = create_mamba_block(
                     self.config,
                     submodules.mamba_layer,
                     residual_in_fp32=residual_in_fp32,
-                    layer_idx=i,
+                    layer_idx=layer_idx,
                     **factory_kwargs,
                 )
             elif layer_type == LayerSymbols.ATTENTION:
                 # Wondering if layer_number should be i+1. See TransformerBlock
+                # and TransformerLayer::sharded_state_dict
+                # Also, transformer layers apply their own pp_layer_offset
                 block = build_module(submodules.attention_layer,
                                      config=self.config, layer_number=i)
             elif layer_type == LayerSymbols.MLP:
                 # Wondering if layer_number should be i+1. See TransformerBlock
+                # and TransformerLayer::sharded_state_dict
+                # Also, transformer layers apply their own pp_layer_offset
                 block = build_module(submodules.mlp_layer, config=self.config,
                                      layer_number=i)
             else:
                 assert True, "unexpected layer_type"
             self.layers.append(block)
 
-        self.final_norm = TENorm(
-                config=self.config,
-                hidden_size=self.config.hidden_size,
-                eps=self.config.layernorm_epsilon,
-        )
+        # Required for activation recomputation
+        self.num_layers_per_pipeline_rank = len(self.layers)
+
+        if self.post_process and self.post_layer_norm:
+            # Final layer norm before output.
+            self.final_norm = TENorm(
+                    config=self.config,
+                    hidden_size=self.config.hidden_size,
+                    eps=self.config.layernorm_epsilon,
+            )
 
         self.apply(
             partial(
@@ -154,6 +180,24 @@ class MambaStack(MegatronModule):
                 **(initializer_cfg if initializer_cfg is not None else {}),
             )
         )
+
+    def _select_layers_for_pipeline_parallel(self, layer_type_list):
+        pipeline_rank = parallel_state.get_pipeline_model_parallel_rank()
+        num_layers_per_pipeline_rank = (
+            self.config.num_layers //
+            parallel_state.get_pipeline_model_parallel_world_size()
+        )
+
+        assert parallel_state.get_virtual_pipeline_model_parallel_world_size() \
+            is None, "The Mamba hybrid model does not currently support " \
+                     "virtual/interleaved pipeline parallelism"
+
+        offset = pipeline_rank * num_layers_per_pipeline_rank
+        selected_list = layer_type_list[
+            offset : offset + num_layers_per_pipeline_rank
+        ]
+
+        return offset, selected_list
 
     def allocate_inference_cache(self, batch_size, max_seqlen, dtype=None, **kwargs):
         return {
@@ -179,7 +223,8 @@ class MambaStack(MegatronModule):
         rotary_pos_emb: Tensor=None,
         **kwargs
     ):
-        if hidden_states == None:
+        if not self.pre_process:
+            # See set_input_tensor()
             hidden_states = self.input_tensor
 
         if inference_params:
@@ -200,6 +245,16 @@ class MambaStack(MegatronModule):
             if isinstance(hidden_states, tuple):
                 hidden_states = hidden_states[0]
 
-        hidden_states = self.final_norm(hidden_states)
+        # Final layer norm.
+        if self.post_process and self.post_layer_norm:
+            hidden_states = self.final_norm(hidden_states)
+
+        # Ensure that the tensor passed between pipeline parallel stages is
+        # viewless. See related notes in TransformerBlock and TransformerLayer
+        output = make_viewless_tensor(
+            inp=hidden_states,
+            requires_grad=hidden_states.requires_grad,
+            keep_graph=True
+        )
 
         return hidden_states
