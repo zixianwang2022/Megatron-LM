@@ -20,7 +20,7 @@ def get_layer_num(local_num, partition, PP):
         
     m = re.match('.*\/mp_rank_(\d\d)_(\d\d\d)$', partition)
     if m:
-        return PP*int(m.group(2))+local_num
+        return 1000*int(m.group(2))+local_num
 
 def get_TP_PP(partitions):
     """
