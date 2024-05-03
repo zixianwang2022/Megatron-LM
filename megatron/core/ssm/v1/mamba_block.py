@@ -9,6 +9,7 @@ from typing import Union
 from mamba_ssm import Mamba
 from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
 
+from megatron.core import parallel_state
 from megatron.core.transformer.identity_op import IdentityOp
 from megatron.core.transformer.module import MegatronModule
 from megatron.core.transformer.spec_utils import ModuleSpec, build_module
@@ -100,9 +101,12 @@ class MambaStack(MegatronModule):
         rms_norm: bool = False,
         initializer_cfg=None,
         residual_in_fp32=False,
+        pre_process: bool = True,
         hybrid_attention_ratio: float = 0.0,
         hybrid_mlp_ratio: float = 0.0,
         hybrid_override_pattern: str = None,
+        post_layer_norm: bool = True,
+        post_process: bool = True,
         device=None,
         dtype=None,
     ) -> None:
@@ -119,6 +123,10 @@ class MambaStack(MegatronModule):
         layer_type_list = allocate_layers(
             self.config.num_layers, self.hybrid_attention_ratio,
             self.hybrid_mlp_ratio, self.hybrid_override_pattern)
+
+        if parallel_state.get_pipeline_model_parallel_world_size() > 1:
+            raise ValueError("Pipeline parallel not currently implemented for "
+                             "Mamba1 MambaStack")
 
         self.layers = nn.ModuleList()
         for i in range(self.config.num_layers):
@@ -142,6 +150,9 @@ class MambaStack(MegatronModule):
             else:
                 assert True, "unexpected layer_type"
             self.layers.append(block)
+
+        # Required for activation recomputation
+        self.num_layers_per_pipeline_rank = len(self.layers)
 
         self.final_norm = TENorm(
             config=self.config,

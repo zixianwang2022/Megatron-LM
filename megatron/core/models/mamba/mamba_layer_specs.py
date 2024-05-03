@@ -1,8 +1,14 @@
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 # from mamba_ssm import Mamba
+
+# For Mamba1 use the following two lines:
+# from megatron.core.ssm.v1.mamba_mixer import Mamba
+# from megatron.core.ssm.v1.mamba_block import MambaStack, MambaStackSubmodules
+# For Mamba2 use the following two lines:
 from megatron.core.ssm.mamba_mixer import Mamba
 from megatron.core.ssm.mamba_block import MambaStack, MambaStackSubmodules
+
 from megatron.core.ssm.mamba_layer import MambaLayer, MambaLayerSubmodules
 
 from megatron.core.fusions.fused_bias_dropout import get_bias_dropout_add
