@@ -284,7 +284,7 @@ class Mamba(MegatronModule):
 
 
     def step(self, hidden_states, conv_state, ssm_state):
-        assert self.ngroups_local == 1, "Only support ngroups=1 for inference for now"
+        # assert self.ngroups_local == 1, "Only support ngroups=1 for inference for now"
         dtype = hidden_states.dtype
         assert hidden_states.shape[0] == 1, "Only support decoding with 1 token at a time for now"
 
@@ -320,7 +320,31 @@ class Mamba(MegatronModule):
         A = -torch.exp(self.A_log.float())
 
         # SSM step
-        if selective_state_update is None:
+        if self.ngroups_local > 1:
+            # TODO (rwaleffe): better inference support for models with ngroups > 1
+            B = rearrange(B, "b (g n) -> b g n", n=self.d_state)
+            C = rearrange(C, "b (g n) -> b g n", n=self.d_state)
+            B = repeat(B, "b g n -> b (g h) n", h=self.d_inner_local // self.ngroups_local)
+            C = repeat(C, "b g n -> b (g h) n", h=self.d_inner_local // self.ngroups_local)
+
+            dt = repeat(dt, "b h -> b (h p)", p=self.headdim)
+            dt_bias = repeat(self.dt_bias, "h -> (h p)", p=self.headdim)
+            A = repeat(A, "h -> (h p) n", p=self.headdim, n=self.d_state)
+            D = repeat(self.D, "h -> (h p)", p=self.headdim)
+
+            dt = F.softplus(dt + dt_bias.to(dtype=dt.dtype))
+            dA = torch.exp(torch.einsum("bd,dn->bdn", dt, A))
+
+            dB_x = torch.einsum('bd,bdn,bd->bdn', dt, B, x)
+            ssm_state.copy_(ssm_state * rearrange(dA, "b (h p) n -> b h p n", p=self.headdim) +
+                            rearrange(dB_x, "b (h p) n -> b h p n", p=self.headdim))
+
+            y = torch.einsum("bdn,bdn->bd",
+                             rearrange(ssm_state.to(dtype), "b h p n -> b (h p) n", p=self.headdim), C)
+            y = y + D.to(dtype) * x
+            if not self.rmsnorm:
+                y = y * self.act(z)  # (B D)
+        elif selective_state_update is None:
             # Discretize A and B (b (g n))
             dt = F.softplus(dt + self.dt_bias.to(dtype=dt.dtype))  # (batch, nheads)
             dA = torch.exp(dt * A)
