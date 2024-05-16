@@ -174,6 +174,14 @@ class MambaModel(LanguageModule):
             )
             rotary_pos_emb = self.rotary_pos_emb(rotary_seq_len)
 
+        # The following assert will currently fail when running inference.
+        # For inference, it can be commented-out locally for now.
+        # TODO (duncan/rwaleffe): (1) confirm that the externally-generated
+        #   attention mask is not needed and is ignored by the model in
+        #   inference mode, (2) reduce the size of the externally-generated
+        #   attention mask to prevent CPU OOM (as we did for training), (3)
+        #   force the attention mask passed to the model in inference mode to
+        #   be None, so this assert will succeed.
         assert attention_mask is None, "The attention mask is ignored and should be set to None"
 
         # Run decoder.
