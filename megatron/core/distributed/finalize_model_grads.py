@@ -1,6 +1,6 @@
-# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 
-from typing import List
+from typing import List, Optional
 
 import torch
 from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors
@@ -74,50 +74,33 @@ def _allreduce_layernorm_grads(model: List[torch.nn.Module], config: Transformer
 
     # All-reduce layernorm parameters across model parallel nodes
     # when sequence parallelism is used
-    if parallel_state.get_tensor_model_parallel_world_size() > 1 and config.sequence_parallel:
-        grads = []
-        for model_chunk in model:
-            for param in get_attr_wrapped_model(model_chunk, 'parameters')():
-                if getattr(param, 'sequence_parallel', False):
-                    grad = param.main_grad
-                    grads.append(grad.data)
-        coalesced = _flatten_dense_tensors(grads)
-        torch.distributed.all_reduce(
-            coalesced, group=parallel_state.get_tensor_model_parallel_group()
-        )
-        for buf, synced in zip(grads, _unflatten_dense_tensors(coalesced, grads)):
-            buf.copy_(synced)
-
-
-def _allreduce_expert_grads(model: List[torch.nn.Module], config: TransformerConfig):
-    """
-    All-reduce expert grads (for expert parallelism).
-    """
-
-    # All-reduce switchmlp parameters across data modulo expert parallel nodes
-    if (
-        config.expert_model_parallel_size > 1
-        and config.expert_model_parallel_size < parallel_state.get_data_parallel_world_size()
+    if parallel_state.get_tensor_model_parallel_world_size() > 1 and (
+        config.sequence_parallel or config.qk_layernorm
     ):
         grads = []
         for model_chunk in model:
-            for param in get_attr_wrapped_model(model_chunk, 'parameters')():
-                if not getattr(param, 'allreduce', True):
+            for name, param in get_attr_wrapped_model(model_chunk, 'named_parameters')():
+                if (
+                    getattr(param, 'sequence_parallel', False)
+                    or 'q_layernorm' in name
+                    or 'k_layernorm' in name
+                ):
                     grad = param.main_grad
                     grads.append(grad.data)
-        coalesced = _flatten_dense_tensors(grads)
-        torch.distributed.all_reduce(
-            coalesced, group=parallel_state.get_data_modulo_expert_parallel_group()
-        )
-        for buf, synced in zip(grads, _unflatten_dense_tensors(coalesced, grads)):
-            buf.copy_(synced)
+        if grads:
+            coalesced = _flatten_dense_tensors(grads)
+            torch.distributed.all_reduce(
+                coalesced, group=parallel_state.get_tensor_model_parallel_group()
+            )
+            for buf, synced in zip(grads, _unflatten_dense_tensors(coalesced, grads)):
+                buf.copy_(synced)
 
 
-def finalize_model_grads(model: List[torch.nn.Module]):
+def finalize_model_grads(model: List[torch.nn.Module], num_tokens: Optional[torch.Tensor] = None):
     """
     All-reduce all model grads across DP replicas, layernorm grads for sequence parallelism,
-    embedding grads across first and last pipeline stages (if not tied), and expert grads
-    for expert parallelism.
+    embedding grads across first and last pipeline stages (if not tied),
+    scale gradients by `num_tokens`.
     """
 
     config = get_model_config(model[0])
@@ -148,11 +131,20 @@ def finalize_model_grads(model: List[torch.nn.Module]):
     if config.timers is not None:
         config.timers('embedding-grads-all-reduce').stop()
 
-    # All-reduce expert grads (for expert parallelism).
-    if config.timers is not None:
-        config.timers('expert-grads-all-reduce', log_level=1).start(
-            barrier=config.barrier_with_L1_time
+    # normalize gradients for per-token loss normalization.
+    # if we are using by the number of tokens, then we use that as a divisor. this number
+    # will be the total number of non-padded tokens in the global batch.
+    if num_tokens is not None:
+        # the number of tokens is only present on the last stage, so broadcast it
+        # to the other ranks in the pipeline parallel group.
+        torch.distributed.broadcast(
+            num_tokens,
+            src=parallel_state.get_pipeline_model_parallel_last_rank(),
+            group=parallel_state.get_pipeline_model_parallel_group(),
         )
-    _allreduce_expert_grads(model, config)
-    if config.timers is not None:
-        config.timers('expert-grads-all-reduce').stop()
+        # all-reduce across DP ranks.
+        torch.distributed.all_reduce(num_tokens, group=parallel_state.get_data_parallel_group())
+        for model_chunk in model:
+            if num_tokens > 0:
+                scaling = 1.0 / num_tokens
+                model_chunk.scale_gradients(scaling)

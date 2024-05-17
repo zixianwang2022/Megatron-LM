@@ -52,10 +52,11 @@ class TestParallelTransformerLayer:
         assert hidden_states.shape[1] == micro_batch_size
         assert hidden_states.shape[2] == config.hidden_size
 
+    @pytest.mark.parametrize('order', ['tp-pp-dp', 'tp-dp-pp'])
     @pytest.mark.parametrize('tp_pp', [(4, 2), (1, 1), (8, 1), (2, 2)])
-    def test_sharded_state_dict(self, tp_pp):
+    def test_sharded_state_dict(self, tp_pp, order):
         Utils.destroy_model_parallel()
-        Utils.initialize_model_parallel(*tp_pp)
+        Utils.initialize_model_parallel(*tp_pp, order=order)
 
         model_parallel_cuda_manual_seed(123)
         transformer_config = TransformerConfig(num_layers=2, hidden_size=128, num_attention_heads=8, use_cpu_initialization=True)
@@ -76,13 +77,12 @@ class TestParallelTransformerLayer:
 
         # Test all global shapes. Prepend num layers in front of expected shapes
         tensor_global_shapes = {k: v.global_shape for k, v in sharded_tensors.items()}
-        expected_global_shapes = {k: (transformer_config.num_layers, *v)
-                                  for k, v in get_tensor_shapes_for_tp(transformer_config, 1).items()}
+        expected_global_shapes = get_tensor_shapes_for_tp(transformer_config, 1)
         assert tensor_global_shapes == expected_global_shapes
 
         # Test ShardedTensor keys
         for state_dict_key, sh_ten in sharded_tensors.items():
-            assert state_dict_key == f'0.{sh_ten.key}'
+            assert state_dict_key == sh_ten.key
 
         Utils.destroy_model_parallel()
         Utils.initialize_model_parallel(1, 1)
@@ -91,16 +91,16 @@ class TestParallelTransformerLayer:
 def get_tensor_shapes_for_tp(transformer_config, tp_size):
     hs = transformer_config.hidden_size
     return {
-        '0.mlp.linear_fc1.layer_norm_weight': (hs,),
-        '0.mlp.linear_fc1.layer_norm_bias': (hs,),
-        '0.mlp.linear_fc1.weight': (hs * 4 // tp_size, hs),
-        '0.mlp.linear_fc1.bias': (hs * 4 // tp_size,),
-        '0.mlp.linear_fc2.weight': (hs, hs * 4 // tp_size),
-        '0.mlp.linear_fc2.bias': (hs,),
-        '0.self_attention.linear_proj.weight': (hs, hs // tp_size),
-        '0.self_attention.linear_proj.bias': (hs,),
-        '0.self_attention.linear_qkv.layer_norm_weight': (hs,),
-        '0.self_attention.linear_qkv.layer_norm_bias': (hs,),
-        '0.self_attention.linear_qkv.weight': (hs * 3 // tp_size, hs),
-        '0.self_attention.linear_qkv.bias': (hs * 3 // tp_size,),
+        'mlp.linear_fc1.layer_norm_weight': (hs,),
+        'mlp.linear_fc1.layer_norm_bias': (hs,),
+        'mlp.linear_fc1.weight': (hs * 4 // tp_size, hs),
+        'mlp.linear_fc1.bias': (hs * 4 // tp_size,),
+        'mlp.linear_fc2.weight': (hs, hs * 4 // tp_size),
+        'mlp.linear_fc2.bias': (hs,),
+        'self_attention.linear_proj.weight': (hs, hs // tp_size),
+        'self_attention.linear_proj.bias': (hs,),
+        'self_attention.linear_qkv.layer_norm_weight': (hs,),
+        'self_attention.linear_qkv.layer_norm_bias': (hs,),
+        'self_attention.linear_qkv.weight': (hs * 3 // tp_size, hs),
+        'self_attention.linear_qkv.bias': (hs * 3 // tp_size,),
     }
