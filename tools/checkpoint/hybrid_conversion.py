@@ -169,16 +169,26 @@ def split_tensor_for_tp(params, key, dim, tensor):
 
 def finalize_checkpoint(sample_model, model, params, verbose=False):
     # make sure the rest of the checkpoint is how we want it from the original (i.e., other than the 'model')
+    reset_iterations = params.reset_iterations
+
     # checkpoint 'args'
     model['args'] = copy.deepcopy(sample_model['args'])
     model['args'].tensor_model_parallel_size = params.target_tp_size
     model['args'].pipeline_model_parallel_size = params.target_pp_size
+    if reset_iterations:
+        model['args'].iteration = 0
+        model['args'].consumed_valid_samples = 0
+        model['args'].consumed_train_samples = 0
+        model['args'].train_iters = 0
+        model['args'].train_samples = 0
 
     # checkpoint 'checkpoint_version'
     model['checkpoint_version'] = copy.deepcopy(sample_model['checkpoint_version'])
 
     # checkpoint 'iteration'
     model['iteration'] = copy.deepcopy(sample_model['iteration'])
+    if reset_iterations:
+        model['iteration'] = 0
 
     # checkpoint 'optimizer'
     # ignore
@@ -223,6 +233,7 @@ def main(args):
             iteration = int(metastring)
         except ValueError:
             raise Exception("")
+    out_iteration = iteration if not args.reset_iterations else 0
 
     # get model directory and model parallel ranks
     input_model_dir = os.path.join(args.load_dir, 'iter_{:07d}'.format(iteration))
@@ -349,13 +360,16 @@ def main(args):
 
             model = finalize_checkpoint(sample_model, tp_models[tp], args, verbose=False)
 
-            save_dir = os.path.join(args.save_dir, 'iter_{:07d}'.format(iteration), dir_name)
+            save_dir = os.path.join(args.save_dir, 'iter_{:07d}'.format(out_iteration), dir_name)
             os.makedirs(save_dir, exist_ok=True)
             model_file = os.path.join(save_dir, "model_optim_rng.pt")
             torch.save(model, model_file)
             print(f"Model {model_file} is saved.")
 
-    shutil.copyfile(tracker_filename, os.path.join(args.save_dir, 'latest_checkpointed_iteration.txt'))
+    # shutil.copyfile(tracker_filename, os.path.join(args.save_dir, 'latest_checkpointed_iteration.txt'))
+    tracker_filename = os.path.join(args.save_dir, 'latest_checkpointed_iteration.txt')
+    with open(tracker_filename, 'w') as f:
+        f.write(str(out_iteration))
 
 
 if __name__ == "__main__":
@@ -371,6 +385,7 @@ if __name__ == "__main__":
     parser.add_argument('--save-dir', type=str)
     parser.add_argument('--target-tp-size', type=int, default=1)
     parser.add_argument('--target-pp-size', type=int, default=1)
+    parser.add_argument('--reset-iterations', action='store_true')
 
     parser.add_argument('--d-model', type=int, default=1024)
     parser.add_argument('--mamba-version', type=int, default=2)
