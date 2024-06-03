@@ -13,6 +13,7 @@ from megatron.core.transformer.identity_op import IdentityFuncOp, IdentityOp
 
 from megatron.core.transformer.transformer_config import TransformerConfig
 
+
 # from megatron.core.transformer.spec_utils import ModuleSpec
 # from megatron.core.transformer.transformer_layer import TransformerLayer, TransformerLayerSubmodules
 
@@ -44,7 +45,7 @@ class MambaLayer(MegatronModule):
             **kwargs
         )
         self.norm = build_module(submodules.norm,
-                                 self.config,
+                                 # self.config, # needed for TENorm
                                  self.config.hidden_size
         )
 

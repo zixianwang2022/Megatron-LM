@@ -1,5 +1,5 @@
 if __name__ != "__main__":
-    from megatron import print_rank_0
+    from megatron.training import print_rank_0
 else:
     def print_rank_0(*args, **kwargs): print(*args, **kwargs)
 
