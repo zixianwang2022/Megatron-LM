@@ -25,8 +25,6 @@ from megatron.core.transformer.mlp import MLP, MLPSubmodules
 from megatron.core.transformer.spec_utils import ModuleSpec
 from megatron.core.transformer.transformer_layer import (
     TransformerLayer, TransformerLayerSubmodules)
-from megatron.legacy.model import RMSNorm
-
 
 mamba_stack_spec = ModuleSpec(
         module=MambaStack,
@@ -34,8 +32,7 @@ mamba_stack_spec = ModuleSpec(
             mamba_layer=ModuleSpec(
                 module=MambaLayer,
                 submodules=MambaLayerSubmodules(
-                    # TODO(duncan): resolve issue with TENorm(RMSNorm) here
-                    norm=RMSNorm,
+                    norm=TENorm,
                     mixer=Mamba,
                 ),
             ),

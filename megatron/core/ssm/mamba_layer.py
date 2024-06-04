@@ -45,7 +45,7 @@ class MambaLayer(MegatronModule):
             **kwargs
         )
         self.norm = build_module(submodules.norm,
-                                 # self.config, # needed for TENorm
+                                 self.config,
                                  self.config.hidden_size
         )
 
