@@ -7,7 +7,7 @@ from torch import nn, Tensor
 from typing import Union
 
 from mamba_ssm import Mamba
-from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
+from mamba_ssm.ops.triton.layer_norm import RMSNorm, layer_norm_fn, rms_norm_fn
 
 from megatron.core import parallel_state
 from megatron.core.transformer.identity_op import IdentityOp

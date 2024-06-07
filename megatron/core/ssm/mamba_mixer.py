@@ -38,8 +38,8 @@ except ImportError:
     causal_conv1d_update = None
 
 # from megatron import print_rank_0
-from src.ops.triton.flashmamba import mamba_chunk_scan_fused
-from src.ops.triton.layernorm_gated import RMSNorm as RMSNormGated
+from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined
+from mamba_ssm.ops.triton.layernorm_gated import RMSNorm as RMSNormGated
 
 class Mamba(MegatronModule):
     def __init__(
@@ -248,7 +248,7 @@ class Mamba(MegatronModule):
         B = rearrange(B, "l b (g n) -> b l g n", n=self.d_state).contiguous()
         C = rearrange(C, "l b (g n) -> b l g n", n=self.d_state).contiguous()
         z = rearrange(z, "l b (h p) -> b l h p", p=self.headdim).contiguous()
-        y = mamba_chunk_scan_fused(
+        y = mamba_chunk_scan_combined(
             x,
             dt,
             A,
