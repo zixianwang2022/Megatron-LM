@@ -25,7 +25,7 @@ class ParallelFileCacheManager(FileCacheManager):
 
     # See https://github.com/triton-lang/triton/blob/main/python/triton/runtime/cache.py
 
-    # When running Triton with multiple ranks they each create their own cache manager. Their input
+    # When running Triton with multiple ranks, they each create their own cache manager. Their input
     # keys to that class are mostly (but not entirely) the same across ranks, which leads many ranks
     # to write to the same 'key' directories in the cache dir at the same time during compilation,
     # leading to conflicts.  This works around that by making each cache dir be rank specific by
