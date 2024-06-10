@@ -1,3 +1,5 @@
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
+
 import torch
 import os
 import random
@@ -20,6 +22,15 @@ def default_cache_dir():
 
 
 class ParallelFileCacheManager(FileCacheManager):
+
+    # See https://github.com/triton-lang/triton/blob/main/python/triton/runtime/cache.py
+
+    # When running Triton with multiple ranks they each create their own cache manager. Their input
+    # keys to that class are mostly (but not entirely) the same across ranks, which leads many ranks
+    # to write to the same 'key' directories in the cache dir at the same time during compilation,
+    # leading to conflicts.  This works around that by making each cache dir be rank specific by
+    # adding "rank_<host>_<pid>" to the cache directory.
+
     def __init__(self, key):
         self.key = key
         self.lock_path = None

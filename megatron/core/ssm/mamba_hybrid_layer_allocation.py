@@ -1,3 +1,5 @@
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
+
 if __name__ != "__main__":
     from megatron.training import print_rank_0
 else:
