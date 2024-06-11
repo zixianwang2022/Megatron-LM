@@ -6,7 +6,7 @@
 CHECKPOINT_PATH=$1
 TOKENIZER_PATH=$2
 
-DISTRIBUTED_ARGS="--nproc_per_node 4 \
+DISTRIBUTED_ARGS="--nproc_per_node 1 \
                   --nnodes 1 \
                   --node_rank 0 \
                   --master_addr localhost \
@@ -21,7 +21,7 @@ export TRITON_CACHE_DIR="./triton-cache/"
 export TRITON_CACHE_MANAGER="megatron.core.ssm.triton_cache_manager:ParallelFileCacheManager"
 
 torchrun $DISTRIBUTED_ARGS ../../tools/run_mamba_text_generation_server.py \
-       --tensor-model-parallel-size 4  \
+       --tensor-model-parallel-size 1  \
        --pipeline-model-parallel-size 1  \
        --untie-embeddings-and-output-weights \
        --num-layers 56  \

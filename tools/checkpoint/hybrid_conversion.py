@@ -1,4 +1,4 @@
-# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 
 # Note (rwaleffe): This is a temporary file for hybrid mamba-transformer model checkpoint conversion.
 # This functionality should be integrated with the megatron core checkpoint loader/saver.
@@ -387,7 +387,7 @@ if __name__ == "__main__":
     parser.add_argument('--target-pp-size', type=int, default=1)
     parser.add_argument('--reset-iterations', action='store_true')
 
-    parser.add_argument('--d-model', type=int, default=1024)
+    parser.add_argument('--d-model', type=int, default=4096)
     parser.add_argument('--mamba-version', type=int, default=2)
     parser.add_argument('--mamba-d-state', type=int, default=128)
     parser.add_argument('--mamba2-n-groups', type=int, default=8)
