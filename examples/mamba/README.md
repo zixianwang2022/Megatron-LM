@@ -17,7 +17,7 @@ a single node. Select between 800M-scale and 8B-scale models by setting the
 
 ## Text Generation
 
-Use [`run_text_gen_server_8b`](./run_text_gen_server_8b.sh) to start a text
+Use [`run_text_gen_server_8b.sh`](./run_text_gen_server_8b.sh) to start a text
 generation server using an 8B hybrid checkpoint.
 
 ## Checkpoint Formats
