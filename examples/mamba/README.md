@@ -2,8 +2,8 @@
 
 ## Introduction
 
-Here is the code used for <em>An Empirical Study of Large-Scale Mamba-based
-Language Models</em>.
+Here is the code used for
+<em>An Empirical Study of Mamba-based Language Models</em>.
 
 ## Installation
 
