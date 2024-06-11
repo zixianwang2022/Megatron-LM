@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Use: train.sh <data-path> <tokenizer-path>
+# Use: ./train.sh <data-path> <tokenizer-path>
 
 MODEL_SCALE="800M" # or "8B"
 

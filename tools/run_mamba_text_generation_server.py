@@ -1,23 +1,23 @@
-# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 
-"""Sample Generate GPT"""
+"""Sample Generate Mamba"""
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),
                                              os.path.pardir)))
-import socket
-from megatron import get_args
-from megatron import print_rank_0
+from megatron.training import get_args
+from megatron.training import print_rank_0
 from megatron.core import mpu
-from megatron.checkpointing import load_checkpoint
-from megatron.initialize import initialize_megatron
+from megatron.training.checkpointing import load_checkpoint
+from megatron.training.initialize import initialize_megatron
 from megatron.core.models.mamba.mamba_model import MambaModel
 from megatron.core.transformer.spec_utils import import_module
 from megatron.training import get_model
-from megatron.arguments import core_transformer_config_from_args
-from megatron.text_generation_server import MegatronServer
-from megatron.text_generation import generate_and_post_process
-from megatron.text_generation import beam_search_and_post_process
+from megatron.training.arguments import core_transformer_config_from_args
+from megatron.inference.text_generation_server import MegatronServer
+from megatron.inference.text_generation import generate_and_post_process
+from megatron.inference.text_generation import beam_search_and_post_process
+
 import torch
 
 def count_parameters_in_layer(model, layer_name):
@@ -27,7 +27,6 @@ def count_parameters_in_layer(model, layer_name):
             num_params += param.numel()
             print_rank_0(f" - {name}: {param.numel()}")
     return num_params
-
 
 # Taken from pretrain_mamba.py
 def model_provider(pre_process=True, post_process=True) -> MambaModel:
@@ -77,7 +76,6 @@ def model_provider(pre_process=True, post_process=True) -> MambaModel:
         print_rank_0(f" == params layer {l}: {layer_params}")
 
     return model
-
 
 def add_text_generate_args(parser):
     group = parser.add_argument_group(title='text generation')
