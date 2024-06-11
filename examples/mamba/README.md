@@ -46,10 +46,10 @@ total layers.
 * `ATT` = `MLP` = 0 is a pure Mamba model.
 * `ATT` = `MLP` = 0.5 is a transfomer model.
 
-If `ATT` or `MLP` are greater than 0.0 or if `--hybrid-override-pattern` is
-specified, the logfile will include information about the hybrid layer pattern
-used. `--hybrid-override-pattern` can be used to specify a different pattern
-than the default, algorithmically-generated one.
+If either `ATT` or `MLP` is greater than 0.0 or if `--hybrid-override-pattern`
+is specified, the logfile will include information about the hybrid layer
+pattern used. `--hybrid-override-pattern` can be used to specify a different
+pattern than the default, algorithmically-generated one.
 
 ## Mamba1 vs Mamba2
 
