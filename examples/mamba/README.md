@@ -7,7 +7,7 @@ Language Models</em>.
 
 ## Installation
 
-Create and run a Docker container using the {Dockerfile}[./Dockerfile].
+Create and run a Docker container using the [Dockerfile](./Dockerfile).
 
 ## Train
 
@@ -32,11 +32,13 @@ There is an example run command at the end of that file.
 
 ## Hybrid Options
 
-`--hybrid-attention-ratio` (`ATT`) specifies a target ratio of attention layers
-to total layers. For example 4 attention layers out of 48 total layers is 0.08.
+`--hybrid-attention-ratio ATT` specifies a target ratio of attention layers
+to total layers. For example, 4 attention layers out of 48 total layers is
+specified by `--hybrid-attention-ratio 0.08`.
 
-`--hybrid-mlp-ratio` (`MLP`) specifies a target ratio of MLP layers to total
-layers. For example 24 MLP layers out of 48 total layers is 0.50.
+`--hybrid-mlp-ratio MLP` specifies a target ratio of MLP layers to total
+layers. For example, 24 MLP layers out of 48 total layers is specified by
+`--hybrid-mlp-ratio 0.5`.
 
 * (`ATT` + `MLP`) must be less than or equal to 1.0.
 * (1.0 - `ATT` - `MLP`) is the hybrid mamba ratio, the ratio of mamba layers to
