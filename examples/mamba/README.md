@@ -1,4 +1,4 @@
-# Mamba and Mamba Hybrid Models
+# Mamba-based Language Models
 
 ## Introduction
 
