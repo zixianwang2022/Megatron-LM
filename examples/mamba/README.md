@@ -80,9 +80,9 @@ is specified, the logfile will include information about the hybrid layer
 pattern used. `--hybrid-override-pattern` can be used to specify a different
 pattern than the default, algorithmically-generated one.
 
-## Mamba1 vs Mamba2
+## Mamba vs Mamba-2
 
-The code instantiates Mamba2 by default. To select the Mamba1 code-path, change
+The code instantiates Mamba-2 by default. To select the Mamba code-path, change
 the imports at the top of
 [mamba_layer_specs.py](../../megatron/core/models/mamba/mamba_layer_specs.py),
 as specified there.
