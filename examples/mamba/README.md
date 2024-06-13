@@ -6,7 +6,7 @@ This document is an entrypoint into the code used for
 <em>[An Empirical Study of Mamba-based Language Models](https://arxiv.org/abs/2406.07887)</em>.
 
 We are releasing the parameters for some of the models described in that
-technical report, via
+technical report via
 [HuggingFace](https://huggingface.co/collections/nvidia/ssms-666a362c5c3bb7e4a6bcfb9c).
 
 ## Installation
