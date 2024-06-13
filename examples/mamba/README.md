@@ -1,9 +1,13 @@
-# Mamba Hybrid
+# Mamba and Mamba Hybrid Models
 
 ## Introduction
 
-Here is the code used for
-<em>An Empirical Study of Mamba-based Language Models</em>.
+This document is an entrypoint into the code used for
+<em>[An Empirical Study of Mamba-based Language Models](https://arxiv.org/abs/2406.07887)</em>.
+
+We are releasing the parameters for some of the models described in that
+technical report, via
+[HuggingFace](https://huggingface.co/collections/nvidia/ssms-666a362c5c3bb7e4a6bcfb9c).
 
 ## Installation
 
@@ -11,6 +15,12 @@ Create and run a Docker container using the [Dockerfile](./Dockerfile).
 
 ```
 docker build -t your_image_name:your_tag .
+docker run --gpus all -it --rm \
+  -v /path/to/megatron:/workspace/megatron \
+  -v /path/to/dataset:/workspace/dataset \
+  -v /path/to/checkpoints:/workspace/checkpoints \
+  -w /workspace/megatron/examples/mamba \
+  your_image_name:your_tag
 ```
 
 ## Train
@@ -18,15 +28,19 @@ docker build -t your_image_name:your_tag .
 [`train.sh`](./train.sh) is an example pretraining script, showing how to run on
 a single node. Select between 800M-scale and 8B-scale models by setting the
 `MODEL_SCALE` variable. The 8B-scale hybrid model architecture is the same as
-the one described in the paper.
+the one described in the technical report.
 
 ## Text Generation
 
 Use [`run_text_gen_server_8b.sh`](./run_text_gen_server_8b.sh) to start a text
 generation server using an 8B hybrid checkpoint. This is configured to run the
-8b hybrid model described in the paper, with tensor model parallel set to 1.
-The arguments will need to be changed if using a checkpoint with a different
-model parallel configuration or other differences, such as model architecture.
+8B hybrid model described in the technical report, with tensor model parallel
+set to 1.
+
+The arguments in the script will need to be changed if using a checkpoint with a
+different model parallel configuration or other differences, such as model
+architecture. For example, to run the 8B pure Mamba-2 model, change
+`--hybrid-attention-ratio` and `--hybrid-mlp-ratio` to 0.0, or remove them.
 
 ## Checkpoint Formats
 
