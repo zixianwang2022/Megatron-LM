@@ -42,6 +42,9 @@ different model parallel configuration or other differences, such as model
 architecture. For example, to run the 8B pure Mamba-2 model, change
 `--hybrid-attention-ratio` and `--hybrid-mlp-ratio` to 0.0, or remove them.
 
+Use [`run_text_gen_server_8b_gpt3.sh`](./run_text_gen_server_8b_gpt3.sh) to start
+a text generation server using the 8B reference Transformer checkpoint.
+
 ## Checkpoint Formats
 
 For inference, the model must be configured to match the checkpoint file used,
