@@ -65,15 +65,11 @@ def get_num_layers_to_build(config: TransformerConfig) -> int:
         # Stage 1: [2, 3]  [6, 7]
 
         vp_size = parallel_state.get_virtual_pipeline_model_parallel_world_size()
-
         num_layers_per_virtual_rank = num_layers_per_pipeline_rank // vp_size
-
         num_layers_to_build = num_layers_per_virtual_rank
-
     else:
         # Non-interleaved pipeline parallelism:
         # Each stage gets a contiguous set of layers.
-
         num_layers_to_build = num_layers_per_pipeline_rank
 
     return num_layers_to_build
