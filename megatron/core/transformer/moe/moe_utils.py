@@ -307,8 +307,9 @@ def topk_softmax_with_capacity(
     num_tokens = logits.shape[0]
     num_experts = logits.shape[1]
 
-    scores, top_indices = torch.topk(logits, k=topk, dim=1)
-    probs = torch.softmax(scores, dim=-1, dtype=torch.float32).type_as(logits)
+    # scores, top_indices = torch.topk(logits, k=topk, dim=1)
+    probs = torch.softmax(logits, dim=-1, dtype=torch.float32).type_as(logits)
+    probs, top_indices = torch.topk(probs, k=topk, dim=1)
 
     if capacity_factor is None:
         # TopK without capacity
