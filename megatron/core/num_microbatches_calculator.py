@@ -30,17 +30,24 @@ def get_micro_batch_size():
     return _GLOBAL_NUM_MICROBATCHES_CALCULATOR.micro_batch_size
 
 
-def _reconfigure_microbatch_calculator(
+def reconfigure_microbatch_calculator(
     rank: int,
     rampup_batch_size: Optional[List[int]],
     global_batch_size: int,
     micro_batch_size: int,
     data_parallel_size: int,
 ) -> None:
-    if torch.distributed.get_rank() == 0:
-        import warnings
+    """Updates the microbatch calculator. Useful in cases where the
+    number of microbatches varies throughout a training. For example,
+    when the number of microbatches differs from training and validation.
 
-        warnings.warn("This function is only for unittest")
+    Args:
+        rank (int): Rank of the GPU, only rank 0 will log the information.
+        rampup_batch_size (Optional[List[int]]): Rampup batch size, should be in format of [start_global_batch_size, batch_size_increment, ramup_samples].
+        global_batch_size (int): Global batch size for the model.
+        micro_batch_size (int): Micro batch size at initialization.
+        data_parallel_size (int): Data parallel size.
+    """
     global _GLOBAL_NUM_MICROBATCHES_CALCULATOR
 
     _GLOBAL_NUM_MICROBATCHES_CALCULATOR = build_num_microbatches_calculator(
