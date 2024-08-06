@@ -1312,8 +1312,7 @@ def get_data_parallel_src_rank(with_context_parallel=False):
 
 
 def get_pipeline_model_parallel_first_rank():
-    """Return the global rank of the first process in the pipeline for the
-    current tensor parallel group"""
+    """Return the global rank of the first stage in the current rank's pipeline."""
     assert _PIPELINE_GLOBAL_RANKS is not None, "Pipeline parallel group is not initialized"
     if isinstance(_PIPELINE_GLOBAL_RANKS[0], list):
         # I assume the first rank is the same for all pp groups right now.
@@ -1325,16 +1324,17 @@ def get_pipeline_model_parallel_first_rank():
 
 
 def get_pipeline_model_parallel_last_rank():
-    """Return the global rank of the last process in the pipeline for the
-    current tensor parallel group"""
+    """Return the global rank of the last stage in the current rank's pipeline."""
     assert _PIPELINE_GLOBAL_RANKS is not None, "Pipeline parallel group is not initialized"
     last_rank_local = get_pipeline_model_parallel_world_size() - 1
     return _PIPELINE_GLOBAL_RANKS[last_rank_local]
 
 
 def get_pipeline_model_parallel_next_rank():
-    """Return the global rank that follows the caller in the pipeline, for each pipeline group that
-    the rank is part of. If it's just part of one group, an int is returned, otherwise a list of ints.
+    """Return the global rank that follows the caller in the pipeline, for each
+    pipeline-parallel group that the rank is part of.
+    
+    If it's just part of one group, an int is returned, otherwise a list of ints.
     """
     assert _PIPELINE_GLOBAL_RANKS is not None, "Pipeline parallel group is not initialized"
     rank_in_pipeline = get_pipeline_model_parallel_rank()
@@ -1349,8 +1349,10 @@ def get_pipeline_model_parallel_next_rank():
 
 
 def get_pipeline_model_parallel_prev_rank():
-    """Return the global rank that preceeds the caller in the pipeline, for each pipeline group that
-    the rank is part of. If it's just part of one group, an int is returned, otherwise a list of ints.
+    """Return the global rank that preceeds the caller in the pipeline, for each
+    pipeline-parallel group that the rank is part of.
+    
+    If it's just part of one group, an int is returned, otherwise a list of ints.
     """
     assert _PIPELINE_GLOBAL_RANKS is not None, "Pipeline parallel group is not initialized"
     rank_in_pipeline = get_pipeline_model_parallel_rank()
