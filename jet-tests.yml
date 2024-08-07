@@ -3,6 +3,7 @@
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_LABELS =~ /Run tests/'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_LABELS =~ /Build only/'
+    - if: $CI_PIPELINE_SOURCE == "web"
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
     - when: never
 
