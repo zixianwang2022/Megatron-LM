@@ -14,7 +14,26 @@ mirror_to_github:
     - git checkout $CI_COMMIT_BRANCH
     - git remote add github https://ko3n1g:$GH_TOKEN@github.com/NVIDIA/Megatron-LM.git || true
     - git push -u github $CI_COMMIT_BRANCH
-  
+
+create_ci_branches:
+  parallel:
+    matrix:
+      - branch: ci-unit-test-extended
+      - branch: ci-rebuild-mcore-nemo-image
+      - branch: ci-mr-a100
+      - branch: ci-nightly-a100
+      - branch: ci-weekly-a100
+      - branch: ci-weekly-h100
+  tags: [mcore-docker-node-small]
+  stage: .pre
+  image: python:3.10
+  variables:
+    GIT_STRATEGY: "clone"
+  script:
+    - git remote set-url origin "https://gitlab-ci-token:${PROJECT_ACCESS_TOKEN_MCORE}@${GITLAB_ENDPOINT}/adlr/megatron-lm.git"
+    - git switch --force-create $branch;
+    - git push --force -u origin $branch
+
 label_merge_request:
   rules: 
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
