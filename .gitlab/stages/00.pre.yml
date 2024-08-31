@@ -31,8 +31,8 @@ create_ci_branches:
     GIT_STRATEGY: "clone"
   script:
     - git switch --force-create $tag origin/main;
-    - git push --force
-    
+    - git push --force -u origin $tag
+
 label_merge_request:
   rules: 
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
