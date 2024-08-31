@@ -30,6 +30,7 @@ create_ci_branches:
   variables:
     GIT_STRATEGY: "clone"
   script:
+    - git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_ENDPOINT}/adlr/megatron-lm.git"
     - git switch --force-create $branch;
     - git push --force -u origin $branch
 
