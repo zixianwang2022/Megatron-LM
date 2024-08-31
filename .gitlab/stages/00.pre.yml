@@ -30,8 +30,8 @@ create_ci_branches:
   variables:
     GIT_STRATEGY: "clone"
   script:
-    - git switch --force-create $tag;
-    - git push --force -u origin $tag
+    - git switch --force-create $branch;
+    - git push --force -u origin $branch
 
 label_merge_request:
   rules: 
