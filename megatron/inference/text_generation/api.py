@@ -15,6 +15,7 @@ from .tokenization import (
     tokenize_prompts,
     detokenize_generations)
 from .forward_step import ForwardStep
+from megatron.training import get_args
 
 def generate_and_post_process(model,
                               forward_step=ForwardStep,
@@ -35,9 +36,16 @@ def generate_and_post_process(model,
                               return_logits=False):
     """Run inference and post-process outputs, i.e., detokenize,
     move to cpu and convert to list."""
+    
+    print (f'Printing from megatron/inference/text_generation/api.py line 39')
+    args = get_args()
+    args.global_counter_cnt += 1 
+    print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation/api.py FUNC=generate_and_post_process line 43')
+       
 
     # Main inference.
-    tokens, lengths, output_log_probs, logits = generate(
+    # logits is returned as None from ---- generate_tokens_probs_and_return_on_first_stage
+    tokens, lengths, output_log_probs, logits, all_layers_states_dict = generate(
         model,
         forward_step=forward_step,
         prompts=prompts,
@@ -54,6 +62,12 @@ def generate_and_post_process(model,
         stop_on_eol=stop_on_eol,
         prevent_newline_after_colon=prevent_newline_after_colon,
         random_seed=random_seed)
+    
+    # return "Hi, returning from megatron/inference/text_generation/api.py line 60"
+    
+    args.global_counter_cnt += 1 
+    print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation/api.py FUNC=generate_and_post_process line 68')
+    
 
     # Only post-process on first stage.
     if mpu.is_pipeline_first_stage():
@@ -66,13 +80,15 @@ def generate_and_post_process(model,
                 output_log_probs[i] = prob[:len(seg)-1]
 
         if return_logits:
+            # print ("Returning from megatron/inference/text_generation/api.py line 73")
             assert(tokens_to_generate == 0)
             assert(mpu.get_pipeline_model_parallel_world_size() == 1)
             return prompts_plus_generations, prompts_plus_generations_segments, \
-            output_log_probs, tokens, logits
+            output_log_probs, tokens, logits, all_layers_states_dict
         else:
+            print ("Returning from megatron/inference/text_generation/api.py line 79")
             return prompts_plus_generations, prompts_plus_generations_segments, \
-            output_log_probs, tokens
+            output_log_probs, tokens, all_layers_states_dict
 
     return None
 
@@ -99,7 +115,11 @@ def generate(model,
            corresponding length.
        output_log_probs: log probs of the tokens.
     """
-
+    args = get_args()
+    args.global_counter_cnt += 1 
+    print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation/api.py FUNC=generate line 115')
+    
+    
     # Make sure input params are avaialble to all ranks.
     values = [tokens_to_generate,
               return_output_log_probs,
@@ -134,6 +154,10 @@ def generate(model,
 
     context_tokens_tensor, context_length_tensor = tokenize_prompts(
         prompts=prompts, tokens_to_generate=tokens_to_generate, add_BOS=add_BOS)
+    # Zixian: debug Aug 25 11:32am
+    # context_tokens_tensor, context_length_tensor = tokenize_prompts(
+    #     prompts=prompts, tokens_to_generate=tokens_to_generate, add_BOS=False)
+    print (f"prompts tokens: \n{context_tokens_tensor}")
 
     if tokens_to_generate == 0:
         return score_and_return_on_first_stage(

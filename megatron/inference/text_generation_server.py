@@ -8,7 +8,7 @@ from flask_restful import Resource, Api
 from megatron.training import get_args
 from megatron.inference.text_generation import generate_and_post_process
 from megatron.inference.text_generation import beam_search_and_post_process
-
+import os 
 
 GENERATE_NUM = 0
 BEAM_NUM = 1
@@ -30,6 +30,9 @@ class MegatronGenerate(Resource):
     
     def put(self):
         args = get_args()
+       
+        args.global_counter_cnt += 1 
+        print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation_server.py FUNC=MegatronGenerate.put line 35')
        
         if not "prompts" in request.get_json():
             return "prompts argument required", 400
@@ -176,6 +179,51 @@ class MegatronGenerate(Resource):
             if not isinstance(length_penalty, float):
                 return "length_penalty must be a float"
         
+        
+        # Updating flags to retrieve/insert states based on API request
+        if "retrieving_mamba_states" in request.get_json():
+            api_retrieving_mamba_states = request.get_json()["retrieving_mamba_states"]
+            if not isinstance(api_retrieving_mamba_states, bool):
+                return "retrieving_mamba_states must be a boolean"
+            args.retrieving_mamba_states = api_retrieving_mamba_states
+            print (f"----args.retrieving_mamba_states={args.retrieving_mamba_states}")
+        else:
+            args.retrieving_mamba_states = False 
+            
+        if args.retrieving_mamba_states: 
+            if "retrieved_mamba_states_path" in request.get_json():
+                api_retrieved_mamba_states_path = request.get_json()["retrieved_mamba_states_path"]
+                if not isinstance(api_retrieved_mamba_states_path, str):
+                    return "retrieved_mamba_states_path must be a string path"
+                if not ".pkl" in api_retrieved_mamba_states_path:
+                    return "retrieved_mamba_states_path must be a pickle file path"
+                args.retrieved_mamba_states_path = api_retrieved_mamba_states_path
+                print (f"----args.retrieved_mamba_states_path={args.retrieved_mamba_states_path}")
+        else: 
+            args.retrieved_mamba_states_path = None 
+            
+        
+        if "inserting_mamba_states" in request.get_json():
+            api_inserting_mamba_states = request.get_json()["inserting_mamba_states"]
+            if not isinstance(api_inserting_mamba_states, bool):
+                return "inserting_mamba_states must be a boolean"
+            args.inserting_mamba_states = api_inserting_mamba_states
+            print (f"----args.inserting_mamba_states={args.inserting_mamba_states}")
+        else:
+            args.inserting_mamba_states = False 
+        
+        if args.inserting_mamba_states: 
+            if "inserted_mamba_states_path" in request.get_json():
+                api_inserted_mamba_states_path = request.get_json()["inserted_mamba_states_path"]
+                if not isinstance(api_inserted_mamba_states_path, str):
+                    return "inserted_mamba_states_path must be a string path"
+                if not ".pkl" in api_inserted_mamba_states_path:
+                    return "inserted_mamba_states_path must be a pickle file path"
+                args.inserted_mamba_states_path = api_inserted_mamba_states_path
+                print (f"----args.inserted_mamba_states_path={args.inserted_mamba_states_path}")
+        else:
+            args.inserted_mamba_states_path = None 
+        
         with lock:  # Need to get lock to keep multiple threads from hitting code
             
             if not no_log:
@@ -203,8 +251,10 @@ class MegatronGenerate(Resource):
                         "segments": response_seg,
                         "scores": response_scores})
                 else:
+                    print (f"Printing from Megatron-LM/megatron/inference/text_generation_server.py line 206")
+                    
                     MegatronGenerate.send_do_generate()  # Tell other ranks we're doing generate
-                    response, response_seg, response_logprobs, _ = \
+                    response, response_seg, response_logprobs, _, all_layers_states_dict = \
                         generate_and_post_process(
                         self.model,
                         prompts=prompts,
@@ -221,10 +271,38 @@ class MegatronGenerate(Resource):
                         stop_on_eol=stop_on_eol,
                         prevent_newline_after_colon=prevent_newline_after_colon,
                         random_seed=random_seed)
+                        
+                    returned_states=""
+                    
+                    # Storing returned states 
+                    if (args.retrieving_mamba_states):
+                        try:
+                            # Try to save the data
+                            os.makedirs(os.path.dirname(args.retrieved_mamba_states_path), exist_ok=True)
+                            torch.save(all_layers_states_dict, args.retrieved_mamba_states_path)
+                            print("Retrieved states saved successfully.")
+                            returned_states = args.retrieved_mamba_states_path
+                        except Exception as e:
+                            # Handle other exceptions
+                            print (f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                            print(f"An error occurred when storing inserted states: {e}")
+                            print (f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                            returned_states = f"Failed: {e}"
+                    
+                    print (f"Printing from Megatron-LM/megatron/inference/text_generation_server.py line 227")
+                    print (f"--args.inserting_mamba_states: {args.inserting_mamba_states}; \n\
+                             --args.retrieving_mamba_states: {args.retrieving_mamba_states}; \n\
+                             --args.retrieved_mamba_states_path:{args.retrieved_mamba_states_path}; \n\
+                             --args.inserted_mamba_states_path:{args.inserted_mamba_states_path}")
 
+                    args.global_counter_cnt += 1 
+                    print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation_server.py FUNC=MegatronGenerate.put line 243')
+       
+                    
                     return jsonify({"text": response,
                         "segments": response_seg,
-                        "logprobs": response_logprobs})
+                        "logprobs": response_logprobs, 
+                        "returned_states": returned_states,})
 
             except ValueError as ve:
                 return ve.args[0]
@@ -238,4 +316,12 @@ class MegatronServer(object):
         api.add_resource(MegatronGenerate, '/api', resource_class_args=[model])
         
     def run(self, url, port): 
+        print (f"printing from Megatron-LM/megatron/inference/text_generation_server.py line 246")
+        print (f"--Trying to run Megatron Server")
+        args = get_args()
+        args.global_counter_cnt += 1 
+        print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation_server.py FUNC=MegatronServer.run line 259')
+        
+        # server.run("0.0.0.0",port=5000)
         self.app.run(url, threaded=True, debug=False, port=port)
+        print (f"--After running Megatron Server")

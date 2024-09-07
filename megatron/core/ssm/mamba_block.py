@@ -16,6 +16,7 @@ from typing import Union
 from mamba_ssm import Mamba
 from mamba_ssm.ops.triton.layer_norm import RMSNorm, layer_norm_fn, rms_norm_fn
 
+from megatron.training import get_args
 from megatron.core import parallel_state
 from megatron.core.transformer.identity_op import IdentityOp
 from megatron.core.transformer.module import MegatronModule
@@ -228,8 +229,25 @@ class MambaStack(MegatronModule):
         attention_mask: Tensor,
         inference_params=None,
         rotary_pos_emb: Tensor=None,
+        
+        # For retrieving states
+        insert_states: bool =False, 
+        retrieve_states: bool =False, 
+        inserted_all_states: Tensor=None, 
         **kwargs
     ):
+        # print ("Printing from Megatron-LM/megatron/core/ssm/mamba_block.py FUNC=forward line 239")
+        # print (f'--insert_states:{insert_states}')
+        # print (f'--retrieve_states:{retrieve_states}')
+        # print (f'--inserted_all_states:{inserted_all_states}')
+        
+        args = get_args()
+        args.global_counter_cnt += 1 
+        # print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/core/ssm/mamba_block.py FUNC=forward line 237')
+    
+        
+        # print (f"Printing from Megatron-LM/megatron/core/ssm/mamba_block.py Line 234")
+        # print (f"--hidden_states=\n{hidden_states}")
         if not self.pre_process:
             # See set_input_tensor()
             hidden_states = self.input_tensor
@@ -240,12 +258,41 @@ class MambaStack(MegatronModule):
             inference_params.max_seqlen = inference_params.max_sequence_length
             inference_params.seqlen_offset = inference_params.sequence_len_offset
 
+        # For capturing all layers states 
+        all_layers_states_dict = {}
+        inserted_ssm_state = {}
+        inserted_conv_state = {}
+        
         for layer in self.layers:
-            hidden_states = layer(
-                hidden_states, attention_mask, inference_params=inference_params,
-                rotary_pos_emb=rotary_pos_emb,
+            
+            # Insert states only when processing user's first input 
+            if ((insert_states) & (inference_params.seqlen_offset == 0)):
+                # Zixian: Aug 25
+                # Without having [0] as from Mamba official modified code 
+                # because states are wrapped differently  
+                # print (f"----Passing states to inserted_ssm_states and inserted_conv_states")
+                # inserted_all_states [iteration_cnt] [layer_idx] [ssm/conv_state]
+                inserted_ssm_state  = inserted_all_states[0][layer.layer_idx]['ssm_state'] # Y
+                inserted_conv_state = inserted_all_states[0][layer.layer_idx]['conv_state'] # Y
+            
+            
+            # Capturing states for each layer
+            hidden_states, layer_states_dict = layer(
+                                                hidden_states, attention_mask, inference_params=inference_params,
+                                                rotary_pos_emb=rotary_pos_emb,
+                                                # Insert states
+                                                insert_states=insert_states,
+                                                retrieve_states=retrieve_states,
+                                                inserted_ssm_state=inserted_ssm_state,
+                                                inserted_conv_state=inserted_conv_state, 
             )
-
+            # Storing each layer states 
+            all_layers_states_dict [layer.layer_idx] = layer_states_dict
+            # print ("Printing from Megatron-LM/megatron/core/ssm/mamba_block.py FUNC=forward line 276")
+            # print (f'----layer_states_dict.keys():{layer_states_dict.keys()}')
+            # print (f'----layer_states_dict["ssm_state"].shape:{layer_states_dict["ssm_state"].shape}')
+            # print (f'----layer_states_dict["conv_state"].shape:{layer_states_dict["conv_state"].shape}')
+            
             # The attention layer (currently a simplified transformer layer)
             # outputs a tuple of (hidden_states, context). Context is intended
             # for cross-attention, and is not needed in our model.
@@ -263,5 +310,9 @@ class MambaStack(MegatronModule):
             requires_grad=hidden_states.requires_grad,
             keep_graph=True
         )
-
-        return hidden_states
+        
+        args.global_counter_cnt += 1 
+        # print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/core/ssm/mamba_block.py FUNC=forward line 277')
+    
+        # Returning entire model's states 
+        return hidden_states, all_layers_states_dict

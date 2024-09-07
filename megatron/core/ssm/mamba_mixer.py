@@ -188,21 +188,76 @@ class Mamba(MegatronModule):
             skip_bias_add=False,
         )
 
-    def forward(self, hidden_states, inference_params=None):
+    def forward(self, 
+                hidden_states, 
+                inference_params=None, 
+                # For retrieving states
+                insert_states=False, 
+                retrieve_states=False, 
+                inserted_ssm_state=None, 
+                inserted_conv_state=None,):
+        
+        # print ("Printing from Megatron-LM/megatron/core/ssm/mamba_mixer.py FUNC=forward line 200")
+        # print (f'--insert_states:{insert_states}')
+        # print (f'--retrieve_states:{retrieve_states}')
+        # print (f'--inserted_ssm_state:{inserted_ssm_state}')
+        # print (f'--inserted_conv_state:{inserted_conv_state}')
+        
+        # print (f'----inference_params.seqlen_offset=[{inference_params.seqlen_offset}], at layer {self.layer_idx}')
         """
         hidden_states: (nL, B, D) / (L B D)
         Returns: same shape as hidden_states
         """
         _, batch, dim = hidden_states.shape
-
+        
+        # For returning states
+        layer_states_dict = {}
+        
         conv_state, ssm_state = None, None
         if inference_params is not None:
             assert not self.config.sequence_parallel
             conv_state, ssm_state = self._get_states_from_cache(inference_params, batch)
-            if inference_params.seqlen_offset > 0:
+            
+            # Zixian: Insert states 
+            # Put it after previous code to prevent that inference_params isn't initialized # Y
+            if ((insert_states) & (inference_params.seqlen_offset == 0)): # Y
+                # print (f"----mixer: inserting inserted states")
+                assert (inserted_ssm_state != None) # Y
+                assert (inserted_conv_state != None) # Y
+                inference_params.key_value_memory_dict[self.layer_idx] = (inserted_conv_state, inserted_ssm_state) # Y
+                conv_state = inserted_conv_state # Y
+                ssm_state = inserted_ssm_state # Y
+                
+                # if (self.layer_idx == 0):
+                    # print (f"conv_state: \n{conv_state}")
+                    # print (f"ssm_state: \n{ssm_state}")
+                
+            if (inference_params.seqlen_offset > 0):
                 # The states are updated inplace
-                out, _, _ = self.step(hidden_states, conv_state, ssm_state)
-                return out
+                out, conv_state_cp, ssm_state_cp = self.step(hidden_states, conv_state, ssm_state)
+                
+                # Zixian: store states for each new generated token
+                # TODO: This can be removed because higher level is only storing the states from user input 
+                if (retrieve_states): # Y
+                    layer_states_dict ['conv_state'] = conv_state_cp # Y
+                    layer_states_dict ['ssm_state'] = ssm_state_cp # Y
+                
+                # Returning layer_states_dict
+                return out, layer_states_dict
+
+
+        if (self.layer_idx ==0): 
+            with open('/workspace/data/ssm-retrieval/mamba2-8b/retrieved_hidden/testing/record.txt', 'a') as file:
+                file.write (f'Before forward\n')
+                file.write (f"At layer [{self.layer_idx}\n]")
+                file.write (f"conv_state: \n{conv_state}")
+                file.write (f"ssm_state: \n{ssm_state}\n\n\n\n")
+        
+        # Insert states to selective scan 
+        initial_states = None 
+        if (inference_params != None): 
+            if (insert_states & (inference_params.seqlen_offset == 0)): 
+                initial_states = inserted_ssm_state
 
         # (nheads_local)
         A = -torch.exp(self.A_log.float())
@@ -264,6 +319,8 @@ class Mamba(MegatronModule):
             self.chunk_size,
             D=rearrange(self.D.float(), "(h p) -> h p", p=self.headdim) if self.D_has_hdim else self.D,
             z=z if not self.rmsnorm else None,
+            # Insert states 
+            initial_states=initial_states, 
             dt_bias=self.dt_bias.float(),
             dt_softplus=True,
             return_final_states=ssm_state is not None,
@@ -287,7 +344,28 @@ class Mamba(MegatronModule):
             out = reduce_scatter_to_sequence_parallel_region(out_full)
         else:
             out = reduce_from_tensor_model_parallel_region(out_full)
-        return out
+            
+            
+        # Zixian: Storing the states after user's input
+        if (retrieve_states): # Y 
+            # print (f"----Storing states into layer_states_dict")
+            layer_states_dict ['conv_state'] = conv_state # Y 
+            layer_states_dict ['ssm_state'] = ssm_state # Y 
+            
+        # if (self.layer_idx ==0): 
+        #     print (f"conv_state: \n{conv_state}")
+        #     print (f"ssm_state: \n{ssm_state}")
+            
+            
+        if (self.layer_idx ==0): 
+            with open('/workspace/data/ssm-retrieval/mamba2-8b/retrieved_hidden/testing/record.txt', 'a') as file:
+                file.write (f'After forward\n')
+                file.write (f"At layer [{self.layer_idx}\n]")
+                file.write (f"conv_state: \n{conv_state}")
+                file.write (f"ssm_state: \n{ssm_state}\n\n\n\n")
+        
+        # Returning layer_states_dict
+        return out, layer_states_dict
 
 
     def step(self, hidden_states, conv_state, ssm_state):
@@ -398,6 +476,7 @@ class Mamba(MegatronModule):
     def _get_states_from_cache(self, inference_params, batch_size, initialize_states=False):
         assert self.layer_idx is not None
         if self.layer_idx not in inference_params.key_value_memory_dict:
+            # print (f"----get_states_from_cache for layer [{self.layer_idx}]")
             conv_state = torch.zeros(
                 batch_size,
                 self.conv1d.weight.shape[0],
@@ -416,6 +495,7 @@ class Mamba(MegatronModule):
             inference_params.key_value_memory_dict[self.layer_idx] = (conv_state, ssm_state)
         else:
             conv_state, ssm_state = inference_params.key_value_memory_dict[self.layer_idx]
+            # print (f'\n\n\nAt layer[{self.layer_idx}]\nssm.shape:{ssm_state.shape}\nconv_state.shape:{conv_state.shape}\ndtype:{self.in_proj.weight.dtype}\n\n\n')
             # TODO: What if batch size changes between generation, and we reuse the same states?
             if initialize_states:
                 conv_state.zero_()

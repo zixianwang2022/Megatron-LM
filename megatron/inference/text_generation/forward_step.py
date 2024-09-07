@@ -37,6 +37,17 @@ class ForwardStep:
             args.inference_batch_times_seqlen_threshold
 
     def _forward(self, tokens, position_ids, attention_mask):
+        # print (f"Printing from Megatron-LM/megatron/inference/text_generation/forward_step.py Line 40")
+        # tokens = torch.ones(3, 4, dtype=torch.long)
+        # print (f"--Inserting {tokens}")
+        
+        with open('/workspace/data/ssm-retrieval/mamba2-8b/retrieved_hidden/testing/record.txt', 'a') as file:
+            file.write (f'Input tokens:\n{tokens}')
+        
+        args = get_args()
+        args.global_counter_cnt += 1 
+        # print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation/forward_step.py FUNC=_forward line 46')
+    
         return self.model(tokens, position_ids, attention_mask, inference_params=self.inference_params)
 
     def __call__(self, tokens, position_ids, attention_mask):

@@ -20,6 +20,8 @@ export NCCL_IB_QPS_PER_CONNECTION=4
 export TRITON_CACHE_DIR="./triton-cache/"
 export TRITON_CACHE_MANAGER="megatron.core.ssm.triton_cache_manager:ParallelFileCacheManager"
 
+# ................ 
+
 torchrun $DISTRIBUTED_ARGS ../../tools/run_mamba_text_generation_server.py \
        --tensor-model-parallel-size 1  \
        --pipeline-model-parallel-size 1  \
@@ -30,8 +32,6 @@ torchrun $DISTRIBUTED_ARGS ../../tools/run_mamba_text_generation_server.py \
        --num-attention-heads 32  \
        --group-query-attention \
        --num-query-groups 8 \
-       --hybrid-attention-ratio 0.08 \
-       --hybrid-mlp-ratio 0.5 \
        --attention-dropout 0.0 \
        --hidden-dropout 0.0 \
        --disable-bias-linear \
@@ -48,3 +48,5 @@ torchrun $DISTRIBUTED_ARGS ../../tools/run_mamba_text_generation_server.py \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
        --seed 42
+       # --hybrid-attention-ratio 0.08 \
+       # --hybrid-mlp-ratio 0.5 \

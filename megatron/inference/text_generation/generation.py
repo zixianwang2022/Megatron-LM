@@ -15,6 +15,7 @@ from .communication import (
 from .forward_step import ForwardStep
 from .sampling import sample
 from .beam_utils import BeamHypotheses
+import copy
 
 def score_and_return_on_first_stage(model, tokens, lengths):
     """Function for just scoring.
@@ -134,7 +135,11 @@ def generate_tokens_probs_and_return_on_first_stage(
 
     args = get_args()
     tokenizer = get_tokenizer()
-
+    
+    args.global_counter_cnt += 1 
+    print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation/generation.py FUNC=generate_tokens_probs_and_return_on_first_stage line 139')
+    
+    # print (f'tokenizer.decode[5096342,] ')
     batch_size = tokens.size(0)
     min_prompt_length = lengths.min().item()
     max_sequence_length = tokens.size(1)
@@ -181,11 +186,17 @@ def generate_tokens_probs_and_return_on_first_stage(
     # Run infernece
     # =============
 
+    
+    iteration_cnt = 0
+    all_states_dict = {}
+    
     with torch.no_grad():
         attention_mask, position_ids = _build_attention_mask_and_position_ids(
             tokens)
         prev_context_length = 0
         for context_length in range(min_prompt_length, max_sequence_length):
+            
+            print (f'Printing from megatron/inference/text_generation/generation.py line 190')
 
             # Pick the slice that we need to pass through the network.
             tokens2use = tokens[:, prev_context_length:context_length]
@@ -194,7 +205,17 @@ def generate_tokens_probs_and_return_on_first_stage(
                 ..., prev_context_length:context_length, :context_length]
 
             # logits will be meanigful only in the last pipeline stage.
-            logits = forward_step(tokens2use, positions2use, attention_mask2use)
+            logits, all_layers_states_dict = forward_step(tokens2use, positions2use, attention_mask2use)
+            print (f'----all_layers_states_dict.keys():{all_layers_states_dict.keys()}')
+            
+            # Only store the states of the user's first prompt
+            if ((args.retrieving_mamba_states) & (iteration_cnt == 0)):
+                print (f'----Deep copying all_layers_states_dict: \n{all_layers_states_dict[0]}')
+                # Copy only when processing the prompt. 
+                # Not storing states for each token generate step 
+                deep_copy_dict = copy.deepcopy (all_layers_states_dict)
+                all_states_dict [iteration_cnt] = deep_copy_dict
+            iteration_cnt += 1
 
             # NOTE(rwaleffe): logits coming from mamba model have the wrong shape, this hack supports eval
             # This is unneeded once we move to the TP implementation
@@ -296,8 +317,12 @@ def generate_tokens_probs_and_return_on_first_stage(
         output_log_probs_size = (batch_size, context_length)
         output_log_probs = broadcast_from_last_to_first_pipeline_stage(
             output_log_probs_size, torch.float32, output_log_probs)
+        
+    args.global_counter_cnt += 1 
+    print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/inference/text_generation/generation.py FUNC=generate_tokens_probs_and_return_on_first_stage line 307')
+    
 
-    return tokens, generated_sequence_lengths, output_log_probs, None
+    return tokens, generated_sequence_lengths, output_log_probs, None, all_states_dict
 
 def beam_search_and_return_on_first_stage(model, forward_step, tokens, lengths, beam_size, stop_token, num_return_gen, length_penalty, prevent_newline_after_colon=True):
     args = get_args()

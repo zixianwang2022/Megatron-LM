@@ -5,7 +5,7 @@ from typing import Literal, Optional, Union
 
 import torch
 from torch import Tensor
-
+from megatron.training import get_args
 from megatron.core import InferenceParams, parallel_state, tensor_parallel
 from megatron.core.models.common.embeddings.language_model_embedding import LanguageModelEmbedding
 from megatron.core.models.common.embeddings.rotary_pos_embedding import RotaryEmbedding
@@ -147,6 +147,11 @@ class MambaModel(LanguageModule):
         labels: Tensor = None,
         inference_params: InferenceParams = None,
         extra_block_kwargs: dict = None,
+        
+        # For retrieving states
+        insert_states: bool =False, 
+        retrieve_states: bool =False, 
+        inserted_all_states: Tensor =None, 
     ) -> Tensor:
         """Forward function of the Mamba model. This function passes the input tensors
         through the embedding layer, and then the decoder and finally into the post
@@ -154,9 +159,27 @@ class MambaModel(LanguageModule):
 
         It either returns the Loss values if labels are given or the final hidden units
         """
+        # print ("Printing from Megatron-LM/megatron/core/ssm/mamba_model.py FUNC=forward line 165")
+        # print (f'--insert_states:{insert_states}')
+        # print (f'--retrieve_states:{retrieve_states}')
+
+        # print (f"Printing from Megatron-LM/megatron/core/models/mamba/mamba_model.py Line 160")
+        # print (f"--input_ids=\n{input_ids}")
+        
+        
         # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
         # Otherwise, apply embedding layer on input_ids and position_ids to get decoder_input.
-
+        args = get_args()
+        insert_states = args.inserting_mamba_states
+        retrieve_states = args.retrieving_mamba_states
+        if (insert_states): 
+            # print (f"----Loading inserted_all_states")
+            # Need to unpickle from the states pickle path stored in args 
+            inserted_all_states = torch.load (args.inserted_mamba_states_path)
+            # print (f"----Successfully loaded inserted_all_states")
+        
+        
+        
         # Decoder embedding.
         if decoder_input is not None:
             pass
@@ -183,29 +206,53 @@ class MambaModel(LanguageModule):
         #   force the attention mask passed to the model in inference mode to
         #   be None, so this assert will succeed.
         # assert attention_mask is None, "The attention mask is ignored and should be set to None"
+        args.global_counter_cnt += 1 
+        # print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/core/models/mamba/mamba_model.py FUNC=forward line 191')
+    
 
+        # decoder_input = torch.ones(2, 2, dtype=torch.long)
+        # print (f"Printing from Megatron-LM/megatron/core/models/mamba/mamba_model.py Line 191")
+        # print (f"--decoder_input=\n{decoder_input}")
+        
+        
+        
         # Run decoder.
-        hidden_states = self.decoder(
-            hidden_states=decoder_input,
-            attention_mask=attention_mask,
-            inference_params=inference_params,
-            rotary_pos_emb=rotary_pos_emb,
-            **(extra_block_kwargs or {}),
+        hidden_states, all_layers_states_dict = self.decoder(
+                                                hidden_states=decoder_input,
+                                                attention_mask=attention_mask,
+                                                inference_params=inference_params,
+                                                rotary_pos_emb=rotary_pos_emb,
+                                                insert_states=insert_states, 
+                                                retrieve_states=retrieve_states, 
+                                                inserted_all_states=inserted_all_states, 
+                                                **(extra_block_kwargs or {}),
         )
+        
+        
+        args.global_counter_cnt += 1 
+        # print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/core/models/mamba/mamba_model.py FUNC=forward line 210')
+    
 
         if not self.post_process:
+            # print (f'--returning from "not self.post_process"')
             return hidden_states
 
         # logits and loss
         output_weight = None
         if self.share_embeddings_and_output_weights:
             output_weight = self.shared_embedding_or_output_weight()
+        # Going through output layer to get logits 
         logits, _ = self.output_layer(hidden_states, weight=output_weight)
 
         if labels is None:
+            # --------------------------------------------------------------------------------------------------------------
+            # ---------------------------- Forward is returning from here when calling generate ----------------------------
+            # --------------------------------------------------------------------------------------------------------------
+            # print (f'--returning from "labels is None"')
             # [s b h] => [b s h]
-            return logits.transpose(0, 1).contiguous()
+            return logits.transpose(0, 1).contiguous(), all_layers_states_dict # returning model's states 
 
         loss = self.compute_language_model_loss(labels, logits)
 
+        # print (f'--returning from "everything else"')
         return loss

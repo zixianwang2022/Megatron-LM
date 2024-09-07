@@ -81,6 +81,17 @@ def add_text_generate_args(parser):
     group = parser.add_argument_group(title='text generation')
     group.add_argument("--port", type=int, default=5000,
                        help='port for text generation server to run on')
+    group.add_argument("--inserting_mamba_states", type=bool, default=False,
+                       help='Whether to insert mamba hidden states. Yes, then mamba_states flag is required')
+    group.add_argument("--retrieving_mamba_states", type=bool, default=False,
+                       help='Whether to retrieve mamba hidden states. Yes, then return list will have one more column')
+    group.add_argument("--inserted_mamba_states_path", type=str, default=None,
+                       help='A path to the hidden states pickle file that will be inserted into mamba')
+    group.add_argument("--retrieved_mamba_states_path", type=str, default=None,
+                       help='A path to the hidden states pickle file that the retrieved states will be stored')
+    group.add_argument("--global_counter_cnt", type=int, default=0,
+                       help='A global counter to track every function call step')
+    
     return parser
 
 
@@ -106,14 +117,26 @@ if __name__ == "__main__":
     assert len(model) == 1, "Above condition should have caught this"
     model = model[0]
     if mpu.is_pipeline_first_stage() and mpu.get_tensor_model_parallel_rank() == 0:
+        print (f"printing from Megatron-LM/tools/run_mamba_text_generation_server.py line 116")
+        print (f"--Trying to initialize Megatron Server")
         server = MegatronServer(model)
+        print (f"--After initialize Megatron Server")
+        print (f"--Trying to run Megatron Server")
+        
+        args.global_counter_cnt += 1 
+        print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/tools/run_mamba_text_generation_server.py line 124')
+        
+        
         server.run("0.0.0.0",port=args.port)
+        print (f"--After running Megatron Server")
 
     while True:
+        print (f"printing from Megatron-LM/tools/run_mamba_text_generation_server.py line 121\n")
         choice = torch.tensor(1, dtype=torch.long, device='cuda')
         torch.distributed.broadcast(choice, 0)
         if choice.item() == 0:
             try:
+                print (f"printing from Megatron-LM/tools/run_mamba_text_generation_server.py line 126\n")
                 generate_and_post_process(model)
             except ValueError as ve:
                 pass
