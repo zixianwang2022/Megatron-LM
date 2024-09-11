@@ -375,6 +375,8 @@ def validate_args(args, defaults={}):
         else:
             args.ffn_hidden_size = 4 * args.hidden_size
 
+    # Zixian: Sept 8 17:52pm 
+    # comment the following to enable Mamba training without attention_heads
     if args.kv_channels is None:
         assert args.hidden_size % args.num_attention_heads == 0
         args.kv_channels = args.hidden_size // args.num_attention_heads

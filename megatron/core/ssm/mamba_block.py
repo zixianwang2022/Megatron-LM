@@ -265,15 +265,16 @@ class MambaStack(MegatronModule):
         
         for layer in self.layers:
             
-            # Insert states only when processing user's first input 
-            if ((insert_states) & (inference_params.seqlen_offset == 0)):
-                # Zixian: Aug 25
-                # Without having [0] as from Mamba official modified code 
-                # because states are wrapped differently  
-                # print (f"----Passing states to inserted_ssm_states and inserted_conv_states")
-                # inserted_all_states [iteration_cnt] [layer_idx] [ssm/conv_state]
-                inserted_ssm_state  = inserted_all_states[0][layer.layer_idx]['ssm_state'] # Y
-                inserted_conv_state = inserted_all_states[0][layer.layer_idx]['conv_state'] # Y
+            if inference_params is not None: 
+                # Insert states only when processing user's first input 
+                if ((insert_states) & (inference_params.seqlen_offset == 0)):
+                    # Zixian: Aug 25
+                    # Without having [0] as from Mamba official modified code 
+                    # because states are wrapped differently  
+                    # print (f"----Passing states to inserted_ssm_states and inserted_conv_states")
+                    # inserted_all_states [iteration_cnt] [layer_idx] [ssm/conv_state]
+                    inserted_ssm_state  = inserted_all_states[0][layer.layer_idx]['ssm_state'] # Y
+                    inserted_conv_state = inserted_all_states[0][layer.layer_idx]['conv_state'] # Y
             
             
             # Capturing states for each layer

@@ -43,6 +43,17 @@ def count_parameters_in_layer(model, layer_name):
     return num_params
 
 
+def freeze_parameters_in_layer(model, layer_name):
+    num_params = 0
+    for name, param in model.named_parameters():
+        if layer_name in name:
+            param.requires_grad = False 
+            print_rank_0(f" - {name}: param.requires_grad = {param.requires_grad}")
+    return num_params
+
+
+
+
 def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megatron.legacy.model.GPTModel]:
     """Builds the model.
 
@@ -88,6 +99,16 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
     for l in range(model.decoder.num_layers_per_pipeline_rank):
         layer_params = count_parameters_in_layer(model, f'decoder.layers.{l}.')
         print_rank_0(f" == params layer {l}: {layer_params}")
+        
+        # freeze_parameters_in_layer(model, f'decoder.layers.{l}.')
+        
+    
+    # Freeze the entire Mamba model except for decoder output linear layer 
+    # model.freeze (freeze_mamba_model=args.freeze_mamba_blocks) 
+    model.freeze (freeze_mamba_model=True, freeze_embedding_model=True, freeze_output_layer=False) 
+    
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Trainable parameters: {trainable_params}")
 
     return model
 
@@ -159,6 +180,8 @@ def forward_step(data_iterator, model: GPTModel):
     """
     args = get_args()
     timers = get_timers()
+    
+    print_rank_0 (f'\n\nforward_step data_iterator:\n{data_iterator}\n\n\n')
 
     # Get the batch.
     timers('batch-generator', log_level=2).start()
@@ -167,6 +190,19 @@ def forward_step(data_iterator, model: GPTModel):
         tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
             data_iterator)
     timers('batch-generator').stop()
+    
+    
+    tokenizer = get_tokenizer()
+    
+    print_rank_0 (f'\n\n tokens:\n{tokens}\n\n\n')
+    print_rank_0 (f'\n\n tokens:\n{tokens[0][0]}\n\n\n')
+    print_rank_0 (f'\n\n tokens:\n{type (int (tokens[0][0]))}\n\n\n')
+    print_rank_0 (f'\n\n decoded tokens: {tokenizer.detokenize (int(tokens[0][0]))}')
+    print_rank_0 (f'{tokenizer.detokenize (int(tokens[0][1]))}')
+    print_rank_0 (f'{tokenizer.detokenize (int(tokens[0][2]))}')
+    
+    # print_rank_0 (f'\n\n tokens:\n{tokens}\n\n\n')
+    # print_rank_0 (f'\n\n labels:\n{labels}\n\n\n')
 
     with stimer:
         output_tensor = model(tokens, position_ids, attention_mask,
@@ -234,6 +270,40 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 
+def add_mamba_states_args(parser):
+    group = parser.add_argument_group(title='mamba states')
+    # Inference
+    group.add_argument("--inserting_mamba_states", type=bool, default=False,
+                       help='Whether to insert mamba hidden states. Yes, then mamba_states flag is required')
+    group.add_argument("--retrieving_mamba_states", type=bool, default=False,
+                       help='Whether to retrieve mamba hidden states. Yes, then return list will have one more column')
+    group.add_argument("--inserted_mamba_states_path", type=str, default=None,
+                       help='A path to the hidden states pickle file that will be inserted into mamba')
+    group.add_argument("--retrieved_mamba_states_path", type=str, default=None,
+                       help='A path to the hidden states pickle file that the retrieved states will be stored')
+    group.add_argument("--global_counter_cnt", type=int, default=0,
+                       help='A global counter to track every function call step')
+    
+    # Training: 
+    # Insert states
+    group.add_argument ("--insert_mamba_states_for_training", type=bool, default=False, 
+                        help="Whether to insert mamba hidden states for training.")
+    group.add_argument ("--insert_mamba_states_for_training_dir", type=str, default=None, 
+                        help="The directory of the mamba hidden states pickle files that will be used for training.")
+    # Retrieve states for training during inference 
+    group.add_argument ("--retrieve_mamba_states_for_training", type=bool, default=False, 
+                        help="Whether to retrieve mamba hidden states during inference that will be used later for training.")
+    group.add_argument ("--retrieve_mamba_states_for_training_dir", type=str, default=None, 
+                        help="The directory of the mamba hidden states pickle files will be stored that will be used for training.")
+    group.add_argument ("--retrieve_mamba_states_for_training_filename", type=str, default=None, 
+                        help="The filename for the currently retrieving states will be named")
+    
+    
+    
+    
+    return parser
+
+
 if __name__ == "__main__":
 
     # Temporary for transition to core datasets
@@ -243,4 +313,5 @@ if __name__ == "__main__":
              model_provider,
              ModelType.encoder_or_decoder,
              forward_step,
-             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
+             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'}, 
+             extra_args_provider=add_mamba_states_args)

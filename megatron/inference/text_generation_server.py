@@ -8,6 +8,7 @@ from flask_restful import Resource, Api
 from megatron.training import get_args
 from megatron.inference.text_generation import generate_and_post_process
 from megatron.inference.text_generation import beam_search_and_post_process
+from megatron.inference.text_generation.tokenization import tokenize_prompts 
 import os 
 
 GENERATE_NUM = 0
@@ -223,6 +224,62 @@ class MegatronGenerate(Resource):
                 print (f"----args.inserted_mamba_states_path={args.inserted_mamba_states_path}")
         else:
             args.inserted_mamba_states_path = None 
+            
+        # Mamba inference for states for training 
+        if "retrieve_mamba_states_for_training" in request.get_json():
+            retrieve_mamba_states_for_training = request.get_json()["retrieve_mamba_states_for_training"]
+            if not isinstance(retrieve_mamba_states_for_training, bool):
+                return "retrieve_mamba_states_for_training must be a boolean"
+            args.retrieve_mamba_states_for_training = retrieve_mamba_states_for_training
+            print (f"----args.retrieve_mamba_states_for_training={args.retrieve_mamba_states_for_training}")
+        else:
+            args.retrieve_mamba_states_for_training = False 
+        
+        # Output states dir for training
+        if args.retrieve_mamba_states_for_training: 
+            if "retrieve_mamba_states_for_training_dir" in request.get_json():
+                api_retrieve_mamba_states_for_training_dir = request.get_json()["retrieve_mamba_states_for_training_dir"]
+                if not isinstance(api_retrieve_mamba_states_for_training_dir, str):
+                    return "inserted_mamba_states_path must be a string path"
+                args.retrieve_mamba_states_for_training_dir = api_retrieve_mamba_states_for_training_dir
+                print (f"----args.retrieve_mamba_states_for_training_dir={args.retrieve_mamba_states_for_training_dir}")
+        else:
+            args.retrieve_mamba_states_for_training_dir = None 
+        
+        # Output states filename for training
+        if args.retrieve_mamba_states_for_training: 
+            if "retrieve_mamba_states_for_training_filename" in request.get_json():
+                api_retrieve_mamba_states_for_training_filename = request.get_json()["retrieve_mamba_states_for_training_filename"]
+                if not isinstance(api_retrieve_mamba_states_for_training_filename, str):
+                    return "retrieve_mamba_states_for_training_filename must be a string path"
+                args.retrieve_mamba_states_for_training_filename = api_retrieve_mamba_states_for_training_filename
+                print (f"----args.retrieve_mamba_states_for_training_filename={args.retrieve_mamba_states_for_training_filename}")
+        else:
+            args.retrieve_mamba_states_for_training_filename = None 
+            
+            
+        # Training Mamba, inserting states: 
+        
+        if "insert_mamba_states_for_training" in request.get_json():
+            insert_mamba_states_for_training = request.get_json()["insert_mamba_states_for_training"]
+            if not isinstance(insert_mamba_states_for_training, bool):
+                return "insert_mamba_states_for_training must be a boolean"
+            args.insert_mamba_states_for_training = insert_mamba_states_for_training
+            print (f"----args.insert_mamba_states_for_training={args.insert_mamba_states_for_training}")
+        else:
+            args.insert_mamba_states_for_training = False 
+        
+        # Output states dir for training
+        if args.insert_mamba_states_for_training: 
+            if "insert_mamba_states_for_training_dir" in request.get_json():
+                insert_mamba_states_for_training_dir = request.get_json()["insert_mamba_states_for_training_dir"]
+                if not isinstance(insert_mamba_states_for_training_dir, str):
+                    return "insert_mamba_states_for_training_dir must be a string path"
+                args.insert_mamba_states_for_training_dir = insert_mamba_states_for_training_dir
+                print (f"----args.insert_mamba_states_for_training_dir={args.insert_mamba_states_for_training_dir}")
+        else:
+            args.insert_mamba_states_for_training_dir = None 
+        
         
         with lock:  # Need to get lock to keep multiple threads from hitting code
             
@@ -276,18 +333,44 @@ class MegatronGenerate(Resource):
                     
                     # Storing returned states 
                     if (args.retrieving_mamba_states):
-                        try:
-                            # Try to save the data
-                            os.makedirs(os.path.dirname(args.retrieved_mamba_states_path), exist_ok=True)
-                            torch.save(all_layers_states_dict, args.retrieved_mamba_states_path)
+                        
+                        
+                        # Retrieve states for training 
+                        if (args.retrieve_mamba_states_for_training): 
+                            base_dir = args.retrieve_mamba_states_for_training_dir
+                            os.makedirs (os.path.dirname (base_dir), exist_ok=True)
+                            
+                            # Tokenize the input text for filename 
+                            filename_tokens, lengths = tokenize_prompts (
+                                                    prompts=[args.retrieve_mamba_states_for_training_filename], 
+                                                    tokens_to_generate=tokens_to_generate, 
+                                                    add_BOS=add_BOS
+                                                )
+                            
+                            print (f'\n\n\n filename_tokens: \n{filename_tokens}\n\n\n')
+                            
+                            filename_tokens = filename_tokens[0]
+                            filename = "".join ([f"{t}_" for t in filename_tokens])
+                            filename += '.pkl'
+                            
+                            full_path = os.path.join (base_dir, filename)
+                            
+                            torch.save(all_layers_states_dict, full_path)
                             print("Retrieved states saved successfully.")
-                            returned_states = args.retrieved_mamba_states_path
-                        except Exception as e:
-                            # Handle other exceptions
-                            print (f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                            print(f"An error occurred when storing inserted states: {e}")
-                            print (f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                            returned_states = f"Failed: {e}"
+                            returned_states = full_path
+                        else: 
+                            try:
+                                # Try to save the data
+                                os.makedirs(os.path.dirname(args.retrieved_mamba_states_path), exist_ok=True)
+                                torch.save(all_layers_states_dict, args.retrieved_mamba_states_path)
+                                print("Retrieved states saved successfully.")
+                                returned_states = args.retrieved_mamba_states_path
+                            except Exception as e:
+                                # Handle other exceptions
+                                print (f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                                print(f"An error occurred when storing inserted states: {e}")
+                                print (f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                                returned_states = f"Failed: {e}"
                     
                     print (f"Printing from Megatron-LM/megatron/inference/text_generation_server.py line 227")
                     print (f"--args.inserting_mamba_states: {args.inserting_mamba_states}; \n\

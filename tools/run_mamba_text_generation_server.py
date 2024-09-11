@@ -92,6 +92,21 @@ def add_text_generate_args(parser):
     group.add_argument("--global_counter_cnt", type=int, default=0,
                        help='A global counter to track every function call step')
     
+    
+    # Training: 
+    # Insert states
+    group.add_argument ("--insert_mamba_states_for_training", type=bool, default=False, 
+                        help="Whether to insert mamba hidden states for training.")
+    group.add_argument ("--insert_mamba_states_for_training_dir", type=str, default=None, 
+                        help="The directory of the mamba hidden states pickle files that will be used for training.")
+    # Retrieve states for training during inference 
+    group.add_argument ("--retrieve_mamba_states_for_training", type=bool, default=False, 
+                        help="Whether to retrieve mamba hidden states during inference that will be used later for training.")
+    group.add_argument ("--retrieve_mamba_states_for_training_dir", type=str, default=None, 
+                        help="The directory of the mamba hidden states pickle files will be stored that will be used for training.")
+    group.add_argument ("--retrieve_mamba_states_for_training_filename", type=str, default=None, 
+                        help="The filename for the currently retrieving states will be named")
+    
     return parser
 
 

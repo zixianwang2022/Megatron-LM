@@ -256,6 +256,17 @@ def pretrain(train_valid_test_dataset_provider,
     # Context used for persisting some state between checkpoint saves.
     checkpointing_context = {}
 
+    print_rank_0 (f'\n\n train_data_iterator:\n{train_data_iterator}\n\n\n')
+    print_rank_0 (f'\n\n valid_data_iterator:\n{valid_data_iterator}\n\n\n')
+    print_rank_0 (f'\n\n test_data_iterator:\n{test_data_iterator}\n\n\n')
+    # for first_batch in train_data_iterator: 
+    #     print_rank_0 (f"first_batch: {first_batch}\n\n")
+    #     break 
+    # print_rank_0 (f'\n\nnext(train_data_iterator):\n{next(train_data_iterator)}\n\n\n')
+    # data_iter = iter(train_data_iterator)
+    # first_batch = next(train_data_iterator)
+    # print_rank_0 (f'\n\first_batch:\n{first_batch}\n\n\n')
+    
     # Print setup timing.
     print_rank_0('done with setup ...')
     timers.log(['model-and-optimizer-setup',

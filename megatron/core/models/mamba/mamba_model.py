@@ -3,9 +3,11 @@
 import logging
 from typing import Literal, Optional, Union
 
+import os 
 import torch
 from torch import Tensor
 from megatron.training import get_args
+from megatron.training import print_rank_0
 from megatron.core import InferenceParams, parallel_state, tensor_parallel
 from megatron.core.models.common.embeddings.language_model_embedding import LanguageModelEmbedding
 from megatron.core.models.common.embeddings.rotary_pos_embedding import RotaryEmbedding
@@ -85,6 +87,8 @@ class MambaModel(LanguageModule):
             )
 
         if self.position_embedding_type == 'rope':
+            
+            print (f'\n\n\n INCLUDING positional embedding in MambaModel \n\n\n')
             self.rotary_pos_emb = RotaryEmbedding(
                 kv_channels=self.config.kv_channels,
                 rotary_percent=rotary_percent,
@@ -137,6 +141,42 @@ class MambaModel(LanguageModule):
 
         assert len(input_tensor) == 1, 'input_tensor should only be length 1 for gpt/bert'
         self.decoder.set_input_tensor(input_tensor[0])
+        
+        
+        
+        
+        
+    def freeze(
+        self, freeze_mamba_model: bool, freeze_embedding_model:bool, freeze_output_layer:bool, 
+    ):
+        """
+        Zixian: Sept 8 19:11pm VERIFIED functionality 
+        
+        Freeze model modules. 
+
+        Make specific modules non-trainable by setting requires_grad to False for the module's parameters.
+
+        Args:
+            freeze_mamba_model (bool): Freeze the Mamba model module.
+        """
+        
+        # for l in range(self.model.decoder.num_layers_per_pipeline_rank):
+        #     layer_params = count_parameters_in_layer(model, f'decoder.layers.{l}.')
+        modules = []
+        if freeze_mamba_model:
+            modules.append(self.decoder)
+        if freeze_embedding_model:
+            modules.append(self.embedding)
+        if freeze_output_layer:
+            modules.append(self.output_layer)
+        
+        # Update Sept 7 22:12pm Not tested yet. 
+        # TODO: if does not work, follow similar method in counting params 
+        for module in modules:
+            for param in module.parameters():
+                param.requires_grad = False
+                
+                
 
     def forward(
         self,
@@ -167,17 +207,66 @@ class MambaModel(LanguageModule):
         # print (f"--input_ids=\n{input_ids}")
         
         
+        print_rank_0 (f'--mamba_model forward\n\n')
+        # print_rank_0 (f'len (input_ids[0]):\n{len (input_ids[0])}\n\n')
+        # print_rank_0 (f'len (input_ids[1]):\n{len (input_ids[1])}\n\n')
+        print_rank_0 (f'input_ids:\n{input_ids}\n\n')
+        print_rank_0 (f'decoder_input:\n{decoder_input}')
+        
+        
         # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
         # Otherwise, apply embedding layer on input_ids and position_ids to get decoder_input.
         args = get_args()
         insert_states = args.inserting_mamba_states
         retrieve_states = args.retrieving_mamba_states
-        if (insert_states): 
-            # print (f"----Loading inserted_all_states")
-            # Need to unpickle from the states pickle path stored in args 
-            inserted_all_states = torch.load (args.inserted_mamba_states_path)
-            # print (f"----Successfully loaded inserted_all_states")
+        inserted_all_states = None 
         
+        # Zixian: Sept 11 01:35am: 
+        # Not sure if this will work for training 
+        # Prevent inserting states when steping each time. 
+        if len (input_ids[0]) > 1: 
+            
+            print (f'input_ids: \n{input_ids}')
+        
+            if (insert_states): 
+                
+                
+                if args.insert_mamba_states_for_training: 
+                    base_dir = os.path.dirname (args.insert_mamba_states_for_training_dir)
+                    
+                    candidate_filename_tokens = input_ids[0]
+                    candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
+                    
+                    matching_files = [filename for filename in os.listdir(base_dir) if candidate_filename in filename]
+                    filename = ''
+                    
+                    # Check if there is at least one matching file and print it
+                    if len (matching_files) == 1:
+                        print("\n\n\nFound file:\n", matching_files[0])
+                        print ('\n\n\n')
+                        filename = matching_files[0]
+                    
+                    # Zixian: TODO: Raise error if can't find or conflicting states.pkl of the question input_ids. 
+                    #               Think of other ways to continue training maybe. 
+                    else:
+                        print("No file found containing the substring.")
+                        print (f'input_ids: {input_ids}')
+                        print (f'candidate_filename: {candidate_filename}')
+                        print (f'matching_files: {matching_files}')
+                        if len (matching_files) == 0: 
+                            raise (RuntimeError, f"Man, I can't find the corresponding states . pkl for this prompt: \n{input_ids}")
+                        if len (matching_files) > 1: 
+                            raise (RuntimeError, f"Man, I have found more than 1 ({len (matching_files)}) corresponding states . pkl s for this prompt: \n{input_ids}")
+                        
+                    filename = os.path.join (base_dir, filename)
+                    inserted_all_states = torch.load (filename)
+                    
+                else: 
+                    # print (f"----Loading inserted_all_states")
+                    # Need to unpickle from the states pickle path stored in args 
+                    inserted_all_states = torch.load (args.inserted_mamba_states_path)
+                    # print (f"----Successfully loaded inserted_all_states")
+            
         
         
         # Decoder embedding.

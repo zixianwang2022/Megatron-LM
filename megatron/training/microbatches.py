@@ -59,8 +59,10 @@ class NumMicroBatchesCalculator(ABC):
 class ConstantNumMicroBatches(NumMicroBatchesCalculator):
 
     def __init__(self, global_batch_size, micro_batch_size, data_parallel_size):
+        print (f'\n\n\nglobal_batch_size:{global_batch_size}\nmicro_batch_size:{micro_batch_size}\ndata_parallel_size:{data_parallel_size}')
         micro_batch_times_data_parallel = micro_batch_size * \
                                           data_parallel_size
+        print (f'\n\n\nmicro_batch_times_data_parallel:{micro_batch_times_data_parallel}')
         assert global_batch_size % micro_batch_times_data_parallel == 0, \
             'global batch size ({}) is not divisible by micro batch size ({})' \
             ' times data parallel size ({})'.format(global_batch_size,

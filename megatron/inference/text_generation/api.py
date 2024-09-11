@@ -157,6 +157,7 @@ def generate(model,
     # Zixian: debug Aug 25 11:32am
     # context_tokens_tensor, context_length_tensor = tokenize_prompts(
     #     prompts=prompts, tokens_to_generate=tokens_to_generate, add_BOS=False)
+    print (f"prompts: \n{prompts}")
     print (f"prompts tokens: \n{context_tokens_tensor}")
 
     if tokens_to_generate == 0:
