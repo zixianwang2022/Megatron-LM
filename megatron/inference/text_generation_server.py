@@ -350,7 +350,10 @@ class MegatronGenerate(Resource):
                             print (f'\n\n\n filename_tokens: \n{filename_tokens}\n\n\n')
                             
                             filename_tokens = filename_tokens[0]
-                            filename = "".join ([f"{t}_" for t in filename_tokens])
+                            if len (filename_tokens) > 35: 
+                                filename = "".join ([f"{t}_" for t in filename_tokens[:35]])
+                            else: 
+                                filename = "".join ([f"{t}_" for t in filename_tokens])
                             filename += '.pkl'
                             
                             full_path = os.path.join (base_dir, filename)

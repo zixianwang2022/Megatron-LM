@@ -15,7 +15,7 @@ from .tokenization import (
     tokenize_prompts,
     detokenize_generations)
 from .forward_step import ForwardStep
-from megatron.training import get_args
+from megatron.training import get_args, get_tokenizer
 
 def generate_and_post_process(model,
                               forward_step=ForwardStep,
@@ -157,6 +157,8 @@ def generate(model,
     # Zixian: debug Aug 25 11:32am
     # context_tokens_tensor, context_length_tensor = tokenize_prompts(
     #     prompts=prompts, tokens_to_generate=tokens_to_generate, add_BOS=False)
+    tokenizer = get_tokenizer()
+    print (f'tokenizer: {tokenizer}')
     print (f"prompts: \n{prompts}")
     print (f"prompts tokens: \n{context_tokens_tensor}")
 

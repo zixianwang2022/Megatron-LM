@@ -312,6 +312,14 @@ def get_batch_on_this_tp_rank(data_iterator):
            'attention_mask': None if "attention_mask" not in data else data["attention_mask"].cuda(non_blocking = True),
            'position_ids': data["position_ids"].cuda(non_blocking = True)
        }
+       
+       
+       print_rank_0 (f'tokens.shape: {tokens.shape}')
+       print_rank_0 (f'labels.shape: {labels.shape}')
+       print_rank_0 (f'loss_mask.shape: {loss_mask.shape}')
+       print_rank_0 (f'attention_mask: {attention_mask}')
+       print_rank_0 (f'position_ids: {position_ids}')
+       
 
        if args.pipeline_model_parallel_size == 1:
            _broadcast(batch['tokens'])

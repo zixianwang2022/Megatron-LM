@@ -14,6 +14,7 @@ import glob
 import torch
 import numpy as np
 import multiprocessing
+from megatron.training import print_rank_0
 try:
     import nltk
     nltk_available = True
@@ -87,6 +88,9 @@ class Encoder(object):
         lens = {}
         for key in self.args.json_keys:
             text = data[key]
+            
+            print_rank_0 (f'inputting text is: \n{text}')
+            
             if isinstance(text, list):
                 sentences = text
             else:
@@ -103,6 +107,8 @@ class Encoder(object):
                 sentence_lens[-1] += 1
             ids[key] = doc_ids
             lens[key] = sentence_lens
+            
+            print_rank_0 (f'inputting ids is: \n{ids}')
         return ids, lens, len(json_line)
 
 

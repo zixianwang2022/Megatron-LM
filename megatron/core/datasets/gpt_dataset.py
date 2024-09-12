@@ -170,11 +170,20 @@ class GPTDataset(MegatronDataset):
             tokens = text
             labels = torch.roll(text, shifts=-1, dims=0)
             labels[-1] = self._pad_token_id
+        
+        print ('\n')
+        print("tokens shape:", tokens.shape)
+        print ("labels shape:", labels.shape)
 
         if (
+            # DEBUG: ZIXIAN: Sept 12: 
+            # It seems like it is using cache that leads to labels & loss_mask shape mismatch. 
+            # Forcing it to get itor masks 
+            True or 
             not self.masks_and_position_ids_are_cacheable
             or not self.masks_and_position_ids_are_cached
         ):
+            print ('using _get_ltor_masks_and_position_ids')
             attention_mask, loss_mask, position_ids = _get_ltor_masks_and_position_ids(
                 tokens,
                 self.config.tokenizer.eod,
@@ -189,9 +198,15 @@ class GPTDataset(MegatronDataset):
                 self.cached_position_ids = position_ids
                 self.masks_and_position_ids_are_cached = True
         else:
+            print ('using cache')
             attention_mask = self.cached_attention_mask
             loss_mask = self.cached_loss_mask
             position_ids = self.cached_position_ids
+
+        print ("loss_mask shape:", loss_mask.shape)
+        print ("position_ids shape", position_ids.shape)
+        print ('\n')
+        # print("attention_mask shape:", attention_mask.shape) 
 
         # For padded sequences, mask the loss
         loss_mask[labels == self._pad_token_id] = 0.0
@@ -203,6 +218,9 @@ class GPTDataset(MegatronDataset):
         # Batch padding sequence so we mask the loss
         if idx is None:
             loss_mask = torch.zeros_like(loss_mask)
+            
+            
+        print (f'\n\n Returning from gpt_dataset.py\n\n')
 
         if self.config.create_attention_mask:
             return {

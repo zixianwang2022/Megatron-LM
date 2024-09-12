@@ -235,7 +235,10 @@ class MambaModel(LanguageModule):
                     base_dir = os.path.dirname (args.insert_mamba_states_for_training_dir)
                     
                     candidate_filename_tokens = input_ids[0]
-                    candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
+                    if len (candidate_filename_tokens) > 35: 
+                        candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens[:35]])
+                    else:
+                        candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
                     
                     matching_files = [filename for filename in os.listdir(base_dir) if candidate_filename in filename]
                     filename = ''
@@ -260,6 +263,8 @@ class MambaModel(LanguageModule):
                         
                     filename = os.path.join (base_dir, filename)
                     inserted_all_states = torch.load (filename)
+                    
+                    print_rank_0 ('\nLoading inserted_all_states at mamba_model.py\n')
                     
                 else: 
                     # print (f"----Loading inserted_all_states")
