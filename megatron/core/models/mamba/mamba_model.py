@@ -224,6 +224,17 @@ class MambaModel(LanguageModule):
         # Zixian: Sept 11 01:35am: 
         # Not sure if this will work for training 
         # Prevent inserting states when steping each time. 
+        
+        
+        from megatron.training import get_tokenizer
+        tokenizer = get_tokenizer ()
+        a = tokenizer.detokenize (input_ids[0].tolist())
+        print (f' \n\n input_ids.shape: {input_ids.shape} \n\n')
+        print (f' \n\n input_ids[0].shape: {input_ids[0].shape} \n\n')
+        print (f' \n\n input_ids[0].tolist(): {input_ids[0].tolist()} \n\n')
+        print (f'\n\n decoded input_ids is: \n{a}\n')
+        
+        
         if len (input_ids[0]) > 1: 
             
             print (f'input_ids: \n{input_ids}')
@@ -235,20 +246,26 @@ class MambaModel(LanguageModule):
                     base_dir = os.path.dirname (args.insert_mamba_states_for_training_dir)
                     
                     candidate_filename_tokens = input_ids[0]
-                    candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
+                    # candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
+                    if len (candidate_filename_tokens) > 10: 
+                        candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens[:10]])
+                    else:
+                        candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
                     
                     matching_files = [filename for filename in os.listdir(base_dir) if candidate_filename in filename]
                     filename = ''
                     
                     # Check if there is at least one matching file and print it
                     if len (matching_files) == 1:
-                        print("\n\n\nFound file:\n", matching_files[0])
+                        print("\n\n\n Found file:\n", matching_files[0])
                         print ('\n\n\n')
                         filename = matching_files[0]
                     
                     # Zixian: TODO: Raise error if can't find or conflicting states.pkl of the question input_ids. 
                     #               Think of other ways to continue training maybe. 
                     else:
+                        
+                        
                         print("No file found containing the substring.")
                         print (f'input_ids: {input_ids}')
                         print (f'candidate_filename: {candidate_filename}')

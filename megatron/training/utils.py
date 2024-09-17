@@ -233,6 +233,9 @@ def get_batch_on_this_cp_rank(batch):
     # that we can get balanced workload among GPUs in a context parallel group.
     args = get_args()
     cp_size = args.context_parallel_size
+    
+    print_rank_0 (f'\n\n context_parallel_size: {cp_size}\n\n')
+    
     if cp_size > 1:
         cp_rank = mpu.get_context_parallel_rank()
         for key, val in batch.items():

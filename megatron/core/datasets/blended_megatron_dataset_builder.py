@@ -147,6 +147,11 @@ class BlendedMegatronDatasetBuilder(object):
         Returns:
             List[Optional[TopLevelDataset]]: A list containing a dataset instance (or None) per split
         """
+        
+        print (f'\n\n self.config: {self.config} \n\n')
+        print (f'\n\n self.config.mock: {self.config.mock} \n\n')
+        print (f'\n\n self.config.blend: {self.config.blend} \n\n')
+        
         ##
         # Return fake "mock" datasets
         ##
@@ -168,9 +173,16 @@ class BlendedMegatronDatasetBuilder(object):
                 weights = normalize(weights)
 
             split = self.config.split_matrix
+            
+            print (f'\n\n weights: {weights}\n\n')
+            
+            print (f'\n prefixes: {prefixes}\n')
+            print (f'\n split: {split}\n')
+            print (f'\n self.sizes: {self.sizes}\n')
 
             # Blend consists of a single prefix
             if len(prefixes) == 1 and weights is None:
+                print (f'\n\n returning build megatron dataset \n\n')
                 return self._build_megatron_dataset_splits(prefixes[0], split, self.sizes)
 
             # Build the mid-level datasets
@@ -387,15 +399,23 @@ class BlendedMegatronDatasetBuilder(object):
         low_level_dataset = self.cls.build_low_level_dataset(dataset_path, self.config)
 
         # Build the split indices for the low level dataset
+        # Zixian: from gpt_dataset.py GPTDataset
+        # The number of unique elements in the underlying IndexedDataset
         num_elements = self.cls.numel_low_level_dataset(low_level_dataset)
         split_indices = []
         for i, _ in enumerate(Split):
             if split[i] is not None:
+                # Zixian: beg is the start idx of data for each split [train/valid/test]
+                # vice versa for end 
                 beg = int(round(split[i][0] * float(num_elements)))
                 end = int(round(split[i][1] * float(num_elements)))
+                
+                # Zixian: append all the indices for each split into split_indices 
                 split_indices.append(numpy.arange(start=beg, stop=end, step=1, dtype=numpy.int32))
             else:
                 split_indices.append(None)
+                
+        print (f'\n\n split_indices : {split_indices} \n\n')
 
         # Build the mid level dataset
         mid_level_datasets = []
@@ -416,6 +436,11 @@ class BlendedMegatronDatasetBuilder(object):
                         self.config,
                     )
                 )
+                
+                
+        print (f'\n\n within blended_megatron_dataset_builder.py \n\n')
+        print (f'\n\n low_level_dataset: {low_level_dataset}\n\n')
+        print (f'\n\n mid_level_datasets: {mid_level_datasets}\n\n' )
 
         return mid_level_datasets
 

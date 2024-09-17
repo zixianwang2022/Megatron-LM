@@ -156,11 +156,20 @@ class GPTDataset(MegatronDataset):
         Returns:
             Dict[str, torch.Tensor]: The sample information wrapped in a dictionary
         """
+        
+        print (f'\n\n I am getting next data of the gptdataset ')
+        print (f' idx is: {idx}')
+        print (f' self.config.add_extra_token_to_sequence is: {self.config.add_extra_token_to_sequence}')
+        
+        
         if idx is None:
             # Batch padding sequence so the index does not matter
             text, _ = self._query_document_sample_shuffle_indices(0)
         else:
             text, _ = self._query_document_sample_shuffle_indices(idx)
+            
+        print (f'text-0: {text}')
+        print (f'len (text-0): {len (text)}')
 
         text = torch.from_numpy(text).long()
         if self.config.add_extra_token_to_sequence:
@@ -170,6 +179,11 @@ class GPTDataset(MegatronDataset):
             tokens = text
             labels = torch.roll(text, shifts=-1, dims=0)
             labels[-1] = self._pad_token_id
+            
+        print (f'text-1: {text}')
+        print (f'len (text-1): {len (text)}')
+        
+        # assert False 
 
         if (
             not self.masks_and_position_ids_are_cacheable
@@ -241,11 +255,26 @@ class GPTDataset(MegatronDataset):
         document_ids = []
         sample_parts = []
 
+        print (f'\n\n Inside gpt_dataset.py \n')
+        print (f'\n doc_index_beg: {doc_index_beg} \n ')
+        print (f'\n doc_index_beg_offset: {doc_index_beg_offset} \n ')
+        print (f'\n doc_index_end: {doc_index_end} \n ')
+        print (f'\n doc_index_end_offset: {doc_index_end_offset} \n ')
+        # print (f'\n doc_index_beg: {doc_index_beg} \n ')
+        
+        # print (f'\n document_ids : {document_ids} \n')
+        # print (f'\n self.document_index[doc_index_beg] : {self.document_index[doc_index_beg]} \n')
+        # print (f'\n doc_index_beg_offset : {doc_index_beg_offset} \n')
+        # print (f'\n doc_index_end_offset : {doc_index_end_offset} \n')
+        # print (f'\n length : {doc_index_end_offset - doc_index_beg_offset + self.config.add_extra_token_to_sequence} \n')
+
+
         # Sample spans a single document
         if doc_index_beg == doc_index_end:
             # Add the document id
             document_ids.append(self.document_index[doc_index_beg])
-
+            
+            
             # Add the entire sample
             sample_parts.append(
                 self.dataset.get(
@@ -260,11 +289,27 @@ class GPTDataset(MegatronDataset):
         # Sample spans multiple documents
         else:
             for i in range(doc_index_beg, doc_index_end + 1):
+                
+                if i == doc_index_beg: 
+                    # Zixian: Debug: include this to skip the first data
+                    # Because the doc_index_beg_offset will start at the middle of the sequence
+                    continue 
+                    # a1 = 1 
+                    
+                if i == doc_index_beg+2: 
+                    # Zixian: Debug: hacky way to see if the input_ids can only contain 1 data 
+                    # Instead of a concatenation of all of them
+                    break 
+                
                 # Add the document id
                 document_ids.append(self.document_index[i])
 
                 # Add the sample part
                 offset = 0 if i > doc_index_beg else doc_index_beg_offset
+                
+                # Zixian: Debug to see if this is causing cutting off tokens for 1st processed sample:
+                # offset = 0 if i >= doc_index_beg else doc_index_beg_offset
+                
                 length = (
                     None
                     if i < doc_index_end
@@ -278,9 +323,33 @@ class GPTDataset(MegatronDataset):
         ), f"len(document_ids) ({len(document_ids)}) != len(sample_parts) ({len(sample_parts)})"
 
         length = sum(map(len, sample_parts))
+        
+        # print (f'\n sample_parts[0:2]: {sample_parts[0:3]} \n')
+        # print (f'\n document_ids[0:2]: {document_ids[0:3]} \n')
+        # print (f'\n sum(map(len, sample_parts[0:2])): {sum(map(len, sample_parts[0:2]))} \n')
+        
+        from megatron.training import get_tokenizer
+        tokenizer = get_tokenizer ()
+        a = tokenizer.detokenize (sample_parts[0].tolist())
+        print (f'\n input_ids : a: {sample_parts[0]} \n')
+        print (f'\n detokenized : a: {a} \n')
+        # b = tokenizer.detokenize (sample_parts[1].tolist())
+        # print (f'\n input_ids : b: {sample_parts[1]} \n')
+        # print (f'\n detokenized : b: {b} \n')
+        # c = tokenizer.detokenize (sample_parts[2].tolist())
+        # print (f'\n input_ids : c: {sample_parts[2]} \n')
+        # print (f'\n detokenized : c: {c} \n')
+        
+        
+        
+        # Zixian: hacky way to experiment 
+        # sample_parts = sample_parts[:1]
 
         # Pad the sample if necessary
         if length < (self.config.sequence_length + self.config.add_extra_token_to_sequence):
+            
+            print (f'\n I am appending pad tokens! \n')
+            
             sample_parts.append(
                 [self._pad_token_id]
                 * (self.config.sequence_length + self.config.add_extra_token_to_sequence - length)

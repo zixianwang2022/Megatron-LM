@@ -78,6 +78,9 @@ def get_blend_from_list(
     if blend is None:
         return None
 
+    print (f'\n\n blend is: {blend}\n\n')
+    print (f'\n\n len(blend) % 2: {len(blend) % 2}\n\n')
+    
     if len(blend) % 2 == 1:
         weight_per_dataset = None
         raw_prefix_per_dataset = blend
@@ -101,5 +104,7 @@ def get_blend_from_list(
             raw_prefix_per_dataset = blend
 
     prefix_per_dataset = [rppd.strip() for rppd in raw_prefix_per_dataset]
+    
+    print (f'\n\n prefix_per_dataset is: {prefix_per_dataset}\n\n')
 
     return prefix_per_dataset, weight_per_dataset

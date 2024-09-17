@@ -1430,6 +1430,10 @@ def build_train_valid_test_data_loaders(
 
     # Rely on distributed-aware core datasets, temporary
     is_distributed = getattr(build_train_valid_test_datasets_provider, "is_distributed", False)
+    
+    # Zixian: debug Sept 14 22:43 
+    # Answer is is_distributed=True 
+    print_rank_0 (f'\n\n is_distributed: {is_distributed} \n\n')
 
     # Construct the data pipeline
     if is_distributed or mpu.get_tensor_model_parallel_rank() == 0:

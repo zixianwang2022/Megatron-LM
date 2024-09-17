@@ -103,9 +103,12 @@ options=" \
        --bf16 \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
-       --tensorboard-dir ${TENSORBOARD_DIR}
+       --tensorboard-dir ${TENSORBOARD_DIR} \
        
-       --retrieved_mamba_states_path helloworld"
+       --inserting_mamba_states True \
+       --insert_mamba_states_for_training True \
+       --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100-data/hidden_states/soup0-3/  
+       "
 
 # --load ${CHECKPOINT_DIR} \
 torchrun --nproc_per_node 1 ../../pretrain_mamba.py ${options}

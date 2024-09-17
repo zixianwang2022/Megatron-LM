@@ -12,3 +12,8 @@ logs
 examples/mamba/data-cache/
 examples/mamba/checkpoints/
 *.patch
+
+*.bin
+*.idx
+
+examples/mamba/output.txt
