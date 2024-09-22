@@ -195,7 +195,9 @@ class Mamba(MegatronModule):
                 insert_states=False, 
                 retrieve_states=False, 
                 inserted_ssm_state=None, 
-                inserted_conv_state=None,):
+                inserted_conv_state=None,
+                insert_states_for_training=False, 
+                ):
         
         # print ("Printing from Megatron-LM/megatron/core/ssm/mamba_mixer.py FUNC=forward line 200")
         # print (f'--insert_states:{insert_states}')
@@ -258,6 +260,40 @@ class Mamba(MegatronModule):
         if (inference_params != None): 
             if (insert_states & (inference_params.seqlen_offset == 0)): 
                 initial_states = inserted_ssm_state
+                
+                
+                
+        
+                
+                
+                
+        # TODO: Zixian Sept 17: insert states if inserting for training 
+        if (insert_states_for_training): 
+            # TODO: Need to check if it is the first time scanning through the input or iteratively stepping. 
+            # Zixian Sept 17: ^ Maybe each time forward only produces next token. That next token is used to calculates loss. 
+            #                   That means, the model will not use already generated token to do the forward again. 
+            #                   Think about the use of attention_mask in here? 
+            #                   Each out from mixer --> layer --> block --> model --> pretrain_mamba's step to generate loss 
+            #                   Then next data is from pretrain_mamba's dataloader's nextitem to here, so self generated token will not occur. 
+            
+            if self.layer_idx == 0: 
+                print ('\n\n printing just at layer 0')
+                print ('\nInside Mamba_mixer.py , inserting states for training \n\n')
+            
+            conv_state = inserted_conv_state # Y
+            ssm_state = inserted_ssm_state # Y
+        
+            # TODO: Zixian Sept 17: Initialize initial_states to be able to pass during forward.     
+            # This will enable initializing states during mamba_chunk_scan_combined
+            initial_states = inserted_ssm_state
+            
+            
+        
+        
+        
+        
+        
+        
 
         # (nheads_local)
         A = -torch.exp(self.A_log.float())

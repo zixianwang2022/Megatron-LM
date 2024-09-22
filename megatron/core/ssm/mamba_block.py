@@ -234,6 +234,8 @@ class MambaStack(MegatronModule):
         insert_states: bool =False, 
         retrieve_states: bool =False, 
         inserted_all_states: Tensor=None, 
+        insert_states_for_training: bool = False, 
+        
         **kwargs
     ):
         # print ("Printing from Megatron-LM/megatron/core/ssm/mamba_block.py FUNC=forward line 239")
@@ -275,6 +277,11 @@ class MambaStack(MegatronModule):
                     # inserted_all_states [iteration_cnt] [layer_idx] [ssm/conv_state]
                     inserted_ssm_state  = inserted_all_states[0][layer.layer_idx]['ssm_state'] # Y
                     inserted_conv_state = inserted_all_states[0][layer.layer_idx]['conv_state'] # Y
+                    
+            # TODO: Zixian: Sept 17: Add an if to check if inserting states for train 
+            if insert_states_for_training: 
+                inserted_ssm_state  = inserted_all_states[0][layer.layer_idx]['ssm_state'] # Y
+                inserted_conv_state = inserted_all_states[0][layer.layer_idx]['conv_state'] # Y
             
             
             # Capturing states for each layer
@@ -286,6 +293,7 @@ class MambaStack(MegatronModule):
                                                 retrieve_states=retrieve_states,
                                                 inserted_ssm_state=inserted_ssm_state,
                                                 inserted_conv_state=inserted_conv_state, 
+                                                insert_states_for_training=insert_states_for_training, 
             )
             # Storing each layer states 
             all_layers_states_dict [layer.layer_idx] = layer_states_dict

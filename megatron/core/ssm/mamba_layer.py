@@ -68,6 +68,8 @@ class MambaLayer(MegatronModule):
         retrieve_states: bool =False, 
         inserted_ssm_state: Tensor=None, 
         inserted_conv_state: Tensor=None,
+        insert_states_for_training: bool = False, 
+        
         **kwargs
     ):
         # print ("Printing from Megatron-LM/megatron/core/ssm/mamba_layer.py FUNC=forward line 73")
@@ -88,7 +90,9 @@ class MambaLayer(MegatronModule):
                                                       insert_states=insert_states,
                                                       retrieve_states=retrieve_states,
                                                       inserted_ssm_state=inserted_ssm_state,
-                                                      inserted_conv_state=inserted_conv_state, )
+                                                      inserted_conv_state=inserted_conv_state, 
+                                                      insert_states_for_training=insert_states_for_training
+                                                      )
         
         # Returning states dict 
         return hidden_states+residual, layer_states_dict

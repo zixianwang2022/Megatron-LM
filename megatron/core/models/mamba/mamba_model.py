@@ -144,6 +144,59 @@ class MambaModel(LanguageModule):
         
         
         
+    
+    def combine_list_states_to_batch (self, list_of_states): 
+        """ 
+        list_of_states: a list of states dict
+        
+        return: 1 states dict where the ssm & conv states for each layer is batched in the order of the list
+        
+        Verified correctness with for both conv_state & ssm_state: 
+        p = '/data/ziw081/ssm-retrieval/data/hotpot/training_data/100-data/hidden_states/gold-1/'
+        s1 = torch.load (p+'877_251541_96202_467_202186_42839_625_75810_300_375_71763_724_17799_14_251519_251541_3_3_3_3_3_3_3_3_3_3_.pkl')
+        s2 = torch.load (p+'877_251541_852_1703_339_276_6995_1586_49709_300_194695_6915_251597_14_251519_251541_3_3_3_3_3_3_3_3_3_3_.pkl')
+        s3 = torch.load (p+'877_251541_796_6474_10956_42839_291_403_49236_251597_14_251519_251541_3_3_3_3_3_3_3_3_3_3_.pkl')
+        sl = [s1, s2, s3]
+
+        print (s1.keys())
+        print (s1[0].keys())
+        print (s1[0][55].keys())
+        print (s1[0][55]['conv_state'].shape)
+
+
+        o = combine_list_states_to_batch (sl)
+
+        print (o.keys())
+        print (o[0].keys())
+        print (o[0][55].keys())
+        print (o[0][55]['conv_state'].shape)
+
+        print (o[0][55]['conv_state'][0])
+        print (o[0][55]['conv_state'][1])
+        print (o[0][55]['conv_state'][2])
+
+
+        print (sl[0][0][55]['conv_state'])
+        print (sl[1][0][55]['conv_state'])
+        print (sl[2][0][55]['conv_state'])
+        """
+        
+        output_all_states = {0:{}}
+        # For every layer of the first element's starting position 
+        for layer in list_of_states[0][0]: 
+            
+            
+            batched_ssm_state = torch.cat (
+                [each_state[0][layer]['ssm_state'] for each_state in list_of_states], dim=0
+            )
+            
+            batched_conv_state = torch.cat (
+                [each_state[0][layer]['conv_state'] for each_state in list_of_states], dim=0
+            )
+            
+            output_all_states [0][layer]  = {'conv_state' : batched_conv_state, 'ssm_state':batched_ssm_state}
+            
+        return output_all_states
         
         
     def freeze(
@@ -166,17 +219,41 @@ class MambaModel(LanguageModule):
         if freeze_mamba_model:
             modules.append(self.decoder)
         if freeze_embedding_model:
-            modules.append(self.embedding)
+            # Zixian: Prevent second host triggerring errors for hosting model only 
+            if self.pre_process:
+                modules.append(self.embedding)
         if freeze_output_layer:
-            modules.append(self.output_layer)
+            # Zixian: Prevent second host triggerring errors for hosting model only 
+            if self.post_process:
+                modules.append(self.output_layer)
         
         # Update Sept 7 22:12pm Not tested yet. 
         # TODO: if does not work, follow similar method in counting params 
         for module in modules:
+            print (f' \n\n freezing {module} \n\n')
             for param in module.parameters():
                 param.requires_grad = False
                 
                 
+ 
+        # for module in [self.decoder, self.embedding, self.output_layer]:
+        #     for name, param in module.named_parameters():
+        #         print(f"Module: {module.__class__.__name__}, Parameter: {name}, dtype: {param.dtype}")
+ 
+        # from collections import Counter
+
+        # dtype_counter = Counter()
+
+        # for module in [self.decoder, self.embedding, self.output_layer]:
+        #     for name, param in module.named_parameters():
+        #         dtype = str(param.dtype)
+        #         num_params = param.numel()
+        #         dtype_counter[dtype] += num_params
+
+        # # Print the counts
+        # for dtype, count in dtype_counter.items():
+        #     print(f"Data Type: {dtype}, Total Parameters: {count}")               
+        
 
     def forward(
         self,
@@ -191,6 +268,7 @@ class MambaModel(LanguageModule):
         # For retrieving states
         insert_states: bool =False, 
         retrieve_states: bool =False, 
+        insert_states_for_training: bool = False, 
         inserted_all_states: Tensor =None, 
     ) -> Tensor:
         """Forward function of the Mamba model. This function passes the input tensors
@@ -220,6 +298,7 @@ class MambaModel(LanguageModule):
         insert_states = args.inserting_mamba_states
         retrieve_states = args.retrieving_mamba_states
         inserted_all_states = None 
+        insert_states_for_training = args.insert_mamba_states_for_training
         
         # Zixian: Sept 11 01:35am: 
         # Not sure if this will work for training 
@@ -245,45 +324,71 @@ class MambaModel(LanguageModule):
                 if args.insert_mamba_states_for_training: 
                     base_dir = os.path.dirname (args.insert_mamba_states_for_training_dir)
                     
-                    candidate_filename_tokens = input_ids[0]
-                    # candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
-                    if len (candidate_filename_tokens) > 10: 
-                        candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens[:10]])
-                    else:
-                        candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
+                    # candidate_filename_tokens = input_ids[0]
+                    print (f'input_ids.shape: {input_ids.shape}')
                     
-                    matching_files = [filename for filename in os.listdir(base_dir) if candidate_filename in filename]
-                    filename = ''
+                    # Initialize to collect each batch's loaded states 
+                    list_of_batched_states = []
                     
-                    # Check if there is at least one matching file and print it
-                    if len (matching_files) == 1:
-                        print("\n\n\n Found file:\n", matching_files[0])
-                        print ('\n\n\n')
-                        filename = matching_files[0]
-                    
-                    # Zixian: TODO: Raise error if can't find or conflicting states.pkl of the question input_ids. 
-                    #               Think of other ways to continue training maybe. 
-                    else:
+                    for candidate_filename_tokens in input_ids: 
+                        # candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
                         
+                        # Find the index of the last non-zero element
+                        index = 0
+                        while (candidate_filename_tokens[index] != 0) & ((candidate_filename_tokens[index] != 251519) | (candidate_filename_tokens[index+1] != 251541)):
+                            index += 1
                         
-                        print("No file found containing the substring.")
-                        print (f'input_ids: {input_ids}')
-                        print (f'candidate_filename: {candidate_filename}')
-                        print (f'matching_files: {matching_files}')
-                        if len (matching_files) == 0: 
-                            raise (RuntimeError, f"Man, I can't find the corresponding states . pkl for this prompt: \n{input_ids}")
-                        if len (matching_files) > 1: 
-                            raise (RuntimeError, f"Man, I have found more than 1 ({len (matching_files)}) corresponding states . pkl s for this prompt: \n{input_ids}")
+                        print (f'index: {index}')
+                        # if len (candidate_filename_tokens) > 25: 
+                        if index > 25: 
+                            candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens[:25]])
+                        else:
+                            candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens[:index]])
                         
-                    filename = os.path.join (base_dir, filename)
-                    inserted_all_states = torch.load (filename)
+                        matching_files = [filename for filename in os.listdir(base_dir) if candidate_filename in filename]
+                        filename = ''
+                        
+                        # Check if there is at least one matching file and print it
+                        if len (matching_files) == 1:
+                            print("\n\n\n Found file:\n", matching_files[0])
+                            print ('\n\n\n')
+                            filename = matching_files[0]
+                        
+                        # Zixian: TODO: Raise error if can't find or conflicting states.pkl of the question input_ids. 
+                        #               Think of other ways to continue training maybe. 
+                        else:
+                            
+                            
+                            print("No file found containing the substring.")
+                            print (f'input_ids: {input_ids}')
+                            print (f'candidate_filename: {candidate_filename}')
+                            print (f'matching_files: {matching_files}')
+                            if len (matching_files) == 0: 
+                                raise (RuntimeError, f"Man, I can't find the corresponding states . pkl for this prompt: \n{input_ids}")
+                            if len (matching_files) > 1: 
+                                raise (RuntimeError, f"Man, I have found more than 1 ({len (matching_files)}) corresponding states . pkl s for this prompt: \n{input_ids}")
+                            
+                        filename = os.path.join (base_dir, filename)
+                        inserted_all_states = torch.load (filename)
+                        
+                        list_of_batched_states.append (inserted_all_states)
                     
+                    # Zixian: Sept 17 22:20 
+                    # batch into 1 state_dict 
+                    inserted_all_states = self.combine_list_states_to_batch (list_of_batched_states) 
                 else: 
                     # print (f"----Loading inserted_all_states")
                     # Need to unpickle from the states pickle path stored in args 
                     inserted_all_states = torch.load (args.inserted_mamba_states_path)
                     # print (f"----Successfully loaded inserted_all_states")
-            
+        
+        print (f' \n\n inside mamba_model.py: printing decoded input_ids: ')
+        from megatron.training import get_tokenizer
+        tokenizer = get_tokenizer ()
+        a = tokenizer.detokenize (input_ids[0].tolist())
+        # print (f'\n input_ids : a: {input_ids[0]} \n')
+        print (f'\n detokenized : input_ids: {a} \n')
+        
         
         
         # Decoder embedding.
@@ -331,6 +436,7 @@ class MambaModel(LanguageModule):
                                                 insert_states=insert_states, 
                                                 retrieve_states=retrieve_states, 
                                                 inserted_all_states=inserted_all_states, 
+                                                insert_states_for_training=insert_states_for_training, 
                                                 **(extra_block_kwargs or {}),
         )
         

@@ -2,15 +2,15 @@
 
 # Use: ./train.sh <data-path> <tokenizer-path>
 
-MODEL_SCALE="800M" # or "8B"
-# MODEL_SCALE="8B"
+# MODEL_SCALE="800M" # or "8B"
+MODEL_SCALE="8B"
 
 case "${MODEL_SCALE}" in
     "800M")
         TENSOR_MODEL_PARALLEL_SIZE=1
         NUM_LAYERS=48
         HIDDEN_SIZE=1024
-        NUM_ATTENTION_HEADS=1
+        NUM_ATTENTION_HEADS=16
         GLOBAL_BATCH_SIZE=32
         ;;
     "8B")
@@ -18,8 +18,8 @@ case "${MODEL_SCALE}" in
         TENSOR_MODEL_PARALLEL_SIZE=1
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
-        NUM_ATTENTION_HEADS=1
-        GLOBAL_BATCH_SIZE=16
+        NUM_ATTENTION_HEADS=32
+        GLOBAL_BATCH_SIZE=1
         ;;
     *)
         echo "Invalid version specified"
@@ -35,7 +35,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
-CHECKPOINT_DIR="./checkpoints"
+CHECKPOINT_DIR="./checkpoints/training_decoder_10000/lr5e-6_clip0_3_wd0_3_warm10/"
 DATACACHE_DIR="./data-cache"
 TENSORBOARD_DIR="./tensorboard"
 
@@ -51,9 +51,9 @@ SEQ_LEN=4096
 # LR_WARMUP_SAMPLES=50000
 # LR_DECAY_SAMPLES=73192188 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
-TRAIN_SAMPLES=164  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=0
-LR_DECAY_SAMPLES=164 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
+TRAIN_SAMPLES=10000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=1000
+LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
 
 options=" \
@@ -84,13 +84,13 @@ options=" \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 2 \
+       --micro-batch-size 1 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
-       --lr 2.5e-4 \
-       --min-lr 2.5e-5 \
+       --lr 5e-6 \
+       --min-lr 5e-7 \
        --lr-decay-style cosine \
-       --weight-decay 0.1 \
-       --clip-grad 1.0 \
+       --weight-decay 0.3 \
+       --clip-grad 0.5 \
        --hidden-dropout 0.0 \
        --disable-bias-linear \
        --normalization RMSNorm \
@@ -104,11 +104,14 @@ options=" \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
        --tensorboard-dir ${TENSORBOARD_DIR} \
+
+       --load  /workspace/data/ssm-retrieval/mamba2-8b/mamba2-8b-3t-4k \
+       --finetune \
        
-       --inserting_mamba_states True \
-       --insert_mamba_states_for_training True \
-       --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100-data/hidden_states/soup0-3/  
-       "
+        --inserting_mamba_states True \
+        --insert_mamba_states_for_training True \
+        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup0-3/  
+        "
 
 # --load ${CHECKPOINT_DIR} \
 torchrun --nproc_per_node 1 ../../pretrain_mamba.py ${options}
