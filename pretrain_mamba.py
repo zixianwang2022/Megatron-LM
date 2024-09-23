@@ -105,7 +105,7 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
     
     # Freeze the entire Mamba model except for decoder output linear layer 
     # model.freeze (freeze_mamba_model=args.freeze_mamba_blocks) 
-    model.freeze (freeze_mamba_model=False, freeze_embedding_model=True, freeze_output_layer=False) 
+    model.freeze (freeze_embedding_model=True, freeze_mamba_model=False, freeze_output_layer=True) 
     
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable parameters: {trainable_params}")

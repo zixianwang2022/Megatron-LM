@@ -59,7 +59,7 @@ LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 options=" \
        --tensor-model-parallel-size ${TENSOR_MODEL_PARALLEL_SIZE} \
        --sequence-parallel \
-       --pipeline-model-parallel-size 1 \
+       --pipeline-model-parallel-size 2 \
        --use-distributed-optimizer \
        --overlap-param-gather \
        --overlap-grad-reduce \
@@ -105,13 +105,15 @@ options=" \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
        --tensorboard-dir ${TENSORBOARD_DIR} \
 
-       --load  /workspace/data/ssm-retrieval/mamba2-8b/mamba2-8b-3t-4k \
+       --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp2_tp1 \
        --finetune \
-       
-        --inserting_mamba_states True \
-        --insert_mamba_states_for_training True \
-        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup0-3/  
-        "
+
+       --recompute-activations
+       "
+        # --inserting_mamba_states True \
+        # --insert_mamba_states_for_training True \
+        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup0-3/  
+        # "
 
 # --load ${CHECKPOINT_DIR} \
-torchrun --nproc_per_node 1 ../../pretrain_mamba.py ${options}
+torchrun --nproc_per_node 2 ../../pretrain_mamba.py ${options}

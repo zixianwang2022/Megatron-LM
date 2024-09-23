@@ -230,13 +230,19 @@ def main(args):
     with open(tracker_filename, 'r') as f:
         metastring = f.read().strip()
         try:
-            iteration = int(metastring)
+            # Zixian: comment this out to enable convert the release  version
+            # iteration = int(metastring)
+            iteration = metastring
         except ValueError:
             raise Exception("")
     out_iteration = iteration if not args.reset_iterations else 0
 
     # get model directory and model parallel ranks
-    input_model_dir = os.path.join(args.load_dir, 'iter_{:07d}'.format(iteration))
+    
+    # Zixian: comment this out to enable convert the release  version
+    # input_model_dir = os.path.join(args.load_dir, 'iter_{:07d}'.format(iteration))
+    input_model_dir = os.path.join(args.load_dir, iteration)
+    
     input_sub_models = os.listdir(input_model_dir)
     # input_sub_models = sorted(input_sub_models, key=lambda x: int(re.search(r'\d+', x).group()))
 
@@ -360,7 +366,10 @@ def main(args):
 
             model = finalize_checkpoint(sample_model, tp_models[tp], args, verbose=False)
 
-            save_dir = os.path.join(args.save_dir, 'iter_{:07d}'.format(out_iteration), dir_name)
+            # Zixian: comment this out to enable convert the release  version
+            # save_dir = os.path.join(args.save_dir, 'iter_{:07d}'.format(out_iteration), dir_name)
+            save_dir = os.path.join(args.save_dir, out_iteration, dir_name)
+            
             os.makedirs(save_dir, exist_ok=True)
             model_file = os.path.join(save_dir, "model_optim_rng.pt")
             torch.save(model, model_file)
@@ -381,6 +390,9 @@ if __name__ == "__main__":
     # --target-tp-size 1
 
     parser = argparse.ArgumentParser()
+    # Zixian: include this to avoid import megatron error in load
+    parser.add_argument('--megatron-path', type=str)
+    
     parser.add_argument('--load-dir', type=str)
     parser.add_argument('--save-dir', type=str)
     parser.add_argument('--target-tp-size', type=int, default=1)
