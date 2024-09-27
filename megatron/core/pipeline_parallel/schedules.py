@@ -97,8 +97,10 @@ def get_forward_backward_func():
     if pipeline_model_parallel_size > 1:
         if parallel_state.get_virtual_pipeline_model_parallel_world_size() is not None:
             forward_backward_func = forward_backward_pipelining_with_interleaving
+            print (f' \n\n forward_backward_func = forward_backward_pipelining_with_interleaving \n\n ')
         else:
             forward_backward_func = forward_backward_pipelining_without_interleaving
+            print (f' \n\n forward_backward_func = forward_backward_pipelining_without_interleaving \n\n')
     else:
         forward_backward_func = forward_backward_no_pipelining
     return forward_backward_func
@@ -1213,6 +1215,15 @@ def forward_backward_pipelining_without_interleaving(
     )
     num_warmup_microbatches = min(num_warmup_microbatches, num_microbatches)
     num_microbatches_remaining = num_microbatches - num_warmup_microbatches
+    
+    
+    with open ('/workspace/megatron/examples/mamba/training_10000_output.txt', 'a') as file: 
+        file.write (f'\n\n num_warmup_microbatches: {num_warmup_microbatches} \n')
+        file.write (f'\n num_microbatches_remaining: {num_microbatches_remaining} \n')
+        file.write (f'\n parallel_state.get_pipeline_model_parallel_world_size(): {parallel_state.get_pipeline_model_parallel_world_size()} \n')
+        file.write (f'\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} \n\n')
+
+    
 
     # Checkpoint the activations of partial Transformer layers in a number of micro-batches
     # within the maximum outstanding micro-batch backpropagations.

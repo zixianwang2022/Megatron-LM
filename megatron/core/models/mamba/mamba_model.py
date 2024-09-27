@@ -205,7 +205,11 @@ class MambaModel(LanguageModule):
         
         
     def freeze(
-        self, freeze_mamba_model: bool, freeze_embedding_model:bool, freeze_output_layer:bool, 
+        self, 
+        freeze_mamba_model: bool, 
+        freeze_embedding_model:bool, 
+        freeze_output_layer:bool, 
+        unfreeze_decoder_last_layer: bool = False,
     ):
         """
         Zixian: Sept 8 19:11pm VERIFIED functionality 
@@ -215,7 +219,11 @@ class MambaModel(LanguageModule):
         Make specific modules non-trainable by setting requires_grad to False for the module's parameters.
 
         Args:
-            freeze_mamba_model (bool): Freeze the Mamba model module.
+        freeze_mamba_model (bool): Freeze the entire decoder module.
+        freeze_embedding_model (bool): Freeze the embedding module.
+        freeze_output_layer (bool): Freeze the output layer.
+        unfreeze_decoder_last_layer (bool): Unfreeze decoder's last layer. 
+        
         """
         
         # for l in range(self.model.decoder.num_layers_per_pipeline_rank):
@@ -238,6 +246,16 @@ class MambaModel(LanguageModule):
             print (f' \n\n freezing {module} \n\n')
             for param in module.parameters():
                 param.requires_grad = False
+                
+                
+        # Freeze all decoder layers except the last one
+        if unfreeze_decoder_last_layer:
+            num_layers = len(self.decoder.layers)
+            for idx, layer in enumerate(self.decoder.layers):
+                if idx == num_layers - 1:
+                    print(f'Unfreezing decoder layer {idx}')
+                    for param in layer.parameters():
+                        param.requires_grad = True 
                 
                 
  

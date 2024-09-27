@@ -351,6 +351,9 @@ def _communicate(
         p2p_func = _batched_p2p_ops
     else:
         p2p_func = _p2p_ops
+        
+    with open ('/workspace/megatron/examples/mamba/training_10000_output.txt', 'a') as file: 
+        file.write (f'\n\n p2p_func: {p2p_func} \n\n')
 
     reqs = p2p_func(
         tensor_send_prev=tensor_send_prev,
