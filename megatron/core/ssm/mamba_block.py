@@ -222,6 +222,30 @@ class MambaStack(MegatronModule):
         used by internal code to bypass the input provided by the
         forward_step_func"""
         self.input_tensor = input_tensor
+        
+        print (f' \n\n setting input tensor !!!!!!!!! \n\n {self.input_tensor}')
+        
+        
+    def set_input_states(self, input_states: dict): 
+        """
+        Zixian: 
+        Set input states to be used instead of forward()'s input states (which will be None).
+        
+        Called during set_input_tensor of mamba_model.py 
+
+        When doing pipeline parallelism the input from the previous
+        stage comes from communication, not from the input, so the
+        model's forward_step_func won't have it. This function is thus
+        used by internal code to bypass the input provided by the
+        forward_step_func"""
+        
+        
+        
+        self.inserted_all_states = input_states 
+        
+        print (f' \n\n setting input states !!!!!!!!! \n\n {self.inserted_all_states}')
+    
+    
 
     def forward(
         self,
@@ -250,9 +274,14 @@ class MambaStack(MegatronModule):
         
         # print (f"Printing from Megatron-LM/megatron/core/ssm/mamba_block.py Line 234")
         # print (f"--hidden_states=\n{hidden_states}")
+        
+        
         if not self.pre_process:
             # See set_input_tensor()
             hidden_states = self.input_tensor
+            inserted_all_states = self.inserted_all_states 
+            
+        print (f' inserted_all_states : \n {inserted_all_states}')
 
         if inference_params:
             # NOTE(bnorick): match InferenceParams attributes for mamba_ssm.utils.generation.InferenceParams,

@@ -35,7 +35,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
-CHECKPOINT_DIR="./checkpoints/training_decoder_10000/lr5e-6_clip0_3_wd0_3_warm10/"
+CHECKPOINT_DIR="./checkpoints/training_decoder_10000/pp1_tp4/lr5e-6_clip0_3_wd0_3_warm10/"
 DATACACHE_DIR="./data-cache"
 TENSORBOARD_DIR="./tensorboard"
 
@@ -59,7 +59,7 @@ LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 options=" \
        --tensor-model-parallel-size ${TENSOR_MODEL_PARALLEL_SIZE} \
        --sequence-parallel \
-       --pipeline-model-parallel-size 2 \
+       --pipeline-model-parallel-size 4 \
        --use-distributed-optimizer \
        --overlap-param-gather \
        --overlap-grad-reduce \
@@ -105,15 +105,20 @@ options=" \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
        --tensorboard-dir ${TENSORBOARD_DIR} \
 
-       --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp2_tp1 \
+       --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp4_tp1 \
        --finetune \
 
-       --recompute-activations
-       "
-        # --inserting_mamba_states True \
-        # --insert_mamba_states_for_training True \
+        
+        --inserting_mamba_states True \
+        --insert_mamba_states_for_training True \
+        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states//soup0-3/ 
+        "
+
+
+
+
         # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup0-3/  
         # "
 
 # --load ${CHECKPOINT_DIR} \
-torchrun --nproc_per_node 2 ../../pretrain_mamba.py ${options}
+torchrun --nproc_per_node 4 ../../pretrain_mamba.py ${options}

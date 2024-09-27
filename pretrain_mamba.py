@@ -105,7 +105,7 @@ def model_provider(pre_process=True, post_process=True) -> Union[GPTModel, megat
     
     # Freeze the entire Mamba model except for decoder output linear layer 
     # model.freeze (freeze_mamba_model=args.freeze_mamba_blocks) 
-    model.freeze (freeze_embedding_model=True, freeze_mamba_model=False, freeze_output_layer=True) 
+    model.freeze (freeze_embedding_model=True, freeze_mamba_model=False, freeze_output_layer=False) 
     
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable parameters: {trainable_params}")
@@ -178,6 +178,12 @@ def forward_step(data_iterator, model: GPTModel):
         data_iterator : Input data iterator
         model (GPTModel): The GPT Model
     """
+    from megatron.core import parallel_state 
+    pipeline_rank = parallel_state.get_pipeline_model_parallel_rank()
+    print (f'At pretrain_mamba.py, pipeline_rank={pipeline_rank} \n')
+    
+    
+    
     args = get_args()
     timers = get_timers()
     
@@ -194,12 +200,15 @@ def forward_step(data_iterator, model: GPTModel):
     
     tokenizer = get_tokenizer()
     
-    print_rank_0 (f'\n\n tokens:\n{tokens}\n\n\n')
-    print_rank_0 (f'\n\n tokens:\n{tokens[0][0]}\n\n\n')
-    print_rank_0 (f'\n\n tokens:\n{type (int (tokens[0][0]))}\n\n\n')
-    print_rank_0 (f'\n\n decoded tokens: {tokenizer.detokenize (int(tokens[0][0]))}')
-    print_rank_0 (f'{tokenizer.detokenize (int(tokens[0][1]))}')
-    print_rank_0 (f'{tokenizer.detokenize (int(tokens[0][2]))}')
+    
+    if mpu.get_tensor_model_parallel_rank() == 0: 
+        print_rank_0 (f'\n\n tokens:\n{tokens}\n\n\n')
+        if tokens is not None: 
+            print_rank_0 (f'\n\n tokens:\n{tokens[0][0]}\n\n\n')
+            print_rank_0 (f'\n\n tokens:\n{type (int (tokens[0][0]))}\n\n\n')
+            print_rank_0 (f'\n\n decoded tokens: {tokenizer.detokenize (int(tokens[0][0]))}')
+            print_rank_0 (f'{tokenizer.detokenize (int(tokens[0][1]))}')
+            print_rank_0 (f'{tokenizer.detokenize (int(tokens[0][2]))}')
     
     # print_rank_0 (f'\n\n tokens:\n{tokens}\n\n\n')
     # print_rank_0 (f'\n\n labels:\n{labels}\n\n\n')

@@ -73,6 +73,8 @@ class MambaModel(LanguageModule):
         self.parallel_output = parallel_output
         self.share_embeddings_and_output_weights = share_embeddings_and_output_weights
         self.position_embedding_type=position_embedding_type
+        
+        self.inserted_all_states = None 
 
         # megatron core pipelining currently depends on model type
         # TODO: remove this dependency ?
@@ -141,6 +143,9 @@ class MambaModel(LanguageModule):
 
         assert len(input_tensor) == 1, 'input_tensor should only be length 1 for gpt/bert'
         self.decoder.set_input_tensor(input_tensor[0])
+        
+        self.decoder.set_input_states (self.inserted_all_states)
+        
         
         
         
@@ -297,7 +302,6 @@ class MambaModel(LanguageModule):
         args = get_args()
         insert_states = args.inserting_mamba_states
         retrieve_states = args.retrieving_mamba_states
-        inserted_all_states = None 
         insert_states_for_training = args.insert_mamba_states_for_training
         
         # Zixian: Sept 11 01:35am: 
@@ -305,17 +309,21 @@ class MambaModel(LanguageModule):
         # Prevent inserting states when steping each time. 
         
         
-        from megatron.training import get_tokenizer
-        tokenizer = get_tokenizer ()
-        a = tokenizer.detokenize (input_ids[0].tolist())
-        print (f' \n\n input_ids.shape: {input_ids.shape} \n\n')
-        print (f' \n\n input_ids[0].shape: {input_ids[0].shape} \n\n')
-        print (f' \n\n input_ids[0].tolist(): {input_ids[0].tolist()} \n\n')
-        print (f'\n\n decoded input_ids is: \n{a}\n')
+        if input_ids is not None: 
+            from megatron.training import get_tokenizer
+            tokenizer = get_tokenizer ()
+            a = tokenizer.detokenize (input_ids[0].tolist())
+            print (f' \n\n input_ids.shape: {input_ids.shape} \n\n')
+            print (f' \n\n input_ids[0].shape: {input_ids[0].shape} \n\n')
+            print (f' \n\n input_ids[0].tolist(): {input_ids[0].tolist()} \n\n')
+            print (f'\n\n decoded input_ids is: \n{a}\n')
         
         
-        if len (input_ids[0]) > 1: 
+        print (f' Checking whether look for states at mamba_model.py')
+        
+        if (input_ids is not None) and (len (input_ids[0]) > 1): 
             
+            print (f' input_ids is not None, setting input states ')
             print (f'input_ids: \n{input_ids}')
         
             if (insert_states): 
@@ -369,25 +377,25 @@ class MambaModel(LanguageModule):
                                 raise (RuntimeError, f"Man, I have found more than 1 ({len (matching_files)}) corresponding states . pkl s for this prompt: \n{input_ids}")
                             
                         filename = os.path.join (base_dir, filename)
-                        inserted_all_states = torch.load (filename)
+                        self.inserted_all_states = torch.load (filename)
                         
-                        list_of_batched_states.append (inserted_all_states)
+                        list_of_batched_states.append (self.inserted_all_states)
                     
                     # Zixian: Sept 17 22:20 
                     # batch into 1 state_dict 
-                    inserted_all_states = self.combine_list_states_to_batch (list_of_batched_states) 
+                    self.inserted_all_states = self.combine_list_states_to_batch (list_of_batched_states) 
                 else: 
-                    # print (f"----Loading inserted_all_states")
+                    # print (f"----Loading self.inserted_all_states")
                     # Need to unpickle from the states pickle path stored in args 
-                    inserted_all_states = torch.load (args.inserted_mamba_states_path)
-                    # print (f"----Successfully loaded inserted_all_states")
+                    self.inserted_all_states = torch.load (args.inserted_mamba_states_path)
+                    # print (f"----Successfully loaded self.inserted_all_states")
         
-        print (f' \n\n inside mamba_model.py: printing decoded input_ids: ')
-        from megatron.training import get_tokenizer
-        tokenizer = get_tokenizer ()
-        a = tokenizer.detokenize (input_ids[0].tolist())
-        # print (f'\n input_ids : a: {input_ids[0]} \n')
-        print (f'\n detokenized : input_ids: {a} \n')
+            print (f' \n\n inside mamba_model.py: printing decoded input_ids: ')
+            from megatron.training import get_tokenizer
+            tokenizer = get_tokenizer ()
+            a = tokenizer.detokenize (input_ids[0].tolist())
+            # print (f'\n input_ids : a: {input_ids[0]} \n')
+            print (f'\n detokenized : input_ids: {a} \n')
         
         
         
@@ -425,6 +433,14 @@ class MambaModel(LanguageModule):
         # print (f"Printing from Megatron-LM/megatron/core/models/mamba/mamba_model.py Line 191")
         # print (f"--decoder_input=\n{decoder_input}")
         
+        pipeline_rank = parallel_state.get_pipeline_model_parallel_rank()
+        print (f'At mamba_model.py, pipeline_rank={pipeline_rank} \n self.inserted_all_states is :\n {self.inserted_all_states}')
+        print (f'decoder_input is: \n{decoder_input}')
+        print (f'input_ids is: \n{input_ids}')
+        
+        
+        # # Pass states through communication to other gpus 
+        # self.decoder.set_input_states(self.inserted_all_states)
         
         
         # Run decoder.
@@ -435,7 +451,7 @@ class MambaModel(LanguageModule):
                                                 rotary_pos_emb=rotary_pos_emb,
                                                 insert_states=insert_states, 
                                                 retrieve_states=retrieve_states, 
-                                                inserted_all_states=inserted_all_states, 
+                                                inserted_all_states=self.inserted_all_states, 
                                                 insert_states_for_training=insert_states_for_training, 
                                                 **(extra_block_kwargs or {}),
         )
