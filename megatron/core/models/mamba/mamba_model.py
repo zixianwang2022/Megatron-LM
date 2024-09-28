@@ -144,9 +144,26 @@ class MambaModel(LanguageModule):
         assert len(input_tensor) == 1, 'input_tensor should only be length 1 for gpt/bert'
         self.decoder.set_input_tensor(input_tensor[0])
         
-        self.decoder.set_input_states (self.inserted_all_states)
         
         
+    
+    def set_input_states(self, input_states: dict) -> None:
+        """Sets input tensor to the model.
+
+        See megatron.model.transformer.set_input_tensor()
+
+        Args:
+            input_tensor (Tensor): Sets the input tensor for the model.
+        """
+        # This is usually handled in schedules.py but some inference code still
+        # gives us non-lists or None
+        
+        # if input_states is not None:
+        #     assert len(input_states.keys()) == 1, 'input_states first key should only be length 1'
+        
+        self.inserted_all_states = input_states 
+        print (f' \n\n Setting self.inserted_all_states = {input_states}  \n\n')
+        # self.decoder.set_input_states (self.inserted_all_states)
         
         
     
@@ -478,10 +495,13 @@ class MambaModel(LanguageModule):
         args.global_counter_cnt += 1 
         # print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/core/models/mamba/mamba_model.py FUNC=forward line 210')
     
+        if parallel_state.is_pipeline_first_stage():
+            import random 
+            self.inserted_all_states = {'A': random.randint (10,99), 'B': random.randint (10,99)}
 
         if not self.post_process:
             # print (f'--returning from "not self.post_process"')
-            return hidden_states
+            return hidden_states #, self.inserted_all_states
 
         # logits and loss
         output_weight = None

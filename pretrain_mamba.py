@@ -215,9 +215,11 @@ def forward_step(data_iterator, model: GPTModel):
 
     with stimer:
         output_tensor = model(tokens, position_ids, attention_mask,
-                              labels=labels)
+                                                labels=labels)
+        
+    
 
-    return output_tensor, partial(loss_func, loss_mask)
+    return output_tensor, partial(loss_func, loss_mask) #, output_states
 
 
 def is_dataset_built_on_rank():
