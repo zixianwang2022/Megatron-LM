@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=1
+        GLOBAL_BATCH_SIZE=2
         ;;
     *)
         echo "Invalid version specified"
@@ -84,7 +84,7 @@ options=" \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 1 \
+       --micro-batch-size 2 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
        --lr 5e-6 \
        --min-lr 5e-7 \
@@ -108,11 +108,11 @@ options=" \
        --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp2_tp1 \
        --finetune \
 
-        
-        --inserting_mamba_states True \
-        --insert_mamba_states_for_training True \
-        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 
         "
+        # --inserting_mamba_states True \
+        # --insert_mamba_states_for_training True \
+        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 
+        # "
 
 
 
