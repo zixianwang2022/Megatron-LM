@@ -15,6 +15,7 @@ examples/mamba/checkpoints/
 
 *.bin
 *.idx
+*.txt
 
 examples/mamba/output.txt
 examples/mamba/output2.txt

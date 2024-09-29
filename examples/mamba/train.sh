@@ -35,7 +35,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
-CHECKPOINT_DIR="./checkpoints/training_decoder_10000/pp1_tp4/lr5e-6_clip0_3_wd0_3_warm10/"
+CHECKPOINT_DIR="./checkpoints/training_decoder_100/pp1_tp4/unfreeze_entire_decoder/lr5e-5_clip0_3_wd0_3_warm10/"
 DATACACHE_DIR="./data-cache"
 TENSORBOARD_DIR="./tensorboard"
 
@@ -51,9 +51,13 @@ SEQ_LEN=4096
 # LR_WARMUP_SAMPLES=50000
 # LR_DECAY_SAMPLES=73192188 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
-TRAIN_SAMPLES=10000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=1000
-LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
+# TRAIN_SAMPLES=10000  # 300B tokens / 4096
+# LR_WARMUP_SAMPLES=1000
+# LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
+
+TRAIN_SAMPLES=100  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=0
+LR_DECAY_SAMPLES=100 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
 
 options=" \
@@ -112,8 +116,10 @@ options=" \
         
         --inserting_mamba_states True \
         --insert_mamba_states_for_training True \
-        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 
+        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/gold-0/ 
         "
+        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 
+        # "
 
 
 

@@ -296,26 +296,27 @@ class Mamba(MegatronModule):
         # (nheads_local)
         A = -torch.exp(self.A_log.float())
         
-        if (A.device != initial_states.device):
-            with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
-                file.write (f'\n\n############ Device Not Equal #####################################################################')
-                file.write (f'\n ## conv_state: {conv_state} ')
-                file.write (f'\n ## ssm_state: {ssm_state} ')
-                # file.write (f'\n ## initial_states: {initial_states.device} ')
-                file.write (f'\n ## A.device: {A.device} ')
-                
-            initial_states = initial_states.to (A.device)
-            ssm_state = ssm_state.to (A.device)
-            conv_state = conv_state.to (A.device)
+        if initial_states is not None: 
+            if (A.device != initial_states.device):
+                with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+                    file.write (f'\n\n############ Device Not Equal #####################################################################')
+                    file.write (f'\n ## conv_state: {conv_state} ')
+                    file.write (f'\n ## ssm_state: {ssm_state} ')
+                    # file.write (f'\n ## initial_states: {initial_states.device} ')
+                    file.write (f'\n ## A.device: {A.device} ')
+                    
+                initial_states = initial_states.to (A.device)
+                ssm_state = ssm_state.to (A.device)
+                conv_state = conv_state.to (A.device)
 
-        
-        with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
-            file.write (f'\n\n#####################################################################################################')
-            file.write (f'\n ## conv_state.device: {conv_state.device} ')
-            file.write (f'\n ## ssm_state.device: {ssm_state.device} ')
-            file.write (f'\n ## initial_states.device: {initial_states.device} ')
-            file.write (f'\n ## A.device: {A.device} ')
-            file.write (f'\n#####################################################################################################\n\n')
+            
+            with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+                file.write (f'\n\n#####################################################################################################')
+                file.write (f'\n ## conv_state.device: {conv_state.device} ')
+                file.write (f'\n ## ssm_state.device: {ssm_state.device} ')
+                file.write (f'\n ## initial_states.device: {initial_states.device} ')
+                file.write (f'\n ## A.device: {A.device} ')
+                file.write (f'\n#####################################################################################################\n\n')
             
             
         # pl b d ->  l b p(2d)
