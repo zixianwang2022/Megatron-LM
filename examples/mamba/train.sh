@@ -108,11 +108,12 @@ options=" \
        --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp4_tp1 \
        --finetune \
 
+       
+        
+        --inserting_mamba_states True \
+        --insert_mamba_states_for_training True \
+        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 
         "
-        # --inserting_mamba_states True \
-        # --insert_mamba_states_for_training True \
-        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 
-        # "
 
 
 

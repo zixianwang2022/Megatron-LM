@@ -187,9 +187,12 @@ def forward_step(
     
     
     with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
-        file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
+        file.write (f'\n\n $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        file.write (f'\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
         file.write (f'\n forward_step: ')
-        file.write (f'\n input_dict is: \n {input_dict} \n\n')
+        if input_dict is not None: 
+            file.write (f'\n input_dict is: \n {input_dict[0][50]["ssm_state"][0][0]}') 
+        file.write (f'\n $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n\n')
     
     
     if config.timers is not None:
@@ -1197,7 +1200,33 @@ def send_backward_recv_forward(input_tensor_grads, tensor_shapes, config):
 import pickle
 import torch
 
+
+def move_tensors_to_device(obj, device_id):
+    if torch.is_tensor(obj):
+        return obj.clone().to(f'cuda:{device_id}')
+    elif isinstance(obj, dict):
+        return {k: move_tensors_to_device(v, device_id) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [move_tensors_to_device(v, device_id) for v in obj]
+    elif isinstance(obj, tuple):
+        return tuple(move_tensors_to_device(v, device_id) for v in obj)
+    else:
+        return obj
+
+# def serialize_dict_to_tensor(data_dict):
+#     serialized_bytes = pickle.dumps(data_dict)
+#     byte_list = list(serialized_bytes)
+#     tensor = torch.ByteTensor(byte_list).to(torch.cuda.current_device())
+#     return tensor
+
+# def deserialize_tensor_to_dict(tensor):
+    # byte_list = tensor.tolist()
+    # serialized_bytes = bytes(byte_list)
+    # data_dict = pickle.loads(serialized_bytes)
+    # return data_dict
+
 def serialize_dict_to_tensor(data_dict):
+    # data_dict_cpu = move_tensors_to_cpu(data_dict)
     serialized_bytes = pickle.dumps(data_dict)
     byte_list = list(serialized_bytes)
     tensor = torch.ByteTensor(byte_list).to(torch.cuda.current_device())
@@ -1207,13 +1236,15 @@ def deserialize_tensor_to_dict(tensor):
     byte_list = tensor.tolist()
     serialized_bytes = bytes(byte_list)
     data_dict = pickle.loads(serialized_bytes)
+    # data_dict = move_tensors_to_device (data_dict, 0)
     return data_dict
+
 
 def send_dict(data_dict, dst_rank, group):
      if not parallel_state.is_pipeline_last_stage():
         with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
             file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
-            file.write (f'\n sending input_dict : {data_dict} \n\n')
+            # file.write (f'\n sending input_dict : {data_dict} \n\n')
                 
         dict_tensor = serialize_dict_to_tensor(data_dict)
         dict_size = torch.LongTensor([dict_tensor.numel()]).to(torch.cuda.current_device())
@@ -1231,8 +1262,10 @@ def recv_dict(src_rank, group):
         
         with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
             file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
-            file.write (f'\n receiving input_dict : {data_dict} \n\n')
-        return data_dict
+            # file.write (f'\n receiving input_dict : {data_dict} \n\n')
+            
+        data_dict_copy = move_tensors_to_device (data_dict, parallel_state.get_pipeline_model_parallel_rank())
+        return data_dict_copy 
     
     else: 
         return None 
@@ -1259,7 +1292,12 @@ def write_to_communication_log (send_from: str,
             file.write (f'\n --input_tensor :  ')
     else: 
         with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file:             
-            file.write (f'\n --input_dict : {passing_dict} ')
+            file.write (f'\n --input_dict :')
+    
+    if passing_dict is not None: 
+        with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file:             
+            # file.write (f'\n --input_dict :{passing_dict}')
+            file.write (f'\n --passing_dict [0][50]["ssm_state"][0][0] : {passing_dict [0][50]["ssm_state"][0][0]} ')
             
 
     with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 

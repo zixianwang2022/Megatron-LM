@@ -4,6 +4,7 @@ import logging
 from typing import Literal, Optional, Union
 
 import os 
+import copy 
 import torch
 from torch import Tensor
 from megatron.training import get_args
@@ -160,8 +161,36 @@ class MambaModel(LanguageModule):
         
         # if input_states is not None:
         #     assert len(input_states.keys()) == 1, 'input_states first key should only be length 1'
+        # def move_tensors_to_device(obj, device):
+        #     if torch.is_tensor(obj):
+        #         return obj.clone()
+        #     elif isinstance(obj, dict):
+        #         return {k: move_tensors_to_device(v, device) for k, v in obj.items()}
+        #     elif isinstance(obj, list):
+        #         return [move_tensors_to_device(v, device) for v in obj]
+        #     elif isinstance(obj, tuple):
+        #         return tuple(move_tensors_to_device(v, device) for v in obj)
+        #     else:
+        #         return obj
+            
+        
+        # if input_states is not None: 
+        #     input_states_device = move_tensors_to_device (input_states, parallel_state.get_pipeline_model_parallel_rank())
+        #     # self.inserted_all_states = copy.deepcopy (input_states_device)
+        #     self.inserted_all_states = input_states_device 
         
         self.inserted_all_states = input_states 
+        
+        with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+            file.write (f'\n\n $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+            file.write (f'\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
+            file.write (f'\n set_input_states: ')
+            # file.write (f'\n input_dict is: \n {self.inserted_all_states}')
+            if self.inserted_all_states is not None: 
+                file.write (f'\n input_dict is: \n {self.inserted_all_states[0][50]["ssm_state"][0][0]}') 
+            file.write (f'\n $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n\n')
+        
+        # self.inserted_all_states = input_states 
         print (f' \n\n Setting self.inserted_all_states = {input_states}  \n\n')
         # self.decoder.set_input_states (self.inserted_all_states)
         
@@ -469,7 +498,7 @@ class MambaModel(LanguageModule):
         # print (f"--decoder_input=\n{decoder_input}")
         
         pipeline_rank = parallel_state.get_pipeline_model_parallel_rank()
-        print (f'At mamba_model.py, pipeline_rank={pipeline_rank} \n self.inserted_all_states is :\n {self.inserted_all_states}')
+        print (f'At mamba_model.py, pipeline_rank={pipeline_rank} \n ')
         print (f'decoder_input is: \n{decoder_input}')
         print (f'input_ids is: \n{input_ids}')
         
@@ -495,9 +524,10 @@ class MambaModel(LanguageModule):
         args.global_counter_cnt += 1 
         # print (f'GLOBAL_CNT={args.global_counter_cnt} at Megatron-LM/megatron/core/models/mamba/mamba_model.py FUNC=forward line 210')
     
-        if parallel_state.is_pipeline_first_stage():
-            import random 
-            self.inserted_all_states = {'A': random.randint (10,99), 'B': random.randint (10,99)}
+        # if parallel_state.is_pipeline_first_stage():
+        #     import random 
+        #     self.inserted_all_states = {'A': torch.randint(low=10, high=99, size=(1, 1), device='cuda:0'), 
+        #                                 'B': torch.randint(low=10, high=99, size=(1, 1), device='cuda:0')}
 
         if not self.post_process:
             print (f'\n\n --returning from "not self.post_process \n\n')

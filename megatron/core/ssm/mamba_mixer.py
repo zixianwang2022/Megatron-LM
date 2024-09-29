@@ -7,6 +7,7 @@
 
 import math
 from typing import Optional
+from megatron.core import parallel_state
 
 import torch
 import torch.nn as nn
@@ -280,24 +281,43 @@ class Mamba(MegatronModule):
                 print ('\n\n printing just at layer 0')
                 print ('\nInside Mamba_mixer.py , inserting states for training \n\n')
             
-            conv_state = inserted_conv_state # Y
-            ssm_state = inserted_ssm_state # Y
+            conv_state = inserted_conv_state.clone() # Y
+            ssm_state = inserted_ssm_state.clone() # Y
         
             # TODO: Zixian Sept 17: Initialize initial_states to be able to pass during forward.     
             # This will enable initializing states during mamba_chunk_scan_combined
-            initial_states = inserted_ssm_state
+            initial_states = inserted_ssm_state.clone()
             
             
         
-        
-        
-        
-        
+            
         
 
         # (nheads_local)
         A = -torch.exp(self.A_log.float())
+        
+        if (A.device != initial_states.device):
+            with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+                file.write (f'\n\n############ Device Not Equal #####################################################################')
+                file.write (f'\n ## conv_state: {conv_state} ')
+                file.write (f'\n ## ssm_state: {ssm_state} ')
+                # file.write (f'\n ## initial_states: {initial_states.device} ')
+                file.write (f'\n ## A.device: {A.device} ')
+                
+            initial_states = initial_states.to (A.device)
+            ssm_state = ssm_state.to (A.device)
+            conv_state = conv_state.to (A.device)
 
+        
+        with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+            file.write (f'\n\n#####################################################################################################')
+            file.write (f'\n ## conv_state.device: {conv_state.device} ')
+            file.write (f'\n ## ssm_state.device: {ssm_state.device} ')
+            file.write (f'\n ## initial_states.device: {initial_states.device} ')
+            file.write (f'\n ## A.device: {A.device} ')
+            file.write (f'\n#####################################################################################################\n\n')
+            
+            
         # pl b d ->  l b p(2d)
         # TODO move transpose to GEMM
         if (self.config.sequence_parallel):
