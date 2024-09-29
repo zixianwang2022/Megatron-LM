@@ -209,8 +209,8 @@ def forward_step(
     set_input_tensor(input_tensor)
     
     # Zixian: set input_states to pass initial states 
-    # set_input_states = get_attr_wrapped_model(model, "set_input_states")
-    # set_input_states(input_dict)
+    set_input_states = get_attr_wrapped_model(model, "set_input_states")
+    set_input_states(input_dict)
 
     if config.enable_autocast:
         context_manager = torch.autocast("cuda", dtype=config.autocast_dtype)
@@ -222,8 +222,8 @@ def forward_step(
         if checkpoint_activations_microbatch is None:
             # Zixian: customized for Mamba model only to receive states dict. 
             print (f' \n\n checkpoint_activations_microbatch is None !!! \n\n')
-            # output_tensor, loss_func, return_dict = forward_step_func(data_iterator, model)
-            output_tensor, loss_func = forward_step_func(data_iterator, model)
+            output_tensor, loss_func, return_dict = forward_step_func(data_iterator, model)
+            # output_tensor, loss_func = forward_step_func(data_iterator, model)
         else:
             print (f' \n\n checkpoint_activations_microbatch is nooooooooot None !!! \n\n')
             output_tensor, loss_func = forward_step_func(
@@ -276,7 +276,9 @@ def forward_step(
 
     if unwrap_output_tensor:
         return output_tensor, num_tokens
-    return [output_tensor], num_tokens #, return_dict  
+    
+    
+    return [output_tensor], num_tokens, return_dict  
 
 
 def backward_step(input_tensor, output_tensor, output_tensor_grad, model_type, config):
@@ -1443,8 +1445,8 @@ def forward_backward_pipelining_without_interleaving(
         
         
         
-        # output_tensor, num_tokens, return_dict = forward_step(
-        output_tensor, num_tokens = forward_step(
+        output_tensor, num_tokens, return_dict = forward_step(
+        # output_tensor, num_tokens = forward_step(
             forward_step_func,
             data_iterator,
             model,
@@ -1482,7 +1484,8 @@ def forward_backward_pipelining_without_interleaving(
         # ------------------------
         # **** Send States ****
         # ------------------------
-        output_dict = dummy_dict  # Use the dummy dictionary
+        # output_dict = dummy_dict  # Use the dummy dictionary
+        output_dict = return_dict  # Use the dummy dictionary
         send_dict(
             data_dict=output_dict,
             dst_rank=parallel_state.get_pipeline_model_parallel_next_rank(),
@@ -1572,8 +1575,8 @@ def forward_backward_pipelining_without_interleaving(
             
             
 
-        # output_tensor, num_tokens, return_dict = forward_step(
-        output_tensor, num_tokens = forward_step(
+        output_tensor, num_tokens, return_dict = forward_step(
+        # output_tensor, num_tokens = forward_step(
             forward_step_func,
             data_iterator,
             model,
@@ -1614,8 +1617,8 @@ def forward_backward_pipelining_without_interleaving(
             # ------------------------
             # **** Send States ****
             # ------------------------
-            # output_dict = return_dict  # Use the dummy dictionary
-            output_dict = dummy_dict
+            output_dict = return_dict  # Use the dummy dictionary
+            # output_dict = dummy_dict
             send_dict(
                 data_dict=output_dict,
                 dst_rank=parallel_state.get_pipeline_model_parallel_next_rank(),
@@ -1726,6 +1729,11 @@ def forward_backward_pipelining_without_interleaving(
         config.finalize_model_grads_func(
             [model], total_num_tokens if config.calculate_per_token_loss else None
         )
+    
+    with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+        file.write (f'\n\n ################################################################################ \n\n ')
+        file.write (f' ######################################## Pipeline Flush Gradient Updates ######################################## \n\n ')
+        file.write (f'\n\n ################################################################################ \n\n ')
 
     if config.timers is not None:
         config.timers('forward-backward').stop()

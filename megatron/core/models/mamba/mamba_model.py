@@ -500,8 +500,8 @@ class MambaModel(LanguageModule):
             self.inserted_all_states = {'A': random.randint (10,99), 'B': random.randint (10,99)}
 
         if not self.post_process:
-            # print (f'--returning from "not self.post_process"')
-            return hidden_states #, self.inserted_all_states
+            print (f'\n\n --returning from "not self.post_process \n\n')
+            return hidden_states , self.inserted_all_states
 
         # logits and loss
         output_weight = None
@@ -521,4 +521,9 @@ class MambaModel(LanguageModule):
         loss = self.compute_language_model_loss(labels, logits)
 
         # print (f'--returning from "everything else"')
-        return loss
+        print (f'\n\n --returning from loss \n\n')
+        
+        # Zixian Sept 28: 
+        # Return self.inserted_all_states here to prevent downstream 
+        # returned value splits loss, which will cause error 
+        return loss, self.inserted_all_states

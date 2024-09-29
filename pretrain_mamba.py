@@ -214,12 +214,12 @@ def forward_step(data_iterator, model: GPTModel):
     # print_rank_0 (f'\n\n labels:\n{labels}\n\n\n')
 
     with stimer:
-        output_tensor = model(tokens, position_ids, attention_mask,
+        output_tensor, output_states = model(tokens, position_ids, attention_mask,
                                                 labels=labels)
         
     
-
-    return output_tensor, partial(loss_func, loss_mask) #, output_states
+    # output_states = {}
+    return output_tensor, partial(loss_func, loss_mask) , output_states
 
 
 def is_dataset_built_on_rank():
