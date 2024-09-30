@@ -223,7 +223,7 @@ class MambaStack(MegatronModule):
         forward_step_func"""
         self.input_tensor = input_tensor
         
-        print (f' \n\n setting input tensor !!!!!!!!! \n\n {self.input_tensor}')
+        print (f' \n\n setting input tensor !!!!!!!!! \n\n ')
         
         
     # def set_input_states(self, input_states: dict): 
@@ -281,7 +281,7 @@ class MambaStack(MegatronModule):
             hidden_states = self.input_tensor
             # inserted_all_states = self.inserted_all_states 
             
-        print (f' inserted_all_states : \n {inserted_all_states}')
+        print (f' inserted_all_states : \n ')
 
         if inference_params:
             # NOTE(bnorick): match InferenceParams attributes for mamba_ssm.utils.generation.InferenceParams,

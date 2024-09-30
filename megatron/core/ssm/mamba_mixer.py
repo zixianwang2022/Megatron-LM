@@ -249,12 +249,12 @@ class Mamba(MegatronModule):
                 return out, layer_states_dict
 
 
-        if (self.layer_idx ==0): 
-            with open('/workspace/data/ssm-retrieval/mamba2-8b/retrieved_hidden/testing/record.txt', 'a') as file:
-                file.write (f'Before forward\n')
-                file.write (f"At layer [{self.layer_idx}\n]")
-                file.write (f"conv_state: \n{conv_state}")
-                file.write (f"ssm_state: \n{ssm_state}\n\n\n\n")
+        # if (self.layer_idx ==0): 
+        #     with open('/workspace/data/ssm-retrieval/mamba2-8b/retrieved_hidden/testing/record.txt', 'a') as file:
+        #         file.write (f'Before forward\n')
+        #         file.write (f"At layer [{self.layer_idx}\n]")
+        #         file.write (f"conv_state: \n{conv_state}")
+        #         file.write (f"ssm_state: \n{ssm_state}\n\n\n\n")
         
         # Insert states to selective scan 
         initial_states = None 
@@ -300,8 +300,8 @@ class Mamba(MegatronModule):
             if (A.device != initial_states.device):
                 with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
                     file.write (f'\n\n############ Device Not Equal #####################################################################')
-                    file.write (f'\n ## conv_state: {conv_state} ')
-                    file.write (f'\n ## ssm_state: {ssm_state} ')
+                    # file.write (f'\n ## conv_state: {conv_state} ')
+                    file.write (f'\n ## ssm_state.device: {ssm_state.device} ')
                     # file.write (f'\n ## initial_states: {initial_states.device} ')
                     file.write (f'\n ## A.device: {A.device} ')
                     
@@ -310,13 +310,13 @@ class Mamba(MegatronModule):
                 conv_state = conv_state.to (A.device)
 
             
-            with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
-                file.write (f'\n\n#####################################################################################################')
-                file.write (f'\n ## conv_state.device: {conv_state.device} ')
-                file.write (f'\n ## ssm_state.device: {ssm_state.device} ')
-                file.write (f'\n ## initial_states.device: {initial_states.device} ')
-                file.write (f'\n ## A.device: {A.device} ')
-                file.write (f'\n#####################################################################################################\n\n')
+            # with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+            #     file.write (f'\n\n#####################################################################################################')
+            #     file.write (f'\n ## conv_state.device: {conv_state.device} ')
+            #     file.write (f'\n ## ssm_state.device: {ssm_state.device} ')
+            #     file.write (f'\n ## initial_states.device: {initial_states.device} ')
+            #     file.write (f'\n ## A.device: {A.device} ')
+            #     file.write (f'\n#####################################################################################################\n\n')
             
             
         # pl b d ->  l b p(2d)
@@ -414,12 +414,12 @@ class Mamba(MegatronModule):
         #     print (f"ssm_state: \n{ssm_state}")
             
             
-        if (self.layer_idx ==0): 
-            with open('/workspace/data/ssm-retrieval/mamba2-8b/retrieved_hidden/testing/record.txt', 'a') as file:
-                file.write (f'After forward\n')
-                file.write (f"At layer [{self.layer_idx}\n]")
-                file.write (f"conv_state: \n{conv_state}")
-                file.write (f"ssm_state: \n{ssm_state}\n\n\n\n")
+        # if (self.layer_idx ==0): 
+        #     with open('/workspace/data/ssm-retrieval/mamba2-8b/retrieved_hidden/testing/record.txt', 'a') as file:
+        #         file.write (f'After forward\n')
+        #         file.write (f"At layer [{self.layer_idx}\n]")
+        #         file.write (f"conv_state: \n{conv_state}")
+        #         file.write (f"ssm_state: \n{ssm_state}\n\n\n\n")
         
         # Returning layer_states_dict
         return out, layer_states_dict

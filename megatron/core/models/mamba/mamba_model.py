@@ -191,7 +191,7 @@ class MambaModel(LanguageModule):
             file.write (f'\n $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n\n')
         
         # self.inserted_all_states = input_states 
-        print (f' \n\n Setting self.inserted_all_states = {input_states}  \n\n')
+        print (f' \n\n Setting self.inserted_all_states = input_states  \n\n')
         # self.decoder.set_input_states (self.inserted_all_states)
         
         
@@ -379,7 +379,7 @@ class MambaModel(LanguageModule):
             a = tokenizer.detokenize (input_ids[0].tolist())
             print (f' \n\n input_ids.shape: {input_ids.shape} \n\n')
             print (f' \n\n input_ids[0].shape: {input_ids[0].shape} \n\n')
-            print (f' \n\n input_ids[0].tolist(): {input_ids[0].tolist()} \n\n')
+            # print (f' \n\n input_ids[0].tolist(): {input_ids[0].tolist()} \n\n')
             print (f'\n\n decoded input_ids is: \n{a}\n')
         
         
@@ -388,7 +388,7 @@ class MambaModel(LanguageModule):
         if (input_ids is not None) and (len (input_ids[0]) > 1): 
             
             print (f' input_ids is not None, setting input states ')
-            print (f'input_ids: \n{input_ids}')
+            # print (f'input_ids: \n{input_ids}')
         
             if (insert_states): 
                 

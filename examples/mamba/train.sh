@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=8
+        GLOBAL_BATCH_SIZE=4
         ;;
     *)
         echo "Invalid version specified"
@@ -35,9 +35,13 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
-CHECKPOINT_DIR="./checkpoints/training_decoder_100/pp1_tp4/unfreeze_entire_decoder/lr5e-5_clip0_3_wd0_3_warm10/"
-DATACACHE_DIR="./data-cache"
-TENSORBOARD_DIR="./tensorboard"
+LR="5e-5"
+MIN_LR="5e-6"
+OUT_DIR="training_decoder_1000/pp4_tp1/unfreeze_entire_decoder/soup0-1_S_Q_A/${LR}_clip0_3_wd0_3_warm10/"
+
+CHECKPOINT_DIR="./checkpoints/${OUT_DIR}"
+DATACACHE_DIR="./data-cache/${OUT_DIR}"
+TENSORBOARD_DIR="./tensorboard/${OUT_DIR}"
 
 mkdir -p ${CHECKPOINT_DIR}
 mkdir -p ${DATACACHE_DIR}
@@ -55,9 +59,10 @@ SEQ_LEN=4096
 # LR_WARMUP_SAMPLES=1000
 # LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
-TRAIN_SAMPLES=100  # 300B tokens / 4096
+TRAIN_SAMPLES=1000  # 300B tokens / 4096
 LR_WARMUP_SAMPLES=0
 LR_DECAY_SAMPLES=100 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
+
 
 
 options=" \
@@ -88,10 +93,10 @@ options=" \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 2 \
+       --micro-batch-size 1 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
-       --lr 5e-6 \
-       --min-lr 5e-7 \
+       --lr ${LR} \
+       --min-lr ${MIN_LR} \
        --lr-decay-style cosine \
        --weight-decay 0.3 \
        --clip-grad 0.5 \
@@ -116,8 +121,10 @@ options=" \
         
         --inserting_mamba_states True \
         --insert_mamba_states_for_training True \
-        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/gold-0/ 
+        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/1000_valid_all/hidden_states/soup-01/ 
         "
+        
+        
         # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 
         # "
 
