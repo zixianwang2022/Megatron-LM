@@ -3,6 +3,7 @@
 import contextlib
 from typing import Callable, Iterator, List, Optional, Union
 
+import io 
 import torch
 from torch.autograd.variable import Variable
 
@@ -1213,31 +1214,36 @@ def move_tensors_to_device(obj, device_id):
     else:
         return obj
 
+
 # def serialize_dict_to_tensor(data_dict):
+#     # data_dict_cpu = move_tensors_to_cpu(data_dict)
 #     serialized_bytes = pickle.dumps(data_dict)
 #     byte_list = list(serialized_bytes)
 #     tensor = torch.ByteTensor(byte_list).to(torch.cuda.current_device())
 #     return tensor
 
 # def deserialize_tensor_to_dict(tensor):
-    # byte_list = tensor.tolist()
-    # serialized_bytes = bytes(byte_list)
-    # data_dict = pickle.loads(serialized_bytes)
-    # return data_dict
+#     byte_list = tensor.tolist()
+#     serialized_bytes = bytes(byte_list)
+#     data_dict = pickle.loads(serialized_bytes)
+#     # data_dict = move_tensors_to_device (data_dict, 0)
+#     return data_dict
+
 
 def serialize_dict_to_tensor(data_dict):
-    # data_dict_cpu = move_tensors_to_cpu(data_dict)
-    serialized_bytes = pickle.dumps(data_dict)
-    byte_list = list(serialized_bytes)
-    tensor = torch.ByteTensor(byte_list).to(torch.cuda.current_device())
+    buffer = io.BytesIO()
+    torch.save(data_dict, buffer, _use_new_zipfile_serialization=True)
+    buffer.seek(0)
+    tensor = torch.frombuffer(buffer.getvalue(), dtype=torch.uint8).to(torch.cuda.current_device())
     return tensor
 
 def deserialize_tensor_to_dict(tensor):
-    byte_list = tensor.tolist()
-    serialized_bytes = bytes(byte_list)
-    data_dict = pickle.loads(serialized_bytes)
-    # data_dict = move_tensors_to_device (data_dict, 0)
+    buffer = io.BytesIO(tensor.cpu().numpy())
+    device_index = parallel_state.get_pipeline_model_parallel_rank()
+    device = torch.device(f'cuda:{device_index}')
+    data_dict = torch.load(buffer, map_location=device)
     return data_dict
+
 
 
 def send_dict(data_dict, dst_rank, group):

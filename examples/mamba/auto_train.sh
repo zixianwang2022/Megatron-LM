@@ -1,0 +1,9 @@
+#!/bin/bash
+
+./train.sh ./training_10000_question_prompt_document /workspace/data/ssm-retrieval/mamba2-8b/mamba2-8b-3t-4k/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model > _Oct3_00_50_10000dataset_trained10000_S_01_Q_A_training_10000_output.txt
+
+mv communication_output.txt _Oct3_00_50_10000dataset_trained10000_S_01_Q_A_training_10000_communication_output.txt
+
+./origin_train.sh ./training_10000_D_01_Q_A_D_01_Q_A_document /workspace/data/ssm-retrieval/mamba2-8b/mamba2-8b-3t-4k/mt_nlg_plus_multilingual_ja_zh_the_stack_frac_015_256k.model > _Oct3_00_50_10000dataset_trained10000_D_01_Q_A_training_10000_output.txt
+
+mv communication_output.txt _Oct3_00_50_10000dataset_trained10000_D_01_Q_A_training_10000_communication_output.txt

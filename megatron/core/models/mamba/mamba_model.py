@@ -187,6 +187,7 @@ class MambaModel(LanguageModule):
             file.write (f'\n set_input_states: ')
             # file.write (f'\n input_dict is: \n {self.inserted_all_states}')
             if self.inserted_all_states is not None: 
+                file.write (f'\n self.inserted_all_states[0][50]["ssm_state"].shape: {self.inserted_all_states[0][50]["ssm_state"].shape}') 
                 file.write (f'\n input_dict is: \n {self.inserted_all_states[0][50]["ssm_state"][0][0]}') 
             file.write (f'\n $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n\n')
         
