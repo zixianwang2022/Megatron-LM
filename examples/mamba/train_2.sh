@@ -46,10 +46,10 @@ SEQ_LEN=512
 # LR_WARMUP_SAMPLES=1000
 # LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
-DATASET_SIZE=1000
+DATASET_SIZE=10000
 
-TRAIN_SAMPLES=5000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=500
+TRAIN_SAMPLES=10000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=1000
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
 PP_SIZE=8
@@ -112,7 +112,7 @@ options=" \
        --save ${CHECKPOINT_DIR} \
        --data-path ${DATA_PATH} \
        --data-cache-path ${DATACACHE_DIR} \
-       --split 90,10,0 \
+       --split 99,1,0 \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
@@ -130,7 +130,7 @@ options=" \
        --adam-beta2 0.95 \
        --log-interval 10 \
        --save-interval 30 \
-       --eval-interval 15 \
+       --eval-interval 30 \
        --eval-iters 2 \
        --bf16 \
        --use-mcore-models \

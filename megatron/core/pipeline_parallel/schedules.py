@@ -1202,17 +1202,6 @@ import pickle
 import torch
 
 
-def move_tensors_to_device(obj, device_id):
-    if torch.is_tensor(obj):
-        return obj.clone().to(f'cuda:{device_id}')
-    elif isinstance(obj, dict):
-        return {k: move_tensors_to_device(v, device_id) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [move_tensors_to_device(v, device_id) for v in obj]
-    elif isinstance(obj, tuple):
-        return tuple(move_tensors_to_device(v, device_id) for v in obj)
-    else:
-        return obj
 
 
 # def serialize_dict_to_tensor(data_dict):
@@ -1229,6 +1218,19 @@ def move_tensors_to_device(obj, device_id):
 #     # data_dict = move_tensors_to_device (data_dict, 0)
 #     return data_dict
 
+def move_tensors_to_device(obj, device_id):
+    if torch.is_tensor(obj):
+        # Zixian: Oct 4 13:50: Try to set .to with copy flag to reduces ram copy redundancy 
+        return obj.to(f'cuda:{device_id}', copy=True)
+        # return obj.clone().to(f'cuda:{device_id}')
+    elif isinstance(obj, dict):
+        return {k: move_tensors_to_device(v, device_id) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [move_tensors_to_device(v, device_id) for v in obj]
+    elif isinstance(obj, tuple):
+        return tuple(move_tensors_to_device(v, device_id) for v in obj)
+    else:
+        return obj
 
 def serialize_dict_to_tensor(data_dict):
     buffer = io.BytesIO()

@@ -44,17 +44,33 @@ SEQ_LEN=4096
 # LR_WARMUP_SAMPLES=1000
 # LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
-TRAIN_SAMPLES=10000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=0
-LR_DECAY_SAMPLES=1000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
+DATASET_SIZE=1000
 
-
+TRAIN_SAMPLES=5000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=500
+LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
 PP_SIZE=8
+# LR="5e-5"
+# MIN_LR="5e-6"
 LR="5e-5"
 MIN_LR="5e-6"
-# OUT_DIR="training_decoder_10000/pp${PP_SIZE}_tp1/unfreeze_entire_decoder/soup-01_S_Q_A/trained_${TRAIN_SAMPLES}/batch_16/${LR}_clip0_3_wd0_3_warm10/"
-OUT_DIR="training_decoder_1000/pp${PP_SIZE}_tp1/unfreeze_entire_decoder/D_01_Q_A/trained_${TRAIN_SAMPLES}/batch_16/${LR}_clip0_3_wd0_3_warm10/"
+
+# Store the current time in a variable
+current_datetime=$(date +"%Y%m%d_%H%M%S")
+
+PROJ_NAME="D_01_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAIN_SAMPLES_${TRAIN_SAMPLES}"
+# PROJ_NAME="test"
+
+# PROJ_NAME="D_01_Q_A"
+
+WANDB_RUN_NAME="lr_${LR}_minlr_${MIN_LR}_${current_datetime}"
+
+
+
+
+OUT_DIR="training_decoder_${DATASET_SIZE}/pp${PP_SIZE}_tp1/unfreeze_entire_decoder/${PROJ_NAME}/trained_${TRAIN_SAMPLES}/batch_${GLOBAL_BATCH_SIZE}/${LR}_clip11_wd0_1_warm10/${current_datetime}/"
+
 
 CHECKPOINT_DIR="/workspace/data/ssm-retrieval/mamba2-8b/checkpoints/${OUT_DIR}"
 DATACACHE_DIR="./data-cache/${OUT_DIR}"
@@ -103,30 +119,35 @@ options=" \
        --lr ${LR} \
        --min-lr ${MIN_LR} \
        --lr-decay-style cosine \
-       --weight-decay 0.3 \
-       --clip-grad 0.5 \
+       --weight-decay 0.1 \
+       --clip-grad 1 \
        --hidden-dropout 0.0 \
        --disable-bias-linear \
        --normalization RMSNorm \
        --adam-beta1 0.9 \
        --adam-beta2 0.95 \
        --log-interval 10 \
-       --save-interval 100 \
+       --save-interval 50 \
        --eval-interval 2000 \
        --eval-iters 2 \
        --bf16 \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
        --tensorboard-dir ${TENSORBOARD_DIR} \
+       
+       
+       --wandb-project ${PROJ_NAME} \
+       --wandb-exp-name ${WANDB_RUN_NAME} \
+
 
        --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp${PP_SIZE}_tp1 \
        --finetune \
-
-       
         "
+       
+        
         # --inserting_mamba_states True \
         # --insert_mamba_states_for_training True \
-        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/1000_valid_all/hidden_states/soup-01/ 
+        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup-01/ 
         # "
         
         
@@ -134,6 +155,7 @@ options=" \
         # "
 
 
+    #    --accumulate-allreduce-grads-in-fp32 \
 
 
         # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup0-3/  

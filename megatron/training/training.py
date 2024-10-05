@@ -1357,7 +1357,9 @@ def evaluate_and_print_results(prefix, forward_step_func,
                                   iteration)
                 writer.add_scalar('{} validation ppl vs samples'.format(key),
                                   ppl, args.consumed_train_samples)
-            if wandb_writer and is_last_rank():
+            # if wandb_writer and is_last_rank():
+            # Zixian: Oct 3 20:22 determine whether this will not raise error
+            if wandb_writer and mpu.is_pipeline_first_stage(): 
                 wandb_writer.log({
                     '{} validation'.format(key): total_loss_dict[key].item()},
                     iteration)

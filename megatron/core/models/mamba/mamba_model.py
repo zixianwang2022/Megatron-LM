@@ -412,6 +412,7 @@ class MambaModel(LanguageModule):
                             index += 1
                         
                         print (f'index: {index}')
+                        # print (f'candidate_filename_tokens: \n{candidate_filename_tokens}')
                         # if len (candidate_filename_tokens) > 25: 
                         if index > 25: 
                             candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens[:25]])
@@ -442,7 +443,10 @@ class MambaModel(LanguageModule):
                                 raise (RuntimeError, f"Man, I have found more than 1 ({len (matching_files)}) corresponding states . pkl s for this prompt: \n{input_ids}")
                             
                         filename = os.path.join (base_dir, filename)
-                        self.inserted_all_states = torch.load (filename)
+                        
+                        # Zixian: Oct 4 13:40, map to a specific device
+                        # self.inserted_all_states = torch.load (filename)
+                        self.inserted_all_states = torch.load (filename, map_location=f'cuda:{parallel_state.get_pipeline_model_parallel_rank()}')
                         
                         list_of_batched_states.append (self.inserted_all_states)
                     
