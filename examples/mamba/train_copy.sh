@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=12
+        GLOBAL_BATCH_SIZE=1
         ;;
     *)
         echo "Invalid version specified"
@@ -35,7 +35,9 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
-SEQ_LEN=4096
+# SEQ_LEN=4096
+SEQ_LEN=64
+
 # TRAIN_SAMPLES=73242188  # 300B tokens / 4096
 # LR_WARMUP_SAMPLES=50000
 # LR_DECAY_SAMPLES=73192188 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
@@ -46,30 +48,30 @@ SEQ_LEN=4096
 
 DATASET_SIZE=1000
 
-TRAIN_SAMPLES=5000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=500
+TRAIN_SAMPLES=1000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=100
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
-PP_SIZE=8
+PP_SIZE=1
 # LR="5e-5"
 # MIN_LR="5e-6"
-LR="5e-5"
-MIN_LR="5e-6"
+LR="7e-5"
+MIN_LR="7e-6"
 
 # Store the current time in a variable
 current_datetime=$(date +"%Y%m%d_%H%M%S")
 
-PROJ_NAME="D_01_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAIN_SAMPLES_${TRAIN_SAMPLES}"
+PROJ_NAME="soup-01_S_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}"
 # PROJ_NAME="test"
 
 # PROJ_NAME="D_01_Q_A"
 
-WANDB_RUN_NAME="lr_${LR}_minlr_${MIN_LR}_${current_datetime}"
+WANDB_RUN_NAME="1GPU_lr_${LR}_minlr_${MIN_LR}_${current_datetime}"
 
 
 
 
-OUT_DIR="training_decoder_${DATASET_SIZE}/pp${PP_SIZE}_tp1/unfreeze_entire_decoder/${PROJ_NAME}/trained_${TRAIN_SAMPLES}/batch_${GLOBAL_BATCH_SIZE}/${LR}_clip11_wd0_1_warm10/${current_datetime}/"
+OUT_DIR="training_decoder_${DATASET_SIZE}/pp${PP_SIZE}_tp1/unfreeze_entire_decoder/${PROJ_NAME}/trained_${TRAIN_SAMPLES}/batch_${GLOBAL_BATCH_SIZE}/${LR}_clip1_wd0_1_warm10/${current_datetime}/"
 
 
 CHECKPOINT_DIR="/workspace/data/ssm-retrieval/mamba2-8b/checkpoints/${OUT_DIR}"
@@ -110,25 +112,25 @@ options=" \
        --save ${CHECKPOINT_DIR} \
        --data-path ${DATA_PATH} \
        --data-cache-path ${DATACACHE_DIR} \
-       --split 99,1,0 \
+       --split 90,10,0 \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 2 \
+       --micro-batch-size 1 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
        --lr ${LR} \
        --min-lr ${MIN_LR} \
        --lr-decay-style cosine \
        --weight-decay 0.1 \
-       --clip-grad 1 \
+       --clip-grad 1.0 \
        --hidden-dropout 0.0 \
        --disable-bias-linear \
        --normalization RMSNorm \
        --adam-beta1 0.9 \
        --adam-beta2 0.95 \
        --log-interval 10 \
-       --save-interval 50 \
-       --eval-interval 2000 \
+       --save-interval 15 \
+       --eval-interval 2 \
        --eval-iters 2 \
        --bf16 \
        --use-mcore-models \
@@ -140,15 +142,15 @@ options=" \
        --wandb-exp-name ${WANDB_RUN_NAME} \
 
 
-       --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp${PP_SIZE}_tp1 \
+       --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/mamba2-8b-3t-4k/ \
        --finetune \
-        "
+
        
         
-        # --inserting_mamba_states True \
-        # --insert_mamba_states_for_training True \
-        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup-01/ 
-        # "
+        --inserting_mamba_states True \
+        --insert_mamba_states_for_training True \
+        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup-01/ 
+        "
         
         
         # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 

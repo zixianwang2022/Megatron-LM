@@ -48,20 +48,20 @@ SEQ_LEN=512
 
 DATASET_SIZE=10000
 
-TRAIN_SAMPLES=9000  # 300B tokens / 4096
+TRAIN_SAMPLES=10000  # 300B tokens / 4096
 LR_WARMUP_SAMPLES=1000
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
 PP_SIZE=8
 # LR="5e-5"
 # MIN_LR="5e-6"
-LR="6e-5"
-MIN_LR="6e-6"
+LR="1e-6"
+MIN_LR="1e-7"
 
 # Store the current time in a variable
 current_datetime=$(date +"%Y%m%d_%H%M%S")
 
-PROJ_NAME="soup-01_S_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}"
+PROJ_NAME="no_soup-01_D_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}"
 # PROJ_NAME="test"
 
 # PROJ_NAME="D_01_Q_A"
@@ -131,7 +131,7 @@ options=" \
        --log-interval 10 \
        --save-interval 15 \
        --eval-interval 2 \
-       --eval-iters 4 \
+       --eval-iters 2 \
        --bf16 \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
@@ -145,12 +145,12 @@ options=" \
        --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp${PP_SIZE}_tp1 \
        --finetune \
 
-       
+       "
         
-        --inserting_mamba_states True \
-        --insert_mamba_states_for_training True \
-        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup-01/ 
-        "
+        # --inserting_mamba_states True \
+        # --insert_mamba_states_for_training True \
+        # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup-01/ 
+        # "
         
         
         # --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/100_valid_all/hidden_states/soup0-3/ 

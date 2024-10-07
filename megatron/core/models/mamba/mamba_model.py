@@ -404,7 +404,6 @@ class MambaModel(LanguageModule):
                     list_of_batched_states = []
                     
                     for candidate_filename_tokens in input_ids: 
-                        # candidate_filename = "".join ([f"{t}_" for t in candidate_filename_tokens])
                         
                         # Find the index of the last non-zero element
                         index = 0

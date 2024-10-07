@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=32
+        GLOBAL_BATCH_SIZE=128
         ;;
     *)
         echo "Invalid version specified"
@@ -48,8 +48,8 @@ SEQ_LEN=512
 
 DATASET_SIZE=10000
 
-TRAIN_SAMPLES=15000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=1500
+TRAIN_SAMPLES=20000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=2000
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
 PP_SIZE=8
@@ -112,7 +112,7 @@ options=" \
        --save ${CHECKPOINT_DIR} \
        --data-path ${DATA_PATH} \
        --data-cache-path ${DATACACHE_DIR} \
-       --split 99,1,0 \
+       --split 90,10,0 \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
@@ -129,9 +129,9 @@ options=" \
        --adam-beta1 0.9 \
        --adam-beta2 0.95 \
        --log-interval 10 \
-       --save-interval 30 \
-       --eval-interval 30 \
-       --eval-iters 32 \
+       --save-interval 15 \
+       --eval-interval 2 \
+       --eval-iters 2 \
        --bf16 \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \

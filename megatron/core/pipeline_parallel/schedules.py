@@ -7,6 +7,7 @@ import io
 import torch
 from torch.autograd.variable import Variable
 
+from megatron.training import get_args
 from megatron.core import parallel_state
 from megatron.core.enums import ModelType
 from megatron.core.pipeline_parallel import p2p_communication
@@ -1248,37 +1249,180 @@ def deserialize_tensor_to_dict(tensor):
 
 
 
-def send_dict(data_dict, dst_rank, group):
-     if not parallel_state.is_pipeline_last_stage():
-        with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
-            file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
-            # file.write (f'\n sending input_dict : {data_dict} \n\n')
+# def send_dict(data_dict, dst_rank, group):
+#      if not parallel_state.is_pipeline_last_stage():
+#         with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+#             file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
+#             # file.write (f'\n sending input_dict : {data_dict} \n\n')
                 
-        dict_tensor = serialize_dict_to_tensor(data_dict)
-        dict_size = torch.LongTensor([dict_tensor.numel()]).to(torch.cuda.current_device())
-        torch.distributed.send(dict_size, dst=dst_rank, group=group)
-        torch.distributed.send(dict_tensor, dst=dst_rank, group=group)
+#         dict_tensor = serialize_dict_to_tensor(data_dict)
+#         dict_size = torch.LongTensor([dict_tensor.numel()]).to(torch.cuda.current_device())
+#         torch.distributed.send(dict_size, dst=dst_rank, group=group)
+#         torch.distributed.send(dict_tensor, dst=dst_rank, group=group)
 
-def recv_dict(src_rank, group):
+# def recv_dict(src_rank, group):
     
-    if not parallel_state.is_pipeline_first_stage():
-        dict_size = torch.LongTensor([0]).to(torch.cuda.current_device())
-        torch.distributed.recv(dict_size, src=src_rank, group=group)
-        dict_tensor = torch.empty(dict_size.item(), dtype=torch.uint8).to(torch.cuda.current_device())
-        torch.distributed.recv(dict_tensor, src=src_rank, group=group)
-        data_dict = deserialize_tensor_to_dict(dict_tensor)
+#     if not parallel_state.is_pipeline_first_stage():
+#         dict_size = torch.LongTensor([0]).to(torch.cuda.current_device())
+#         torch.distributed.recv(dict_size, src=src_rank, group=group)
+#         dict_tensor = torch.empty(dict_size.item(), dtype=torch.uint8).to(torch.cuda.current_device())
+#         torch.distributed.recv(dict_tensor, src=src_rank, group=group)
+#         data_dict = deserialize_tensor_to_dict(dict_tensor)
         
-        with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
-            file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
-            # file.write (f'\n receiving input_dict : {data_dict} \n\n')
+#         with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+#             file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
+#             # file.write (f'\n receiving input_dict : {data_dict} \n\n')
             
-        data_dict_copy = move_tensors_to_device (data_dict, parallel_state.get_pipeline_model_parallel_rank())
-        return data_dict_copy 
+#         data_dict_copy = move_tensors_to_device (data_dict, parallel_state.get_pipeline_model_parallel_rank())
+#         return data_dict_copy 
     
-    else: 
-        return None 
+#     else: 
+#         return None 
 
 
+def flatten_dict(d):
+    '''Flatten a nested dictionary into a list of tensors, in a consistent order'''
+    tensors = []
+    for key0 in sorted(d.keys()):
+        d1 = d[key0]
+        for key1 in sorted(d1.keys()):
+            d2 = d1[key1]
+            for key2 in ['ssm_state', 'conv_state']:
+                tensor = d2[key2]
+                tensors.append(tensor)
+    return tensors
+
+def reconstruct_dict(tensors):
+    '''Reconstruct the dictionary from a list of tensors, in the same order as flatten_dict'''
+    d = {}
+    idx = 0
+    key0 = 0  # The outermost key is always 0
+    d1 = {}
+    d[key0] = d1
+    for key1 in range(56):  # Keys from 0 to 55
+        d2 = {}
+        d1[key1] = d2
+        for key2 in ['ssm_state', 'conv_state']:
+            tensor = tensors[idx]
+            idx += 1
+            d2[key2] = tensor
+    return d
+
+
+dtype_code_map = {
+    torch.float32: 0,
+    torch.float64: 1,
+    torch.float16: 2,
+    torch.int64: 3,
+    torch.int32: 4,
+    torch.int16: 5,
+    torch.int8: 6,
+    torch.uint8: 7,
+    torch.bool: 8,
+    torch.bfloat16: 9,
+    # Add more if needed
+}
+code_dtype_map = {v: k for k, v in dtype_code_map.items()}
+
+
+
+def get_dtype_code(dtype):
+    return dtype_code_map[dtype]
+
+def get_dtype_from_code(code):
+    return code_dtype_map[code]
+
+
+def send_dict(data_dict, dst_rank, group, insert_mamba_states_for_training):
+    # Zixian: Oct 6: only send dict if inserting states during training
+    args = get_args() 
+    if insert_mamba_states_for_training: 
+        if not parallel_state.is_pipeline_last_stage():
+            with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+                file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
+                # file.write (f'\n sending input_dict : {data_dict} \n\n')
+
+            tensors = flatten_dict(data_dict)
+            num_tensors = len(tensors)
+            # Send the number of tensors
+            num_tensors_tensor = torch.LongTensor([num_tensors]).to(torch.cuda.current_device())
+            torch.distributed.send(num_tensors_tensor, dst=dst_rank, group=group)
+
+            # For each tensor, send the shape, dtype, and data
+            for tensor in tensors:
+                # Send the shape
+                shape_tensor = torch.LongTensor(list(tensor.shape)).to(torch.cuda.current_device())
+                shape_size = torch.LongTensor([len(shape_tensor)]).to(torch.cuda.current_device())
+                torch.distributed.send(shape_size, dst=dst_rank, group=group)
+                torch.distributed.send(shape_tensor, dst=dst_rank, group=group)
+
+                # Send the dtype
+                dtype_code = get_dtype_code(tensor.dtype)
+                dtype_tensor = torch.LongTensor([dtype_code]).to(torch.cuda.current_device())
+                torch.distributed.send(dtype_tensor, dst=dst_rank, group=group)
+
+                # Send the tensor data (flattened)
+                tensor_flat = tensor.contiguous().view(-1)
+                torch.distributed.send(tensor_flat, dst=dst_rank, group=group)
+
+def recv_dict(src_rank, group, insert_mamba_states_for_training):
+    # Zixian: Oct 6: only receive dict if inserting states during training
+    args = get_args() 
+    if insert_mamba_states_for_training: 
+        if not parallel_state.is_pipeline_first_stage():
+            # Receive the number of tensors
+            num_tensors_tensor = torch.LongTensor([0]).to(torch.cuda.current_device())
+            torch.distributed.recv(num_tensors_tensor, src=src_rank, group=group)
+            num_tensors = num_tensors_tensor.item()
+
+            tensors = []
+            for _ in range(num_tensors):
+                # Receive the shape size
+                shape_size_tensor = torch.LongTensor([0]).to(torch.cuda.current_device())
+                torch.distributed.recv(shape_size_tensor, src=src_rank, group=group)
+                shape_size = shape_size_tensor.item()
+
+                # Receive the shape
+                shape_tensor = torch.LongTensor(shape_size).to(torch.cuda.current_device())
+                torch.distributed.recv(shape_tensor, src=src_rank, group=group)
+                shape = tuple(shape_tensor.tolist())
+
+                # Receive the dtype code
+                dtype_tensor = torch.LongTensor([0]).to(torch.cuda.current_device())
+                torch.distributed.recv(dtype_tensor, src=src_rank, group=group)
+                dtype_code = dtype_tensor.item()
+                dtype = get_dtype_from_code(dtype_code)
+
+                # Compute the number of elements
+                num_elements = 1
+                for dim in shape:
+                    num_elements *= dim
+
+                # Receive the tensor data
+                tensor_flat = torch.empty(num_elements, dtype=dtype).to(torch.cuda.current_device())
+                torch.distributed.recv(tensor_flat, src=src_rank, group=group)
+                tensor = tensor_flat.view(shape)
+                tensors.append(tensor)
+
+            data_dict = reconstruct_dict(tensors)
+            
+            with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+                file.write (f'\n\n parallel_state.get_pipeline_model_parallel_rank(): {parallel_state.get_pipeline_model_parallel_rank()} ')
+                # file.write (f'\n receiving input_dict : {data_dict} \n\n')
+                
+            data_dict_copy = move_tensors_to_device(data_dict, parallel_state.get_pipeline_model_parallel_rank())
+            return data_dict_copy
+        else: return None 
+    else:
+        return None
+
+
+
+
+
+
+    
+    
 
 
 def write_to_communication_log (send_from: str, 
@@ -1347,6 +1491,8 @@ def forward_backward_pipelining_without_interleaving(
         raise ValueError(
             "Non-interleaved pipeline parallelism does not support overlapping p2p communication"
         )
+        
+    args = get_args()
 
     if config.timers is not None:
         config.timers('forward-backward', log_level=1).start(barrier=config.barrier_with_L1_time)
@@ -1476,6 +1622,7 @@ def forward_backward_pipelining_without_interleaving(
         input_dict = recv_dict(
             src_rank=parallel_state.get_pipeline_model_parallel_prev_rank(),
             group=parallel_state.get_pipeline_model_parallel_group(),
+            insert_mamba_states_for_training=args.insert_mamba_states_for_training, 
         )
         write_to_communication_log (send_from=f"received dict from warmup forward pass at i={i}", 
                                     num_warmup_microbatches=num_warmup_microbatches, 
@@ -1536,6 +1683,7 @@ def forward_backward_pipelining_without_interleaving(
             data_dict=output_dict,
             dst_rank=parallel_state.get_pipeline_model_parallel_next_rank(),
             group=parallel_state.get_pipeline_model_parallel_group(),
+            insert_mamba_states_for_training=args.insert_mamba_states_for_training, 
         )
         write_to_communication_log (send_from=f"sent dict from warmup forward pass at i={i}", 
                                     num_warmup_microbatches=num_warmup_microbatches, 
@@ -1587,6 +1735,7 @@ def forward_backward_pipelining_without_interleaving(
         input_dict = recv_dict(
                 src_rank=parallel_state.get_pipeline_model_parallel_prev_rank(),
                 group=parallel_state.get_pipeline_model_parallel_group(),
+                insert_mamba_states_for_training=args.insert_mamba_states_for_training, 
             )
         write_to_communication_log (send_from=f"received dict after warmup before 1F1B", 
                                     num_warmup_microbatches=num_warmup_microbatches, 
@@ -1641,10 +1790,61 @@ def forward_backward_pipelining_without_interleaving(
         total_num_tokens += num_tokens.item()
 
         if forward_only:
+            with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+                file.write (f'\n\n SENDING FORWARD ONLY!!!!!!!  \n\n\n')
+            # ------------------------
+            # **** Send input tensors **** 
+            # ------------------------
             send_forward(output_tensor, send_tensor_shapes, config)
+            write_to_communication_log (send_from=f"sent input_tensor in 1F1B at i={i} FORWARD_ONLY", 
+                                        num_warmup_microbatches=num_warmup_microbatches, 
+                                        num_microbatches_remaining=num_microbatches_remaining, 
+                                        passing_dict=None, 
+                                        input_tensor=output_tensor, )
+            
+            # ------------------------
+            # **** Send States ****
+            # ------------------------
+            output_dict = return_dict  # Use the dummy dictionary
+            # output_dict = dummy_dict
+            send_dict(
+                data_dict=output_dict,
+                dst_rank=parallel_state.get_pipeline_model_parallel_next_rank(),
+                group=parallel_state.get_pipeline_model_parallel_group(),
+                insert_mamba_states_for_training=args.insert_mamba_states_for_training, 
+            )
+            write_to_communication_log (send_from=f"sent dict in 1F1B at i={i} FORWARD_ONLY", 
+                                        num_warmup_microbatches=num_warmup_microbatches, 
+                                        num_microbatches_remaining=num_microbatches_remaining, 
+                                        passing_dict=output_dict, 
+                                        input_tensor=None, )
+            
 
             if not last_iteration:
+                # ------------------------
+                # **** Receive input tensors **** 
+                # ------------------------
                 input_tensor = recv_forward(recv_tensor_shapes, config)
+                write_to_communication_log (send_from=f"receive  input_tensor in 1F1B at i={i} FORWARD_ONLY", 
+                                        num_warmup_microbatches=num_warmup_microbatches, 
+                                        num_microbatches_remaining=num_microbatches_remaining, 
+                                        passing_dict=None, 
+                                        input_tensor=input_tensor, )
+                
+                # ------------------------
+                # **** Receive States ****
+                # ------------------------
+                input_dict = recv_dict(
+                        src_rank=parallel_state.get_pipeline_model_parallel_prev_rank(),
+                        group=parallel_state.get_pipeline_model_parallel_group(),
+                        insert_mamba_states_for_training=args.insert_mamba_states_for_training, 
+                    )
+                write_to_communication_log (send_from=f"receive dict in 1F1B at i={i} FORWARD_ONLY", 
+                                            num_warmup_microbatches=num_warmup_microbatches, 
+                                            num_microbatches_remaining=num_microbatches_remaining, 
+                                            passing_dict=input_dict, 
+                                            input_tensor=None, )
+                
 
         else:
             # ------------------------
@@ -1669,6 +1869,7 @@ def forward_backward_pipelining_without_interleaving(
                 data_dict=output_dict,
                 dst_rank=parallel_state.get_pipeline_model_parallel_next_rank(),
                 group=parallel_state.get_pipeline_model_parallel_group(),
+                insert_mamba_states_for_training=args.insert_mamba_states_for_training, 
             )
             write_to_communication_log (send_from=f"sent dict in 1F1B at i={i}", 
                                         num_warmup_microbatches=num_warmup_microbatches, 
@@ -1725,6 +1926,7 @@ def forward_backward_pipelining_without_interleaving(
                 input_dict = recv_dict(
                         src_rank=parallel_state.get_pipeline_model_parallel_prev_rank(),
                         group=parallel_state.get_pipeline_model_parallel_group(),
+                        insert_mamba_states_for_training=args.insert_mamba_states_for_training, 
                     )
                 write_to_communication_log (send_from=f"receive dict in 1F1B at i={i}", 
                                             num_warmup_microbatches=num_warmup_microbatches, 
@@ -1767,6 +1969,11 @@ def forward_backward_pipelining_without_interleaving(
             enable_grad_sync()
             if config.grad_sync_func is not None:
                 config.grad_sync_func(model.parameters())
+        
+        with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
+            file.write (f'\n\n ################################################################################ \n\n ')
+            file.write (f' ######################################## Pipeline Flush Gradient Updates ######################################## \n\n ')
+            file.write (f'\n\n ################################################################################ \n\n ')
 
     if config.finalize_model_grads_func is not None and not forward_only:
         # Finalize model grads (perform full grad all-reduce / reduce-scatter for
@@ -1776,10 +1983,7 @@ def forward_backward_pipelining_without_interleaving(
             [model], total_num_tokens if config.calculate_per_token_loss else None
         )
     
-    with open ('/workspace/megatron/examples/mamba/communication_output.txt', 'a') as file: 
-        file.write (f'\n\n ################################################################################ \n\n ')
-        file.write (f' ######################################## Pipeline Flush Gradient Updates ######################################## \n\n ')
-        file.write (f'\n\n ################################################################################ \n\n ')
+    
 
     if config.timers is not None:
         config.timers('forward-backward').stop()

@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=32
+        GLOBAL_BATCH_SIZE=128
         ;;
     *)
         echo "Invalid version specified"
@@ -129,8 +129,8 @@ options=" \
        --adam-beta1 0.9 \
        --adam-beta2 0.95 \
        --log-interval 10 \
-       --save-interval 30 \
-       --eval-interval 15 \
+       --save-interval 15 \
+       --eval-interval 2 \
        --eval-iters 2 \
        --bf16 \
        --use-mcore-models \
