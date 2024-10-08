@@ -577,6 +577,9 @@ class GPTDataset(MegatronDataset):
             
             print (f'Inside gpt_dataset.py _build_document_sample_shuffle_indices: ')
             print (f'if not path_to_cache or ( ')
+            # print (f'original self.num_samples: {self.num_samples}')
+            # print (f'setting self.num_samples: {self.num_samples}')
+            # self.num_samples = 89
             
             print (f'self.num_samples: {self.num_samples}')
 
@@ -592,6 +595,7 @@ class GPTDataset(MegatronDataset):
             num_epochs = self._get_num_epochs(num_tokens_per_epoch)
             
             print (f'num_tokens_per_epoch: {num_tokens_per_epoch}')
+            
 
             if num_epochs == 1:
                 separate_final_epoch = False
@@ -732,6 +736,16 @@ class GPTDataset(MegatronDataset):
                 logger, logging.INFO, f"> total number of samples: {sample_index.shape[0] - 1}"
             )
             log_single_rank(logger, logging.INFO, f"> total number of epochs: {num_epochs}")
+            
+            print (f'document_index: {document_index}')
+            # for i in document_index:
+            #     print (i)
+            print (f'sample_index: {sample_index}')
+            # for i in sample_index: 
+            #     print (i)
+            print (f'shuffle_index: {shuffle_index}')
+            # for i in shuffle_index: 
+            #     print (i)
 
             return document_index, sample_index, shuffle_index
 
@@ -784,7 +798,11 @@ class GPTDataset(MegatronDataset):
         Returns:
             int: The number of tokens in a single epoch
         """
-        return int(numpy.sum(self.dataset.sequence_lengths[self.indices]))
+        # return int(numpy.sum(self.dataset.sequence_lengths[self.indices]))
+        # Zixian: Oct 8: DEBUG
+        # Change the tokens per epoch accordingly to the seq_len
+        return int (len (self.indices) * self.config.sequence_length)
+        
 
     def _get_num_epochs(self, num_tokens_per_epoch: int) -> int:
         """Calculate the number of epochs
@@ -862,6 +880,7 @@ def _build_shuffle_index(
         dtype_ = numpy.int64
 
     shuffle_idx_first = numpy.arange(start=0, stop=num_samples, step=1, dtype=dtype_)
+    # Zixian: Oct 7: DEBUG 
     numpy_random_state.shuffle(shuffle_idx_first)
     if num_samples == total_size:
         return shuffle_idx_first
