@@ -10,6 +10,7 @@ import numpy
 import torch
 import random
 
+from megatron.training import get_tokenizer
 from megatron.core.datasets.blended_megatron_dataset_config import BlendedMegatronDatasetConfig
 from megatron.core.datasets.indexed_dataset import IndexedDataset
 from megatron.core.datasets.megatron_dataset import MegatronDataset
@@ -146,7 +147,9 @@ class GPTDataset(MegatronDataset):
         Returns:
             int: The length of the dataset
         """
-        return self.sample_index.shape[0] - 1
+        # Zixian: Oct 7: Modified
+        # return self.sample_index.shape[0] - 1
+        return len(self.sample_index)
 
     def __getitem__(self, idx: Optional[int]) -> Dict[str, torch.Tensor]:
         """Abstract method implementation
@@ -163,11 +166,19 @@ class GPTDataset(MegatronDataset):
         print (f' self.config.add_extra_token_to_sequence is: {self.config.add_extra_token_to_sequence}')
         
         
+        # Zixian: Oct 7: Modified
+        # if idx is None:
+        #     # Batch padding sequence so the index does not matter
+        #     text, _ = self._query_document_sample_shuffle_indices(0)
+        # else:
+        #     text, _ = self._query_document_sample_shuffle_indices(idx)
         if idx is None:
             # Batch padding sequence so the index does not matter
-            text, _ = self._query_document_sample_shuffle_indices(0)
-        else:
-            text, _ = self._query_document_sample_shuffle_indices(idx)
+            idx = 0  # Use the first sample for padding
+        text, _ = self._query_document_sample_shuffle_indices(idx)
+        
+        
+        
             
         # print (f'text-0: {text}')
         print (f'len (text-0): {len (text)}')
@@ -246,131 +257,269 @@ class GPTDataset(MegatronDataset):
         Returns:
             Tuple[numpy.ndarray, numpy.ndarray]: The text ids and document ids
         """
+        
         # Do the shuffle mapping
         idx = self.shuffle_index[idx]
 
-        # Get the beginning and end documents and offsets
-        doc_index_beg, doc_index_beg_offset = self.sample_index[idx]
-        doc_index_end, doc_index_end_offset = self.sample_index[idx + 1]
+        # Get the current and next sample indices
+        doc_idx, offset = self.sample_index[idx]
+        next_doc_idx, next_offset = self.sample_index[idx + 1]
 
-        document_ids = []
-        sample_parts = []
-
-        print (f'\n\n Inside gpt_dataset.py \n')
-        print (f'\n doc_index_beg: {doc_index_beg} \n ')
-        print (f'\n doc_index_beg_offset: {doc_index_beg_offset} \n ')
-        print (f'\n doc_index_end: {doc_index_end} \n ')
-        print (f'\n doc_index_end_offset: {doc_index_end_offset} \n ')
-        # print (f'\n doc_index_beg: {doc_index_beg} \n ')
-        
-        # print (f'\n document_ids : {document_ids} \n')
-        # print (f'\n self.document_index[doc_index_beg] : {self.document_index[doc_index_beg]} \n')
-        # print (f'\n doc_index_beg_offset : {doc_index_beg_offset} \n')
-        # print (f'\n doc_index_end_offset : {doc_index_end_offset} \n')
-        # print (f'\n length : {doc_index_end_offset - doc_index_beg_offset + self.config.add_extra_token_to_sequence} \n')
-
-
-        # Sample spans a single document
-        if doc_index_beg == doc_index_end:
-            # Add the document id
-            document_ids.append(self.document_index[doc_index_beg])
-            
-            
-            # Add the entire sample
-            sample_parts.append(
-                self.dataset.get(
-                    self.document_index[doc_index_beg],
-                    offset=doc_index_beg_offset,
-                    length=doc_index_end_offset
-                    - doc_index_beg_offset
-                    + self.config.add_extra_token_to_sequence,
-                )
-            )
-
-
-        
-        # Sample spans multiple documents
+        # If the current and next samples are from the same document, compute length directly
+        if doc_idx == next_doc_idx:
+            length = next_offset - offset
         else:
-            # Zixian: Oct 6: random sample 1 document within the possible documents to use for fine-tune
-            # random_i = random.randint(doc_index_beg+1, doc_index_end-1)
-            random_i = doc_index_beg+1
-            # random_i = doc_index_end-2 
-            
-            for i in range(doc_index_beg, doc_index_end + 1):
-                
-                # if i == doc_index_beg: 
-                # if i in [doc_index_beg, doc_index_beg+1, doc_index_beg+2]: 
-                    # Zixian: Debug: include this to skip the first data
-                    # Because the doc_index_beg_offset will start at the middle of the sequence
-                    # continue 
-                    # a1 = 1 
-                if i != random_i:
-                    continue  # Skip all indices except the randomly selected one
+            # We're at the end of the document; get the remaining length
+            doc_id = self.document_index[doc_idx]
+            length = self.dataset.sequence_lengths[doc_id] - offset
 
-                    
-                if i == random_i+1: 
-                    # Zixian: Debug: hacky way to see if the input_ids can only contain 1 data 
-                    # Instead of a concatenation of all of them
-                    break 
-                
-                # Add the document id
-                document_ids.append(self.document_index[i])
+        # Fetch the document id
+        document_id = self.document_index[doc_idx]
 
-                # Add the sample part
-                offset = 0 if i > doc_index_beg else doc_index_beg_offset
-                
-                # Zixian: Debug to see if this is causing cutting off tokens for 1st processed sample:
-                # offset = 0 if i >= doc_index_beg else doc_index_beg_offset
-                
-                length = (
-                    None
-                    if i < doc_index_end
-                    else doc_index_end_offset + self.config.add_extra_token_to_sequence
-                )
-                sample_parts.append(
-                    self.dataset.get(self.document_index[i], offset=offset, length=length)
-                )
-        assert len(document_ids) == len(
-            sample_parts
-        ), f"len(document_ids) ({len(document_ids)}) != len(sample_parts) ({len(sample_parts)})"
-
-        length = sum(map(len, sample_parts))
+        # Fetch the sample from the dataset
+        sample = self.dataset.get(document_id, offset=offset, length=length)
         
-        # print (f'\n sample_parts[0:2]: {sample_parts[0:3]} \n')
-        # print (f'\n document_ids[0:2]: {document_ids[0:3]} \n')
-        # print (f'\n sum(map(len, sample_parts[0:2])): {sum(map(len, sample_parts[0:2]))} \n')
         
-        from megatron.training import get_tokenizer
         tokenizer = get_tokenizer ()
-        a = tokenizer.detokenize (sample_parts[0].tolist())
-        print (f'\n input_ids : a: {sample_parts[0]} \n')
+        a = tokenizer.detokenize (sample.tolist())
+        print (f'\n input_ids : a: {sample} \n')
         print (f'\n detokenized : a: {a} \n')
-        # b = tokenizer.detokenize (sample_parts[1].tolist())
-        # print (f'\n input_ids : b: {sample_parts[1]} \n')
-        # print (f'\n detokenized : b: {b} \n')
-        # c = tokenizer.detokenize (sample_parts[2].tolist())
-        # print (f'\n input_ids : c: {sample_parts[2]} \n')
-        # print (f'\n detokenized : c: {c} \n')
-        
-        
-        
-        # Zixian: hacky way to experiment 
-        # sample_parts = sample_parts[:1]
 
         # Pad the sample if necessary
-        if length < (self.config.sequence_length + self.config.add_extra_token_to_sequence):
-            
-            print (f'\n I am appending pad tokens! \n')
-            
-            sample_parts.append(
-                [self._pad_token_id]
-                * (self.config.sequence_length + self.config.add_extra_token_to_sequence - length)
-            )
+        max_length = self.config.sequence_length + self.config.add_extra_token_to_sequence
+        if length < max_length:
+            padding = numpy.full((max_length - length,), self._pad_token_id, dtype=sample.dtype)
+            sample = numpy.concatenate((sample, padding), axis=0)
 
-        return (
-            numpy.concatenate(sample_parts, dtype=numpy.int64),
-            numpy.array(document_ids, dtype=numpy.int64),
-        )
+        return sample, numpy.array([document_id], dtype=numpy.int64)
+
+# -----------------------------------------------------------------------------------------------
+# ----------------------- Origin Code for multi documents per 1 sequence ------------------------
+# -----------------------------------------------------------------------------------------------
+        # # Get the beginning and end documents and offsets
+        # doc_index_beg, doc_index_beg_offset = self.sample_index[idx]
+        # doc_index_end, doc_index_end_offset = self.sample_index[idx + 1]
+
+        # document_ids = []
+        # sample_parts = []
+
+        # print (f'\n\n Inside gpt_dataset.py \n')
+        # print (f'\n doc_index_beg: {doc_index_beg} \n ')
+        # print (f'\n doc_index_beg_offset: {doc_index_beg_offset} \n ')
+        # print (f'\n doc_index_end: {doc_index_end} \n ')
+        # print (f'\n doc_index_end_offset: {doc_index_end_offset} \n ')
+        # # print (f'\n doc_index_beg: {doc_index_beg} \n ')
+        
+        # # print (f'\n document_ids : {document_ids} \n')
+        # # print (f'\n self.document_index[doc_index_beg] : {self.document_index[doc_index_beg]} \n')
+        # # print (f'\n doc_index_beg_offset : {doc_index_beg_offset} \n')
+        # # print (f'\n doc_index_end_offset : {doc_index_end_offset} \n')
+        # # print (f'\n length : {doc_index_end_offset - doc_index_beg_offset + self.config.add_extra_token_to_sequence} \n')
+
+
+        # # Sample spans a single document
+        # if doc_index_beg == doc_index_end:
+        #     # Add the document id
+        #     document_ids.append(self.document_index[doc_index_beg])
+            
+            
+        #     # Add the entire sample
+        #     sample_parts.append(
+        #         self.dataset.get(
+        #             self.document_index[doc_index_beg],
+        #             offset=doc_index_beg_offset,
+        #             length=doc_index_end_offset
+        #             - doc_index_beg_offset
+        #             + self.config.add_extra_token_to_sequence,
+        #         )
+        #     )
+
+
+        
+        # # Sample spans multiple documents
+        # else:
+        #     # Zixian: Oct 6: random sample 1 document within the possible documents to use for fine-tune
+        #     # random_i = random.randint(doc_index_beg+1, doc_index_end-1)
+        #     random_i = doc_index_beg+1
+        #     # random_i = doc_index_end-2 
+            
+        #     for i in range(doc_index_beg, doc_index_end + 1):
+                
+        #         # if i == doc_index_beg: 
+        #         # if i in [doc_index_beg, doc_index_beg+1, doc_index_beg+2]: 
+        #             # Zixian: Debug: include this to skip the first data
+        #             # Because the doc_index_beg_offset will start at the middle of the sequence
+        #             # continue 
+        #             # a1 = 1 
+        #         if i != random_i:
+        #             continue  # Skip all indices except the randomly selected one
+
+                    
+        #         if i == random_i+1: 
+        #             # Zixian: Debug: hacky way to see if the input_ids can only contain 1 data 
+        #             # Instead of a concatenation of all of them
+        #             break 
+                
+        #         # Add the document id
+        #         document_ids.append(self.document_index[i])
+
+        #         # Add the sample part
+        #         offset = 0 if i > doc_index_beg else doc_index_beg_offset
+                
+        #         # Zixian: Debug to see if this is causing cutting off tokens for 1st processed sample:
+        #         # offset = 0 if i >= doc_index_beg else doc_index_beg_offset
+                
+        #         length = (
+        #             None
+        #             if i < doc_index_end
+        #             else doc_index_end_offset + self.config.add_extra_token_to_sequence
+        #         )
+        #         sample_parts.append(
+        #             self.dataset.get(self.document_index[i], offset=offset, length=length)
+        #         )
+        # assert len(document_ids) == len(
+        #     sample_parts
+        # ), f"len(document_ids) ({len(document_ids)}) != len(sample_parts) ({len(sample_parts)})"
+
+        # length = sum(map(len, sample_parts))
+        
+        # # print (f'\n sample_parts[0:2]: {sample_parts[0:3]} \n')
+        # # print (f'\n document_ids[0:2]: {document_ids[0:3]} \n')
+        # # print (f'\n sum(map(len, sample_parts[0:2])): {sum(map(len, sample_parts[0:2]))} \n')
+        
+        # from megatron.training import get_tokenizer
+        # tokenizer = get_tokenizer ()
+        # a = tokenizer.detokenize (sample_parts[0].tolist())
+        # print (f'\n input_ids : a: {sample_parts[0]} \n')
+        # print (f'\n detokenized : a: {a} \n')
+        # # b = tokenizer.detokenize (sample_parts[1].tolist())
+        # # print (f'\n input_ids : b: {sample_parts[1]} \n')
+        # # print (f'\n detokenized : b: {b} \n')
+        # # c = tokenizer.detokenize (sample_parts[2].tolist())
+        # # print (f'\n input_ids : c: {sample_parts[2]} \n')
+        # # print (f'\n detokenized : c: {c} \n')
+        
+        
+        
+        # # Zixian: hacky way to experiment 
+        # # sample_parts = sample_parts[:1]
+
+        # # Pad the sample if necessary
+        # if length < (self.config.sequence_length + self.config.add_extra_token_to_sequence):
+            
+        #     print (f'\n I am appending pad tokens! \n')
+            
+        #     sample_parts.append(
+        #         [self._pad_token_id]
+        #         * (self.config.sequence_length + self.config.add_extra_token_to_sequence - length)
+        #     )
+
+        # return (
+        #     numpy.concatenate(sample_parts, dtype=numpy.int64),
+        #     numpy.array(document_ids, dtype=numpy.int64),
+        # )
+        
+# -----------------------------------------------------------------------------------------------
+# ----------------------- END ------------------------
+# -----------------------------------------------------------------------------------------------
+        
+    def _custom_build_sample_idx(
+        self, 
+        sizes,
+        doc_idx,
+        seq_length,
+        num_epochs,
+        tokens_per_epoch,
+        drop_last_partial_sequence=True,
+        add_extra_token_to_sequence=1,
+    ) -> numpy.ndarray:
+        """
+        Build sample_idx ensuring that each sample comes from only one document.
+
+        Args:
+            sizes (numpy.ndarray): Lengths of the documents.
+            doc_idx (numpy.ndarray): Indices of documents to include.
+            seq_length (int): Sequence length.
+            num_epochs (int): Number of epochs.
+            tokens_per_epoch (int): Number of tokens per epoch.
+            drop_last_partial_sequence (bool): Whether to drop sequences shorter than seq_length.
+            add_extra_token_to_sequence (int): Additional tokens to add to the sequence length.
+
+        Returns:
+            numpy.ndarray: Sample index array of shape [num_samples + 1, 2].
+        """
+        import numpy as np
+
+        # Consistency checks.
+        assert seq_length > 1
+        assert num_epochs > 0
+        assert tokens_per_epoch > 1
+
+        # Max sequence length including any extra tokens
+        max_seq_length = seq_length + add_extra_token_to_sequence
+
+        sample_idx_entries = []
+
+        # Loop over epochs
+        for epoch in range(num_epochs):
+            # Loop over documents
+            for doc_idx_index in range(len(doc_idx)):
+                doc_id = doc_idx[doc_idx_index]
+                doc_length = sizes[doc_id]
+                doc_offset = 0
+
+                # Skip empty documents
+                if doc_length == 0:
+                    continue
+
+                # While there is more document to process
+                while doc_offset < doc_length:
+                    remaining_length = doc_length - doc_offset
+                    sample_length = min(max_seq_length, remaining_length)
+
+                    if drop_last_partial_sequence and sample_length < max_seq_length:
+                        # Skip this sample if partial sequences are to be dropped
+                        break  # Move to the next document
+
+                    # Record the starting point of the sample
+                    sample_idx_entries.append([doc_idx_index, doc_offset])
+
+                    # Move to the next sample offset
+                    doc_offset += sample_length
+
+        # Convert the list to a numpy array
+        if len(sample_idx_entries) > 0:
+            sample_idx_entries = np.array(sample_idx_entries, dtype=np.int32)
+        else:
+            # Handle the case where no samples are generated
+            sample_idx_entries = np.empty((0, 2), dtype=np.int32)
+
+        num_samples = len(sample_idx_entries)
+
+        # Build the final sample_idx array with shape [num_samples + 1, 2]
+        sample_idx = np.zeros((num_samples + 1, 2), dtype=np.int32)
+
+        # Copy the entries
+        sample_idx[:-1] = sample_idx_entries
+
+        # For the last entry, set to the end of the last document
+        if num_samples > 0:
+            last_doc_idx_index = sample_idx_entries[-1][0]
+            last_doc_offset = sample_idx_entries[-1][1]
+            last_doc_id = doc_idx[last_doc_idx_index]
+            last_doc_length = sizes[last_doc_id]
+            remaining_length = last_doc_length - last_doc_offset
+            sample_length = min(max_seq_length, remaining_length)
+            sample_idx[-1] = [last_doc_idx_index, last_doc_offset + sample_length]
+        else:
+            # If no samples, set the last entry to zeros
+            sample_idx[-1] = [0, 0]
+
+        return sample_idx
+        # sample_index = numpy.array(sample_index, dtype=numpy.int64)
+        
+        # return sample_index
+
 
     def _build_document_sample_shuffle_indices(
         self,
@@ -518,25 +667,48 @@ class GPTDataset(MegatronDataset):
                 sequence_lengths_for_cpp = self.dataset.sequence_lengths.copy()
             else:
                 sequence_lengths_for_cpp = self.dataset.sequence_lengths
-            sample_index = helpers.build_sample_idx(
-                sequence_lengths_for_cpp,
+            
+            # Zixian: Oct 7 to try out query 1 document for 1 sequence. 
+            # sample_index = helpers.build_sample_idx(
+            #     sequence_lengths_for_cpp,
+            #     document_index,
+            #     sequence_length,
+            #     num_epochs,
+            #     num_tokens_per_epoch,
+            #     drop_last_partial_sequence,
+            #     self.config.add_extra_token_to_sequence,
+            # )
+            
+            # Always allow partial sequences to ensure we get samples from all documents
+            drop_last_partial_sequence = False
+            sample_index = self._custom_build_sample_idx (
+                self.dataset.sequence_lengths,
                 document_index,
                 sequence_length,
                 num_epochs,
                 num_tokens_per_epoch,
                 drop_last_partial_sequence,
-                self.config.add_extra_token_to_sequence,
+                add_extra_token_to_sequence=self.config.add_extra_token_to_sequence,
             )
-
+            
+            # Ensure we have the correct number of samples
+            num_samples = sample_index.shape[0] - 1  # Subtract 1 because of the extra entry
+            print (f' \n\n num_samples = {num_samples}')
+            shuffle_index = _build_shuffle_index(
+                num_samples=num_samples,
+                total_size=num_samples,
+                numpy_random_state=numpy_random_state
+            )
+            # Zixian: Oct 7: Ensure to incorporate new shuffle index that has new indices
             # Build the shuffle index
-            if separate_final_epoch:
-                shuffle_index = _build_shuffle_index(
-                    num_samples_sans_final_epoch, sample_index.shape[0] - 1, numpy_random_state
-                )
-            else:
-                shuffle_index = _build_shuffle_index(
-                    sample_index.shape[0] - 1, sample_index.shape[0] - 1, numpy_random_state
-                )
+            # if separate_final_epoch:
+            #     shuffle_index = _build_shuffle_index(
+            #         num_samples_sans_final_epoch, sample_index.shape[0] - 1, numpy_random_state
+            #     )
+            # else:
+            #     shuffle_index = _build_shuffle_index(
+            #         sample_index.shape[0] - 1, sample_index.shape[0] - 1, numpy_random_state
+            #     )
 
             if path_to_cache:
                 os.makedirs(path_to_cache, exist_ok=True)
