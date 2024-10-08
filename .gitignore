@@ -28,5 +28,7 @@ examples/mamba/training_10000_output_5.txt
 
 examples/mamba/training_decoder_10000_output_1.txt
 examples/mamba/communication_output.txt 
+examples/mamba/debug.ipynb
 
 changes.path
+

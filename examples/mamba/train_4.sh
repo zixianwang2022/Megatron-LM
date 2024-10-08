@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=48
+        GLOBAL_BATCH_SIZE=128
         ;;
     *)
         echo "Invalid version specified"
@@ -36,8 +36,7 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
 # SEQ_LEN=4096
-SEQ_LEN=256
-# SEQ_LEN=2048
+SEQ_LEN=512
 
 # TRAIN_SAMPLES=73242188  # 300B tokens / 4096
 # LR_WARMUP_SAMPLES=50000
@@ -49,8 +48,8 @@ SEQ_LEN=256
 
 DATASET_SIZE=10000
 
-TRAIN_SAMPLES=10000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=1000
+TRAIN_SAMPLES=20000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=2000
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
 PP_SIZE=8
@@ -62,7 +61,7 @@ MIN_LR="4e-6"
 # Store the current time in a variable
 current_datetime=$(date +"%Y%m%d_%H%M%S")
 
-PROJ_NAME="soup-01_S_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}_RANDOM_SEQ${SEQ_LEN}"
+PROJ_NAME="soup-01_S_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}_RANDOM"
 # PROJ_NAME="test"
 
 # PROJ_NAME="D_01_Q_A"
@@ -117,7 +116,7 @@ options=" \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 12 \
+       --micro-batch-size 8 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
        --lr ${LR} \
        --min-lr ${MIN_LR} \

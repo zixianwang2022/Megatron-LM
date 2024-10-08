@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=48
+        GLOBAL_BATCH_SIZE=16
         ;;
     *)
         echo "Invalid version specified"
@@ -36,8 +36,7 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
 # SEQ_LEN=4096
-SEQ_LEN=256
-# SEQ_LEN=2048
+SEQ_LEN=512
 
 # TRAIN_SAMPLES=73242188  # 300B tokens / 4096
 # LR_WARMUP_SAMPLES=50000
@@ -47,23 +46,23 @@ SEQ_LEN=256
 # LR_WARMUP_SAMPLES=1000
 # LR_DECAY_SAMPLES=9000 # TRAIN_SAMPLES - LR_WARMUP_SAMPLES
 
-DATASET_SIZE=10000
+DATASET_SIZE=100
 
-TRAIN_SAMPLES=10000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=1000
+TRAIN_SAMPLES=100  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=0
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
-PP_SIZE=8
+PP_SIZE=1
 # LR="5e-5"
 # MIN_LR="5e-6"
-LR="4e-5"
-MIN_LR="4e-6"
+LR="6e-5"
+MIN_LR="6e-6"
 
 # Store the current time in a variable
 current_datetime=$(date +"%Y%m%d_%H%M%S")
 
-PROJ_NAME="soup-01_S_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}_RANDOM_SEQ${SEQ_LEN}"
-# PROJ_NAME="test"
+# PROJ_NAME="soup-01_S_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}"
+PROJ_NAME="test"
 
 # PROJ_NAME="D_01_Q_A"
 
@@ -117,7 +116,7 @@ options=" \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 12 \
+       --micro-batch-size 2 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
        --lr ${LR} \
        --min-lr ${MIN_LR} \
@@ -131,8 +130,8 @@ options=" \
        --adam-beta2 0.95 \
        --log-interval 10 \
        --save-interval 15 \
-       --eval-interval 2 \
-       --eval-iters 2 \
+       --eval-interval 10000 \
+       --eval-iters 4 \
        --bf16 \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
@@ -143,7 +142,7 @@ options=" \
        --wandb-exp-name ${WANDB_RUN_NAME} \
 
 
-       --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/pp${PP_SIZE}_tp1 \
+       --pretrained-checkpoint  /workspace/data/ssm-retrieval/mamba2-8b/mamba2-8b-3t-4k/ \
        --finetune \
 
        

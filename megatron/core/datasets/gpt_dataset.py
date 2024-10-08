@@ -8,6 +8,7 @@ from typing import Dict, Optional, Tuple
 
 import numpy
 import torch
+import random
 
 from megatron.core.datasets.blended_megatron_dataset_config import BlendedMegatronDatasetConfig
 from megatron.core.datasets.indexed_dataset import IndexedDataset
@@ -168,7 +169,7 @@ class GPTDataset(MegatronDataset):
         else:
             text, _ = self._query_document_sample_shuffle_indices(idx)
             
-        print (f'text-0: {text}')
+        # print (f'text-0: {text}')
         print (f'len (text-0): {len (text)}')
 
         text = torch.from_numpy(text).long()
@@ -180,7 +181,7 @@ class GPTDataset(MegatronDataset):
             labels = torch.roll(text, shifts=-1, dims=0)
             labels[-1] = self._pad_token_id
             
-        print (f'text-1: {text}')
+        # print (f'text-1: {text}')
         print (f'len (text-1): {len (text)}')
         
         # assert False 
@@ -286,17 +287,28 @@ class GPTDataset(MegatronDataset):
                 )
             )
 
+
+        
         # Sample spans multiple documents
         else:
+            # Zixian: Oct 6: random sample 1 document within the possible documents to use for fine-tune
+            # random_i = random.randint(doc_index_beg+1, doc_index_end-1)
+            random_i = doc_index_beg+1
+            # random_i = doc_index_end-2 
+            
             for i in range(doc_index_beg, doc_index_end + 1):
                 
-                if i == doc_index_beg: 
+                # if i == doc_index_beg: 
+                # if i in [doc_index_beg, doc_index_beg+1, doc_index_beg+2]: 
                     # Zixian: Debug: include this to skip the first data
                     # Because the doc_index_beg_offset will start at the middle of the sequence
-                    continue 
+                    # continue 
                     # a1 = 1 
+                if i != random_i:
+                    continue  # Skip all indices except the randomly selected one
+
                     
-                if i == doc_index_beg+2: 
+                if i == random_i+1: 
                     # Zixian: Debug: hacky way to see if the input_ids can only contain 1 data 
                     # Instead of a concatenation of all of them
                     break 
@@ -413,6 +425,11 @@ class GPTDataset(MegatronDataset):
             not cache_hit
             and (not torch.distributed.is_initialized() or torch.distributed.get_rank() == 0)
         ):
+            
+            print (f'Inside gpt_dataset.py _build_document_sample_shuffle_indices: ')
+            print (f'if not path_to_cache or ( ')
+            
+            print (f'self.num_samples: {self.num_samples}')
 
             log_single_rank(
                 logger,
@@ -424,6 +441,8 @@ class GPTDataset(MegatronDataset):
             sequence_length = self.config.sequence_length
             num_tokens_per_epoch = self._get_num_tokens_per_epoch()
             num_epochs = self._get_num_epochs(num_tokens_per_epoch)
+            
+            print (f'num_tokens_per_epoch: {num_tokens_per_epoch}')
 
             if num_epochs == 1:
                 separate_final_epoch = False
@@ -437,6 +456,11 @@ class GPTDataset(MegatronDataset):
                 num_samples_per_epoch = (
                     num_tokens_per_epoch - self.config.add_extra_token_to_sequence
                 ) // sequence_length
+                
+                print (f'self.indices: {self.indices}')
+                print (f'num_samples_per_epoch: {num_samples_per_epoch}')
+                print (f'num_samples_from_final_epoch: {num_samples_from_final_epoch}')
+                
 
                 # num_samples_from_final_epoch should be non-negative
                 assert num_samples_from_final_epoch >= 0
@@ -548,6 +572,9 @@ class GPTDataset(MegatronDataset):
             logging.INFO,
             f"\tLoad the document index from {os.path.basename(path_to_document_index)}",
         )
+        print (f'Inside gpt_dataset.py _build_document_sample_shuffle_indices: ')
+        print (f'else ')
+            
         t_beg = time.time()
         document_index = numpy.load(path_to_document_index, allow_pickle=True, mmap_mode='r')
         t_end = time.time()
