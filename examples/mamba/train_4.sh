@@ -19,7 +19,7 @@ case "${MODEL_SCALE}" in
         NUM_LAYERS=56
         HIDDEN_SIZE=4096
         NUM_ATTENTION_HEADS=32
-        GLOBAL_BATCH_SIZE=128
+        GLOBAL_BATCH_SIZE=192
         ;;
     *)
         echo "Invalid version specified"
@@ -36,7 +36,8 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
 # SEQ_LEN=4096
-SEQ_LEN=512
+SEQ_LEN=256
+# SEQ_LEN=2048
 
 # TRAIN_SAMPLES=73242188  # 300B tokens / 4096
 # LR_WARMUP_SAMPLES=50000
@@ -48,25 +49,25 @@ SEQ_LEN=512
 
 DATASET_SIZE=10000
 
-TRAIN_SAMPLES=20000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=2000
+TRAIN_SAMPLES=9000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=900
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
 PP_SIZE=8
 # LR="5e-5"
 # MIN_LR="5e-6"
-LR="4e-5"
-MIN_LR="4e-6"
+LR="1e-5"
+MIN_LR="1e-6"
 
 # Store the current time in a variable
 current_datetime=$(date +"%Y%m%d_%H%M%S")
 
-PROJ_NAME="soup-01_S_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}_RANDOM"
+PROJ_NAME="soup_S_012_Q_A_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_SEQ${SEQ_LEN}_NO_SHUFFLE"
 # PROJ_NAME="test"
 
 # PROJ_NAME="D_01_Q_A"
 
-WANDB_RUN_NAME="lr_${LR}_minlr_${MIN_LR}_${current_datetime}"
+WANDB_RUN_NAME="BATCH_${GLOBAL_BATCH_SIZE}_lr_${LR}_minlr_${MIN_LR}_${current_datetime}"
 
 
 
@@ -116,7 +117,7 @@ options=" \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 8 \
+       --micro-batch-size 16 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
        --lr ${LR} \
        --min-lr ${MIN_LR} \
@@ -149,7 +150,7 @@ options=" \
         
         --inserting_mamba_states True \
         --insert_mamba_states_for_training True \
-        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup-01/ 
+        --insert_mamba_states_for_training_dir /workspace/data/ssm-retrieval/data/hotpot/training_data/10000_valid_all/hidden_states/soup-012/ 
         "
         
         

@@ -881,7 +881,7 @@ def _build_shuffle_index(
 
     shuffle_idx_first = numpy.arange(start=0, stop=num_samples, step=1, dtype=dtype_)
     # Zixian: Oct 7: DEBUG 
-    numpy_random_state.shuffle(shuffle_idx_first)
+    # numpy_random_state.shuffle(shuffle_idx_first)
     if num_samples == total_size:
         return shuffle_idx_first
 

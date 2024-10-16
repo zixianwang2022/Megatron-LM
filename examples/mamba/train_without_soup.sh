@@ -36,7 +36,8 @@ export NCCL_IB_TIMEOUT=19
 export NCCL_IB_QPS_PER_CONNECTION=4
 
 # SEQ_LEN=4096
-SEQ_LEN=2048
+SEQ_LEN=512
+# SEQ_LEN=2048
 
 # TRAIN_SAMPLES=73242188  # 300B tokens / 4096
 # LR_WARMUP_SAMPLES=50000
@@ -48,25 +49,25 @@ SEQ_LEN=2048
 
 DATASET_SIZE=10000
 
-TRAIN_SAMPLES=10000  # 300B tokens / 4096
-LR_WARMUP_SAMPLES=1000
+TRAIN_SAMPLES=9000  # 300B tokens / 4096
+LR_WARMUP_SAMPLES=900
 LR_DECAY_SAMPLES=$((TRAIN_SAMPLES - LR_WARMUP_SAMPLES))
 
 PP_SIZE=8
 # LR="5e-5"
 # MIN_LR="5e-6"
-LR="4e-4"
-MIN_LR="4e-5"
+LR="3e-6"
+MIN_LR="3e-7"
 
 # Store the current time in a variable
 current_datetime=$(date +"%Y%m%d_%H%M%S")
 
-PROJ_NAME="no_soup-01_D_Q_A_DATASET_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_BATCH_${GLOBAL_BATCH_SIZE}_RANDOM_SEQ${SEQ_LEN}"
+PROJ_NAME="no-soup-01_D_Q_A_SIZE_${DATASET_SIZE}_TRAINED_${TRAIN_SAMPLES}_SEQ${SEQ_LEN}_NO_SHUFFLE"
 # PROJ_NAME="test"
 
 # PROJ_NAME="D_01_Q_A"
 
-WANDB_RUN_NAME="lr_${LR}_minlr_${MIN_LR}_${current_datetime}"
+WANDB_RUN_NAME="BATCH_${GLOBAL_BATCH_SIZE}_lr_${LR}_minlr_${MIN_LR}_${current_datetime}"
 
 
 
@@ -116,7 +117,7 @@ options=" \
        --tokenizer-type GPTSentencePieceTokenizer \
        --tokenizer-model ${TOKENIZER_PATH} \
        --distributed-backend nccl \
-       --micro-batch-size 2 \
+       --micro-batch-size 16 \
        --global-batch-size ${GLOBAL_BATCH_SIZE} \
        --lr ${LR} \
        --min-lr ${MIN_LR} \
@@ -129,8 +130,8 @@ options=" \
        --adam-beta1 0.9 \
        --adam-beta2 0.95 \
        --log-interval 10 \
-       --save-interval 15 \
-       --eval-interval 2 \
+       --save-interval 10000 \
+       --eval-interval 3000 \
        --eval-iters 2 \
        --bf16 \
        --use-mcore-models \
