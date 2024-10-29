@@ -77,7 +77,9 @@ class MambaMixer(MegatronModule):
         conv_bias=True,
         # Fused kernel and sharding options
         chunk_size=128,
-        use_mem_eff_path=True,
+        # Zixian: Oct 25: False to extract states 
+        # use_mem_eff_path=True,
+        use_mem_eff_path=False,
         layer_number=None,
     ):
         super().__init__(config)
@@ -212,12 +214,23 @@ class MambaMixer(MegatronModule):
             tp_comm_buffer_name='fc2',
         )
 
-    def forward(self, hidden_states, inference_params=None):
+    def forward(self, 
+                hidden_states, 
+                inference_params=None, 
+                insert_states=False, 
+                retrieve_states=False, 
+                # states to be inserted 
+                inserted_ssm_state=None, 
+                inserted_conv_state=None,
+                insert_states_for_training=False, ):
         """
         hidden_states: (nL, B, D) / (L B D)
         Returns: same shape as hidden_states
         """
         _, batch, dim = hidden_states.shape
+        
+        # For returning states
+        layer_states_dict = {}
 
         conv_state, ssm_state = None, None
         if inference_params is not None:
@@ -225,8 +238,18 @@ class MambaMixer(MegatronModule):
             conv_state, ssm_state = self._get_states_from_cache(inference_params, batch)
             if inference_params.seqlen_offset > 0:
                 # The states are updated inplace
-                out, out_bias, _, _ = self.step(hidden_states, conv_state, ssm_state)
-                return out, out_bias
+                out, out_bias, conv_state_cp, ssm_state_cp = self.step(hidden_states, conv_state, ssm_state)
+                
+                # Zixian: Oct 28: Clone to make a copy if for future use
+                if retrieve_states: 
+                    conv_state = last_state.clone() 
+                    ssm_state = last_state.clone() 
+                    layer_states_dict ['conv_state'] = conv_state # Y
+                    layer_states_dict ['ssm_state'] = ssm_state # Y
+                
+                return out, out_bias, layer_states_dict
+        else: 
+            conv_state, ssm_state = self._allocate_training_cache (batch_size=batch)
 
         # (nheads_local)
         A = -torch.exp(self.A_log.float())
@@ -278,11 +301,18 @@ class MambaMixer(MegatronModule):
 
             # Compute short convolution
             if conv_state is not None:
-                # If we just take x[:, :, -self.d_conv :], it will error if seqlen < self.d_conv
-                # Instead F.pad will pad with zeros if seqlen < self.d_conv, and truncate otherwise.
-                conv_state.copy_(
-                    F.pad(xBC, (self.d_conv - xBC.shape[-1], 0))
-                )  # Update state (B D W)
+                
+                if inference_params is not None:
+                    # If we just take x[:, :, -self.d_conv :], it will error if seqlen < self.d_conv
+                    # Instead F.pad will pad with zeros if seqlen < self.d_conv, and truncate otherwise.
+                    conv_state.copy_(
+                        F.pad(xBC, (self.d_conv - xBC.shape[-1], 0))
+                    )  # Update state (B D W)
+                else:
+                    conv_state = F.pad(xBC, (self.d_conv - xBC.shape[-1], 0)).clone()
+                
+                print (f'[mamba_mixer.py]: conv_state.shape: {conv_state.shape}')
+                print (f'[mamba_mixer.py]: conv_state.requires_grad: {conv_state.requires_grad}')
 
             seqlen = xBC.size(2)
             if causal_conv1d_fn is None:
@@ -335,7 +365,12 @@ class MambaMixer(MegatronModule):
 
             if ssm_state is not None:
                 y, last_state = y
-                ssm_state.copy_(last_state)
+                
+                if inference_params is not None:
+                    ssm_state.copy_(last_state)
+                else: 
+                    # During training
+                    ssm_state = last_state.clone()
 
             if self.rmsnorm:
                 y = rearrange(y, "b l h p -> b l (h p)").contiguous()
@@ -346,8 +381,18 @@ class MambaMixer(MegatronModule):
 
         y = rearrange(y, "b l d -> l b d").contiguous()
         out, out_bias = self.out_proj(y)
+        
+        # Zixian: Storing the states after user's input
+        if (retrieve_states): # Y 
+            # print (f"----Storing states into layer_states_dict")
+            layer_states_dict ['conv_state'] = conv_state # Y 
+            layer_states_dict ['ssm_state'] = ssm_state # Y 
+            
+        print (f'[mamba_mixer.py]: ssm_state.shape: {ssm_state.shape}')
+        print (f'[mamba_mixer.py]: ssm_state.requires_grad: {ssm_state.requires_grad}')
 
-        return out, out_bias
+        # Zixian: Oct 28: Return one more term for layer states dict
+        return out, out_bias, layer_states_dict 
 
     def step(self, hidden_states, conv_state, ssm_state):
         # assert self.ngroups_local == 1, "Only support ngroups=1 for inference for now"
@@ -488,6 +533,28 @@ class MambaMixer(MegatronModule):
             self.d_state,
             device=device,
             dtype=ssm_dtype,
+        )
+        return conv_state, ssm_state
+    
+    def _allocate_training_cache(self, batch_size, dtype=None):
+        device = self.out_proj.weight.device
+        conv_dtype = self.conv1d.weight.dtype if dtype is None else dtype
+        conv_state = torch.zeros(
+            batch_size, self.conv1d.weight.shape[0], self.d_conv, device=device, dtype=conv_dtype, 
+            # Zixian: Oct 25: Enable this so back-prop can come through
+            requires_grad=True, 
+        )
+        ssm_dtype = self.in_proj.weight.dtype if dtype is None else dtype
+        # ssm_dtype = torch.float32
+        ssm_state = torch.zeros(
+            batch_size,
+            self.nheads_local,
+            self.headdim,
+            self.d_state,
+            device=device,
+            dtype=ssm_dtype,
+            # Zixian: Oct 25: Enable this so back-prop can come through
+            requires_grad=True,
         )
         return conv_state, ssm_state
 

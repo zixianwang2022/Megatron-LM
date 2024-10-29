@@ -59,6 +59,13 @@ class MambaLayer(MegatronModule):
         attention_mask: Tensor,  # Not used in MambaLayer
         inference_params=None,
         rotary_pos_emb: Tensor = None,  # Not used in MambaLayer
+        
+        # For retrieving states
+        insert_states: bool =False, 
+        retrieve_states: bool =False, 
+        inserted_ssm_state: Tensor=None, 
+        inserted_conv_state: Tensor=None,
+        insert_states_for_training: bool = False, 
     ):
 
         residual = hidden_states
@@ -68,14 +75,23 @@ class MambaLayer(MegatronModule):
         hidden_states = hidden_states.to(dtype=self.config.params_dtype)
         hidden_states = self.norm(hidden_states)
 
-        mixer_out_with_bias = self.mixer(hidden_states, inference_params=inference_params)
+        # Yasaman: Oct 28: adding one more term and put them as mixer_out_with_bias for coherence 
+        mixer_out, bias, layer_states_dict = self.mixer(hidden_states, 
+                                                        inference_params=inference_params,
+                                                        # Insert states
+                                                        insert_states=insert_states,
+                                                        retrieve_states=retrieve_states,
+                                                        inserted_ssm_state=inserted_ssm_state,
+                                                        inserted_conv_state=inserted_conv_state, 
+                                                        insert_states_for_training=insert_states_for_training)
+        mixer_out_with_bias = mixer_out, bias
 
         with self.bias_dropout_add_exec_handler():
             hidden_states = self.mamba_bda(self.training, self.config.bias_dropout_fusion)(
                 mixer_out_with_bias, residual, self.hidden_dropout
             )
 
-        return hidden_states
+        return hidden_states, layer_states_dict 
 
     def allocate_inference_cache(self, batch_size, max_seqlen, dtype=None):
         return self.mixer.allocate_inference_cache(batch_size, max_seqlen, dtype=dtype)

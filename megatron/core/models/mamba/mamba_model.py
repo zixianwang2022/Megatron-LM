@@ -4,6 +4,8 @@ from typing import Literal, Optional
 
 from torch import Tensor
 
+import os
+from megatron.training import get_args
 from megatron.core import InferenceParams, tensor_parallel
 from megatron.core.config_logger import has_config_logger_enabled, log_config_to_disk
 from megatron.core.models.common.embeddings.language_model_embedding import LanguageModelEmbedding
@@ -151,6 +153,12 @@ class MambaModel(LanguageModule):
         decoder_input: Tensor = None,
         labels: Tensor = None,
         inference_params: InferenceParams = None,
+        
+        # For retrieving states
+        insert_states: bool =False, 
+        retrieve_states: bool =False, 
+        insert_states_for_training: bool = False, 
+        inserted_all_states: Tensor =None, 
     ) -> Tensor:
         """Forward function of the Mamba model. This function passes the input tensors
         through the embedding layer, and then the decoder and finally into the post
@@ -158,9 +166,16 @@ class MambaModel(LanguageModule):
 
         It either returns the Loss values if labels are given or the final hidden units
         """
+        
+        soup_train = os.getenv ('SOUP_TRAIN')
+    
+        # args = get_args()
+        # insert_states = args.inserting_mamba_states
+        # retrieve_states = args.retrieving_mamba_states
+        # insert_states_for_training = args.insert_mamba_states_for_training
+
         # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
         # Otherwise, apply embedding layer on input_ids and position_ids to get decoder_input.
-
         # Decoder embedding.
         if decoder_input is not None:
             pass
@@ -189,12 +204,19 @@ class MambaModel(LanguageModule):
         # assert attention_mask is None, "The attention mask is ignored and should be set to None"
 
         # Run decoder.
-        hidden_states = self.decoder(
-            hidden_states=decoder_input,
-            attention_mask=attention_mask,
-            inference_params=inference_params,
-            rotary_pos_emb=rotary_pos_emb,
-        )
+        hidden_states, all_layers_states_dict = self.decoder(
+                                                        hidden_states=decoder_input,
+                                                        attention_mask=attention_mask,
+                                                        inference_params=inference_params,
+                                                        rotary_pos_emb=rotary_pos_emb,
+                                                        
+                                                        insert_states=insert_states, 
+                                                        retrieve_states=retrieve_states, 
+                                                        inserted_all_states=inserted_all_states, 
+                                                        insert_states_for_training=insert_states_for_training, 
+                                                        # Zixian: Oct 28: Not used in new version of Megatron Mamba
+                                                        # **(extra_block_kwargs or {}),
+                                                        )
 
         if not self.post_process:
             return hidden_states

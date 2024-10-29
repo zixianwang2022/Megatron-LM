@@ -191,6 +191,12 @@ class MambaStack(MegatronModule):
         attention_mask: Tensor,
         inference_params=None,
         rotary_pos_emb: Tensor = None,
+        
+        # For retrieving states
+        insert_states: bool =False, 
+        retrieve_states: bool =False, 
+        inserted_all_states: Tensor=None, 
+        insert_states_for_training: bool = False, 
     ):
         if not self.pre_process:
             # See set_input_tensor()
@@ -201,14 +207,45 @@ class MambaStack(MegatronModule):
             # this hack supports eval
             inference_params.max_seqlen = inference_params.max_sequence_length
             inference_params.seqlen_offset = inference_params.sequence_len_offset
+            
+        # For capturing all layers states 
+        all_layers_states_dict = {}
+        inserted_ssm_state = {}
+        inserted_conv_state = {}
 
         for layer in self.layers:
-            hidden_states = layer(
-                hidden_states,
-                attention_mask,
-                inference_params=inference_params,
-                rotary_pos_emb=rotary_pos_emb,
-            )
+            
+            # Debug 
+            if (layer.layer_number in [0,1]): 
+                retrieve_states = True
+            else: 
+                retrieve_states = False 
+            
+            # Zixian: Oct 28: Capturing layer's extracted states 
+            hidden_states, layer_states_dict = layer(
+                                                    hidden_states,
+                                                    attention_mask,
+                                                    inference_params=inference_params,
+                                                    rotary_pos_emb=rotary_pos_emb,
+                                                    
+                                                    # Insert states
+                                                    insert_states=insert_states,
+                                                    retrieve_states=retrieve_states,
+                                                    inserted_ssm_state=inserted_ssm_state,
+                                                    inserted_conv_state=inserted_conv_state, 
+                                                    insert_states_for_training=insert_states_for_training, 
+                                                    )
+            
+            if (layer.layer_number in [0, 1]): 
+                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict.keys(): {layer_states_dict.keys()}')
+                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["ssm_state"].shape: {layer_states_dict["ssm_state"].shape}')
+                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["conv_state"].shape: {layer_states_dict["conv_state"].shape}')
+                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["ssm_state"][0][0]: {layer_states_dict["ssm_state"][0][0]}')
+                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["conv_state"][0][0]: {layer_states_dict["conv_state"][0][0]}')
+                
+            
+            # Storing each layer states 
+            all_layers_states_dict [layer.layer_number] = layer_states_dict
 
             # The attention layer (currently a simplified transformer layer)
             # outputs a tuple of (hidden_states, context). Context is intended
@@ -226,4 +263,4 @@ class MambaStack(MegatronModule):
             inp=hidden_states, requires_grad=hidden_states.requires_grad, keep_graph=True
         )
 
-        return hidden_states
+        return hidden_states, all_layers_states_dict
