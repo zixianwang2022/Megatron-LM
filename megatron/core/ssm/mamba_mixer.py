@@ -250,6 +250,44 @@ class MambaMixer(MegatronModule):
                 return out, out_bias, layer_states_dict
         else: 
             conv_state, ssm_state = self._allocate_training_cache (batch_size=batch)
+            
+            
+            
+        # Zixian: Oct 29: For Inference 
+        # Insert states to selective scan 
+        initial_states = None 
+        if (inference_params != None): 
+            if (insert_states & (inference_params.seqlen_offset == 0)): 
+                initial_states = inserted_ssm_state
+                
+                
+                
+        
+                
+                
+        # Zixian: Oct 29: For Training 
+        # TODO: Zixian Sept 17: insert states if inserting for training 
+        if (insert_states_for_training and insert_states): 
+            # TODO: Need to check if it is the first time scanning through the input or iteratively stepping. 
+            # Zixian Sept 17: ^ Maybe each time forward only produces next token. That next token is used to calculates loss. 
+            #                   That means, the model will not use already generated token to do the forward again. 
+            #                   Think about the use of attention_mask in here? 
+            #                   Each out from mixer --> layer --> block --> model --> pretrain_mamba's step to generate loss 
+            #                   Then next data is from pretrain_mamba's dataloader's nextitem to here, so self generated token will not occur. 
+            
+            
+            conv_state = inserted_conv_state.clone() # Y
+            ssm_state = inserted_ssm_state.clone() # Y
+        
+            # TODO: Zixian Sept 17: Initialize initial_states to be able to pass during forward.     
+            # This will enable initializing states during mamba_chunk_scan_combined
+            initial_states = inserted_ssm_state.clone()
+            
+
+
+
+
+
 
         # (nheads_local)
         A = -torch.exp(self.A_log.float())
@@ -285,6 +323,7 @@ class MambaMixer(MegatronModule):
 
             if self.rmsnorm:
                 y = self.norm(y)
+        # Zixian: Oct 29: Entering below to insert states 
         else:
             z, xBC, dt = torch.split(
                 xz,
@@ -358,6 +397,10 @@ class MambaMixer(MegatronModule):
                     else self.D
                 ),
                 z=z if not self.rmsnorm else None,
+                
+                # Insert states 
+                initial_states=initial_states, 
+                
                 dt_bias=self.dt_bias.float(),
                 dt_softplus=True,
                 return_final_states=ssm_state is not None,
@@ -393,6 +436,12 @@ class MambaMixer(MegatronModule):
 
         # Zixian: Oct 28: Return one more term for layer states dict
         return out, out_bias, layer_states_dict 
+    
+    
+    
+    
+    
+    
 
     def step(self, hidden_states, conv_state, ssm_state):
         # assert self.ngroups_local == 1, "Only support ngroups=1 for inference for now"

@@ -220,6 +220,21 @@ class MambaStack(MegatronModule):
                 retrieve_states = True
             else: 
                 retrieve_states = False 
+                
+            if inference_params is not None: 
+                # Insert states only when processing user's first input 
+                if ((insert_states) & (inference_params.seqlen_offset == 0)):
+                    # Zixian: Aug 25
+                    # Without having [0] as from Mamba official modified code 
+                    # because states are wrapped differently  
+                    inserted_ssm_state  = inserted_all_states[0][layer.layer_idx]['ssm_state'] # Y
+                    inserted_conv_state = inserted_all_states[0][layer.layer_idx]['conv_state'] # Y
+                
+            
+            if insert_states_for_training and insert_states: 
+                inserted_ssm_state  = inserted_all_states[0][layer.layer_idx]['ssm_state'] # Y
+                inserted_conv_state = inserted_all_states[0][layer.layer_idx]['conv_state'] # Y
+            
             
             # Zixian: Oct 28: Capturing layer's extracted states 
             hidden_states, layer_states_dict = layer(

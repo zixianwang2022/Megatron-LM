@@ -158,7 +158,7 @@ class MambaModel(LanguageModule):
         insert_states: bool =False, 
         retrieve_states: bool =False, 
         insert_states_for_training: bool = False, 
-        inserted_all_states: Tensor =None, 
+        # inserted_all_states: Tensor =None, 
     ) -> Tensor:
         """Forward function of the Mamba model. This function passes the input tensors
         through the embedding layer, and then the decoder and finally into the post
@@ -168,6 +168,8 @@ class MambaModel(LanguageModule):
         """
         
         soup_train = os.getenv ('SOUP_TRAIN')
+        
+        print (f'[mamba_model.py]: input_ids.shape: {input_ids.shape}')
     
         # args = get_args()
         # insert_states = args.inserting_mamba_states
@@ -203,7 +205,18 @@ class MambaModel(LanguageModule):
         #   be None, so this assert will succeed.
         # assert attention_mask is None, "The attention mask is ignored and should be set to None"
 
+
+        if soup_train:
+            insert_states = False 
+            retrieve_states = True 
+            insert_states_for_training = True 
+            inserted_all_states = None 
+            
+        
+        
         # Run decoder.
+        # Extract States 
+        print (f'[mamba_model.py]: Entering FIRST forward-pass')
         hidden_states, all_layers_states_dict = self.decoder(
                                                         hidden_states=decoder_input,
                                                         attention_mask=attention_mask,
@@ -217,6 +230,37 @@ class MambaModel(LanguageModule):
                                                         # Zixian: Oct 28: Not used in new version of Megatron Mamba
                                                         # **(extra_block_kwargs or {}),
                                                         )
+        # TODO: include states for layers besides layer 1
+        print (f'[mamba_model.py]: all_layers_states_dict[0][0].keys(): {all_layers_states_dict[0][0].keys()}')
+        print (f'[mamba_model.py]: all_layers_states_dict[0][0]["ssm_state"].shape: {all_layers_states_dict[0][0]["ssm_state"].shape}')
+        print (f'[mamba_model.py]: all_layers_states_dict[0][0]["ssm_state"][:][0][0]: {all_layers_states_dict[0][0]["ssm_state"][:][0][0]}')
+        
+        
+        if soup_train: 
+            # Soup states 
+            # TODO: 
+        
+            insert_states = True 
+            retrieve_states = False  
+            insert_states_for_training = True 
+            inserted_all_states = all_layers_states_dict 
+            
+            print (f'[mamba_model.py]: Entering SECOND forward-pass')
+            hidden_states, all_layers_states_dict = self.decoder(
+                                                        hidden_states=decoder_input,
+                                                        attention_mask=attention_mask,
+                                                        inference_params=inference_params,
+                                                        rotary_pos_emb=rotary_pos_emb,
+                                                        
+                                                        insert_states=insert_states, 
+                                                        retrieve_states=retrieve_states, 
+                                                        inserted_all_states=inserted_all_states, 
+                                                        insert_states_for_training=insert_states_for_training, 
+                                                        # Zixian: Oct 28: Not used in new version of Megatron Mamba
+                                                        # **(extra_block_kwargs or {}),
+                                                        )
+            
+        
 
         if not self.post_process:
             return hidden_states
