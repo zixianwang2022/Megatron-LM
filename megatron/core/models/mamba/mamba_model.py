@@ -230,10 +230,10 @@ class MambaModel(LanguageModule):
                                                         # Zixian: Oct 28: Not used in new version of Megatron Mamba
                                                         # **(extra_block_kwargs or {}),
                                                         )
-        # TODO: include states for layers besides layer 1
-        print (f'[mamba_model.py]: all_layers_states_dict[0][0].keys(): {all_layers_states_dict[0][0].keys()}')
-        print (f'[mamba_model.py]: all_layers_states_dict[0][0]["ssm_state"].shape: {all_layers_states_dict[0][0]["ssm_state"].shape}')
-        print (f'[mamba_model.py]: all_layers_states_dict[0][0]["ssm_state"][:][0][0]: {all_layers_states_dict[0][0]["ssm_state"][:][0][0]}')
+
+        print (f'[mamba_model.py]: all_layers_states_dict[1].keys(): {all_layers_states_dict[1].keys()}')
+        print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"].shape: {all_layers_states_dict[1]["ssm_state"].shape}')
+        print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"][:][0][0]: {all_layers_states_dict[1]["ssm_state"][:][0][0]}')
         
         
         if soup_train: 
@@ -260,7 +260,7 @@ class MambaModel(LanguageModule):
                                                         # **(extra_block_kwargs or {}),
                                                         )
             
-        
+            print (f'[mamba_model.py]: After SECOND forward-pass')
 
         if not self.post_process:
             return hidden_states
