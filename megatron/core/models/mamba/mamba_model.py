@@ -5,6 +5,7 @@ from typing import Literal, Optional
 from torch import Tensor
 
 import os
+import torch
 from megatron.training import get_args
 from megatron.core import InferenceParams, tensor_parallel
 from megatron.core.config_logger import has_config_logger_enabled, log_config_to_disk
@@ -144,6 +145,143 @@ class MambaModel(LanguageModule):
 
         assert len(input_tensor) == 1, 'input_tensor should only be length 1 for gpt/bert'
         self.decoder.set_input_tensor(input_tensor[0])
+        
+        
+        
+    def soup_states (self, states_dict): 
+        """
+        soup_states
+
+        Args:
+            states_dict (Dict):     {1: {'conv_state': [batch, ...]}
+                                        {'ssm_state' : [batch, ...]}
+                                     2: {'conv_state': [batch, ...]}
+                                        {'ssm_state' : [batch, ...]}
+                                     3: ...}
+
+        Returns:
+            states_dict (Dict):     {1: {'conv_state': [1, ...]}
+                                        {'ssm_state' : [1, ...]}
+                                     2: {'conv_state': [1, ...]}
+                                        {'ssm_state' : [1, ...]}
+                                     3: ...}
+        """
+        
+        output_state_whole = {}
+        
+        for layer_id, states in states_dict.items():
+            summed_states = {}
+            
+            # Soup by average 
+            soupped_conv = torch.mean(states['conv_state'], dim=0, keepdim=True)  # Shape: [1, ...]
+            soupped_ssm = torch.mean(states['ssm_state'], dim=0, keepdim=True)  # Shape: [1, ...]
+            
+            
+            # # Zixian: Oct 30: Debug to test if states are soupped correctly
+            # if (layer_id == 4): 
+            #     # Zixian: Oct 30: Verified that soupped states are the sames
+                
+            #     print (f'DEBUG: mamba_model.py @ soup_states] states["ssm_state"].shape: \n{states["ssm_state"].shape}')
+            #     print (f'DEBUG: mamba_model.py @ soup_states] soupped_ssm.shape: \n{soupped_ssm.shape}')
+            #     # print (f'DEBUG: mamba_model.py @ soup_states] states["ssm_state"][1]: \n{states["ssm_state"][1]}')
+            #     print (f'DEBUG: mamba_model.py @ soup_states] states["ssm_state"][0] + states["ssm_state"][1]: \n{(states["ssm_state"][0] + states["ssm_state"][1]) / 2}')
+            #     print (f'DEBUG: mamba_model.py @ soup_states] soupped_conv[0]: \n{soupped_ssm[0]}')
+                
+            #     print (f'DEBUG: mamba_model.py @ soup_states] states["conv_state"].shape: \n{states["conv_state"].shape}')
+            #     print (f'DEBUG: mamba_model.py @ soup_states] soupped_conv.shape: \n{soupped_conv.shape}')
+            #     # print (f'DEBUG: mamba_model.py @ soup_states] states["conv_state"][1]: \n{states["conv_state"][1]}')
+            #     print (f'DEBUG: mamba_model.py @ soup_states] states["conv_state"][0] + states["conv_state"][1]: \n{(states["conv_state"][0] + states["conv_state"][1]) /2}')
+            #     print (f'DEBUG: mamba_model.py @ soup_states] soupped_conv[0]: \n{soupped_conv[0]}')
+                
+                
+            
+            # Store to a new dict 
+            summed_states['conv_state'] = soupped_conv
+            summed_states['ssm_state'] = soupped_ssm
+            
+            # Store for each layer 
+            output_state_whole[layer_id] = summed_states
+            
+        return output_state_whole
+    
+    
+    
+    
+    def split_doc_batch(self, input_ids_batch: Tensor) -> Tensor:
+        """
+        Splits the input_ids tensor into document chunks based on a specific pattern.
+        Each chunk is padded to seqlen=2048 with the padding token `3`.
+        
+        Parameters:
+        - input_ids_batch (torch.Tensor): A tensor of shape (1, seqlen) on a specific device.
+        
+        Returns:
+        - document_batch (torch.Tensor): A tensor containing the document padded chunks of shape (num_segments, seqlen).
+        """
+        # Define the pattern to split on
+        pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids_batch.device)
+        pattern_length = pattern.size(0)
+        seqlen = input_ids_batch.size(1)
+        padding_token = 3
+
+        # Create sliding windows of size equal to the pattern length
+        windows = input_ids_batch.unfold(1, pattern_length, 1)  # Shape: [1, seqlen - pattern_length + 1, pattern_length]
+
+        # Check where the pattern matches
+        matches = (windows == pattern).all(dim=2)  # Shape: [1, seqlen - pattern_length + 1]
+
+        # Find the starting indices of the pattern
+        match_indices = torch.nonzero(matches, as_tuple=False)[:, 1]  # Shape: [num_matches]
+
+        # Initialize variables to store split points
+        split_points = []
+        previous_end = 0
+
+        # Iterate over each match to determine split points
+        for match_idx in match_indices:
+            # Extract the segment before the current pattern
+            segment = input_ids_batch[:, previous_end:match_idx]
+            if segment.size(1) > 0:
+                split_points.append(segment.squeeze(0))  # Shape: [L]
+            # Update the previous_end to be after the current pattern
+            previous_end = match_idx + pattern_length
+
+        # After processing all matches, check if there's a segment after the last pattern
+        if previous_end < seqlen:
+            segment = input_ids_batch[:, previous_end:]
+            if segment.size(1) > 0:
+                split_points.append(segment.squeeze(0))  # Shape: [L]
+
+        # If no patterns were found, the entire input is one segment
+        if not split_points:
+            split_points = [input_ids_batch.squeeze(0)]  # Shape: [seqlen]
+
+        # Pad each segment to the desired seqlen=2048
+        padded_segments = []
+        for segment in split_points:
+            pad_length = seqlen - segment.size(0)
+            if pad_length > 0:
+                pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
+                padded = torch.cat((segment, pad), dim=0)  # Shape: [seqlen]
+            else:
+                padded = segment[:seqlen]  # Truncate if necessary
+            padded_segments.append(padded)
+
+        # Stack all padded segments into a single batch tensor
+        if padded_segments:
+            document_batch = torch.stack(padded_segments, dim=0)  # Shape: [num_segments, seqlen]
+        else:
+            # If no segments are present, return an empty tensor
+            document_batch = torch.empty((0, seqlen), device=input_ids_batch.device)
+
+            
+        # Debug
+        # for i in range (document_batch.shape[0]):
+        #     print (f"[mamba_model.py split_doc_batch] document_batch[{i}][:100]: {document_batch[i][:100]}")
+        # print (f"[mamba_model.py split_doc_batch] document_batch.shape: {document_batch.shape}")
+        
+        return document_batch
+    
 
     def forward(
         self,
@@ -167,14 +305,25 @@ class MambaModel(LanguageModule):
         It either returns the Loss values if labels are given or the final hidden units
         """
         
+        # Reading Global Params for SOUP Training
         soup_train = os.getenv ('SOUP_TRAIN')
+        soup_doc_num = int (os.getenv ('SOUP_DOC_NUM'))
+        soup_doc_sep_token_id = int (os.getenv ('SOUP_DOC_SEP_TOKEN_ID')) 
         
-        print (f'[mamba_model.py]: input_ids.shape: {input_ids.shape}')
+        
+        # print (f'[mamba_model.py]: input_ids.shape: {input_ids.shape}')
+        # print (f'[mamba_model.py]: input_ids[0][:300]: {input_ids[0][:300]}')
+        
+        
+        
+        # TODO: Split the batchsize 1 input sequence into #documents batch 
+        # Zixian: Oct 30: put everything into 1 then extract the question batch after embedding 
+        # document_batch, question_batch = input_ids ()
+        if (soup_train): 
+            split_docs_batched = self.split_doc_batch (input_ids)
+            
+            
     
-        # args = get_args()
-        # insert_states = args.inserting_mamba_states
-        # retrieve_states = args.retrieving_mamba_states
-        # insert_states_for_training = args.insert_mamba_states_for_training
 
         # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
         # Otherwise, apply embedding layer on input_ids and position_ids to get decoder_input.
@@ -182,7 +331,13 @@ class MambaModel(LanguageModule):
         if decoder_input is not None:
             pass
         elif self.pre_process:
-            decoder_input = self.embedding(input_ids=input_ids, position_ids=position_ids)
+            
+            # Zixian: Oct 30: embed both documents_batch and qa_bath
+            if (soup_train): 
+                decoder_input = self.embedding(input_ids=split_docs_batched[:-1], position_ids=position_ids)
+                splitted_qa_batch_decoder_input = self.embedding(input_ids=split_docs_batched[-1:], position_ids=position_ids)
+            else: 
+                decoder_input = self.embedding(input_ids=input_ids, position_ids=position_ids)
         else:
             # intermediate stage of pipeline
             # decoder will get hidden_states from encoder.input_tensor
@@ -213,7 +368,6 @@ class MambaModel(LanguageModule):
             inserted_all_states = None 
             
         
-        
         # Run decoder.
         # Extract States 
         print (f'[mamba_model.py]: Entering FIRST forward-pass')
@@ -230,15 +384,28 @@ class MambaModel(LanguageModule):
                                                         # Zixian: Oct 28: Not used in new version of Megatron Mamba
                                                         # **(extra_block_kwargs or {}),
                                                         )
-
-        print (f'[mamba_model.py]: all_layers_states_dict[1].keys(): {all_layers_states_dict[1].keys()}')
-        print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"].shape: {all_layers_states_dict[1]["ssm_state"].shape}')
-        print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"][:][0][0]: {all_layers_states_dict[1]["ssm_state"][:][0][0]}')
+        print (f'[mamba_model.py]: After FIRST forward-pass')
+        
+        # print (f'[mamba_model.py]: all_layers_states_dict[1].keys(): {all_layers_states_dict[1].keys()}')
+        # print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"].shape: {all_layers_states_dict[1]["ssm_state"].shape}')
+        # print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"][:][0][0]: {all_layers_states_dict[1]["ssm_state"][:][0][0]}')
         
         
         if soup_train: 
             # Soup states 
             # TODO: 
+            all_soupped_states = self.soup_states (all_layers_states_dict)
+            
+            
+            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.shape: {decoder_input.shape}')
+            # print (f'[mamba_model.py]: split_docs_batched[:-1].shape: {split_docs_batched[:-1].shape}\n')
+            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.shape: {splitted_qa_batch_decoder_input.shape}')
+            # print (f'[mamba_model.py]: split_docs_batched[-1:].shape: {split_docs_batched[-1:].shape}')
+            
+            # print (f'[mamba_model.py]: all_soupped_states[1]["ssm_state"].shape: {all_soupped_states[1]["ssm_state"].shape}')
+            
+            
+            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.shape: {splitted_qa_batch_decoder_input}')
         
             insert_states = True 
             retrieve_states = False  
@@ -247,14 +414,21 @@ class MambaModel(LanguageModule):
             
             print (f'[mamba_model.py]: Entering SECOND forward-pass')
             hidden_states, all_layers_states_dict = self.decoder(
-                                                        hidden_states=decoder_input,
+                                                        # Zixian: Oct 30: Inserting splitted QA embeddings 
+                                                        # hidden_states=decoder_input,
+                                                        hidden_states=splitted_qa_batch_decoder_input, 
+                                                        
                                                         attention_mask=attention_mask,
                                                         inference_params=inference_params,
                                                         rotary_pos_emb=rotary_pos_emb,
                                                         
+                                                        # Insert states params
                                                         insert_states=insert_states, 
                                                         retrieve_states=retrieve_states, 
-                                                        inserted_all_states=inserted_all_states, 
+                                                        
+                                                        # Inserting soupped states 
+                                                        inserted_all_states=all_soupped_states, 
+                                                        
                                                         insert_states_for_training=insert_states_for_training, 
                                                         # Zixian: Oct 28: Not used in new version of Megatron Mamba
                                                         # **(extra_block_kwargs or {}),

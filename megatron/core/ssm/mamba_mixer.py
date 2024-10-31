@@ -384,6 +384,16 @@ class MambaMixer(MegatronModule):
             B = rearrange(B, "b l (g n) -> b l g n", n=self.d_state).contiguous()
             C = rearrange(C, "b l (g n) -> b l g n", n=self.d_state).contiguous()
             z = rearrange(z, "b l (h p) -> b l h p", p=self.headdim).contiguous()
+            
+            
+            if (initial_states is not None):
+                print (f'[mamba_mixer.py] initial_states.shape: {initial_states.shape}')
+            print (f'[mamba_mixer.py] batch: {batch}')
+            print (f'[mamba_mixer.py] self.nheads_local: {self.nheads_local}')
+            print (f'[mamba_mixer.py] self.headdim: {self.headdim}')
+            print (f'[mamba_mixer.py] self.d_state: {self.d_state}')
+                
+            
             y = mamba_chunk_scan_combined(
                 x,
                 dt,
