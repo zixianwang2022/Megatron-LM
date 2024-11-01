@@ -79,7 +79,9 @@ class MambaModel(LanguageModule):
         self.parallel_output = parallel_output
         self.share_embeddings_and_output_weights = share_embeddings_and_output_weights
         self.position_embedding_type = position_embedding_type
-
+        
+        self.all_layers_states_dict = {}
+        
         # megatron core pipelining currently depends on model type
         # TODO: remove this dependency ?
         self.model_type = ModelType.encoder_or_decoder
@@ -129,6 +131,8 @@ class MambaModel(LanguageModule):
 
         if self.pre_process or self.post_process:
             self.setup_embeddings_and_output_layer()
+            
+            
 
     def set_input_tensor(self, input_tensor: Tensor) -> None:
         """Sets input tensor to the model.
@@ -371,7 +375,7 @@ class MambaModel(LanguageModule):
         # Run decoder.
         # Extract States 
         print (f'[mamba_model.py]: Entering FIRST forward-pass')
-        hidden_states, all_layers_states_dict = self.decoder(
+        hidden_states, self.all_layers_states_dict = self.decoder(
                                                         hidden_states=decoder_input,
                                                         attention_mask=attention_mask,
                                                         inference_params=inference_params,
@@ -394,7 +398,7 @@ class MambaModel(LanguageModule):
         if soup_train: 
             # Soup states 
             # TODO: 
-            all_soupped_states = self.soup_states (all_layers_states_dict)
+            all_soupped_states = self.soup_states (self.all_layers_states_dict)
             
             
             # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.shape: {decoder_input.shape}')
@@ -410,10 +414,18 @@ class MambaModel(LanguageModule):
             insert_states = True 
             retrieve_states = False  
             insert_states_for_training = True 
-            inserted_all_states = all_layers_states_dict 
+            # inserted_all_states = all_layers_states_dict 
+            
+            # Before the backward pass, retain gradients for the tensor
+            self.all_layers_states_dict[1]["ssm_state"][0].retain_grad()
+            print (f'[mamba_model.py]: retain_grad()')
+            splitted_qa_batch_decoder_input.retain_grad() 
+            print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.retrain_grad() ')
+            
+            # raise (RuntimeError, 'manual error')
             
             print (f'[mamba_model.py]: Entering SECOND forward-pass')
-            hidden_states, all_layers_states_dict = self.decoder(
+            hidden_states, all_layers_states_dict_2 = self.decoder(
                                                         # Zixian: Oct 30: Inserting splitted QA embeddings 
                                                         # hidden_states=decoder_input,
                                                         hidden_states=splitted_qa_batch_decoder_input, 
@@ -435,6 +447,18 @@ class MambaModel(LanguageModule):
                                                         )
             
             print (f'[mamba_model.py]: After SECOND forward-pass')
+            
+            print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.requires_grad: {splitted_qa_batch_decoder_input.requires_grad}')
+            print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.grad: {splitted_qa_batch_decoder_input.grad}')
+            
+            # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].requires_grad: {all_layers_states_dict [1]["ssm_state"][0].requires_grad}')
+            # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].grad: {all_layers_states_dict [1]["ssm_state"][0].grad}')
+            
+            self.all_layers_states_dict[1]["ssm_state"][0].register_hook(lambda grad: print(f'[mamba_model.py]: Entering a hook: \n grad: {grad}'))
+            splitted_qa_batch_decoder_input.register_hook(lambda grad: print("Grad on splitted_qa_batch_decoder_input", grad))
+            
+            print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].requires_grad: {self.all_layers_states_dict [1]["ssm_state"][0].requires_grad}')
+            print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].grad: {self.all_layers_states_dict [1]["ssm_state"][0].grad}')
 
         if not self.post_process:
             return hidden_states
