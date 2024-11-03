@@ -133,6 +133,11 @@ class MambaModel(LanguageModule):
             self.setup_embeddings_and_output_layer()
             
             
+        # Zixian: Nov 2: Initialize total gradient norm accumulator
+        self.total_grad_norm = 0.0
+        # Register hooks on all parameters
+        self._register_param_hooks()
+            
 
     def set_input_tensor(self, input_tensor: Tensor) -> None:
         """Sets input tensor to the model.
@@ -286,6 +291,35 @@ class MambaModel(LanguageModule):
         
         return document_batch
     
+    
+    def _register_param_hooks(self):
+        """
+        Zixian: Nov2: See how much gradient is updated to params 
+        
+        Register all parameters' hook to calculate all param's gradient 
+        """
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                param.register_hook(self._get_param_hook(name))
+                
+    def _get_param_hook(self, name):
+        """
+        The custom hook to register all parameters' gradient to a self.total_grad_norm
+
+        Args:
+            name (_type_): Name of the param
+        """
+        def hook(grad):
+            grad_norm = grad.data.norm(2).item()
+            self.total_grad_norm += grad_norm ** 2
+            
+            # print(f"Gradient norm for {name}: {grad_norm}")
+        return hook
+    
+    def _report_self_total_grad_norm (self, variable_grad, name): 
+        # print (f'[mamba_model.py]: ')
+        print (f'[mamba_model.py]: Triggered when calculating gradient with respect to {name}, self.total_grad_norm on device {variable_grad.device}: {self.total_grad_norm}') 
+    
 
     def forward(
         self,
@@ -308,6 +342,14 @@ class MambaModel(LanguageModule):
 
         It either returns the Loss values if labels are given or the final hidden units
         """
+        
+        # If not the first iteration, print the total gradient norm from the previous backward pass
+        if self.total_grad_norm != 0.0:
+            total_gradient_norm = self.total_grad_norm ** 0.5
+            print(f"Total parameter gradient norm from previous step on device {input_ids.device}:", total_gradient_norm)
+        
+        # Zixian: Nov 2: Reset the total gradient norm accumulator each step 
+        self.total_grad_norm = 0.0
         
         # Reading Global Params for SOUP Training
         soup_train = os.getenv ('SOUP_TRAIN')
@@ -371,6 +413,12 @@ class MambaModel(LanguageModule):
             insert_states_for_training = True 
             inserted_all_states = None 
             
+        for name, param in self.named_parameters(): 
+            print (f'[mamba_model.py]: for name, param in self.named_parameters(): ')
+            print (f'[mamba_model.py]: name: {name}')
+            print (f'[mamba_model.py]: param: {param}')
+            
+        # with torch.no_grad (): 
         
         # Run decoder.
         # Extract States 
@@ -388,7 +436,9 @@ class MambaModel(LanguageModule):
                                                         # Zixian: Oct 28: Not used in new version of Megatron Mamba
                                                         # **(extra_block_kwargs or {}),
                                                         )
+        
         print (f'[mamba_model.py]: After FIRST forward-pass')
+        decoder_input.register_hook(lambda grad: self._report_self_total_grad_norm (grad, "decoder_input from FIRST forward"))
         
         # print (f'[mamba_model.py]: all_layers_states_dict[1].keys(): {all_layers_states_dict[1].keys()}')
         # print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"].shape: {all_layers_states_dict[1]["ssm_state"].shape}')
@@ -417,13 +467,27 @@ class MambaModel(LanguageModule):
             # inserted_all_states = all_layers_states_dict 
             
             # Before the backward pass, retain gradients for the tensor
-            self.all_layers_states_dict[1]["ssm_state"][0].retain_grad()
-            print (f'[mamba_model.py]: retain_grad()')
-            splitted_qa_batch_decoder_input.retain_grad() 
-            print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.retrain_grad() ')
+            # self.all_layers_states_dict[1]["ssm_state"][0].retain_grad()
+            # print (f'[mamba_model.py]: retain_grad()')
+            # splitted_qa_batch_decoder_input.retain_grad() 
+            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.retrain_grad() ')
             
             # raise (RuntimeError, 'manual error')
+            # all_soupped_states[1]["ssm_state"][0].register_hook(lambda grad: print(f'[mamba_model.py]: all_soupped_states hook:  \n grad.shape: {grad.shape} \n : {grad}'))
             
+            
+            
+            
+            self.all_layers_states_dict[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-54'))
+            all_soupped_states[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-54'))
+            
+            self.all_layers_states_dict[55]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-55'))
+            all_soupped_states[55]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-55'))
+            
+            self.all_layers_states_dict[56]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-56'))
+            all_soupped_states[56]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-56'))
+            
+            # with torch.no_grad (): 
             print (f'[mamba_model.py]: Entering SECOND forward-pass')
             hidden_states, all_layers_states_dict_2 = self.decoder(
                                                         # Zixian: Oct 30: Inserting splitted QA embeddings 
@@ -447,18 +511,22 @@ class MambaModel(LanguageModule):
                                                         )
             
             print (f'[mamba_model.py]: After SECOND forward-pass')
+            # splitted_qa_batch_decoder_input.register_hook(lambda grad: print(f"Grad on splitted_qa_batch_decoder_input  \n grad.shape: {grad.shape} \n", grad))
+            splitted_qa_batch_decoder_input.register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'splitted_qa_batch_decoder_input from SECOND forward'))
+            # all_soupped_states[1]["ssm_state"][0].register_hook(lambda grad: )
             
-            print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.requires_grad: {splitted_qa_batch_decoder_input.requires_grad}')
-            print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.grad: {splitted_qa_batch_decoder_input.grad}')
+            
+            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.requires_grad: {splitted_qa_batch_decoder_input.requires_grad}')
+            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.grad: {splitted_qa_batch_decoder_input.grad}')
             
             # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].requires_grad: {all_layers_states_dict [1]["ssm_state"][0].requires_grad}')
             # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].grad: {all_layers_states_dict [1]["ssm_state"][0].grad}')
             
-            self.all_layers_states_dict[1]["ssm_state"][0].register_hook(lambda grad: print(f'[mamba_model.py]: Entering a hook: \n grad: {grad}'))
-            splitted_qa_batch_decoder_input.register_hook(lambda grad: print("Grad on splitted_qa_batch_decoder_input", grad))
             
-            print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].requires_grad: {self.all_layers_states_dict [1]["ssm_state"][0].requires_grad}')
-            print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].grad: {self.all_layers_states_dict [1]["ssm_state"][0].grad}')
+            
+            
+            # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].requires_grad: {self.all_layers_states_dict [1]["ssm_state"][0].requires_grad}')
+            # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].grad: {self.all_layers_states_dict [1]["ssm_state"][0].grad}')
 
         if not self.post_process:
             return hidden_states

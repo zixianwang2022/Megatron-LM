@@ -419,6 +419,9 @@ class MambaMixer(MegatronModule):
             if ssm_state is not None:
                 y, last_state = y
                 
+                # if last_state.requires_grad: 
+                last_state.register_hook(lambda grad: print(f"[retrieve_states: {retrieve_states}] Grad on last_state", grad) if grad is None else print(f"[retrieve_states: {retrieve_states}] Grad on last_state \n grad.shape: {grad.shape} \n", grad))
+                
                 if inference_params is not None:
                     ssm_state.copy_(last_state)
                 else: 
