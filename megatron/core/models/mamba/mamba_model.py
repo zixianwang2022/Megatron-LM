@@ -136,7 +136,7 @@ class MambaModel(LanguageModule):
         # Zixian: Nov 2: Initialize total gradient norm accumulator
         self.total_grad_norm = 0.0
         # Register hooks on all parameters
-        self._register_param_hooks()
+        # self._register_param_hooks()
             
 
     def set_input_tensor(self, input_tensor: Tensor) -> None:
@@ -157,7 +157,7 @@ class MambaModel(LanguageModule):
         
         
         
-    def soup_states (self, states_dict): 
+    def soup_states_origin (self, states_dict): 
         """
         soup_states
 
@@ -219,7 +219,7 @@ class MambaModel(LanguageModule):
     def split_doc_batch(self, input_ids_batch: Tensor) -> Tensor:
         """
         Splits the input_ids tensor into document chunks based on a specific pattern.
-        Each chunk is padded to seqlen=2048 with the padding token `3`.
+        Each chunk is padded to seqlen with the padding token `3`.
         
         Parameters:
         - input_ids_batch (torch.Tensor): A tensor of shape (1, seqlen) on a specific device.
@@ -265,7 +265,7 @@ class MambaModel(LanguageModule):
         if not split_points:
             split_points = [input_ids_batch.squeeze(0)]  # Shape: [seqlen]
 
-        # Pad each segment to the desired seqlen=2048
+        # Pad each segment to the desired seqlen
         padded_segments = []
         for segment in split_points:
             pad_length = seqlen - segment.size(0)
@@ -285,11 +285,217 @@ class MambaModel(LanguageModule):
 
             
         # Debug
-        # for i in range (document_batch.shape[0]):
-        #     print (f"[mamba_model.py split_doc_batch] document_batch[{i}][:100]: {document_batch[i][:100]}")
-        # print (f"[mamba_model.py split_doc_batch] document_batch.shape: {document_batch.shape}")
+        for i in range (document_batch.shape[0]):
+            if i%matches == 0: 
+                print (f"[mamba_model.py split_doc_batch] input_ids_batch[0][:300]: {i%matches[i%matches][:300]}")
+            print (f"[mamba_model.py split_doc_batch] document_batch[{i}][:100]: {document_batch[i][:100]}")
+        
+        print (f"[mamba_model.py split_doc_batch] document_batch.shape: {document_batch.shape}") 
         
         return document_batch
+    
+    
+    
+    
+    
+    def get_doc_qa_pair (self, input_ids_batch: Tensor) :
+        """
+        Splits the input_ids tensor into document chunks based on a specific pattern for each batch.
+        Each chunk is padded to seqlen with the padding token `3`.
+
+        Parameters:
+        - input_ids_batch (torch.Tensor): A tensor of shape (batch_size, seqlen) on a specific device.
+
+        Returns:
+        - first_chunks (torch.Tensor): A tensor containing all but the last QA chunks for each batch.
+                                    Shape: [batch_size * (num_patterns), seqlen]
+        - last_chunks (torch.Tensor): A tensor containing the last QA chunk for each batch.
+                                    Shape: [batch_size, seqlen]
+        """
+        batch_size, seqlen = input_ids_batch.size()
+        padding_token = 3
+
+        # Define the pattern to split on
+        pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids_batch.device)
+        pattern_length = pattern.size(0)
+
+        # Initialize lists to store all first chunks and last chunks
+        all_first_chunks = []
+        all_last_chunks = []
+
+        for batch_idx in range(batch_size):
+            input_ids = input_ids_batch[batch_idx].unsqueeze(0)  # Shape: [1, seqlen]
+
+            # Create sliding windows of size equal to the pattern length
+            windows = input_ids.unfold(1, pattern_length, 1)  # Shape: [1, seqlen - pattern_length + 1, pattern_length]
+
+            # Check where the pattern matches
+            matches = (windows == pattern).all(dim=2)  # Shape: [1, seqlen - pattern_length + 1]
+
+            # Find the starting indices of the pattern
+            match_indices = torch.nonzero(matches, as_tuple=False)[:, 1]  # Shape: [num_matches]
+
+            # Initialize variables to store split points
+            split_points = []
+            previous_end = 0
+
+            # Iterate over each match to determine split points
+            for match_idx in match_indices:
+                # Extract the segment before the current pattern
+                segment = input_ids[:, previous_end:match_idx]
+                if segment.size(1) > 0:
+                    split_points.append(segment.squeeze(0))  # Shape: [L]
+                # Update the previous_end to be after the current pattern
+                previous_end = match_idx + pattern_length
+
+            # After processing all matches, check if there's a segment after the last pattern
+            if previous_end < seqlen:
+                segment = input_ids[:, previous_end:]
+                if segment.size(1) > 0:
+                    split_points.append(segment.squeeze(0))  # Shape: [L]
+
+            # If no patterns were found, the entire input is one segment
+            if not split_points:
+                split_points = [input_ids.squeeze(0)]  # Shape: [seqlen]
+
+            # Separate all but the last chunk and the last chunk
+            first_chunks = split_points[:-1]
+            last_chunk = split_points[-1]
+
+            # Pad first_chunks
+            for segment in first_chunks:
+                pad_length = seqlen - segment.size(0)
+                if pad_length > 0:
+                    pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
+                    padded = torch.cat((segment, pad), dim=0)  # Shape: [seqlen]
+                else:
+                    padded = segment[:seqlen]  # Truncate if necessary
+                all_first_chunks.append(padded)
+
+            # Pad last_chunk
+            pad_length = seqlen - last_chunk.size(0)
+            if pad_length > 0:
+                pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
+                padded_last = torch.cat((last_chunk, pad), dim=0)  # Shape: [seqlen]
+            else:
+                padded_last = last_chunk[:seqlen]  # Truncate if necessary
+            all_last_chunks.append(padded_last)
+
+        # Stack all first_chunks and last_chunks into tensors
+        if all_first_chunks:
+            first_chunks_tensor = torch.stack(all_first_chunks, dim=0)  # Shape: [batch_size * (num_patterns), seqlen]
+        else:
+            first_chunks_tensor = torch.empty((0, seqlen), device=input_ids_batch.device)
+
+        if all_last_chunks:
+            last_chunks_tensor = torch.stack(all_last_chunks, dim=0)  # Shape: [batch_size, seqlen]
+        else:
+            last_chunks_tensor = torch.empty((0, seqlen), device=input_ids_batch.device)
+
+        # Debug
+        # Zixian Nov 5: Verified 
+        # if input_ids_batch.device == torch.device ("cuda:0"): 
+        #     print (f"[mamba_model.py split_doc_batch] first_chunks_tensor.shape: {first_chunks_tensor.shape}") 
+        #     print (f"[mamba_model.py split_doc_batch] last_chunks_tensor.shape: {last_chunks_tensor.shape}") 
+        #     for i in range (first_chunks_tensor.shape[0]):
+        #         # if i<batch_size and (batch_size != 1): 
+        #         print (f"[mamba_model.py split_doc_batch] input_ids_batch[{int(i//batch_size)}][:400]: {input_ids_batch[int (i//batch_size)][:400]}")
+        #         print (f"[mamba_model.py split_doc_batch] last_chunks_tensor[{int(i//batch_size)}][:150]: {last_chunks_tensor[int(i//batch_size)][:150]}")
+        #         print (f"[mamba_model.py split_doc_batch] first_chunks_tensor[{i}][:150]: {first_chunks_tensor[i][:150]}")
+            
+            
+
+        return first_chunks_tensor, last_chunks_tensor
+    
+    
+    
+    
+    
+    def soup_states (self, states_dict, desired_batch_size):
+        """
+        soup_states with grouped averaging
+
+        Args:
+            states_dict (Dict): {
+                1: {'conv_state': [batch, ...], 'ssm_state': [batch, ...]},
+                2: {'conv_state': [batch, ...], 'ssm_state': [batch, ...]},
+                3: ...}
+            desired_batch_size (int): The target batch size after averaging.
+            
+            assert (batch % desired_batch_size == 0, "Must group an integer number of documents' states into 1 states for all batch ")
+
+        Returns:
+            states_dict (Dict): {
+                1: {'conv_state': [desired_batch_size, ...], 'ssm_state': [desired_batch_size, ...]},
+                2: {'conv_state': [desired_batch_size, ...], 'ssm_state': [desired_batch_size, ...]},
+                3: ...}
+        """
+        
+        output_state_whole = {}
+        
+        for layer_id, states in states_dict.items():
+            summed_states = {}
+            
+            # Get original batch size
+            original_batch_size = states['conv_state'].size(0)
+            
+            # Ensure the original batch size is divisible by the desired batch size
+            if original_batch_size % desired_batch_size != 0:
+                raise ValueError(f"Original batch size ({original_batch_size}) is not divisible by desired batch size ({desired_batch_size}).")
+            
+            group_size = original_batch_size // desired_batch_size
+            
+            
+            
+            # if (layer_id == 5) and (states['conv_state'].device==torch.device("cuda:0")):
+            #     print (f'original_batch_size: {original_batch_size}')
+            #     print (f'desired_batch_size: {desired_batch_size}')
+            #     print (f'group_size: {group_size}')
+                
+            #     print(f'DEBUG: layer {layer_id}')
+            #     print(f'states["conv_state"].shape: {states["conv_state"].shape}')
+            #     print(f'states["ssm_state"].shape: {states["ssm_state"].shape}')
+            #     print(f'states["conv_state"][0][0]: {states["conv_state"][0]}')
+            #     print(f'states["ssm_state"][0][0]: {states["ssm_state"][0]}')
+            #     print(f'states["conv_state"][1][0]: {states["conv_state"][1]}')
+            #     print(f'states["ssm_state"][1][0]: {states["ssm_state"][1]}')
+            #     print(f'states["conv_state"][2][0]: {states["conv_state"][2]}')
+            #     print(f'states["ssm_state"][2][0]: {states["ssm_state"][2]}')
+            #     print(f'states["conv_state"][3][0]: {states["conv_state"][3]}')
+            #     print(f'states["ssm_state"][3][0]: {states["ssm_state"][3]}')
+                
+            
+            # Reshape and average
+            # For conv_state
+            # Original shape: [N, ...]
+            # Reshaped shape: [M, group_size, ...]
+            # Averaged shape: [M, ...]
+            soupped_conv_a = states['conv_state'].view(desired_batch_size, group_size, *states['conv_state'].shape[1:])
+            soupped_conv = torch.mean(soupped_conv_a, dim=1)  # Shape: [M, ...]
+
+            # For ssm_state
+            soupped_ssm_a = states['ssm_state'].view(desired_batch_size, group_size, *states['ssm_state'].shape[1:])
+            soupped_ssm = torch.mean(soupped_ssm_a, dim=1)  # Shape: [M, ...]
+
+            # Optional: Debugging statements (similar to the original code)
+            # if (layer_id == 5) and (states['conv_state'].device==torch.device("cuda:0")):
+            #     print(f'DEBUG: layer {layer_id}')
+            #     print(f'soupped_conv.shape: {soupped_conv.shape}')
+            #     print(f'soupped_ssm.shape: {soupped_ssm.shape}')
+            #     print(f'soupped_conv[0][0]: {soupped_conv[0]}')
+            #     print(f'soupped_ssm[0][0]: {soupped_ssm[0]}')
+            #     print(f'soupped_conv[1][0]: {soupped_conv[1]}')
+            #     print(f'soupped_ssm[1][0]: {soupped_ssm[1]}')
+                
+
+            # Store to a new dict
+            summed_states['conv_state'] = soupped_conv
+            summed_states['ssm_state'] = soupped_ssm
+            
+            # Store for each layer
+            output_state_whole[layer_id] = summed_states
+            
+        return output_state_whole
     
     
     def _register_param_hooks(self):
@@ -313,13 +519,13 @@ class MambaModel(LanguageModule):
             grad_norm = grad.data.norm(2).item()
             self.total_grad_norm += grad_norm ** 2
             
-            # print(f"Gradient norm for {name}: {grad_norm}")
+            print(f"Registering model param hook: Gradient norm for {name}: {grad_norm}")
         return hook
     
     def _report_self_total_grad_norm (self, variable_grad, name): 
         # print (f'[mamba_model.py]: ')
-        print (f'[mamba_model.py]: Triggered when calculating gradient with respect to {name}, self.total_grad_norm on device {variable_grad.device}: {self.total_grad_norm}') 
-    
+        # print (f'[mamba_model.py]: Triggered when calculating gradient with respect to {name}, self.total_grad_norm on device {variable_grad.device}: {self.total_grad_norm}') 
+        print (f'[mamba_model.py]: Triggered when calculating gradient with respect to {name}, on device {variable_grad.device}') 
 
     def forward(
         self,
@@ -358,7 +564,7 @@ class MambaModel(LanguageModule):
         
         
         # print (f'[mamba_model.py]: input_ids.shape: {input_ids.shape}')
-        # print (f'[mamba_model.py]: input_ids[0][:300]: {input_ids[0][:300]}')
+        print (f'[mamba_model.py]: input_ids[0][:300]: {input_ids[0][:300]}')
         
         
         
@@ -366,9 +572,10 @@ class MambaModel(LanguageModule):
         # Zixian: Oct 30: put everything into 1 then extract the question batch after embedding 
         # document_batch, question_batch = input_ids ()
         if (soup_train): 
-            split_docs_batched = self.split_doc_batch (input_ids)
+            documents_batch, qa_batch = self.get_doc_qa_pair (input_ids)
             
-            
+            # raise (RuntimeError, 'manual error')
+        batcsize = input_ids.shape[0]
     
 
         # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
@@ -380,8 +587,8 @@ class MambaModel(LanguageModule):
             
             # Zixian: Oct 30: embed both documents_batch and qa_bath
             if (soup_train): 
-                decoder_input = self.embedding(input_ids=split_docs_batched[:-1], position_ids=position_ids)
-                splitted_qa_batch_decoder_input = self.embedding(input_ids=split_docs_batched[-1:], position_ids=position_ids)
+                decoder_input = self.embedding(input_ids=documents_batch, position_ids=position_ids)
+                qa_batch_input = self.embedding(input_ids=qa_batch, position_ids=position_ids)
             else: 
                 decoder_input = self.embedding(input_ids=input_ids, position_ids=position_ids)
         else:
@@ -413,13 +620,13 @@ class MambaModel(LanguageModule):
             insert_states_for_training = True 
             inserted_all_states = None 
             
-        for name, param in self.named_parameters(): 
-            print (f'[mamba_model.py]: for name, param in self.named_parameters(): ')
-            print (f'[mamba_model.py]: name: {name}')
-            print (f'[mamba_model.py]: param: {param}')
+        # for name, param in self.named_parameters(): 
+        #     print (f'[mamba_model.py]: for name, param in self.named_parameters(): ')
+        #     print (f'[mamba_model.py]: name: {name}')
+        #     print (f'[mamba_model.py]: param: {param}')
             
         # with torch.no_grad (): 
-        
+            
         # Run decoder.
         # Extract States 
         print (f'[mamba_model.py]: Entering FIRST forward-pass')
@@ -438,7 +645,10 @@ class MambaModel(LanguageModule):
                                                         )
         
         print (f'[mamba_model.py]: After FIRST forward-pass')
-        decoder_input.register_hook(lambda grad: self._report_self_total_grad_norm (grad, "decoder_input from FIRST forward"))
+        # try: 
+        #     decoder_input.register_hook(lambda grad: self._report_self_total_grad_norm (grad, "decoder_input from FIRST forward"))
+        # except:
+        #     print (f'[mamba_model.py]: failed to register hook to self.all_layers_states_dict or all_soupped_states. Could be due to evaluation mode.')
         
         # print (f'[mamba_model.py]: all_layers_states_dict[1].keys(): {all_layers_states_dict[1].keys()}')
         # print (f'[mamba_model.py]: all_layers_states_dict[1]["ssm_state"].shape: {all_layers_states_dict[1]["ssm_state"].shape}')
@@ -448,18 +658,18 @@ class MambaModel(LanguageModule):
         if soup_train: 
             # Soup states 
             # TODO: 
-            all_soupped_states = self.soup_states (self.all_layers_states_dict)
+            all_soupped_states = self.soup_states (self.all_layers_states_dict, desired_batch_size=batcsize)
             
-            
-            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.shape: {decoder_input.shape}')
+            # raise (RuntimeError, 'manual error')
+            # print (f'[mamba_model.py]: qa_batch_input.shape: {decoder_input.shape}')
             # print (f'[mamba_model.py]: split_docs_batched[:-1].shape: {split_docs_batched[:-1].shape}\n')
-            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.shape: {splitted_qa_batch_decoder_input.shape}')
+            # print (f'[mamba_model.py]: qa_batch_input.shape: {qa_batch_input.shape}')
             # print (f'[mamba_model.py]: split_docs_batched[-1:].shape: {split_docs_batched[-1:].shape}')
             
             # print (f'[mamba_model.py]: all_soupped_states[1]["ssm_state"].shape: {all_soupped_states[1]["ssm_state"].shape}')
             
             
-            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.shape: {splitted_qa_batch_decoder_input}')
+            # print (f'[mamba_model.py]: qa_batch_input.shape: {qa_batch_input}')
         
             insert_states = True 
             retrieve_states = False  
@@ -469,30 +679,39 @@ class MambaModel(LanguageModule):
             # Before the backward pass, retain gradients for the tensor
             # self.all_layers_states_dict[1]["ssm_state"][0].retain_grad()
             # print (f'[mamba_model.py]: retain_grad()')
-            # splitted_qa_batch_decoder_input.retain_grad() 
-            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.retrain_grad() ')
-            
-            # raise (RuntimeError, 'manual error')
-            # all_soupped_states[1]["ssm_state"][0].register_hook(lambda grad: print(f'[mamba_model.py]: all_soupped_states hook:  \n grad.shape: {grad.shape} \n : {grad}'))
+            # qa_batch_input.retain_grad() 
+            # print (f'[mamba_model.py]: qa_batch_input.retrain_grad() ')
             
             
             
             
-            self.all_layers_states_dict[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-54'))
-            all_soupped_states[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-54'))
-            
-            self.all_layers_states_dict[55]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-55'))
-            all_soupped_states[55]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-55'))
-            
-            self.all_layers_states_dict[56]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-56'))
-            all_soupped_states[56]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-56'))
+            try: 
+                # self.all_layers_states_dict[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-54'))
+                # all_soupped_states[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-54'))
+                
+                # self.all_layers_states_dict[55]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-55'))
+                # all_soupped_states[55]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-55'))
+                
+                # self.all_layers_states_dict[56]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-56'))
+                # all_soupped_states[56]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-56'))
+                current_device = f"cuda:{hidden_states.device}"
+                # self.all_layers_states_dict[54]["ssm_state"].register_hook(lambda grad: print (f'FIRST forward returned ssm-states at LAYER-54 has grad.shape: {grad.shape} \n FIRST-LAYER-54-grad[0]-{current_device}:{grad[0]} \n FIRST-LAYER-54-grad[1]-{current_device}:{grad[1]}'))
+                # all_soupped_states[54]["ssm_state"].register_hook(lambda grad: print (f'SECOND forward inserted all_soupped_states at LAYER-54 has grad.shape: {grad.shape} \n SECOND-LAYER-54-grad[0]-{current_device}:{grad[0]}'))
+                
+                # self.all_layers_states_dict[55]["ssm_state"].register_hook(lambda grad: print (f'FIRST forward returned ssm-states at LAYER-55 has grad.shape: {grad.shape} \n FIRST-LAYER-55-grad[0]-{current_device}:{grad[0]} \n FIRST-LAYER-55-grad[1]-{current_device}:{grad[1]}'))
+                # all_soupped_states[55]["ssm_state"].register_hook(lambda grad: print (f'SECOND forward inserted all_soupped_states at LAYER-55 has grad.shape: {grad.shape} \n SECOND-LAYER-55-grad[0]-{current_device}:{grad[0]}'))
+                
+                # self.all_layers_states_dict[56]["ssm_state"].register_hook(lambda grad: print (f'FIRST forward returned ssm-states at LAYER-56 has grad.shape: {grad.shape} \n FIRST-LAYER-56-grad[0]-{current_device}:{grad[0]} \n FIRST-LAYER-56-grad[1]-{current_device}:{grad[1]}'))
+                # all_soupped_states[56]["ssm_state"].register_hook(lambda grad: print (f'SECOND forward inserted all_soupped_states at LAYER-56 has grad.shape: {grad.shape} \n SECOND-LAYER-56-grad[0]-{current_device}:{grad[0]}'))
+            except: 
+                print (f'[mamba_model.py]: failed to register hook to self.all_layers_states_dict or all_soupped_states. Could be due to evaluation mode.')
             
             # with torch.no_grad (): 
             print (f'[mamba_model.py]: Entering SECOND forward-pass')
             hidden_states, all_layers_states_dict_2 = self.decoder(
                                                         # Zixian: Oct 30: Inserting splitted QA embeddings 
                                                         # hidden_states=decoder_input,
-                                                        hidden_states=splitted_qa_batch_decoder_input, 
+                                                        hidden_states=qa_batch_input, 
                                                         
                                                         attention_mask=attention_mask,
                                                         inference_params=inference_params,
@@ -511,13 +730,15 @@ class MambaModel(LanguageModule):
                                                         )
             
             print (f'[mamba_model.py]: After SECOND forward-pass')
-            # splitted_qa_batch_decoder_input.register_hook(lambda grad: print(f"Grad on splitted_qa_batch_decoder_input  \n grad.shape: {grad.shape} \n", grad))
-            splitted_qa_batch_decoder_input.register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'splitted_qa_batch_decoder_input from SECOND forward'))
-            # all_soupped_states[1]["ssm_state"][0].register_hook(lambda grad: )
+            # try: 
+            #     qa_batch_input.register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'qa_batch_input from SECOND forward'))
+            # except: 
+            #     print (f'[mamba_model.py]: failed to register hook to self.all_layers_states_dict or all_soupped_states. Could be due to evaluation mode.')
+
             
             
-            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.requires_grad: {splitted_qa_batch_decoder_input.requires_grad}')
-            # print (f'[mamba_model.py]: splitted_qa_batch_decoder_input.grad: {splitted_qa_batch_decoder_input.grad}')
+            # print (f'[mamba_model.py]: qa_batch_input.requires_grad: {qa_batch_input.requires_grad}')
+            # print (f'[mamba_model.py]: qa_batch_input.grad: {qa_batch_input.grad}')
             
             # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].requires_grad: {all_layers_states_dict [1]["ssm_state"][0].requires_grad}')
             # print (f'[mamba_model.py]: all_layers_states_dict [1]["ssm_state"][0].grad: {all_layers_states_dict [1]["ssm_state"][0].grad}')

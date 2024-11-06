@@ -9,7 +9,7 @@ logs
 .vscode
 local/
 
-
+megatron/core/models/mamba/test.ipynb
 examples/mamba/data-cache/
 examples/mamba/checkpoints/
 *.patch

@@ -350,8 +350,8 @@ class MambaMixer(MegatronModule):
                 else:
                     conv_state = F.pad(xBC, (self.d_conv - xBC.shape[-1], 0)).clone()
                 
-                print (f'[mamba_mixer.py]: conv_state.shape: {conv_state.shape}')
-                print (f'[mamba_mixer.py]: conv_state.requires_grad: {conv_state.requires_grad}')
+                # print (f'[mamba_mixer.py]: conv_state.shape: {conv_state.shape}')
+                # print (f'[mamba_mixer.py]: conv_state.requires_grad: {conv_state.requires_grad}')
 
             seqlen = xBC.size(2)
             if causal_conv1d_fn is None:
@@ -386,12 +386,12 @@ class MambaMixer(MegatronModule):
             z = rearrange(z, "b l (h p) -> b l h p", p=self.headdim).contiguous()
             
             
-            if (initial_states is not None):
-                print (f'[mamba_mixer.py] initial_states.shape: {initial_states.shape}')
-            print (f'[mamba_mixer.py] batch: {batch}')
-            print (f'[mamba_mixer.py] self.nheads_local: {self.nheads_local}')
-            print (f'[mamba_mixer.py] self.headdim: {self.headdim}')
-            print (f'[mamba_mixer.py] self.d_state: {self.d_state}')
+            # if (initial_states is not None):
+            #     print (f'[mamba_mixer.py] initial_states.shape: {initial_states.shape}')
+            # print (f'[mamba_mixer.py] batch: {batch}')
+            # print (f'[mamba_mixer.py] self.nheads_local: {self.nheads_local}')
+            # print (f'[mamba_mixer.py] self.headdim: {self.headdim}')
+            # print (f'[mamba_mixer.py] self.d_state: {self.d_state}')
                 
             
             y = mamba_chunk_scan_combined(
@@ -413,14 +413,15 @@ class MambaMixer(MegatronModule):
                 
                 dt_bias=self.dt_bias.float(),
                 dt_softplus=True,
-                return_final_states=ssm_state is not None,
+                # return_final_states=ssm_state is not None,
+                return_final_states=True,
             )
 
             if ssm_state is not None:
                 y, last_state = y
                 
                 # if last_state.requires_grad: 
-                last_state.register_hook(lambda grad: print(f"[retrieve_states: {retrieve_states}] Grad on last_state", grad) if grad is None else print(f"[retrieve_states: {retrieve_states}] Grad on last_state \n grad.shape: {grad.shape} \n", grad))
+                # last_state.register_hook(lambda grad: print(f"[retrieve_states: {retrieve_states}] Grad on last_state at layer {self.layer_number} on device {last_state.device}", grad) if grad is None else print(f"[retrieve_states: {retrieve_states}] Grad on last_state at layer {self.layer_number} on device {last_state.device} \n grad.shape: {grad.shape} \n", grad))
                 
                 if inference_params is not None:
                     ssm_state.copy_(last_state)
@@ -444,8 +445,8 @@ class MambaMixer(MegatronModule):
             layer_states_dict ['conv_state'] = conv_state # Y 
             layer_states_dict ['ssm_state'] = ssm_state # Y 
             
-        print (f'[mamba_mixer.py]: ssm_state.shape: {ssm_state.shape}')
-        print (f'[mamba_mixer.py]: ssm_state.requires_grad: {ssm_state.requires_grad}')
+        # print (f'[mamba_mixer.py]: ssm_state.shape: {ssm_state.shape}')
+        # print (f'[mamba_mixer.py]: ssm_state.requires_grad: {ssm_state.requires_grad}')
 
         # Zixian: Oct 28: Return one more term for layer states dict
         return out, out_bias, layer_states_dict 
