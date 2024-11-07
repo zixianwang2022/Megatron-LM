@@ -316,7 +316,7 @@ class MambaModel(LanguageModule):
         padding_token = 3
 
         # Define the pattern to split on
-        pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids_batch.device)
+        pattern = torch.tensor([256000], device=input_ids_batch.device)
         pattern_length = pattern.size(0)
 
         # Initialize lists to store all first chunks and last chunks
