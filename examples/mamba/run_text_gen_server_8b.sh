@@ -20,7 +20,8 @@ export NCCL_IB_QPS_PER_CONNECTION=4
 export TRITON_CACHE_DIR="./triton-cache/"
 export TRITON_CACHE_MANAGER="megatron.core.ssm.triton_cache_manager:ParallelFileCacheManager"
 
-torchrun $DISTRIBUTED_ARGS ../../tools/run_mamba_text_generation_server.py \
+python3 -m debugpy --listen 0.0.0.0:5678 --wait-for-client \
+/usr/local/bin/torchrun $DISTRIBUTED_ARGS ../../tools/run_mamba_text_generation_server.py \
        --tensor-model-parallel-size 1  \
        --pipeline-model-parallel-size 1  \
        --untie-embeddings-and-output-weights \
@@ -48,3 +49,5 @@ torchrun $DISTRIBUTED_ARGS ../../tools/run_mamba_text_generation_server.py \
        --use-mcore-models \
        --spec megatron.core.models.mamba.mamba_layer_specs mamba_stack_spec \
        --seed 42
+
+# docker run -p 127.0.0.1:5678:5678 --gpus '"device=0,1,2,3"' -it --rm  -v /home/yasaman/Megatron-LM-forked:/workspace/megatron -v /home/yasaman/ssm-retrieval/data:/workspace/dataset -v /home/yasaman/ssm-retrieval:/workspace/ssm-retrieval -v /trunk/model-hub/models--nvidia--mamba2-8b-3t-4k:/workspace/checkpoints -w /workspace/megatron/examples/mamba mega:5 /bin/bash
