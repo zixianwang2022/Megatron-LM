@@ -5,6 +5,7 @@ from typing import Literal, Optional
 from torch import Tensor
 
 import os
+import time 
 import torch
 from megatron.training import get_args
 from megatron.core import InferenceParams, tensor_parallel
@@ -296,6 +297,99 @@ class MambaModel(LanguageModule):
     
     
     
+        
+    def get_doc_qa_pair_vectorized(self, input_ids_batch: Tensor):
+        """
+        Splits the input_ids tensor into document chunks based on a specific pattern for each batch.
+        Each chunk is padded to seqlen with the padding token `3`.
+
+        Parameters:
+        - input_ids_batch (torch.Tensor): A tensor of shape (batch_size, seqlen) on a specific device.
+
+        Returns:
+        - first_chunks (torch.Tensor): A tensor containing all but the last QA chunks for each batch.
+                                    Shape: [batch_size * num_patterns, seqlen]
+        - last_chunks (torch.Tensor): A tensor containing the last QA chunk for each batch.
+                                    Shape: [batch_size, seqlen]
+        """
+        batch_size, seqlen = input_ids_batch.size()
+        padding_token = 3
+
+        # Define the pattern to split on
+        # pattern = torch.tensor([256000], device=input_ids_batch.device)
+        pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids_batch.device)
+        pattern_length = pattern.size(0)
+
+        # Create sliding windows to find pattern matches
+        windows = input_ids_batch.unfold(1, pattern_length, 1)  # Shape: [batch_size, seqlen - pattern_length + 1, pattern_length]
+        matches = (windows == pattern).all(dim=2)  # Shape: [batch_size, seqlen - pattern_length + 1]
+
+        # Get the match indices for all batches
+        match_positions = matches.nonzero(as_tuple=False)  # Shape: [num_matches_total, 2], columns are [batch_idx, position]
+        batch_indices = match_positions[:, 0]
+        positions = match_positions[:, 1]
+
+        # Initialize segment start positions
+        segment_starts = torch.zeros((batch_size, seqlen), dtype=torch.bool, device=input_ids_batch.device)
+        segment_starts[batch_indices, positions] = True
+
+        # Compute segment IDs by cumulative sum
+        segment_ids = torch.cumsum(segment_starts, dim=1)  # Shape: [batch_size, seqlen]
+
+        # Adjust segment IDs to be unique across batches
+        segment_ids += (torch.arange(batch_size, device=input_ids_batch.device).unsqueeze(1) * (segment_ids.max() + 1))
+
+        # Flatten input_ids and segment_ids
+        input_ids_flat = input_ids_batch.view(-1)
+        segment_ids_flat = segment_ids.view(-1)
+
+        # Sort input_ids_flat by segment_ids_flat
+        sorted_indices = segment_ids_flat.argsort()
+        sorted_input_ids = input_ids_flat[sorted_indices]
+        sorted_segment_ids = segment_ids_flat[sorted_indices]
+
+        # Find segment boundaries
+        segment_change = (sorted_segment_ids[1:] != sorted_segment_ids[:-1]).nonzero(as_tuple=False).squeeze(1) + 1
+        segment_boundaries = torch.cat([torch.tensor([0], device=input_ids_batch.device), segment_change, torch.tensor([sorted_segment_ids.size(0)], device=input_ids_batch.device)])
+
+        # Split sorted_input_ids into segments
+        segments = [sorted_input_ids[segment_boundaries[i]:segment_boundaries[i+1]] for i in range(len(segment_boundaries)-1)]
+
+        # Pad segments to seqlen
+        padded_segments = []
+        for segment in segments:
+            pad_length = seqlen - segment.size(0)
+            if pad_length > 0:
+                pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
+                padded_segment = torch.cat((segment, pad), dim=0)
+            else:
+                padded_segment = segment[:seqlen]
+            padded_segments.append(padded_segment)
+
+        # Separate first chunks and last chunks
+        first_chunks = padded_segments[:-batch_size]
+        last_chunks = padded_segments[-batch_size:]
+
+        # Stack the chunks
+        first_chunks_tensor = torch.stack(first_chunks, dim=0)
+        last_chunks_tensor = torch.stack(last_chunks, dim=0)
+        
+        
+        # Debug
+        # Zixian Nov 5: Verified 
+        if input_ids_batch.device == torch.device ("cuda:0"): 
+            print (f"[mamba_model.py split_doc_batch] first_chunks_tensor.shape: {first_chunks_tensor.shape}") 
+            print (f"[mamba_model.py split_doc_batch] last_chunks_tensor.shape: {last_chunks_tensor.shape}") 
+            for i in range (first_chunks_tensor.shape[0]):
+                # if i<batch_size and (batch_size != 1): 
+                print (f"[mamba_model.py split_doc_batch] input_ids_batch[{int(i//batch_size)}][:400]: {input_ids_batch[int (i//batch_size)][:400]}")
+                print (f"[mamba_model.py split_doc_batch] last_chunks_tensor[{int(i//batch_size)}][:150]: {last_chunks_tensor[int(i//batch_size)][:150]}")
+                print (f"[mamba_model.py split_doc_batch] first_chunks_tensor[{i}][:150]: {first_chunks_tensor[i][:150]}")
+            
+
+        return first_chunks_tensor, last_chunks_tensor
+    
+    
     
     
     def get_doc_qa_pair (self, input_ids_batch: Tensor) :
@@ -316,7 +410,8 @@ class MambaModel(LanguageModule):
         padding_token = 3
 
         # Define the pattern to split on
-        pattern = torch.tensor([256000], device=input_ids_batch.device)
+        # pattern = torch.tensor([256000], device=input_ids_batch.device)
+        pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids_batch.device)
         pattern_length = pattern.size(0)
 
         # Initialize lists to store all first chunks and last chunks
@@ -540,7 +635,7 @@ class MambaModel(LanguageModule):
         insert_states: bool =False, 
         retrieve_states: bool =False, 
         insert_states_for_training: bool = False, 
-        # inserted_all_states: Tensor =None, 
+        inserted_all_states: Tensor =None, 
     ) -> Tensor:
         """Forward function of the Mamba model. This function passes the input tensors
         through the embedding layer, and then the decoder and finally into the post
@@ -561,21 +656,28 @@ class MambaModel(LanguageModule):
         soup_train = os.getenv ('SOUP_TRAIN')
         soup_doc_num = int (os.getenv ('SOUP_DOC_NUM'))
         soup_doc_sep_token_id = int (os.getenv ('SOUP_DOC_SEP_TOKEN_ID')) 
+        decoder_training_only = os.getenv ('DEC_TRAINING_ONLY')
+        
+        print (f'[mamba_model.py]: decoder_training_only: {decoder_training_only}')
         
         
         # print (f'[mamba_model.py]: input_ids.shape: {input_ids.shape}')
         print (f'[mamba_model.py]: input_ids[0][:300]: {input_ids[0][:300]}')
         
-        
+        batcsize = input_ids.shape[0]
         
         # TODO: Split the batchsize 1 input sequence into #documents batch 
         # Zixian: Oct 30: put everything into 1 then extract the question batch after embedding 
         # document_batch, question_batch = input_ids ()
         if (soup_train): 
+            s=time.time()
             documents_batch, qa_batch = self.get_doc_qa_pair (input_ids)
+            # documents_batch, qa_batch = self.get_doc_qa_pair_vectorized (input_ids)
+            e=time.time()
             
+            print (f'[mamba_model.py]: Time to split input docs for batch {batcsize} is: \t {e-s}')
             # raise (RuntimeError, 'manual error')
-        batcsize = input_ids.shape[0]
+        
     
 
         # If decoder_input is provided (not None), then input_ids and position_ids are ignored.
@@ -595,6 +697,9 @@ class MambaModel(LanguageModule):
             # intermediate stage of pipeline
             # decoder will get hidden_states from encoder.input_tensor
             decoder_input = None
+            
+            
+        print (f'[mamba_model.py]: decoder_input.shape: {decoder_input.shape}')
 
         rotary_pos_emb = None
         if self.position_embedding_type == 'rope':
@@ -625,26 +730,48 @@ class MambaModel(LanguageModule):
         #     print (f'[mamba_model.py]: name: {name}')
         #     print (f'[mamba_model.py]: param: {param}')
             
-        # with torch.no_grad (): 
+        s=time.time()
+        if decoder_training_only: 
+            with torch.no_grad (): 
             
-        # Run decoder.
-        # Extract States 
-        print (f'[mamba_model.py]: Entering FIRST forward-pass')
-        hidden_states, self.all_layers_states_dict = self.decoder(
-                                                        hidden_states=decoder_input,
-                                                        attention_mask=attention_mask,
-                                                        inference_params=inference_params,
-                                                        rotary_pos_emb=rotary_pos_emb,
-                                                        
-                                                        insert_states=insert_states, 
-                                                        retrieve_states=retrieve_states, 
-                                                        inserted_all_states=inserted_all_states, 
-                                                        insert_states_for_training=insert_states_for_training, 
-                                                        # Zixian: Oct 28: Not used in new version of Megatron Mamba
-                                                        # **(extra_block_kwargs or {}),
-                                                        )
-        
+                # Run decoder.
+                # Extract States 
+                print (f'[mamba_model.py]: Entering decoder_training_only FIRST forward-pass')
+                hidden_states, self.all_layers_states_dict = self.decoder(
+                                                                hidden_states=decoder_input,
+                                                                attention_mask=attention_mask,
+                                                                inference_params=inference_params,
+                                                                rotary_pos_emb=rotary_pos_emb,
+                                                                
+                                                                insert_states=insert_states, 
+                                                                retrieve_states=retrieve_states, 
+                                                                inserted_all_states=inserted_all_states, 
+                                                                insert_states_for_training=insert_states_for_training, 
+                                                                # Zixian: Oct 28: Not used in new version of Megatron Mamba
+                                                                # **(extra_block_kwargs or {}),
+                                                                )
+        else:
+            # Run decoder.
+            # Extract States 
+            print (f'[mamba_model.py]: Entering FIRST forward-pass')
+            hidden_states, self.all_layers_states_dict = self.decoder(
+                                                            hidden_states=decoder_input,
+                                                            attention_mask=attention_mask,
+                                                            inference_params=inference_params,
+                                                            rotary_pos_emb=rotary_pos_emb,
+                                                            
+                                                            insert_states=insert_states, 
+                                                            retrieve_states=retrieve_states, 
+                                                            inserted_all_states=inserted_all_states, 
+                                                            insert_states_for_training=insert_states_for_training, 
+                                                            # Zixian: Oct 28: Not used in new version of Megatron Mamba
+                                                            # **(extra_block_kwargs or {}),
+                                                            )
+            
         print (f'[mamba_model.py]: After FIRST forward-pass')
+        
+        e=time.time()
+        print (f'[mamba_model.py]: Time to inference FIRST FORWARD with batch {batcsize} is: \t {e-s}')
         # try: 
         #     decoder_input.register_hook(lambda grad: self._report_self_total_grad_norm (grad, "decoder_input from FIRST forward"))
         # except:
@@ -657,8 +784,14 @@ class MambaModel(LanguageModule):
         
         if soup_train: 
             # Soup states 
+            
+            s=time.time()
             # TODO: 
             all_soupped_states = self.soup_states (self.all_layers_states_dict, desired_batch_size=batcsize)
+            
+            
+            e=time.time()
+            print (f'[mamba_model.py]: Time to SOUP STATES with batch {batcsize} is: \t {e-s}')
             
             # raise (RuntimeError, 'manual error')
             # print (f'[mamba_model.py]: qa_batch_input.shape: {decoder_input.shape}')
@@ -708,6 +841,7 @@ class MambaModel(LanguageModule):
             
             # with torch.no_grad (): 
             print (f'[mamba_model.py]: Entering SECOND forward-pass')
+            s=time.time()
             hidden_states, all_layers_states_dict_2 = self.decoder(
                                                         # Zixian: Oct 30: Inserting splitted QA embeddings 
                                                         # hidden_states=decoder_input,
@@ -730,6 +864,9 @@ class MambaModel(LanguageModule):
                                                         )
             
             print (f'[mamba_model.py]: After SECOND forward-pass')
+            
+            e=time.time()
+            print (f'[mamba_model.py]: Time to inference SECOND FORWARD with batch {batcsize} is: \t {e-s}')
             # try: 
             #     qa_batch_input.register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'qa_batch_input from SECOND forward'))
             # except: 
