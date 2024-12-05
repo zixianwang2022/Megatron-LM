@@ -18,6 +18,9 @@ from megatron.core.transformer.spec_utils import ModuleSpec, build_module
 from megatron.core.transformer.transformer_config import TransformerConfig
 
 
+PATTERN = [int(os.getenv ('SOUP_DOC_SEP_TOKEN_ID'))]
+
+
 class MambaModel(LanguageModule):
     """Mamba language model.
 
@@ -229,7 +232,7 @@ class MambaModel(LanguageModule):
         - document_batch (torch.Tensor): A tensor containing the document padded chunks of shape (num_segments, seqlen).
         """
         # Define the pattern to split on
-        pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids_batch.device)
+        pattern = torch.tensor(PATTERN, device=input_ids_batch.device)
         pattern_length = pattern.size(0)
         seqlen = input_ids_batch.size(1)
         padding_token = 3
@@ -410,8 +413,7 @@ class MambaModel(LanguageModule):
         padding_token = 3
 
         # Define the pattern to split on
-        # pattern = torch.tensor([256000], device=input_ids_batch.device)
-        pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids_batch.device)
+        pattern = torch.tensor(PATTERN, device=input_ids_batch.device)
         pattern_length = pattern.size(0)
 
         # Initialize lists to store all first chunks and last chunks

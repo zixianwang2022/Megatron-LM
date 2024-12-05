@@ -81,6 +81,8 @@ def build_tokenizer(args):
         args.padded_vocab_size = _vocab_size_with_padding(tokenizer.vocab_size,
                                                           args)
 
+    tokenizer.tokenize("Hello <DOC_SEP> World")
+    tokenizer.save("test.model")
     return tokenizer
 
 
@@ -306,6 +308,8 @@ class _SentencePieceTokenizer(MegatronTokenizer):
 
     def __init__(self, model_file, vocab_extra_ids=0):
         super().__init__(model_file, vocab_extra_ids=vocab_extra_ids)
+        self._special_tokens = {}
+        self._inv_special_tokens = {}
 
         import sentencepiece
         self.tokenizer = sentencepiece.SentencePieceProcessor(model_file=model_file)
@@ -320,28 +324,27 @@ class _SentencePieceTokenizer(MegatronTokenizer):
             self._inv_vocab[i] = t
             self._vocab[t] = i
 
+    def _add_special_token(self, t):
+        if t not in self._vocab:
+            next_id = len(self._vocab)
+            self._vocab[t] = next_id
+            self._inv_vocab[next_id] = t
+        self._special_tokens[t] = self._vocab[t]
+        self._inv_special_tokens[self._vocab[t]] = t
+
+
     def _initalize(self, vocab_extra_ids):
         self._populate_vocab()
-        self._special_tokens = {}
-        self._inv_special_tokens = {}
 
         self._t5_tokens = []
 
-        def _add_special_token(t):
-            if t not in self._vocab:
-                next_id = len(self._vocab)
-                self._vocab[t] = next_id
-                self._inv_vocab[next_id] = t
-            self._special_tokens[t] = self._vocab[t]
-            self._inv_special_tokens[self._vocab[t]] = t
-
-        _add_special_token('<CLS>')
+        self._add_special_token('<CLS>')
         self._cls_id = self._vocab['<CLS>']
-        _add_special_token('<SEP>')
+        self._add_special_token('<SEP>')
         self._sep_id = self._vocab['<SEP>']
-        _add_special_token('<EOD>')
+        self._add_special_token('<EOD>')
         self._eod_id = self._vocab['<EOD>']
-        _add_special_token('<MASK>')
+        self._add_special_token('<MASK>')
         self._mask_id = self._vocab['<MASK>']
 
         pad_id = self.tokenizer.pad_id()
@@ -349,7 +352,7 @@ class _SentencePieceTokenizer(MegatronTokenizer):
             pad_token = self.tokenizer.id_to_piece(pad_id)
         except IndexError:
             pad_token = '<PAD>'
-        _add_special_token(pad_token)
+        self._add_special_token(pad_token)
         self._pad_id = self._vocab[pad_token]
 
         bos_id = self.tokenizer.bos_id()
@@ -357,7 +360,7 @@ class _SentencePieceTokenizer(MegatronTokenizer):
             bos_token = self.tokenizer.id_to_piece(bos_id)
         except IndexError:
             bos_token = '<BOS>'
-        _add_special_token(bos_token)
+        self._add_special_token(bos_token)
         self._bos_id = self._vocab[bos_token]
 
         eos_id = self.tokenizer.eos_id()
@@ -365,12 +368,12 @@ class _SentencePieceTokenizer(MegatronTokenizer):
             eos_token = self.tokenizer.id_to_piece(eos_id)
         except IndexError:
             eos_token = '<EOS>'
-        _add_special_token(eos_token)
+        self._add_special_token(eos_token)
         self._eos_id = self._vocab[eos_token]
 
         for i in range(vocab_extra_ids):
             t = "<extra_id_{}>".format(i)
-            _add_special_token(t)
+            self._add_special_token(t)
             self._t5_tokens += [t]
 
     @property
@@ -475,10 +478,12 @@ class _GPTSentencePieceTokenizer(_SentencePieceTokenizer):
 
     def _initalize(self, vocab_extra_ids):
         self._populate_vocab()
+        self._add_special_token('<DOC_SEP>')
 
         self._pad_id = self.tokenizer.pad_id()
         self._bos_id = self.tokenizer.bos_id()
         self._eos_id = self.tokenizer.eos_id()
+        self._doc_sep_id = self._vocab['<DOC_SEP>']
 
     def tokenize(self, text):
         return self.tokenizer.encode_as_ids(text)
@@ -501,6 +506,10 @@ class _GPTSentencePieceTokenizer(_SentencePieceTokenizer):
     @property
     def eod(self):
         return self._eos_id
+    
+    @property
+    def doc_sep(self):
+        return self._doc_sep_id
 
     @property
     def additional_special_tokens_ids(self):
