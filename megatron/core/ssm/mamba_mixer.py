@@ -234,8 +234,38 @@ class MambaMixer(MegatronModule):
 
         conv_state, ssm_state = None, None
         if inference_params is not None:
+            # print (f'[mamba_mixer.py]: inference_parame is not None') 
+            # if self.layer_number in inference_params.key_value_memory_dict:
+                # print (f'[mamba_mixer.py]: inference_params.key_value_memory_dict[self.layer_number]["ssm_state"].shape: {inference_params.key_value_memory_dict[self.layer_number][0].shape}')
+                # print (f'[mamba_mixer.py]: inference_params.key_value_memory_dict[self.layer_number]["conv_state"].shape: {inference_params.key_value_memory_dict[self.layer_number][1].shape}')
             assert not self.config.sequence_parallel
+            
+            # Zixian: Dec 6: Inserting souped states during inference
+            #                This will read in souped states [batch, ...], 
+            #                overwriting cache from retrieve states [num_docs * batch, ...]
+            if insert_states: 
+                assert (inserted_conv_state is not None)
+                assert (inserted_ssm_state is not None)
+                
+                if self.layer_number == 1: 
+                    print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][0]: {inference_params.key_value_memory_dict[self.layer_number][0]}')
+                    print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][1][0][0]: {inference_params.key_value_memory_dict[self.layer_number][1][0][0]}')
+                    
+                print (f"[mamba_mixer.py]: OVERWRITING inference_parame's states with souped states") 
+                # print (f'[mamba_mixer.py]: inserted_ssm_state.shape: {inserted_ssm_state.shape}')
+                # print (f'[mamba_mixer.py]: inserted_conv_state.shape: {inserted_conv_state.shape}')
+                inference_params.key_value_memory_dict[self.layer_number] = (inserted_conv_state, inserted_ssm_state)
+                
+                if self.layer_number == 1: 
+                    print (f'[mamba_mixer.py]: OVERWRITING inference_params.key_value_memory_dict[self.layer_number][0]: {inference_params.key_value_memory_dict[self.layer_number][0]}')
+                    print (f'[mamba_mixer.py]: OVERWRITING inference_params.key_value_memory_dict[self.layer_number][1][0][0]: {inference_params.key_value_memory_dict[self.layer_number][1][0][0]}')
+            
             conv_state, ssm_state = self._get_states_from_cache(inference_params, batch)
+            
+            if self.layer_number == 1: 
+                print (f'[mamba_mixer.py]: _get_states_from_cache conv_state: {conv_state}')
+                print (f'[mamba_mixer.py]: _get_states_from_cache ssm_state[0][0]: {ssm_state[0][0]}')
+            
             if inference_params.seqlen_offset > 0:
                 # The states are updated inplace
                 out, out_bias, conv_state_cp, ssm_state_cp = self.step(hidden_states, conv_state, ssm_state)
@@ -479,6 +509,8 @@ class MambaMixer(MegatronModule):
         )
 
         # Conv step
+        print (f'[mamba_mixer.py]: ssm_state.shape: {ssm_state.shape}')
+        print (f'[mamba_mixer.py]: conv_state.shape: {conv_state.shape}')
         if causal_conv1d_update is None:
             conv_state.copy_(torch.roll(conv_state, shifts=-1, dims=-1))  # Update state (B D W)
             conv_state[:, :, -1] = xBC

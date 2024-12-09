@@ -221,14 +221,14 @@ class MambaStack(MegatronModule):
             # else: 
             #     retrieve_states = False 
                 
-            if inference_params is not None: 
+            # if inference_params is not None: 
                 # Insert states only when processing user's first input 
-                if ((insert_states) & (inference_params.seqlen_offset == 0)):
+                # if ((insert_states) & (inference_params.seqlen_offset == 0)):
                     # Zixian: Aug 25
                     # Without having [0] as from Mamba official modified code 
                     # because states are wrapped differently  
-                    inserted_ssm_state  = inserted_all_states[layer.layer_number]['ssm_state'] # Y
-                    inserted_conv_state = inserted_all_states[layer.layer_number]['conv_state'] # Y
+                    # inserted_ssm_state  = inserted_all_states[layer.layer_number]['ssm_state'] # Y
+                    # inserted_conv_state = inserted_all_states[layer.layer_number]['conv_state'] # Y
                 
             
             if insert_states_for_training and insert_states: 
@@ -251,12 +251,12 @@ class MambaStack(MegatronModule):
                                                     insert_states_for_training=insert_states_for_training, 
                                                     )
             
-            if (retrieve_states) and (layer.layer_number in [0, 1]): 
-                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict.keys(): {layer_states_dict.keys()}')
-                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["ssm_state"].shape: {layer_states_dict["ssm_state"].shape}')
-                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["conv_state"].shape: {layer_states_dict["conv_state"].shape}')
-                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["ssm_state"][0][0]: {layer_states_dict["ssm_state"][0][0]}')
-                print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["conv_state"][0][0]: {layer_states_dict["conv_state"][0][0]}')
+            # if (retrieve_states) and (layer.layer_number in [0, 1]): 
+            #     print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict.keys(): {layer_states_dict.keys()}')
+            #     print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["ssm_state"].shape: {layer_states_dict["ssm_state"].shape}')
+            #     print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["conv_state"].shape: {layer_states_dict["conv_state"].shape}')
+            #     print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["ssm_state"][0][0]: {layer_states_dict["ssm_state"][0][0]}')
+            #     print (f'[mamba_block.py] [layer.layer_number: {layer.layer_number}]:layer_states_dict["conv_state"][0][0]: {layer_states_dict["conv_state"][0][0]}')
                 
             
             # Storing each layer states 
