@@ -468,12 +468,12 @@ class MambaModel(LanguageModule):
                 if pad_length > 0:
                     pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
                     # Zixian: Dec 6: let padding token to be padded left 
-                    # padded = torch.cat((segment, pad), dim=0)  # Shape: [seqlen]
-                    padded = torch.cat((pad, segment), dim=0)  # Shape: [seqlen]
+                    padded = torch.cat((segment, pad), dim=0)  # Shape: [seqlen]
+                    # padded = torch.cat((pad, segment), dim=0)  # Shape: [seqlen]
                 else:
                     # Zixian: Dec 6: let padding token to be padded left 
-                    # padded = segment[:seqlen]  # Truncate if necessary
-                    padded = segment[-seqlen:]  # Truncate if necessary
+                    padded = segment[:seqlen]  # Truncate if necessary
+                    # padded = segment[-seqlen:]  # Truncate if necessary
                 all_first_chunks.append(padded)
                 # TODO: Zixian: Dec 6: let padding token to be padded left 
                 
@@ -484,13 +484,13 @@ class MambaModel(LanguageModule):
                 pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
                 
                 # Zixian: Dec 6: let padding token to be padded left 
-                # padded_last = torch.cat((last_chunk, pad), dim=0)  # Shape: [seqlen]
+                padded_last = torch.cat((last_chunk, pad), dim=0)  # Shape: [seqlen]
                 # padded_last = torch.cat((pad, last_chunk), dim=0)  # Shape: [seqlen]
-                padded_last = last_chunk  # Shape: [seqlen]
+                # padded_last = last_chunk  # Shape: [seqlen]
             else:
                 # Zixian: Dec 6: let padding token to be padded left 
-                # padded_last = last_chunk[:seqlen]  # Truncate if necessary
-                padded_last = last_chunk[-seqlen:]  # Truncate if necessary
+                padded_last = last_chunk[:seqlen]  # Truncate if necessary
+                # padded_last = last_chunk[-seqlen:]  # Truncate if necessary
             
             # Zixian: Dec 6: Test to see if no padding to last generation 
             all_last_chunks.append(padded_last)
@@ -510,14 +510,14 @@ class MambaModel(LanguageModule):
 
         # Debug
         # Zixian Nov 5: Verified 
-        # if input_ids_batch.device == torch.device ("cuda:0"): 
-        #     print (f"[mamba_model.py split_doc_batch] first_chunks_tensor.shape: {first_chunks_tensor.shape}") 
-        #     print (f"[mamba_model.py split_doc_batch] last_chunks_tensor.shape: {last_chunks_tensor.shape}") 
-        #     for i in range (first_chunks_tensor.shape[0]):
-        #         # if i<batch_size and (batch_size != 1): 
-        #         print (f"[mamba_model.py split_doc_batch] input_ids_batch[{int(i//batch_size)}][:400]: {input_ids_batch[int (i//batch_size)][:400]}")
-        #         print (f"[mamba_model.py split_doc_batch] last_chunks_tensor[{int(i//batch_size)}][:150]: {last_chunks_tensor[int(i//batch_size)][:150]}")
-        #         print (f"[mamba_model.py split_doc_batch] first_chunks_tensor[{i}][:150]: {first_chunks_tensor[i][:150]}")
+        if input_ids_batch.device == torch.device ("cuda:0"): 
+            print (f"[mamba_model.py split_doc_batch] first_chunks_tensor.shape: {first_chunks_tensor.shape}") 
+            print (f"[mamba_model.py split_doc_batch] last_chunks_tensor.shape: {last_chunks_tensor.shape}") 
+            for i in range (first_chunks_tensor.shape[0]):
+                # if i<batch_size and (batch_size != 1): 
+                print (f"[mamba_model.py split_doc_batch] input_ids_batch[{int(i//batch_size)}][:400]: {input_ids_batch[int (i//batch_size)][:400]}")
+                print (f"[mamba_model.py split_doc_batch] last_chunks_tensor[{int(i//batch_size)}][:150]: {last_chunks_tensor[int(i//batch_size)][:150]}")
+                print (f"[mamba_model.py split_doc_batch] first_chunks_tensor[{i}][:150]: {first_chunks_tensor[i][:150]}")
             
             
 
@@ -691,11 +691,11 @@ class MambaModel(LanguageModule):
         
         
         
-        soup_train = os.getenv ('SOUP_TRAIN')
-        inference_mode = os.getenv ('INF_MODE')
+        soup_train = os.getenv ('SOUP_TRAIN') == 'True'
+        inference_mode = os.getenv ('INF_MODE') == 'True'
         soup_doc_num = int (os.getenv ('SOUP_DOC_NUM'))
         soup_doc_sep_token_id = int (os.getenv ('SOUP_DOC_SEP_TOKEN_ID')) 
-        decoder_training_only = os.getenv ('DEC_TRAINING_ONLY')
+        decoder_training_only = os.getenv ('DEC_TRAINING_ONLY') == 'True' 
         
         
         # Training mode: 
@@ -728,8 +728,8 @@ class MambaModel(LanguageModule):
             # reading_doc: reading in user's input 
             else: 
                 
-                pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids.device)
-                # pattern = torch.tensor(PATTERN, device=input_ids_batch.device)
+                # pattern = torch.tensor([44354, 251594, 226308, 251621], device=input_ids.device)
+                pattern = torch.tensor(PATTERN, device=input_ids.device)
                 pattern_length = pattern.size(0)
                 input_ids_unsqueeze = input_ids[0].unsqueeze(0)  # Shape: [1, seqlen]
                 windows = input_ids_unsqueeze.unfold(1, pattern_length, 1)  # Shape: [1, seqlen - pattern_length + 1, pattern_length]
@@ -1024,9 +1024,12 @@ class MambaModel(LanguageModule):
         output_weight = None
         if self.share_embeddings_and_output_weights:
             output_weight = self.shared_embedding_or_output_weight()
+        print (f'[mamba_model.py]: entering self.output_layer')
         logits, _ = self.output_layer(hidden_states, weight=output_weight)
 
         if labels is None:
+            print (f'[mamba_model.py]: returning from Mamba forward in Inference mode')
+            print (f'[mamba_model.py]: returning logits.transpose(0, 1).contiguous(): {logits.transpose(0, 1).contiguous()}')
             # [s b h] => [b s h]
             return logits.transpose(0, 1).contiguous()
 
