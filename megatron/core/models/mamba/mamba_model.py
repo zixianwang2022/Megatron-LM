@@ -464,33 +464,38 @@ class MambaModel(LanguageModule):
 
             # Pad first_chunks
             for segment in first_chunks:
-                pad_length = seqlen - segment.size(0)
+                # pad_length = seqlen - segment.size(0) # orign
+                max_seqlen = max(len(inner_list) for inner_list in first_chunks)
+                # Zixian: Dec 19: TODO: WARNING: This will definitely cause error in training
+                pad_length = max_seqlen - segment.size(0) # max length 
                 if pad_length > 0:
                     pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
                     # Zixian: Dec 6: let padding token to be padded left 
-                    padded = torch.cat((segment, pad), dim=0)  # Shape: [seqlen]
-                    # padded = torch.cat((pad, segment), dim=0)  # Shape: [seqlen]
+                    # padded = torch.cat((segment, pad), dim=0)  # Shape: [seqlen] origin (padded right)
+                    padded = torch.cat((pad, segment), dim=0)  # Shape: [seqlen] padded left
+                    # padded = segment  # Shape: [seqlen] no padding
                 else:
                     # Zixian: Dec 6: let padding token to be padded left 
-                    padded = segment[:seqlen]  # Truncate if necessary
-                    # padded = segment[-seqlen:]  # Truncate if necessary
+                    # padded = segment[:seqlen]  # origin (padded right)
+                    padded = segment[-seqlen:]  # padded left
                 all_first_chunks.append(padded)
                 # TODO: Zixian: Dec 6: let padding token to be padded left 
                 
                 
             # Pad last_chunk
-            pad_length = seqlen - last_chunk.size(0)
+            # pad_length = seqlen - last_chunk.size(0) # original
+            pad_length = len (last_chunk) - last_chunk.size(0) # set to last_chunk length
             if pad_length > 0:
                 pad = torch.full((pad_length,), padding_token, device=input_ids_batch.device)
                 
                 # Zixian: Dec 6: let padding token to be padded left 
-                padded_last = torch.cat((last_chunk, pad), dim=0)  # Shape: [seqlen]
-                # padded_last = torch.cat((pad, last_chunk), dim=0)  # Shape: [seqlen]
-                # padded_last = last_chunk  # Shape: [seqlen]
+                # padded_last = torch.cat((last_chunk, pad), dim=0)  # Shape: [seqlen] origin (padded right)
+                padded_last = torch.cat((pad, last_chunk), dim=0)  # Shape: [seqlen] padded left
+                # padded_last = last_chunk  # Shape: [seqlen] no padding
             else:
                 # Zixian: Dec 6: let padding token to be padded left 
-                padded_last = last_chunk[:seqlen]  # Truncate if necessary
-                # padded_last = last_chunk[-seqlen:]  # Truncate if necessary
+                # padded_last = last_chunk[:seqlen]  # origin (padded right)
+                padded_last = last_chunk[-seqlen:]  # padded left
             
             # Zixian: Dec 6: Test to see if no padding to last generation 
             all_last_chunks.append(padded_last)
@@ -513,10 +518,16 @@ class MambaModel(LanguageModule):
         if input_ids_batch.device == torch.device ("cuda:0"): 
             print (f"[mamba_model.py split_doc_batch] first_chunks_tensor.shape: {first_chunks_tensor.shape}") 
             print (f"[mamba_model.py split_doc_batch] last_chunks_tensor.shape: {last_chunks_tensor.shape}") 
+            print (f"[mamba_model.py split_doc_batch] input_ids_batch[0][:400]: {input_ids_batch[0][:400]}")
+            print (f"[mamba_model.py split_doc_batch] last_chunks_tensor[0][:150]: {last_chunks_tensor[0][:150]}")
             for i in range (first_chunks_tensor.shape[0]):
                 # if i<batch_size and (batch_size != 1): 
-                print (f"[mamba_model.py split_doc_batch] input_ids_batch[{int(i//batch_size)}][:400]: {input_ids_batch[int (i//batch_size)][:400]}")
-                print (f"[mamba_model.py split_doc_batch] last_chunks_tensor[{int(i//batch_size)}][:150]: {last_chunks_tensor[int(i//batch_size)][:150]}")
+                # print (f"[mamba_model.py split_doc_batch] input_ids_batch[{int(i//batch_size)}][:400]: {input_ids_batch[int (i//batch_size)][:400]}")
+                # print (f"[mamba_model.py split_doc_batch] last_chunks_tensor[{int(i//batch_size)}][:150]: {last_chunks_tensor[int(i//batch_size)][:150]}")
+                # print (f"[mamba_model.py split_doc_batch] first_chunks_tensor[{i}][:150]: {first_chunks_tensor[i][:150]}")
+                
+                
+                
                 print (f"[mamba_model.py split_doc_batch] first_chunks_tensor[{i}][:150]: {first_chunks_tensor[i][:150]}")
             
             
@@ -932,10 +943,16 @@ class MambaModel(LanguageModule):
                 insert_states_for_training = False 
                 qa_batch_input = decoder_input
             else: 
-                print (f'[mamba_model.py]: NOT in generation_mode')
-                insert_states = True 
-                retrieve_states = False  
-                insert_states_for_training = True 
+                if inference_mode: 
+                    print (f'[mamba_model.py]: in inference_mode')
+                    insert_states = True 
+                    retrieve_states = False  
+                    insert_states_for_training = False 
+                else:     
+                    print (f'[mamba_model.py]: NOT in generation_mode, NOT in inference_mode')
+                    insert_states = True 
+                    retrieve_states = False  
+                    insert_states_for_training = True 
             
             # inserted_all_states = all_layers_states_dict 
             
@@ -948,7 +965,7 @@ class MambaModel(LanguageModule):
             
             
             
-            try: 
+            # try: 
                 # self.all_layers_states_dict[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'FIRST forward returned ssm-states at LAYER-54'))
                 # all_soupped_states[54]["ssm_state"].register_hook(lambda grad: self._report_self_total_grad_norm(grad, 'SECOND forward inserted all_soupped_states at LAYER-54'))
                 
@@ -966,8 +983,8 @@ class MambaModel(LanguageModule):
                 
                 # self.all_layers_states_dict[56]["ssm_state"].register_hook(lambda grad: print (f'FIRST forward returned ssm-states at LAYER-56 has grad.shape: {grad.shape} \n FIRST-LAYER-56-grad[0]-{current_device}:{grad[0]} \n FIRST-LAYER-56-grad[1]-{current_device}:{grad[1]}'))
                 # all_soupped_states[56]["ssm_state"].register_hook(lambda grad: print (f'SECOND forward inserted all_soupped_states at LAYER-56 has grad.shape: {grad.shape} \n SECOND-LAYER-56-grad[0]-{current_device}:{grad[0]}'))
-            except: 
-                print (f'[mamba_model.py]: failed to register hook to self.all_layers_states_dict or all_soupped_states. Could be due to evaluation mode.')
+            # except: 
+            #     print (f'[mamba_model.py]: failed to register hook to self.all_layers_states_dict or all_soupped_states. Could be due to evaluation mode.')
             
             # with torch.no_grad (): 
             print (f'[mamba_model.py]: Entering SECOND forward-pass')

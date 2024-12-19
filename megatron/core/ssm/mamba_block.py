@@ -231,7 +231,7 @@ class MambaStack(MegatronModule):
                     # inserted_conv_state = inserted_all_states[layer.layer_number]['conv_state'] # Y
                 
             
-            if insert_states_for_training and insert_states: 
+            if insert_states_for_training or insert_states: 
                 inserted_ssm_state  = inserted_all_states[layer.layer_number]['ssm_state'] # Y
                 inserted_conv_state = inserted_all_states[layer.layer_number]['conv_state'] # Y
             

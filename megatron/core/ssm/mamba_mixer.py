@@ -251,7 +251,7 @@ class MambaMixer(MegatronModule):
                     print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][0]: {inference_params.key_value_memory_dict[self.layer_number][0]}')
                     print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][1][0][0]: {inference_params.key_value_memory_dict[self.layer_number][1][0][0]}')
                     
-                print (f"[mamba_mixer.py]: OVERWRITING inference_parame's states with souped states") 
+                print (f"[mamba_mixer.py @ L-{self.layer_number}]: OVERWRITING inference_parame's states with souped states") 
                 # print (f'[mamba_mixer.py]: inserted_ssm_state.shape: {inserted_ssm_state.shape}')
                 # print (f'[mamba_mixer.py]: inserted_conv_state.shape: {inserted_conv_state.shape}')
                 inference_params.key_value_memory_dict[self.layer_number] = (inserted_conv_state, inserted_ssm_state)
@@ -477,6 +477,14 @@ class MambaMixer(MegatronModule):
             
         # print (f'[mamba_mixer.py]: ssm_state.shape: {ssm_state.shape}')
         # print (f'[mamba_mixer.py]: ssm_state.requires_grad: {ssm_state.requires_grad}')
+        
+        
+        conv_a, ssm_a = self._get_states_from_cache(inference_params, batch)
+            
+        if self.layer_number == 1: 
+            print (f'[mamba_mixer.py]: AFTER SCAN _get_states_from_cache conv_state: {conv_a}')
+            print (f'[mamba_mixer.py]: AFTER SCAN _get_states_from_cache ssm_state[0][0]: {ssm_a[0][0]}')
+            
 
         # Zixian: Oct 28: Return one more term for layer states dict
         return out, out_bias, layer_states_dict 
