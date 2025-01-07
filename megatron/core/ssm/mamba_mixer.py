@@ -247,37 +247,62 @@ class MambaMixer(MegatronModule):
                 assert (inserted_conv_state is not None)
                 assert (inserted_ssm_state is not None)
                 
-                if self.layer_number == 1: 
-                    print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][0]: {inference_params.key_value_memory_dict[self.layer_number][0]}')
-                    print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][1][0][0]: {inference_params.key_value_memory_dict[self.layer_number][1][0][0]}')
+                # if self.layer_number == 1: 
+                #     print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][0]: {inference_params.key_value_memory_dict[self.layer_number][0]}')
+                #     print (f'[mamba_mixer.py]: BEFORE inference_params.key_value_memory_dict[self.layer_number][1][0][0]: {inference_params.key_value_memory_dict[self.layer_number][1][0][0]}')
                     
-                print (f"[mamba_mixer.py @ L-{self.layer_number}]: OVERWRITING inference_parame's states with souped states") 
+                # print (f"[mamba_mixer.py @ L-{self.layer_number}]: OVERWRITING inference_parame's states with souped states") 
                 # print (f'[mamba_mixer.py]: inserted_ssm_state.shape: {inserted_ssm_state.shape}')
                 # print (f'[mamba_mixer.py]: inserted_conv_state.shape: {inserted_conv_state.shape}')
                 inference_params.key_value_memory_dict[self.layer_number] = (inserted_conv_state, inserted_ssm_state)
                 
-                if self.layer_number == 1: 
-                    print (f'[mamba_mixer.py]: OVERWRITING inference_params.key_value_memory_dict[self.layer_number][0]: {inference_params.key_value_memory_dict[self.layer_number][0]}')
-                    print (f'[mamba_mixer.py]: OVERWRITING inference_params.key_value_memory_dict[self.layer_number][1][0][0]: {inference_params.key_value_memory_dict[self.layer_number][1][0][0]}')
+                # if self.layer_number == 1: 
+                #     print (f'[mamba_mixer.py]: OVERWRITING inference_params.key_value_memory_dict[self.layer_number][0]: {inference_params.key_value_memory_dict[self.layer_number][0]}')
+                #     print (f'[mamba_mixer.py]: OVERWRITING inference_params.key_value_memory_dict[self.layer_number][1][0][0]: {inference_params.key_value_memory_dict[self.layer_number][1][0][0]}')
             
             conv_state, ssm_state = self._get_states_from_cache(inference_params, batch)
             
-            if self.layer_number == 1: 
-                print (f'[mamba_mixer.py]: _get_states_from_cache conv_state: {conv_state}')
-                print (f'[mamba_mixer.py]: _get_states_from_cache ssm_state[0][0]: {ssm_state[0][0]}')
+            # if self.layer_number == 1: 
+            #     print (f'[mamba_mixer.py]: _get_states_from_cache conv_state: {conv_state}')
+            #     print (f'[mamba_mixer.py]: _get_states_from_cache ssm_state[0][0]: {ssm_state[0][0]}')
+            
+            
+                    
             
             if inference_params.seqlen_offset > 0:
                 # The states are updated inplace
                 out, out_bias, conv_state_cp, ssm_state_cp = self.step(hidden_states, conv_state, ssm_state)
                 
+                # if self.layer_number == 1: 
+                #     print (f'[mamba_mixer.py]: AFTER STEP conv_state: {conv_state_cp}')
+                #     print (f'[mamba_mixer.py]: AFTER STEP ssm_state[0][0]: {ssm_state_cp[0][0]}')
+                
                 # Zixian: Oct 28: Clone to make a copy if for future use
                 if retrieve_states: 
-                    conv_state = last_state.clone() 
-                    ssm_state = last_state.clone() 
+                    conv_state = conv_state_cp.clone() 
+                    ssm_state = ssm_state_cp.clone() 
                     layer_states_dict ['conv_state'] = conv_state # Y
                     layer_states_dict ['ssm_state'] = ssm_state # Y
                 
                 return out, out_bias, layer_states_dict
+            else:
+                # Zixian: Jan 6: For debug purpose: 
+                # This will not run if debugger = False  
+                # Use step to iteratively step through each token during second forward pass 
+                debugger = False  
+                if debugger and insert_states: 
+                    hidden_states_cp = hidden_states
+                    
+                    for i in range (hidden_states_cp.shape[0]): 
+                        
+                        hidden_states = hidden_states_cp[i,:,:]
+                        # Check and see each value's hidden states 
+                        out, out_bias, conv_state_cp, ssm_state_cp = self.step(hidden_states, conv_state, ssm_state)
+                        
+                        conv_state.copy_ (conv_state_cp)
+                        ssm_state.copy_ (ssm_state_cp) 
+                    
+                    return out, out_bias, layer_states_dict
         else: 
             conv_state, ssm_state = self._allocate_training_cache (batch_size=batch)
             
@@ -288,6 +313,7 @@ class MambaMixer(MegatronModule):
         initial_states = None 
         if (inference_params != None): 
             if (insert_states & (inference_params.seqlen_offset == 0)): 
+                # initial_states = inserted_ssm_state.clone() # Y
                 initial_states = inserted_ssm_state
                 
                 
@@ -479,11 +505,11 @@ class MambaMixer(MegatronModule):
         # print (f'[mamba_mixer.py]: ssm_state.requires_grad: {ssm_state.requires_grad}')
         
         
-        conv_a, ssm_a = self._get_states_from_cache(inference_params, batch)
+        # conv_a, ssm_a = self._get_states_from_cache(inference_params, batch)
             
-        if self.layer_number == 1: 
-            print (f'[mamba_mixer.py]: AFTER SCAN _get_states_from_cache conv_state: {conv_a}')
-            print (f'[mamba_mixer.py]: AFTER SCAN _get_states_from_cache ssm_state[0][0]: {ssm_a[0][0]}')
+        # if self.layer_number == 1: 
+        #     print (f'[mamba_mixer.py]: AFTER SCAN _get_states_from_cache conv_state: {conv_a}')
+        #     print (f'[mamba_mixer.py]: AFTER SCAN _get_states_from_cache ssm_state[0][0]: {ssm_a[0][0]}')
             
 
         # Zixian: Oct 28: Return one more term for layer states dict
@@ -517,8 +543,8 @@ class MambaMixer(MegatronModule):
         )
 
         # Conv step
-        print (f'[mamba_mixer.py]: ssm_state.shape: {ssm_state.shape}')
-        print (f'[mamba_mixer.py]: conv_state.shape: {conv_state.shape}')
+        # print (f'[mamba_mixer.py]: ssm_state.shape: {ssm_state.shape}')
+        # print (f'[mamba_mixer.py]: conv_state.shape: {conv_state.shape}')
         if causal_conv1d_update is None:
             conv_state.copy_(torch.roll(conv_state, shifts=-1, dims=-1))  # Update state (B D W)
             conv_state[:, :, -1] = xBC
