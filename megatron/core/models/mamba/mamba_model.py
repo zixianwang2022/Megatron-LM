@@ -290,10 +290,10 @@ class MambaModel(LanguageModule):
 
             
         # Debug
-        for i in range (document_batch.shape[0]):
-            if i%matches == 0: 
-                print (f"[mamba_model.py split_doc_batch] input_ids_batch[0][:300]: {i%matches[i%matches][:300]}")
-            print (f"[mamba_model.py split_doc_batch] document_batch[{i}][:100]: {document_batch[i][:100]}")
+        # for i in range (document_batch.shape[0]):
+        #     if i%matches == 0: 
+        #         print (f"[mamba_model.py split_doc_batch] input_ids_batch[0][:300]: {i%matches[i%matches][:300]}")
+        #     print (f"[mamba_model.py split_doc_batch] document_batch[{i}][:100]: {document_batch[i][:100]}")
         
         print (f"[mamba_model.py split_doc_batch] document_batch.shape: {document_batch.shape}") 
         
@@ -423,6 +423,9 @@ class MambaModel(LanguageModule):
         # Initialize lists to store all first chunks and last chunks
         all_first_chunks = []
         all_last_chunks = []
+        
+        print (f'[mamba_model.py]: get_doc_qa_pair: input_ids_batch.size(): {input_ids_batch.size()}')
+        print (f'[mamba_model.py]: get_doc_qa_pair: batch_size: {batch_size}')
 
         for batch_idx in range(batch_size):
             input_ids = input_ids_batch[batch_idx].unsqueeze(0)  # Shape: [1, seqlen]
@@ -435,6 +438,12 @@ class MambaModel(LanguageModule):
 
             # Find the starting indices of the pattern
             match_indices = torch.nonzero(matches, as_tuple=False)[:, 1]  # Shape: [num_matches]
+            
+            print (f'[mamba_model.py]: match_indices: {match_indices}')
+            print (f'[mamba_model.py]: match_indices.shape: {match_indices.shape}')
+            if (len (match_indices) % 2 > 0): 
+                print (f'input_ids[0]: {input_ids[0]}')
+                print (f'len (input_ids[0]): {len (input_ids[0])}')
 
             # Initialize variables to store split points
             split_points = []
@@ -842,12 +851,15 @@ class MambaModel(LanguageModule):
             # EMBEDDING 
             # Zixian: Oct 30: embed both documents_batch and qa_bath
             if (split_for_doc_qa_pair): 
-                print (f'documents_batch: {documents_batch}')
+                print (f'documents_batch.shape: {documents_batch.shape}')
+                # print (f'documents_batch: {documents_batch}')
                 decoder_input = self.embedding(input_ids=documents_batch, position_ids=position_ids)
-                print (f'qa_batch: {qa_batch}')
+                print (f'qa_batch.shape: {qa_batch.shape}')
+                # print (f'qa_batch: {qa_batch}')
                 qa_batch_input = self.embedding(input_ids=qa_batch, position_ids=position_ids)
             else: 
-                print (f'input_ids: {input_ids}')
+                print (f'input_ids.shape: {input_ids.shape}')
+                # print (f'input_ids: {input_ids}')
                 decoder_input = self.embedding(input_ids=input_ids, position_ids=position_ids)
         else:
             # intermediate stage of pipeline
@@ -1026,7 +1038,7 @@ class MambaModel(LanguageModule):
             
             # with torch.no_grad (): 
             print (f'[mamba_model.py]: Entering SECOND forward-pass')
-            print (f'[mamba_model.py]: qa_batch_input: {qa_batch_input}')
+            # print (f'[mamba_model.py]: qa_batch_input: {qa_batch_input}')
             s=time.time()
             hidden_states, all_layers_states_dict_2 = self.decoder(
                                                         # Zixian: Oct 30: Inserting splitted QA embeddings 
@@ -1083,8 +1095,8 @@ class MambaModel(LanguageModule):
         logits, _ = self.output_layer(hidden_states, weight=output_weight)
 
         if labels is None:
-            print (f'[mamba_model.py]: returning from Mamba forward in Inference mode')
-            print (f'[mamba_model.py]: returning logits.transpose(0, 1).contiguous(): {logits.transpose(0, 1).contiguous()}')
+            print (f'[mamba_model.py]: returning logits from Mamba forward in Inference mode')
+            # print (f'[mamba_model.py]: returning logits.transpose(0, 1).contiguous(): {logits.transpose(0, 1).contiguous()}')
             # [s b h] => [b s h]
             return logits.transpose(0, 1).contiguous()
 
